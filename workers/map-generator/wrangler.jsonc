@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ttcstatus-map-generator",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-02",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+  "vars": {
+    "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ttcstatus",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "../../migrations"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "api.ttcstatus.ca",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev:api": "wrangler dev -c workers/api/wrangler.jsonc",
+    "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
+    "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc",
+    "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc",
+    "db:migrate:local": "wrangler d1 migrations apply ttcstatus --local -c workers/api/wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply ttcstatus --remote -c workers/api/wrangler.jsonc"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "wrangler": "^4.40.0"
+  }
+}

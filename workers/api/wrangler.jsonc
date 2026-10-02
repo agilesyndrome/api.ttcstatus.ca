@@ -1,0 +1,36 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "ttcstatus-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-02",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["17 7 * * *"]
+  },
+  "vars": {
+    "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/bd4809dd-e289-4de8-bbde-c5c00dafbf4f/resource/28514055-d011-4ed7-8bb0-97961dfe2b66/download/SurfaceGTFS.zip",
+    "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
+    "NO_VALIDATOR_REFETCH_DAYS": "7"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ttcstatus",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "../../migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "GTFS_BUCKET",
+      "bucket_name": "ttcstatus-static-gtfs"
+    }
+  ],
+  "services": [
+    {
+      "binding": "MAP_GENERATOR",
+      "service": "ttcstatus-map-generator"
+    }
+  ]
+}
