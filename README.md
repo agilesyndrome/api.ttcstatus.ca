@@ -43,6 +43,8 @@ Responsibilities:
 
 The geometry generator is intentionally conservative in v1. It gives clients a lightweight, geographically recognizable Snake-style base layer without yet performing the full constrained schematic optimization described in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+For a file-by-file reviewer guide, see [`CODEMAP.md`](./CODEMAP.md).
+
 ## Data citizenship
 
 The importer is deliberately stingy with Toronto Open Data bandwidth.
