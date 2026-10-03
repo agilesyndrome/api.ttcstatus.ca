@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "ttcstatus",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "7c7e47b4-da33-42de-a521-df30b79e41f2",
       "migrations_dir": "../../migrations"
     }
   ]
