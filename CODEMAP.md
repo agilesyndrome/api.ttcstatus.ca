@@ -7,6 +7,7 @@ A reviewer should be able to understand this project by following one concern at
 | File | Responsibility |
 | --- | --- |
 | `index.ts` | HTTP routing, CORS, map response caching, health/status endpoints. It never parses GTFS. |
+| `realtime.ts` | Bounded TTC vehicle snapshot acquisition, standard protobuf decoding, Flexity filtering and observation normalization. |
 | `sync.ts` | **Only place that talks to the upstream static feed.** HEAD/conditional GET checks, R2 caching, and source politeness live here. |
 | `sync-common.ts` | Sync state, source validators, locking, version records, bounded D1 batches. |
 | `sync-pipeline.ts` | Tiny orchestration state machine: import → map generation → delta → activation → pruning. |
@@ -41,12 +42,27 @@ This is preparation for the topology-aware schematic generator in `ARCHITECTURE.
 | `hash.ts` | Stable hashes for normalized rows and artifacts. |
 | `models.ts` | Canonical parsed GTFS types. |
 | `cloudflare.ts` | Narrow Cloudflare binding interfaces. |
+| `map-projection.ts` | Serialized geographic transform, GPS/map conversion, source-distance interpolation and track matching. Shared with the generator and browser. |
+| `live-vehicles.ts` | Map-independent vehicle/snapshot contract and freshness policy. |
+
+## Interactive viewer — `web/map/`
+
+| File | Responsibility |
+| --- | --- |
+| `model.ts` | Builds viewer data, preserving the map's source geometry and transform. |
+| `live-status.ts` | Pure snapshot projection and articulated streetcar placement, plus one-shot browser acquisition. |
+| `viewer.ts` | Map rendering, camera interactions, stops, routes and optional live status. |
+| `camera.ts` | Pure camera bounds/zoom/pan helpers. |
+
+`scripts/dev-viewer.mjs` serves a credential-free local preview using the real
+snapshot acquisition module. `scripts/build-viewer.mjs` embeds static map data
+and the browser bundle; vehicle observations are requested at page startup.
 
 ## Review invariants
 
 Future changes should preserve these rules:
 
-1. Public API requests never contact the TTC feed.
+1. Public map/network reads never contact the TTC static feed. Vehicle snapshot requests use a short edge cache and bounded acquisition; they do not import static GTFS.
 2. Static source access occurs only at the sync boundary and remains conditional/cached.
 3. A downloaded source is parsed from R2, not fetched repeatedly from upstream.
 4. A network does not become active until its map artifact is generated successfully.

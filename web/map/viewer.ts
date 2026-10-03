@@ -1,6 +1,8 @@
 import { boundsOf, searchFeatures, type Bounds, type Edge, type Feature, type Point, type Route, type ViewerData } from "./model";
 import { fitCamera, moveCamera, zoomCamera } from "./camera";
 import { nearestOnSegment } from "../../workers/map-generator/src/geometry";
+import { loadVehicleSnapshot, projectSnapshot, streetcarBody, type PlottedVehicle } from "./live-status";
+import { vehicleIsStale, type VehicleSnapshot } from "../../workers/shared/live-vehicles";
 
 const data: ViewerData = JSON.parse(document.querySelector("#map-data")!.textContent!);
 const svg = document.querySelector<SVGSVGElement>("#map")!;
@@ -15,6 +17,11 @@ const routeButtons = new Map<string,HTMLButtonElement>();
 const markerElements = new Map<string,SVGGElement>();
 const trackElements = new Map<string,SVGPolylineElement>();
 const svgNS = "http://www.w3.org/2000/svg";
+const liveToggle = document.querySelector<HTMLInputElement>("#show-live")!;
+const liveSummary = document.querySelector<HTMLElement>("#live-summary")!;
+const liveTimestamp = document.querySelector<HTMLElement>("#live-timestamp")!;
+const carElements = new Map<string, SVGGElement>();
+let liveSnapshot: VehicleSnapshot | undefined, cars: PlottedVehicle[] = [];
 let selected: Feature | undefined, selectedRoute: string | undefined, hovered: Feature | undefined;
 let moreLabels = false, scheduledFrame = false;
 const rect = () => viewport.getBoundingClientRect();
@@ -91,6 +98,7 @@ for (const feature of data.features) {
   markersLayer.append(marker); markerElements.set(feature.id,marker);
 }
 svg.append(markersLayer);
+const vehiclesLayer = shape("g", { id: "live-vehicles", display: "none" }); svg.append(vehiclesLayer);
 const labelsLayer = shape("g",{class:"map-label","aria-hidden":"true"}); svg.append(labelsLayer);
 document.querySelector("#north-arrow")!.setAttribute("transform",`rotate(${data.northAngle} 18 18)`);
 
@@ -168,7 +176,102 @@ function draw() {
     marker.setAttribute("aria-pressed",String(feature.id === selected?.id));
   }
   renderLabels(scale);
+  renderVehicles(scale);
 }
+
+function vehicleDescription(car: PlottedVehicle): string {
+  const route = routes.get(car.vehicle.routeId ?? "");
+  return `${route ? `${route.number} ${route.name}` : car.vehicle.routeId ? `Route ${car.vehicle.routeId}` : "No assigned trip"} · ${car.match ? "On mapped track" : "Off mapped track; GPS position"}${car.stale ? " · Stale position" : ""}`;
+}
+
+function renderVehicles(scale: number) {
+  vehiclesLayer.setAttribute("display", liveToggle.checked ? "inline" : "none");
+  if (!liveToggle.checked) return;
+  for (const car of cars) {
+    const group = carElements.get(car.vehicle.id)!;
+    group.setAttribute("opacity", car.stale ? ".45" : selectedRoute && car.vehicle.routeId !== selectedRoute ? ".25" : "1");
+    const color = routes.get(car.vehicle.routeId ?? "")?.color ?? "#b4393f";
+    const body = streetcarBody(car, data.edges, scale);
+    Array.from(group.children).forEach((child, i) => {
+      const section = body[4 - i];
+      child.setAttribute("transform", `translate(${section.point.join(" ")}) rotate(${section.angle}) scale(${1 / scale})`);
+      child.querySelector("rect")!.setAttribute("fill", color);
+    });
+    group.classList.toggle("off-track", !car.match);
+  }
+}
+
+function selectVehicle(car: PlottedVehicle) {
+  selected = undefined; hovered = undefined; tooltip.hidden = true;
+  details.replaceChildren();
+  details.append(element("p", "eyebrow", "Flexity streetcar"));
+  const heading = element("div", "details-heading"), close = element("button", "close-details", "×");
+  close.setAttribute("aria-label", "Close streetcar details"); close.onclick = closeDetails;
+  heading.append(element("h1", "", `Car ${car.vehicle.label}`), close); details.append(heading);
+  details.append(element("p", "", vehicleDescription(car)));
+  const facts = element("dl", "stop-facts");
+  facts.append(element("dt", "", "Position reported"), element("dd", "", car.vehicle.observedAt ? new Date(car.vehicle.observedAt).toLocaleString("en-CA", { timeZone: "America/Toronto" }) : "Time not supplied"));
+  if (car.vehicle.speedMetresPerSecond !== undefined) facts.append(element("dt", "", "Reported speed"), element("dd", "", `${Math.round(car.vehicle.speedMetresPerSecond * 3.6)} km/h`));
+  if (car.match) facts.append(element("dt", "", "GPS distance from mapped track"), element("dd", "", `${Math.round(car.match.distanceFromTrackMetres)} m`));
+  else details.append(element("p", "tip", "This car is beyond the mapped track or in a yard. Its GPS location uses the same geographic transform as the map."));
+  details.append(facts);
+  const focus = element("button", "focus-button", "Zoom to this streetcar"); focus.onclick = () => focusPoint(car.point, 6); details.append(focus);
+  drawSoon();
+}
+
+function hitVehicle(x: number, y: number): PlottedVehicle | undefined {
+  if (!liveToggle.checked) return;
+  const scale = rect().width / camera.width, target: Point = [x - rect().left, y - rect().top];
+  return cars.filter(car => { const point = screenPoint(car.point); return Math.hypot(point[0] - target[0], point[1] - target[1]) < 38; })
+    .map(car => ({ car, distance: Math.min(...streetcarBody(car, data.edges, scale).map(section => {
+      const point = screenPoint(section.point); return Math.hypot(point[0] - target[0], point[1] - target[1]);
+    })) })).filter(hit => hit.distance < 8).sort((a, b) => a.distance - b.distance)[0]?.car;
+}
+
+function updateSnapshotAge() {
+  if (!liveSnapshot) return;
+  cars.forEach(car => { car.stale = vehicleIsStale(car.vehicle, liveSnapshot!); });
+  cars.forEach(car => carElements.get(car.vehicle.id)?.setAttribute("aria-label", `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`));
+  const offTrack = cars.filter(car => !car.match).length, stale = cars.filter(car => car.stale).length;
+  liveSummary.textContent = cars.length ? `${cars.length} cars reported${offTrack ? ` · ${offTrack} off mapped track` : ""}${stale ? ` · ${stale} stale` : ""}.` : "No Flexity positions reported.";
+  if (liveSnapshot.invalidPositions) liveSummary.textContent += ` ${liveSnapshot.invalidPositions} invalid GPS fixes omitted.`;
+  drawSoon();
+}
+
+async function bootLiveStatus() {
+  // Static file previews use the public API. HTTP previews and production use
+  // their own Worker, keeping upstream protobuf acquisition out of the browser.
+  const endpoint = location.protocol === "file:" ? "https://api.ttcstatus.ca/v1/vehicles/streetcar" : "/v1/vehicles/streetcar";
+  try {
+    liveSnapshot = await loadVehicleSnapshot(endpoint);
+    cars = projectSnapshot(data, liveSnapshot);
+    for (const car of cars) {
+      const group = shape("g", { class: "live-car", "data-vehicle": car.vehicle.id, role: "button", tabindex: 0,
+        "aria-label": `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.` });
+      // Five articulated sections, drawn tail-first so the cab sits on top.
+      for (let i = 0; i < 5; i++) {
+        const section = shape("g");
+        section.append(shape("rect", { x: -3, y: -3.5, width: 6, height: 7, rx: i === 4 ? 2.2 : 1.2, stroke: "#fffdf7", "stroke-width": 1 }));
+        section.append(shape("path", { d: i === 4 ? "M1 -2 L1 2" : "M-1.5 -1.5 H1.5 M-1.5 1.5 H1.5", stroke: "#183340", "stroke-width": 1.2, "stroke-linecap": "round" }));
+        group.append(section);
+      }
+      group.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); selectVehicle(car); }
+      });
+      group.addEventListener("focus", () => { const [x, y] = screenPoint(car.point); if (x < 15 || y < 15 || x > rect().width - 15 || y > rect().height - 15) focusPoint(car.point, zoomLevel()); });
+      vehiclesLayer.append(group); carElements.set(car.vehicle.id, group);
+    }
+    const timestamp = liveSnapshot.feedTimestamp ?? liveSnapshot.fetchedAt;
+    liveTimestamp.textContent = `Snapshot · ${new Date(timestamp).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit", second: "2-digit" })} · loads once`;
+    updateSnapshotAge();
+    // This timer only updates age labels; no polling or simulated movement.
+    setInterval(updateSnapshotAge, 30_000);
+  } catch {
+    liveSummary.textContent = "Live status unavailable. Reload to try again.";
+    liveTimestamp.textContent = "The streetcar map is still available.";
+  }
+}
+liveToggle.addEventListener("change", () => { tooltip.hidden = true; drawSoon(); });
 function focusPoint(point: Point, level = 3.5) {
   const width = initial.width/Math.max(1,Math.min(12,level)), height = width/(rect().width/rect().height);
   camera = {x:point[0]-width/2,y:point[1]-height/2,width,height}; tooltip.hidden = true; drawSoon();
@@ -289,6 +392,14 @@ function hitFeature(x: number,y: number): Feature | undefined {
     .filter(hit => hit.distance<=tolerance).sort((a,b) => a.distance-b.distance || Number(b.feature.kind === "terminal")-Number(a.feature.kind === "terminal"))[0]?.feature;
 }
 function hoverAt(x: number,y: number) {
+  const car = hitVehicle(x, y);
+  if (car) {
+    hovered = undefined; tooltip.replaceChildren(element("strong", "", `Flexity car ${car.vehicle.label}`), element("small", "", vehicleDescription(car)), element("small", "", "Select for streetcar details"));
+    tooltip.hidden = false;
+    tooltip.style.left = `${Math.max(8, Math.min(x - rect().left + 16, rect().width - tooltip.offsetWidth - 8))}px`;
+    tooltip.style.top = `${Math.max(8, Math.min(y - rect().top + 16, rect().height - tooltip.offsetHeight - 8))}px`;
+    drawSoon(); return;
+  }
   const feature = hitFeature(x,y);
   if (hovered?.id !== feature?.id) { hovered = feature; drawSoon(); }
   const point = worldPoint(x,y), tolerance = camera.width/rect().width*6;
@@ -337,7 +448,9 @@ svg.addEventListener("pointermove",event => {
 function endPointer(event: PointerEvent) {
   if (!pointers.has(event.pointerId)) return;
   if (event.type === "pointerup" && !gestureMoved && !gesturePinched) {
-    const feature = hitFeature(event.clientX,event.clientY); if (feature) selectFeature(feature);
+    const car = hitVehicle(event.clientX, event.clientY);
+    if (car) selectVehicle(car);
+    else { const feature = hitFeature(event.clientX,event.clientY); if (feature) selectFeature(feature); }
   }
   pointers.delete(event.pointerId);
   if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
@@ -364,3 +477,4 @@ new ResizeObserver(() => {
   previousLevel<1.01 ? fit() : focusPoint(point,previousLevel);
 }).observe(viewport);
 showOverview(); draw();
+void bootLiveStatus();

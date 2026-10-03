@@ -5,7 +5,8 @@ import { spawnSync } from "node:child_process";
 
 const preview = resolve("streetcar-debug.html");
 // The page embeds its data, CSS and JavaScript, so the same viewer works from
-// file://, the local preview, or a static host without fetch/CORS requirements.
+// file://, the local preview, or a static host. Live status additionally needs
+// the public API (file previews) or the same-origin vehicle endpoint (HTTP).
 await writeFile(preview, await readFile("public/map/index.html", "utf8"));
 
 const url = pathToFileURL(preview).href;

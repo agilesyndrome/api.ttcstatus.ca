@@ -23,9 +23,14 @@
     <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
   </section>
   <aside class="sidebar" aria-label="Stop and route details">
+    <section class="live-status" aria-label="Live streetcars">
+      <label><input id="show-live" type="checkbox"> Show live status <span class="live-dot" aria-hidden="true"></span></label>
+      <p id="live-summary" role="status">Loading streetcar snapshot…</p>
+      <p id="live-timestamp"></p>
+    </section>
     <div id="details" aria-live="polite"></div>
     <section class="route-section"><div class="section-heading"><h2>Explore a route</h2><button id="clear-route" class="text-button" hidden>Show all</button></div><div id="route-list" class="route-list"></div><p class="legend-note"><span class="dashed-swatch"></span>Physical track without scheduled streetcar service</p></section>
-    <footer>Scheduled service snapshot · no live arrivals.<br>Map is schematic. Replacement-bus paths are excluded.<details><summary>Map sources</summary><p><a href="https://open.toronto.ca/" target="_blank" rel="noopener">TTC service &amp; Toronto geography</a> · Open Government Licence – Toronto.<br><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> · ODbL.</p></details></footer>
+    <footer>Live positions load once when this page opens.<br>Reload for a new snapshot. No live arrivals.<br>Map is schematic. Replacement-bus paths are excluded.<details><summary>Map sources</summary><p><a href="https://open.toronto.ca/" target="_blank" rel="noopener">TTC service &amp; Toronto geography</a> · Open Government Licence – Toronto.<br><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> · ODbL.</p></details></footer>
   </aside>
 </main>
 <noscript><p class="noscript">Enable JavaScript to explore the map. The static SVG preview is also available from this project.</p></noscript>

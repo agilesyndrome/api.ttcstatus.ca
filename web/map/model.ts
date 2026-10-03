@@ -1,4 +1,5 @@
 import { PALETTE } from "../../workers/map-generator/src/debug-render";
+import type { GeographicTransform, ProjectionEdge } from "../../workers/shared/map-projection";
 
 export type Point = [number, number];
 export interface Route { id: string; number: string; name: string; color: string; overnight: boolean; scheduled: boolean }
@@ -7,16 +8,18 @@ export interface Feature {
   routeIds: string[]; accessible: boolean | null; boardingPoints: number;
   platformNames: string[]; destinations: Record<string, string[]>; replacementRouteIds: string[];
 }
-export interface Edge { id: string; points: Point[]; routeIds: string[]; infrastructureIds: string[]; lengthMetres: number }
+export interface Edge extends ProjectionEdge { infrastructureIds: string[] }
 export interface ViewerData {
   features: Feature[]; routes: Route[]; edges: Edge[];
   infrastructure: { id: string; name: string }[];
   shoreline: Point[]; labels: { text: string; kind: string; angle: number; point: Point }[];
   northAngle: number; snapshot: string; bounds: Bounds;
+  geographicTransform: GeographicTransform;
 }
 export interface Bounds { x: number; y: number; width: number; height: number }
 interface SourceStop { id: string; name: string; x: number; y: number; routeIds: string[]; stopIds: string[]; accessible?: boolean }
 export interface ViewerSource {
+  display: { geographicTransform: GeographicTransform };
   generatedAt?: string; source?: { fetchedAt?: string };
   routes: { id: string; shortName?: string; longName?: string; color?: string }[];
   stops: SourceStop[];
@@ -82,11 +85,14 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     ...terminals,
   ];
   const edges = source.graph.edges.map(e => ({ id:e.id, points:e.points, routeIds:e.routeIds,
+    a:e.a, b:e.b, sourcePoints:e.sourcePoints, sourceDistances:e.sourceDistances,
     infrastructureIds:e.infrastructureIds, lengthMetres:e.lengthMetres }));
+  if (!source.display?.geographicTransform) throw new Error("Rebuild the map with map:preview to include its geographic transform");
   return { features, routes, edges, infrastructure:source.infrastructure.map(i => ({id:i.id,name:i.name})),
     shoreline:source.context.shoreline, labels:source.context.labels.filter(l => l.kind !== "terminal"),
     northAngle:source.context.north.angle, snapshot:source.source?.fetchedAt ?? source.generatedAt ?? "",
-    bounds:boundsOf([...edges.flatMap(e => e.points),...features.map(f => f.point)],45) };
+    bounds:boundsOf([...edges.flatMap(e => e.points),...features.map(f => f.point)],45),
+    geographicTransform:source.display.geographicTransform };
 }
 
 export function searchFeatures(features: Feature[], routes: Route[], query: string): Feature[] {

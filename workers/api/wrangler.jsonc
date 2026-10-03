@@ -16,6 +16,7 @@
     "crons": ["17 7 * * *"]
   },
   "vars": {
+    "REALTIME_VEHICLE_URL": "https://bustime.ttc.ca/gtfsrt/vehicles",
     "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/bd4809dd-e289-4de8-bbde-c5c00dafbf4f/resource/28514055-d011-4ed7-8bb0-97961dfe2b66/download/SurfaceGTFS.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
     "NO_VALIDATOR_REFETCH_DAYS": "7"

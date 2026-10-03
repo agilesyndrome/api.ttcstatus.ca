@@ -1,8 +1,9 @@
 import { DISPLAY_HEIGHT, DISPLAY_WIDTH, GENERATOR_VERSION, STREET_GRID_DEGREES, TRACK_SNAP_METRES } from "./config";
-import { calculateBounds, metresBetween, nearestOnSegment, projectToLocalMetres } from "./geometry";
+import { metresBetween, nearestOnSegment, projectToLocalMetres } from "./geometry";
 import type { XY } from "./types";
 import { selectRailService } from "./rail-service";
 import { addAuditedPhysicalTracks } from "./physical-network";
+import { fitGeographicTransform, localToMap, transformSegment } from "../../shared/map-projection";
 import shorelineData from "./shoreline.json";
 export { nearestOnSegment } from "./geometry";
 
@@ -28,37 +29,11 @@ export interface TrackEdge {
  * central network more space. Apply the SAME transform to every layer. There is
  * no display-space route snapping that could create a crossing. */
 export function createSchematicTransform(points: XY[]) {
-  const angle = STREET_GRID_DEGREES * Math.PI / 180;
-  const c = Math.cos(angle), s = Math.sin(angle);
-  const rotate = ([x, y]: XY): XY => [x * c + y * s, -x * s + y * c];
-  const axis = (v: number, lo: number, hi: number, outerScale: number) =>
-    v < lo ? lo + (v - lo) * outerScale : v > hi ? hi + (v - hi) * outerScale : v;
-  const warp = (p: XY): XY => {
-    const [x, y] = rotate(p);
-    return [axis(x, -4200, 4400, 0.56), axis(y, -1600, 2400, 0.62)];
-  };
-  const box = calculateBounds(points.map(warp));
-  const scaleX = (DISPLAY_WIDTH - 180) / Math.max(1, box.maxX - box.minX);
-  const scaleY = (DISPLAY_HEIGHT - 320) / Math.max(1, box.maxY - box.minY);
-  const toDisplay = (p: XY): XY => {
-    const [x, y] = warp(p);
-    return [+(90 + (x - box.minX) * scaleX).toFixed(2), +(150 + (box.maxY - y) * scaleY).toFixed(2)];
-  };
-  // The slope changes are vertices too. Keeping these when transforming a
-  // segment prevents a straight display chord cutting across the warped graph.
-  const segmentPoints = (a: XY, b: XY) => {
-    const ra = rotate(a), rb = rotate(b), ts = [0, 1];
-    for (const [dimension, knots] of [[0, [-4200, 4400]], [1, [-1600, 2400]]] as const) {
-      for (const k of knots) {
-        const t = (k - ra[dimension]) / (rb[dimension] - ra[dimension]);
-        if (t > 0 && t < 1) ts.push(t);
-      }
-    }
-    const fractions = [...new Set(ts)].sort((a, b) => a - b);
-    return { points: fractions.map(t => toDisplay([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])),
-      sourceDistances: fractions.map(t => t * metresBetween(a, b)) };
-  };
-  return { toDisplay, segmentPoints };
+  const geographicTransform = fitGeographicTransform(points, DISPLAY_WIDTH, DISPLAY_HEIGHT, STREET_GRID_DEGREES);
+  return { geographicTransform,
+    toDisplay: (point: XY) => localToMap(point, geographicTransform),
+    segmentPoints: (a: XY, b: XY) => transformSegment(a, b, geographicTransform) };
+
 }
 
 /** Input coordinates are canonical local metres, never already-warped pixels. */
@@ -157,6 +132,7 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
     ...seed, generatorVersion: GENERATOR_VERSION,
     display: { ...seed.display, width: DISPLAY_WIDTH, height: DISPLAY_HEIGHT, coordinateSystem: "snake-display-v1",
       streetGridRotationDegrees: STREET_GRID_DEGREES,
+      geographicTransform: transform.geographicTransform,
       note: "Toronto street grid rotated upright; outer geography compressed with a continuous warp. Display pixels are not metres." },
     paths: seed.paths.map(p => ({ ...p, sourcePoints: p.points, points: pathPoints(p.id), edgeRefs: traversals.get(p.id) })),
     infrastructure: seed.infrastructure.map(p => ({ ...p, sourcePoints: p.points, points: pathPoints(p.id), edgeRefs: traversals.get(p.id) })),

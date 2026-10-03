@@ -6,6 +6,7 @@ import type {
   ScheduledControllerLike,
 } from "../../shared/cloudflare";
 import { syncStaticGtfs, type SyncEnv } from "./sync";
+import { DEFAULT_VEHICLE_FEED_URL, fetchVehicleSnapshot, SNAPSHOT_CACHE_SECONDS } from "./realtime";
 
 interface Env extends SyncEnv {
   DB: D1Database;
@@ -15,6 +16,7 @@ interface Env extends SyncEnv {
   SOURCE_ATTRIBUTION: string;
   NO_VALIDATOR_REFETCH_DAYS?: string;
   SYNC_TOKEN?: string;
+  REALTIME_VEHICLE_URL?: string;
 }
 
 interface ActiveArtifact {
@@ -149,6 +151,23 @@ async function networkResponse(env: Env): Promise<Response> {
   );
 }
 
+async function vehicleResponse(env: Env, ctx: ExecutionContextLike): Promise<Response> {
+  const source = env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL;
+  const cache = (caches as unknown as { default: Cache }).default;
+  const key = new Request(`https://ttcstatus-cache.invalid/v1/vehicles/streetcar?source=${encodeURIComponent(source)}`);
+  const cached = await cache.match(key);
+  if (cached) return cached;
+  try {
+    const snapshot = await fetchVehicleSnapshot(source, env.SOURCE_ATTRIBUTION);
+    const response = json(snapshot, 200, { "cache-control": `public, max-age=${SNAPSHOT_CACHE_SECONDS}` });
+    ctx.waitUntil(cache.put(key, response.clone()));
+    return response;
+  } catch (error) {
+    console.error("Streetcar snapshot failed", error);
+    return json({ error: "vehicles-unavailable", message: "Live streetcar positions are temporarily unavailable." }, 503, { "cache-control": "no-store" });
+  }
+}
+
 async function feedStatusResponse(env: Env): Promise<Response> {
   const state = await env.DB.prepare(
     `SELECT source_key, source_url, source_etag, source_last_modified, source_content_length,
@@ -213,6 +232,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/v1/network") {
       return networkResponse(env);
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/vehicles/streetcar") {
+      return vehicleResponse(env, ctx);
     }
 
     if (request.method === "GET" && url.pathname === "/v1/feed/status") {

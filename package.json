@@ -12,6 +12,7 @@
     "build:viewer": "node scripts/build-viewer.mjs",
     "test": "node --test --test-isolation=none tests/*.test.mjs",
     "dev:api": "npm run build:viewer && wrangler dev -c workers/api/wrangler.jsonc",
+    "dev:viewer": "node scripts/dev-viewer.mjs",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
     "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc",
     "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc",
@@ -23,5 +24,8 @@
     "playwright": "^1.63.0",
     "typescript": "^5.8.3",
     "wrangler": "^4.40.0"
+  },
+  "dependencies": {
+    "gtfs-realtime-bindings": "^2.2.0"
   }
 }

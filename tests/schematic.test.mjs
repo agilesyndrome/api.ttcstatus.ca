@@ -218,7 +218,7 @@ test("preview rebuilds an older schematic from retained source geometry", async 
     await writeFile(input, JSON.stringify(stale));
     await previewMap(input, output, join(directory,"map.svg"));
     const rebuilt = JSON.parse(await readFile(output, "utf8"));
-    assert.equal(rebuilt.generatorVersion, "snake-v1.2.0");
+    assert.equal(rebuilt.generatorVersion, "snake-v1.3.0");
     assert.deepEqual(rebuilt.graph, expected.graph);
     assert.deepEqual(rebuilt.context.shoreline, expected.context.shoreline);
     assert.deepEqual(rebuilt.excludedServices, expected.excludedServices);

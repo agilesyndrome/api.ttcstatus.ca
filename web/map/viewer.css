@@ -28,6 +28,15 @@ button[aria-pressed="true"] { background: #e2edeb; border-color: #278f91; }
 #map [data-feature]:focus-visible .marker { stroke: #278f91; stroke-width: 3; }
 .track,.junction { vector-effect: non-scaling-stroke; }
 .track { transition: opacity .15s; }
+.live-status { padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+.live-status label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.live-status input { accent-color: #278f91; width: 16px; height: 16px; }
+.live-dot { width: 6px; height: 6px; background: #278f91; border-radius: 50%; }
+.live-status p { font-size: 11px; line-height: 1.6; color: var(--muted); margin: 8px 0 0; }
+#live-timestamp { font-size: 10px; }
+.live-car { cursor: pointer; }
+.live-car:focus { outline: none; filter: drop-shadow(0 0 3px #278f91); }
+.live-car.off-track rect { stroke-dasharray: 2 1; }
 .map-label { pointer-events: none; }
 .map-label text { paint-order: stroke; stroke: #f7f5ed; stroke-width: 4; stroke-linejoin: round; }
 .map-hint { position: absolute; top: 17px; left: 22px; color: var(--muted); font-size: 11px; pointer-events: none; }

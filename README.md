@@ -41,7 +41,7 @@ Responsibilities:
 - Adds manually-audited infrastructure overlays that GTFS cannot describe when no scheduled trip uses them.
 - Writes the complete JSON map artifact back to D1 before the version can become active.
 
-The `snake-v1.2.0` generator provides one schematic layout for paths, graph nodes,
+The `snake-v1.3.0` generator provides one schematic layout for paths, graph nodes,
 stops and geographic context. It retains simplified source geometry in local
 metres, edge lengths and distance mappings so display distortion need not change
 game speed. The graph is inferred from scheduled shapes and the audited overlays;
@@ -183,6 +183,17 @@ The endpoint supports `ETag` / `If-None-Match` and is cached by immutable networ
 
 Returns active network version metadata and import counts.
 
+### `GET /v1/vehicles/streetcar`
+
+Returns one normalized TTC GTFS-Realtime vehicle snapshot: `schemaVersion`,
+`fetchedAt`, `feedTimestamp`, source/attribution, `invalidPositions`, and `vehicles`.
+Each Flexity observation includes its identity, latitude/longitude, observation
+time, and route/trip/bearing/speed when supplied. Coordinates remain independent
+of the static network version; the viewer projects against its own map artifact.
+The Worker caches successful snapshots at the edge for 15 seconds and returns
+an uncached `503 vehicles-unavailable` on acquisition/decoding failure. Configure
+`REALTIME_VEHICLE_URL` to override `https://bustime.ttc.ca/gtfsrt/vehicles`.
+
 ### `GET /v1/feed/status`
 
 Operational source/import status. This endpoint is intentionally `no-store`.
@@ -293,6 +304,45 @@ npm run deploy:api
 
 ## Local development
 
+Preview the interactive map with real streetcar positions, without credentials
+or a D1 import:
+
+```bash
+npm run dev:viewer
+```
+
+Open `http://127.0.0.1:4173/map/` and check **Show live status**. Each page load
+requests one snapshot; toggling the checkbox reuses it. Reload for a new snapshot.
+The local server uses the same TTC acquisition and decoder as the API Worker,
+with a 15-second shared cache to avoid a feed request for every viewer. Set `PORT`
+to change the preview port. Restart the server after editing source files.
+
+The feed reports Flexity cars numbered 4400–4663, including those without assigned
+trips. Replacement buses are excluded by vehicle identity. Stale observations
+(over two minutes old, unknown time, or a future time) are faded. Cars farther
+than 100 metres from known rail use geographic placement and are labelled **Off
+mapped track**; yards and missing physical corridors must not be mistaken for
+scheduled rail. The viewer shows counts, the snapshot time, vehicle details, and
+a failure message if the feed is unavailable. Cars have five articulated sections
+with exaggerated length for readability; the cab marks the reported position.
+
+`workers/shared/map-projection.ts` is the reusable GPS bridge, shared by the
+generator and viewer and usable in a future streaming Worker. The map serializes
+its complete geographic transform (including projection reference, rotation,
+compression, and display scale). `gpsToMap` / `mapToGps` support free geographic
+locations such as a person's position. `matchGpsToTrack` operates in source metres,
+uses route and bearing hints, then interpolates the retained edge distance mapping.
+It accepts a previous edge for future continuity; it never matches in display
+pixels or treats a geometric crossing as a graph connection. Matching is an
+estimate against the inferred, simplified graph rather than surveyed track.
+
+Transport and decoding live in `workers/api/src/realtime.ts`; the plain observation
+contract lives in `workers/shared/live-vehicles.ts`; snapshot projection and body
+placement live in `web/map/live-status.ts`. No live history is written to D1/R2.
+Streaming acquisition can later replace the snapshot transport while reusing
+these models and projection functions. The current phase does not infer a trip
+pattern or direction when the source omits them.
+
 Apply the local D1 migration:
 
 ```bash
@@ -337,7 +387,7 @@ The v1 generator establishes the important separation between canonical GTFS geo
 - constrained heading optimization
 - terminal-loop treatment
 - better crossing-vs-junction semantics
-- source-to-schematic vehicle projection
+- trip-pattern matching and temporal continuity for streamed vehicle projection
 - automated route-connectivity regression tests
 
 Those changes can happen inside the map-generator Worker without changing the public API contract.
