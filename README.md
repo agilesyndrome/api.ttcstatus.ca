@@ -115,6 +115,15 @@ Optional manual sync endpoint. It is only enabled when a `SYNC_TOKEN` Worker sec
 
 `Authorization: Bearer <SYNC_TOKEN>`
 
+The endpoint returns `202 Accepted` after scheduling the sync in the background. Check `/v1/feed/status` for import or map-generation errors and `/v1/map/streetcar` once the active artifact is ready.
+
+Convenience commands (the `.env` file is read by 1Password CLI):
+
+```bash
+make admin/sync
+make map/streetcar
+```
+
 The Cron Trigger is the normal production path.
 
 ## Provisioning

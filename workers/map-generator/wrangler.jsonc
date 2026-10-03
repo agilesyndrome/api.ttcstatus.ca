@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-02",
   "workers_dev": false,
+  "limits": {
+    "cpu_ms": 300000
+  },
   "observability": { "enabled": true },
   "vars": {
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto"

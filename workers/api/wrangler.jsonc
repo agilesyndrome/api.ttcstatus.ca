@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-02",
   "workers_dev": true,
+  "limits": {
+    "cpu_ms": 300000
+  },
   "observability": { "enabled": true },
   "triggers": {
     "crons": ["17 7 * * *"]

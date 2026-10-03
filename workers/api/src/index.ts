@@ -203,16 +203,16 @@ export default {
     if (request.method === "POST" && url.pathname === "/v1/admin/sync") {
       if (!env.SYNC_TOKEN) return json({ error: "manual-sync-disabled" }, 404, { "cache-control": "no-store" });
       if (!authorizedSync(request, env)) return json({ error: "unauthorized" }, 401, { "cache-control": "no-store" });
-      try {
-        const result = await syncStaticGtfs(env);
-        return json(result, 200, { "cache-control": "no-store" });
-      } catch (error) {
-        return json(
-          { error: error instanceof Error ? error.message : String(error) },
-          500,
-          { "cache-control": "no-store" },
-        );
-      }
+      ctx.waitUntil(
+        syncStaticGtfs(env)
+          .then((result) => console.log("manual static GTFS sync result", result))
+          .catch((error) => console.error("manual static GTFS sync failed", error)),
+      );
+      return json(
+        { status: "accepted", reason: "static-sync-started" },
+        202,
+        { "cache-control": "no-store" },
+      );
     }
 
     return json({ error: "not-found" }, 404, { "cache-control": "no-store" });
