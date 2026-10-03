@@ -35,13 +35,44 @@ Responsibilities:
 - Reads the new version from D1.
 - Projects WGS84 TTC geometry into local metre-like coordinates.
 - Simplifies shapes with RDP while preserving endpoints.
-- Carries GTFS shape IDs into reusable simplified display paths; deeper physical-corridor deduplication remains future geometry work.
-- Generates a fixed display coordinate space for the current `snake-v1` map.
+- Retains GTFS shape IDs and directed edge references while deduplicating shared corridor segments.
+- Rotates Toronto's street grid 16 degrees upright and continuously compresses the outer network to give downtown more display space.
 - Generates geographic stop clusters for display while keeping source stop IDs.
 - Adds manually-audited infrastructure overlays that GTFS cannot describe when no scheduled trip uses them.
 - Writes the complete JSON map artifact back to D1 before the version can become active.
 
-The geometry generator is intentionally conservative in v1. It gives clients a lightweight, geographically recognizable Snake-style base layer without yet performing the full constrained schematic optimization described in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+The `snake-v1.1.0` generator provides one schematic layout for paths, graph nodes,
+stops and geographic context. It retains simplified source geometry in local
+metres, edge lengths and distance mappings so display distortion need not change
+game speed. The graph is inferred from scheduled shapes and the audited overlays;
+it is not a complete inventory of physical track or permitted switches. Mere
+line crossings do not become junctions without a nearby source vertex. Full
+topology enrichment remains described in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+The debug SVG draws shared edges once, uses distinct schematic route colours,
+labels major streets and terminals, and includes an approximate shoreline and
+north arrow. A shared edge shows one daytime route colour; its tooltip lists all
+services on it. Geographic context labels are approximate and separate from
+service/track data.
+
+Generate a local preview without credentials, D1, deployment or feed downloads:
+
+```bash
+npm run map:preview
+npm run typecheck
+npm test
+```
+
+This reads `streetcarmap.json`, writes `streetcar-schematic.json`, and refreshes
+`streetcar-debug.svg`. It preserves the input map. For the legacy v1.0.1 fixture,
+the preview recovers approximate metre coordinates from the audited Ossington
+overlay because that format omitted its geographic display transform. Production
+generation uses D1 source coordinates directly. Optional positional arguments are
+input JSON, output JSON, output SVG.
+
+See [the SnakeTTC map contract](./docs/snakettc-map-contract.md) for gameplay and
+distance mapping. SnakeTTC currently uses its own hand-built graph; consuming this
+bundle requires a game-side adapter.
 
 For a file-by-file reviewer guide, see [`CODEMAP.md`](./CODEMAP.md).
 

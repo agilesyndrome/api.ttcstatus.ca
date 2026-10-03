@@ -10,7 +10,7 @@ map/streetcar:
 	@op run --env-file=.env -- ./bin/api GET /v1/map/streetcar
 
 map/streetcar/svg:
-	@op run --env-file=.env -- curl -sS -X POST https://api.ttcstatus.ca/v1/debug/map/streetcar.svg \
+	@op run --env-file=.env -- sh -c 'curl -sS -X POST https://api.ttcstatus.ca/v1/debug/map/streetcar.svg \
 		-H "Authorization: Bearer $$SYNC_TOKEN" \
 		-H "Content-Type: application/json" \
-		--data-binary @streetcarmap.json > streetcar-debug.svg
+		--data-binary @streetcarmap.json' > streetcar-debug.svg

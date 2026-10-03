@@ -10,13 +10,12 @@ import {
   STOP_CLUSTER_METRES,
 } from "./config";
 import {
-  calculateBounds,
-  createDisplayTransform,
   metresBetween,
   projectToLocalMetres,
   simplifyPolyline,
 } from "./geometry";
 import type { LatLon, MapSourceData, XY } from "./types";
+import { layoutStreetcarMap } from "./schematic";
 
 interface StopCluster {
   id: string;
@@ -42,15 +41,13 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
     patternsByShape.set(pattern.shape_id, list);
   }
 
-  // First project and simplify every source shape in metre space. We calculate
-  // display bounds from both scheduled geometry and our physical-track overlays.
+  // Project and simplify in metre space. D1 retains the original GTFS shapes;
+  // the bundle retains these simplified source coordinates for correspondence.
   const projectedShapes = new Map<string, XY[]>();
-  const allProjected: XY[] = [];
   for (const shape of data.shapes) {
     const latLon = JSON.parse(shape.points_json) as LatLon[];
     const projected = simplifyPolyline(latLon.map(projectToLocalMetres), RDP_TOLERANCE_METRES);
     projectedShapes.set(shape.shape_id, projected);
-    allProjected.push(...projected);
   }
 
   const projectedOverlays = data.overlays.map((overlay) => {
@@ -58,11 +55,8 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
       (JSON.parse(overlay.points_json) as LatLon[]).map(projectToLocalMetres),
       2,
     );
-    allProjected.push(...points);
     return { overlay, points };
   });
-
-  const toDisplay = createDisplayTransform(calculateBounds(allProjected));
 
   const paths = data.shapes.map((shape) => {
     const shapePatterns = patternsByShape.get(shape.shape_id) ?? [];
@@ -72,7 +66,7 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
       shapeId: shape.shape_id,
       routeIds: [...new Set(shapePatterns.map((pattern) => pattern.route_id))],
       patternIds: shapePatterns.map((pattern) => pattern.pattern_id),
-      points: (projectedShapes.get(shape.shape_id) ?? []).map(toDisplay),
+      points: projectedShapes.get(shape.shape_id) ?? [],
     };
   });
 
@@ -83,7 +77,7 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
     scheduledService: overlay.scheduled_service === 1,
     sourceNote: overlay.source_note,
     verifiedAt: overlay.verified_at,
-    points: points.map(toDisplay),
+    points,
   }));
 
   // Build route membership and ordered stop lists once, then reuse them for both
@@ -146,19 +140,18 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
   }
 
   const stops = clusters.map((cluster) => {
-    const [x, y] = toDisplay([cluster.x, cluster.y]);
     return {
       id: cluster.id,
       name: cluster.name,
-      x,
-      y,
+      x: cluster.x,
+      y: cluster.y,
       stopIds: cluster.stopIds,
       routeIds: [...cluster.routeIds].sort(),
       accessible: cluster.accessible,
     };
   });
 
-  return {
+  return layoutStreetcarMap({
     schemaVersion: 1,
     mode: MAP_MODE,
     style: MAP_STYLE,
@@ -178,7 +171,7 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
       coordinateSystem: "snake-display-v1",
       sourceProjection: "local-equirectangular-metres",
       reference: { lat: REFERENCE_LATITUDE, lon: REFERENCE_LONGITUDE },
-      note: "Geometry is pre-simplified for display. Topology-aware schematic optimization will replace this seed generator without changing the public bundle contract.",
+      note: "Canonical geometry is retained alongside the shared schematic graph.",
     },
     routes: data.routes.map((route) => ({
       id: route.route_id,
@@ -200,5 +193,5 @@ export function buildStreetcarMapBundle(data: MapSourceData, attribution: string
     paths,
     stops,
     infrastructure,
-  };
+  });
 }

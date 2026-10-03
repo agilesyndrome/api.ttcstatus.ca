@@ -5,7 +5,7 @@
  * generated public artifact. Bump GENERATOR_VERSION whenever a change here can
  * alter output geometry or the bundle schema.
  */
-export const GENERATOR_VERSION = "snake-v1.0.1";
+export const GENERATOR_VERSION = "snake-v1.1.0";
 export const MAP_STYLE = "snake-v1";
 export const MAP_MODE = "streetcar";
 
@@ -17,6 +17,8 @@ export const DISPLAY_PADDING = 70;
 // replace raw RDP, but this keeps the present implementation inexpensive.
 export const RDP_TOLERANCE_METRES = 18;
 export const STOP_CLUSTER_METRES = 34;
+export const TRACK_SNAP_METRES = 12;
+export const STREET_GRID_DEGREES = 16;
 
 // D1 has a 2 MB row limit. Keep map chunks far below it to leave headroom for
 // encoding/SQLite overhead and future schema growth.

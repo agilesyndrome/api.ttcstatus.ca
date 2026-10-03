@@ -8,6 +8,8 @@
     "build:api": "npm run typecheck",
     "build:map": "npm run typecheck",
     "typecheck": "tsc --noEmit",
+    "map:preview": "node scripts/preview-map.mjs",
+    "test": "node --test --test-isolation=none tests/*.test.mjs",
     "dev:api": "wrangler dev -c workers/api/wrangler.jsonc",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
     "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc",
@@ -16,6 +18,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply ttcstatus --remote -c workers/api/wrangler.jsonc"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "typescript": "^5.8.3",
     "wrangler": "^4.40.0"
   }
