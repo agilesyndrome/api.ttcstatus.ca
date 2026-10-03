@@ -41,7 +41,7 @@ Responsibilities:
 - Adds manually-audited infrastructure overlays that GTFS cannot describe when no scheduled trip uses them.
 - Writes the complete JSON map artifact back to D1 before the version can become active.
 
-The `snake-v1.1.0` generator provides one schematic layout for paths, graph nodes,
+The `snake-v1.2.0` generator provides one schematic layout for paths, graph nodes,
 stops and geographic context. It retains simplified source geometry in local
 metres, edge lengths and distance mappings so display distortion need not change
 game speed. The graph is inferred from scheduled shapes and the audited overlays;
@@ -49,11 +49,30 @@ it is not a complete inventory of physical track or permitted switches. Mere
 line crossings do not become junctions without a nearby source vertex. Full
 topology enrichment remains described in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+Explicitly labelled replacement-bus patterns are excluded from the rail graph,
+with their original IDs and headsigns retained in `excludedServices`. A streetcar
+route ID alone does not prove that a shape follows tracks. Versioned physical
+overlays restore Bathurst/Vaughan's St. Clair connection, western St. Clair,
+Lake Shore to Long Branch through the Humber tunnel, and Kingston Road to Bingham
+when the feed does not schedule streetcars there. These use the TTC track-network
+reference, mapped OpenStreetMap rail and, for two intervening corridors, approximate
+City of Toronto road centrelines. Source notes and licences are in
+`workers/map-generator/src/physical-tracks.json`. Database overlays with matching
+IDs take precedence over the bundled defaults.
+
+Detailed physical Queens Quay geometry also supplies bends missing from coarse
+scheduled shapes. Matching 509/510/310 segments within 55 metres are aligned to
+that corridor; their original projected GTFS vertices remain in `gtfsSourcePoints`.
+The inferred graph's distances follow the physical alignment.
+
 The debug SVG draws shared edges once, uses distinct schematic route colours,
-labels major streets and terminals, and includes an approximate shoreline and
-north arrow. A shared edge shows one daytime route colour; its tooltip lists all
+labels major streets and terminals, and includes a City of Toronto mainland
+shoreline and north arrow. The shoreline is simplified in metres and uses the
+same continuous display transform as rail. A shared edge shows one daytime route colour; its tooltip lists all
 services on it. Geographic context labels are approximate and separate from
-service/track data.
+service/track data. Inline route numbers identify visible corridors, overnight
+variants use their daytime route colours, and dashed grey indicates physical
+track without scheduled streetcar service.
 
 Generate a local preview without credentials, D1, deployment or feed downloads:
 
@@ -68,7 +87,8 @@ This reads `streetcarmap.json`, writes `streetcar-schematic.json`, and refreshes
 the preview recovers approximate metre coordinates from the audited Ossington
 overlay because that format omitted its geographic display transform. Production
 generation uses D1 source coordinates directly. Optional positional arguments are
-input JSON, output JSON, output SVG.
+input JSON, output JSON, output SVG. An older schematic with retained source
+geometry is rebuilt through the current generator rather than displayed unchanged.
 
 Download the current published JSON, render it locally, and open it in your
 default browser with one command (run `npm install` first):
@@ -89,7 +109,8 @@ input file.
 Use `make map/streetcar/svg` to render an existing `streetcarmap.json` without
 downloading again. Set `API_HOST` to select another API, or `MAP_OPEN` to a browser
 opener executable (for example, `MAP_OPEN=echo make map/debug` to print the preview
-URL in a headless environment).
+URL in a headless environment). The browser wrapper fits the entire map and
+legend into the viewport, with zoom buttons, drag-to-pan and a Fit map button.
 
 See [the SnakeTTC map contract](./docs/snakettc-map-contract.md) for gameplay and
 distance mapping. SnakeTTC currently uses its own hand-built graph; consuming this
@@ -123,13 +144,18 @@ Attribution included in generated API artifacts:
 
 D1 has a 2 MB maximum row size, so generated maps are stored as ordered chunks. This keeps each row comfortably below the limit while still allowing the API Worker to reconstruct a map with only a handful of indexed D1 row reads. The resulting immutable network-version response is also placed in the Workers Cache API at the edge.
 
-## Current infrastructure overlay
+## Infrastructure overlays
 
 The initial migration includes one intentionally non-GTFS streetcar segment:
 
 - Ossington Avenue between Dundas and College — `kind=diversion`, `scheduled_service=false`.
 
 This exists because static GTFS describes **scheduled service**, not every piece of physical streetcar track. Infrastructure overlays remain separate and auditable rather than being disguised as scheduled GTFS geometry.
+
+The map generator also carries the versioned physical corridors described above,
+so previews and production generation share the same topology even before a
+database overlay has been added. None of those corridors invents passenger
+service or directed turn permissions.
 
 ## Public API
 

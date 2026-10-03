@@ -10,5 +10,5 @@
     "allowJs": false,
     "resolveJsonModule": true
   },
-  "include": ["workers/**/*.ts"]
+  "include": ["workers/**/*.ts", "web/**/*.ts"]
 }

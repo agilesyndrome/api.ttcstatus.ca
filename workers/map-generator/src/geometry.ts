@@ -80,6 +80,13 @@ export function metresBetween(a: XY, b: XY): number {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
+export function nearestOnSegment(p: XY, a: XY, b: XY): { t: number; point: XY; distance: number } {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+  const point: XY = [a[0] + t * dx, a[1] + t * dy];
+  return { t, point, distance: metresBetween(p, point) };
+}
+
 interface Bounds {
   minX: number;
   maxX: number;

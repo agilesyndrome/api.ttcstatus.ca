@@ -1,6 +1,6 @@
 # Shared schematic map contract
 
-`snake-v1.1.0` keeps schema version 1 and the existing `routes`, `patterns`,
+`snake-v1.2.0` keeps schema version 1 and the existing `routes`, `patterns`,
 `paths`, `stops`, and `infrastructure` fields. It adds a shared corridor graph
 and source/display correspondence. Existing renderers can still draw `points`.
 
@@ -18,6 +18,9 @@ and source/display correspondence. Existing renderers can still draw `points`.
 | `stops[].edgeId`, `distanceAlongMetres`, `edgeFraction` | Optional position on a corridor. Stops over 100 metres from any matching-route corridor remain unattached. |
 | `stops[].sourcePoint` | Original geographic cluster position before display track attachment. |
 | `context` | Approximate street/terminal labels, shoreline and north direction. Decorative; never use it to add tracks or switches. |
+| `excludedServices` | Explicit replacement-bus patterns excluded from rail paths, stops and graph; original IDs and headsigns retained for auditing. Route IDs alone do not distinguish replacement buses. |
+| `paths[].gtfsSourcePoints` | Original projected GTFS vertices when a coarse scheduled path has been aligned to audited Queens Quay rail. `sourcePoints` and graph lengths then follow the mapped physical alignment. |
+| `context.shorelineSource` | City of Toronto mainland shoreline attribution, retrieval date and simplification note. The shoreline follows the rail display transform, including warp breakpoints. |
 
 To draw a vehicle at source distance `d` from edge endpoint `a`, find successive
 entries `sourceDistances[i] <= d <= sourceDistances[i+1]`. Interpolate between
@@ -36,9 +39,13 @@ The graph conservatively merges source vertices within 12 metres and splits
 segments at nearby source vertices. It does not connect arbitrary line crossings.
 This is an inferred graph, not a surveyed track/switch model: grade separation,
 missing physical track, short loops below the snapping tolerance and unobserved
-turn permissions require further infrastructure auditing. St Clair remains a
-separate component when no source shape or audited overlay connects it to the
-main network. A game must respect components rather than invent a connector.
+turn permissions require further infrastructure auditing. The bundled physical
+Bathurst/Vaughan overlays connect St Clair to the main network. Their audited
+endpoints can attach to matching scheduled corridors within 45 metres; unrelated
+crossings do not gain switches. Other overlays restore rail absent during bus
+substitutions, including Long Branch, western St Clair and Bingham. These physical
+edges can be used for free-roam play but do not imply scheduled passenger service.
+Games must still respect components in other feeds rather than invent connectors.
 
 The local preview of the old fixture reconstructs approximate source coordinates
 from rounded display pixels and records that limitation in `previewSource`.

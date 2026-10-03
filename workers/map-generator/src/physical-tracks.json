@@ -1,0 +1,1111 @@
+[
+  {
+    "id": "bathurst-bloor-stclair",
+    "name": "Bathurst physical connection to St Clair",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 680230488, 9406756, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6657346,
+        -79.4114225
+      ],
+      [
+        43.6827368,
+        -79.4181212
+      ],
+      [
+        43.6829811,
+        -79.418208
+      ],
+      [
+        43.6830904,
+        -79.4182059
+      ],
+      [
+        43.6831496,
+        -79.4181353
+      ],
+      [
+        43.683191,
+        -79.4180111
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "511"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "512",
+          "312"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "vaughan-stclair-bathurst",
+    "name": "Vaughan physical return connection",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 9406754, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6827172,
+        -79.4203053
+      ],
+      [
+        43.6827343,
+        -79.4201644
+      ],
+      [
+        43.6827118,
+        -79.420041
+      ],
+      [
+        43.6821434,
+        -79.418841
+      ],
+      [
+        43.6814839,
+        -79.4179752
+      ],
+      [
+        43.6811904,
+        -79.4176225
+      ],
+      [
+        43.6810433,
+        -79.4174943
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "512",
+          "312"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "stclair-west-physical",
+    "name": "St Clair physical track west to Gunns",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 8117219, 41164371, 530112432, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6718201,
+        -79.470874
+      ],
+      [
+        43.6729942,
+        -79.4654413
+      ],
+      [
+        43.6730314,
+        -79.4654839
+      ],
+      [
+        43.6735696,
+        -79.4628796
+      ],
+      [
+        43.6739979,
+        -79.4610547
+      ],
+      [
+        43.676322,
+        -79.450462
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "512",
+          "312"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "gunns-physical-loop",
+    "name": "Gunns terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 8117218, 781163072, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6718595,
+        -79.4708274
+      ],
+      [
+        43.6718446,
+        -79.4709749
+      ],
+      [
+        43.6718796,
+        -79.4710897
+      ],
+      [
+        43.6722198,
+        -79.4712585
+      ],
+      [
+        43.6723082,
+        -79.471349
+      ],
+      [
+        43.6723361,
+        -79.4714974
+      ],
+      [
+        43.6722717,
+        -79.4716511
+      ],
+      [
+        43.6718093,
+        -79.4718447
+      ],
+      [
+        43.6717317,
+        -79.471854
+      ],
+      [
+        43.6716713,
+        -79.4717997
+      ],
+      [
+        43.6716453,
+        -79.4716707
+      ],
+      [
+        43.6718201,
+        -79.470874
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "longbranch-physical-loop",
+    "name": "Long Branch terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 9454784, 771151761, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.5923062,
+        -79.5432978
+      ],
+      [
+        43.592283,
+        -79.5435183
+      ],
+      [
+        43.592127,
+        -79.5439406
+      ],
+      [
+        43.5918285,
+        -79.5445542
+      ],
+      [
+        43.591694,
+        -79.5447118
+      ],
+      [
+        43.5916263,
+        -79.5447193
+      ],
+      [
+        43.5915571,
+        -79.5446748
+      ],
+      [
+        43.5915154,
+        -79.5445573
+      ],
+      [
+        43.5915393,
+        -79.5444267
+      ],
+      [
+        43.5915962,
+        -79.5443524
+      ],
+      [
+        43.5920295,
+        -79.5440361
+      ],
+      [
+        43.5921986,
+        -79.5436377
+      ],
+      [
+        43.5922762,
+        -79.5433314
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "lakeshore-longbranch-physical",
+    "name": "Lake Shore physical track to Long Branch",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 699210456, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.5922762,
+        -79.5433314
+      ],
+      [
+        43.5922906,
+        -79.5429342
+      ],
+      [
+        43.5925029,
+        -79.5421871
+      ],
+      [
+        43.595231,
+        -79.5302811
+      ],
+      [
+        43.5967127,
+        -79.5236905
+      ],
+      [
+        43.5993222,
+        -79.5118478
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "lakeshore-central-physical",
+    "name": "Lake Shore physical track to Humber",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical rail corridor verified against TTC track-network Exhibit 2 (2023). Approximate rail centreline from City of Toronto road centreline: https://gis.toronto.ca/arcgis/rest/services/cot_geospatial/FeatureServer/2 . Contains information licensed under the Open Government Licence – Toronto. Lane-level alignment is approximate.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.5993222,
+        -79.5118478
+      ],
+      [
+        43.6022752512583,
+        -79.49848176605711
+      ],
+      [
+        43.60237642817587,
+        -79.49795333496765
+      ],
+      [
+        43.60253291157699,
+        -79.49600191321221
+      ],
+      [
+        43.602626349295655,
+        -79.49558866059104
+      ],
+      [
+        43.60296993245834,
+        -79.49470147970258
+      ],
+      [
+        43.60372534882449,
+        -79.49299000542182
+      ],
+      [
+        43.6042831281614,
+        -79.49210676660056
+      ],
+      [
+        43.60471516331643,
+        -79.49163330967532
+      ],
+      [
+        43.6051516989982,
+        -79.49130071321825
+      ],
+      [
+        43.605966284888645,
+        -79.49085582531082
+      ],
+      [
+        43.606744081976004,
+        -79.49054168220175
+      ],
+      [
+        43.606976692635094,
+        -79.49048987783623
+      ],
+      [
+        43.609807935641804,
+        -79.49024011894575
+      ],
+      [
+        43.61214589877056,
+        -79.48988769135988
+      ],
+      [
+        43.61307190378439,
+        -79.48970647266191
+      ],
+      [
+        43.61892783358813,
+        -79.48647011242713
+      ],
+      [
+        43.61943187805951,
+        -79.48610721464453
+      ],
+      [
+        43.61957265143277,
+        -79.48596246447639
+      ],
+      [
+        43.61977252756459,
+        -79.48567085038148
+      ],
+      [
+        43.61995657951753,
+        -79.48517768521793
+      ],
+      [
+        43.620344241948466,
+        -79.48358713638619
+      ],
+      [
+        43.62061960437289,
+        -79.48309526038435
+      ],
+      [
+        43.62120469301032,
+        -79.48247834424158
+      ],
+      [
+        43.62221945797794,
+        -79.48178969312764
+      ],
+      [
+        43.6221361,
+        -79.4818246
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "humber-lakeshore-physical",
+    "name": "Humber tunnel physical connection",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 691705311, 14972389, 1222157497, 1222157500, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6221361,
+        -79.4818246
+      ],
+      [
+        43.6236746,
+        -79.4807618
+      ],
+      [
+        43.6275061,
+        -79.478918
+      ],
+      [
+        43.6286661,
+        -79.4785268
+      ],
+      [
+        43.6292537,
+        -79.478041
+      ],
+      [
+        43.6294188,
+        -79.4780186
+      ],
+      [
+        43.6301338,
+        -79.4781151
+      ],
+      [
+        43.6303552,
+        -79.4782358
+      ],
+      [
+        43.6306527,
+        -79.4785931
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humber-loop-9454791",
+    "name": "Humber terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 9454791, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6310626,
+        -79.4790837
+      ],
+      [
+        43.6311252,
+        -79.4791941
+      ],
+      [
+        43.6311252,
+        -79.4793511
+      ],
+      [
+        43.6310681,
+        -79.4794456
+      ],
+      [
+        43.6309382,
+        -79.4794575
+      ],
+      [
+        43.6308931,
+        -79.4794206
+      ],
+      [
+        43.6308502,
+        -79.4793062
+      ],
+      [
+        43.6308779,
+        -79.4790285
+      ],
+      [
+        43.6308626,
+        -79.4789241
+      ],
+      [
+        43.6306675,
+        -79.4786656
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humber-loop-9454792",
+    "name": "Humber terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 9454792, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6310102,
+        -79.4787108
+      ],
+      [
+        43.6308938,
+        -79.4787298
+      ],
+      [
+        43.6308017,
+        -79.4786147
+      ],
+      [
+        43.6308094,
+        -79.47845
+      ],
+      [
+        43.6309177,
+        -79.4783082
+      ],
+      [
+        43.631055,
+        -79.4782684
+      ],
+      [
+        43.6313287,
+        -79.4784107
+      ],
+      [
+        43.631497,
+        -79.4783969
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humber-loop-691705291",
+    "name": "Humber terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 691705291, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6306527,
+        -79.4785931
+      ],
+      [
+        43.6310626,
+        -79.4790837
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humber-loop-691705292",
+    "name": "Humber terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 691705292, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6310102,
+        -79.4787108
+      ],
+      [
+        43.6308334,
+        -79.4787639
+      ],
+      [
+        43.6306675,
+        -79.4786656
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "humber-loop-691705293",
+    "name": "Humber terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 691705293, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6306527,
+        -79.4785931
+      ],
+      [
+        43.6307787,
+        -79.4787063
+      ],
+      [
+        43.6309069,
+        -79.478715
+      ],
+      [
+        43.631497,
+        -79.4783969
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kingston-queen-physical",
+    "name": "Kingston Road physical track from Queen",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical rail corridor verified against TTC track-network Exhibit 2 (2023). Approximate rail centreline from City of Toronto road centreline: https://gis.toronto.ca/arcgis/rest/services/cot_geospatial/FeatureServer/2 . Contains information licensed under the Open Government Licence – Toronto.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.66724465256832,
+        -79.31259356363108
+      ],
+      [
+        43.66731043973259,
+        -79.31256393368359
+      ],
+      [
+        43.66802767839919,
+        -79.3121767383054
+      ],
+      [
+        43.67181064352904,
+        -79.31020634647858
+      ],
+      [
+        43.67219804608051,
+        -79.30987264144953
+      ],
+      [
+        43.67392851063549,
+        -79.30792662075461
+      ],
+      [
+        43.6738561,
+        -79.3079977
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kingston-bingham-physical",
+    "name": "Kingston Road physical track to Bingham",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 706708257, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6738561,
+        -79.3079977
+      ],
+      [
+        43.676032,
+        -79.3055354
+      ],
+      [
+        43.6763247,
+        -79.3051653
+      ],
+      [
+        43.6766074,
+        -79.3047288
+      ],
+      [
+        43.6770157,
+        -79.3038884
+      ],
+      [
+        43.6781825,
+        -79.3010699
+      ],
+      [
+        43.6783756,
+        -79.3005247
+      ],
+      [
+        43.678813,
+        -79.2983699
+      ],
+      [
+        43.6794098,
+        -79.2958723
+      ],
+      [
+        43.6800703,
+        -79.2929039
+      ],
+      [
+        43.6804341,
+        -79.2881956
+      ],
+      [
+        43.6807982,
+        -79.2842773
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "bingham-physical-loop",
+    "name": "Bingham terminal loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap ways 706708258, 1341682278, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6807982,
+        -79.2842773
+      ],
+      [
+        43.6808656,
+        -79.2841492
+      ],
+      [
+        43.6809868,
+        -79.2841277
+      ],
+      [
+        43.6814973,
+        -79.2843369
+      ],
+      [
+        43.6815496,
+        -79.2843968
+      ],
+      [
+        43.6815697,
+        -79.2844863
+      ],
+      [
+        43.6814162,
+        -79.2852191
+      ],
+      [
+        43.6813806,
+        -79.2852889
+      ],
+      [
+        43.681295,
+        -79.285328
+      ],
+      [
+        43.6808632,
+        -79.2851657
+      ],
+      [
+        43.6807511,
+        -79.2852522
+      ],
+      [
+        43.6807206,
+        -79.2854038
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "queensquay-physical-alignment",
+    "name": "Queens Quay mapped physical alignment",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Detailed rail alignment: OpenStreetMap ways 307089662, 307089661, 4663354, retrieved 2026-10-03; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Used to align coarse scheduled Queens Quay shapes within 55 metres of the surveyed corridor; original GTFS geometry remains retained.",
+    "verifiedAt": "2026-10-03",
+    "points": [
+      [
+        43.6377472,
+        -79.3915764
+      ],
+      [
+        43.6377828,
+        -79.3914141
+      ],
+      [
+        43.6378676,
+        -79.3910307
+      ],
+      [
+        43.6378884,
+        -79.3909366
+      ],
+      [
+        43.6379457,
+        -79.3906575
+      ],
+      [
+        43.637961,
+        -79.3906002
+      ],
+      [
+        43.6381624,
+        -79.3897227
+      ],
+      [
+        43.6381624,
+        -79.3897227
+      ],
+      [
+        43.6382105,
+        -79.3895107
+      ],
+      [
+        43.6382105,
+        -79.3895107
+      ],
+      [
+        43.6383518,
+        -79.3887967
+      ],
+      [
+        43.6383738,
+        -79.388684
+      ],
+      [
+        43.6384085,
+        -79.3885421
+      ],
+      [
+        43.6384442,
+        -79.3883945
+      ],
+      [
+        43.6384492,
+        -79.3883738
+      ],
+      [
+        43.6385481,
+        -79.388031
+      ],
+      [
+        43.6386372,
+        -79.3876803
+      ],
+      [
+        43.6386924,
+        -79.3874289
+      ],
+      [
+        43.6387233,
+        -79.3872729
+      ],
+      [
+        43.6387438,
+        -79.3871716
+      ],
+      [
+        43.6388249,
+        -79.3867392
+      ],
+      [
+        43.6388513,
+        -79.3865952
+      ],
+      [
+        43.6388798,
+        -79.386445
+      ],
+      [
+        43.6388863,
+        -79.3864104
+      ],
+      [
+        43.6389134,
+        -79.3862672
+      ],
+      [
+        43.6389526,
+        -79.3860661
+      ],
+      [
+        43.6390294,
+        -79.3856559
+      ],
+      [
+        43.6390612,
+        -79.3854751
+      ],
+      [
+        43.6390836,
+        -79.3853469
+      ],
+      [
+        43.6391174,
+        -79.3851556
+      ],
+      [
+        43.6391414,
+        -79.3850202
+      ],
+      [
+        43.6393104,
+        -79.384056
+      ],
+      [
+        43.6393518,
+        -79.3838055
+      ],
+      [
+        43.6394974,
+        -79.3829096
+      ],
+      [
+        43.6395291,
+        -79.3827367
+      ],
+      [
+        43.6395543,
+        -79.3825859
+      ],
+      [
+        43.6395909,
+        -79.382361
+      ],
+      [
+        43.6396787,
+        -79.3818411
+      ],
+      [
+        43.6397003,
+        -79.3817027
+      ],
+      [
+        43.6397199,
+        -79.3815773
+      ],
+      [
+        43.6397382,
+        -79.3814681
+      ],
+      [
+        43.6397458,
+        -79.3814225
+      ],
+      [
+        43.6397513,
+        -79.3813895
+      ],
+      [
+        43.6397544,
+        -79.381371
+      ],
+      [
+        43.6398472,
+        -79.3808147
+      ],
+      [
+        43.6398791,
+        -79.3806291
+      ],
+      [
+        43.6399068,
+        -79.3804832
+      ],
+      [
+        43.639934,
+        -79.3803871
+      ],
+      [
+        43.6399656,
+        -79.3802926
+      ],
+      [
+        43.6399753,
+        -79.3802636
+      ],
+      [
+        43.6400323,
+        -79.3801011
+      ],
+      [
+        43.6400908,
+        -79.3799302
+      ],
+      [
+        43.6401358,
+        -79.3797984
+      ],
+      [
+        43.6404677,
+        -79.3788334
+      ],
+      [
+        43.6407463,
+        -79.3780244
+      ],
+      [
+        43.6409391,
+        -79.377466
+      ]
+    ],
+    "connections": [],
+    "alignmentRoutes": [
+      "509",
+      "510",
+      "310"
+    ],
+    "alignmentToleranceMetres": 55
+  }
+]

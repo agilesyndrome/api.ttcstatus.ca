@@ -1,21 +1,12 @@
-import { access, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
-await access("streetcar-debug.svg");
 const preview = resolve("streetcar-debug.html");
-// Open an HTML wrapper so the native opener selects a browser even when SVGs
-// are associated with an image viewer or editor.
-await writeFile(preview, `<!doctype html>
-<html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Toronto streetcars — map debug</title>
-<style>body { margin: 0; background: #f7f5ed; } iframe { display: block; border: 0; width: 100%; height: 100vh; }</style>
-<iframe src="streetcar-debug.svg" title="Toronto streetcar map"></iframe>
-</html>
-`);
+// The page embeds its data, CSS and JavaScript, so the same viewer works from
+// file://, the local preview, or a static host without fetch/CORS requirements.
+await writeFile(preview, await readFile("public/map/index.html", "utf8"));
 
 const url = pathToFileURL(preview).href;
 const opener = process.env.MAP_OPEN ?? (process.platform === "darwin" ? "open" : process.platform === "win32" ? "rundll32" : "xdg-open");

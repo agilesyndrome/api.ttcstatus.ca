@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run typecheck",
-    "build:api": "npm run typecheck",
+    "build": "npm run build:api",
+    "build:api": "npm run typecheck && npm run build:viewer",
     "build:map": "npm run typecheck",
     "typecheck": "tsc --noEmit",
     "map:preview": "node scripts/preview-map.mjs",
+    "build:viewer": "node scripts/build-viewer.mjs",
     "test": "node --test --test-isolation=none tests/*.test.mjs",
-    "dev:api": "wrangler dev -c workers/api/wrangler.jsonc",
+    "dev:api": "npm run build:viewer && wrangler dev -c workers/api/wrangler.jsonc",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
     "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc",
     "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
+    "playwright": "^1.63.0",
     "typescript": "^5.8.3",
     "wrangler": "^4.40.0"
   }

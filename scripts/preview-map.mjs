@@ -1,5 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { writeMapViewer } from "./build-viewer.mjs";
 
 // Compile the actual Worker geometry and renderer, rather than maintain a
 // second layout implementation just for local previewing.
@@ -8,15 +11,13 @@ const compiled = await build({ stdin: {
   resolveDir: process.cwd(), loader: "ts",
 }, bundle: true, write: false, platform: "node", format: "esm" });
 const { layoutStreetcarMap, renderDebugMapSvg, projectToLocalMetres } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`);
-const input = process.argv[2] ?? "streetcarmap.json";
-const output = process.argv[3] ?? "streetcar-schematic.json";
-const svg = process.argv[4] ?? "streetcar-debug.svg";
-if (input === output) throw new Error("Use a separate output file to preserve the input map.");
-const seed = JSON.parse(await readFile(input, "utf8"));
-let map;
-if (seed.graph && seed.context) {
-  map = seed;
-} else {
+export async function previewMap(input = "streetcarmap.json", output = "streetcar-schematic.json", svg = "streetcar-debug.svg", html = resolve(dirname(svg),"streetcar-debug.html")) {
+  if ([output,svg,html].some(path => resolve(input) === resolve(path))) {
+    throw new Error("Use separate output files to preserve the input map.");
+  }
+  const seed = JSON.parse(await readFile(input, "utf8"));
+  // Rebuild even an existing schematic from its retained source geometry so
+  // downloading an older published graph does not bypass the current fixes.
   let toMetres;
   if (seed.paths.every(p => Array.isArray(p.sourcePoints))) {
     toMetres = p => p;
@@ -41,8 +42,18 @@ if (seed.graph && seed.context) {
   }
   for (const path of [...seed.paths, ...seed.infrastructure]) path.points = path.sourcePoints ?? path.points.map(toMetres);
   for (const stop of seed.stops) [stop.x, stop.y] = stop.sourcePoint ?? toMetres([stop.x, stop.y]);
-  map = layoutStreetcarMap(seed);
+  const map = layoutStreetcarMap(seed);
+  await writeFile(output, JSON.stringify(map) + "\n");
+  await writeFile(svg, renderDebugMapSvg(map));
+  await writeMapViewer(map,html);
+  return map;
 }
-await writeFile(output, JSON.stringify(map) + "\n");
-await writeFile(svg, renderDebugMapSvg(map));
-console.log(`Wrote ${svg} and ${output}: ${map.graph.nodes.length} nodes, ${map.graph.edges.length} shared edges, ${map.stops.length} stops.`);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const input = process.argv[2] ?? "streetcarmap.json";
+  const output = process.argv[3] ?? "streetcar-schematic.json";
+  const svg = process.argv[4] ?? "streetcar-debug.svg";
+  const html = process.argv[5] ?? "public/map/index.html";
+  const map = await previewMap(input, output, svg, html);
+  console.log(`Wrote ${svg}, ${output}, and ${html}: ${map.graph.nodes.length} nodes, ${map.graph.edges.length} shared edges, ${map.stops.length} stops.`);
+}

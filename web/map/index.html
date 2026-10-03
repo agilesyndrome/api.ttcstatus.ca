@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f5ed">
+<meta name="description" content="Explore Toronto's streetcar network. Pan, zoom, search and select stops to see routes and boarding details.">
+<title>Toronto streetcars · Explore the map</title>
+<style>/* VIEWER_CSS */</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#" id="brand"><span class="brand-symbol" aria-hidden="true">↔</span><span><strong>Toronto streetcars</strong><small>A city on rails</small></span></a>
+  <div class="search"><label class="sr-only" for="search">Search stops, stations or routes</label><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Find a stop, station or route…" autocomplete="off" aria-controls="search-results" aria-expanded="false"><div id="search-results" class="search-results" hidden></div></div>
+  <span class="snapshot" id="snapshot"></span>
+</header>
+<main class="workspace">
+  <section class="map-viewport" id="viewport" aria-label="Interactive streetcar map">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Toronto streetcar network. Use arrow keys to pan, plus or minus to zoom." tabindex="0"></svg>
+    <div class="map-hint">Drag to explore <span>·</span> Scroll or pinch to zoom <span>·</span> Select a stop</div>
+    <div class="north" aria-hidden="true"><span>N</span><svg viewBox="0 0 36 36"><path id="north-arrow" d="M7 18H29M21 13L29 18L21 23"/></svg></div>
+    <nav class="map-controls" aria-label="Map controls"><button id="zoom-in" aria-label="Zoom in">+</button><output id="zoom-level" aria-live="off">100%</output><button id="zoom-out" aria-label="Zoom out">−</button><span></span><button id="fit" title="Fit the whole network (Home)">Fit map</button><button id="labels" aria-pressed="false" title="Show more stop labels">More labels</button></nav>
+    <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  </section>
+  <aside class="sidebar" aria-label="Stop and route details">
+    <div id="details" aria-live="polite"></div>
+    <section class="route-section"><div class="section-heading"><h2>Explore a route</h2><button id="clear-route" class="text-button" hidden>Show all</button></div><div id="route-list" class="route-list"></div><p class="legend-note"><span class="dashed-swatch"></span>Physical track without scheduled streetcar service</p></section>
+    <footer>Scheduled service snapshot · no live arrivals.<br>Map is schematic. Replacement-bus paths are excluded.<details><summary>Map sources</summary><p><a href="https://open.toronto.ca/" target="_blank" rel="noopener">TTC service &amp; Toronto geography</a> · Open Government Licence – Toronto.<br><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> · ODbL.</p></details></footer>
+  </aside>
+</main>
+<noscript><p class="noscript">Enable JavaScript to explore the map. The static SVG preview is also available from this project.</p></noscript>
+<script id="map-data" type="application/json">/* VIEWER_DATA */</script>
+<script>/* VIEWER_JS */</script>
+</body>
+</html>

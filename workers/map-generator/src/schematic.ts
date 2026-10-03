@@ -1,12 +1,19 @@
 import { DISPLAY_HEIGHT, DISPLAY_WIDTH, GENERATOR_VERSION, STREET_GRID_DEGREES, TRACK_SNAP_METRES } from "./config";
-import { calculateBounds, metresBetween, projectToLocalMetres } from "./geometry";
+import { calculateBounds, metresBetween, nearestOnSegment, projectToLocalMetres } from "./geometry";
 import type { XY } from "./types";
+import { selectRailService } from "./rail-service";
+import { addAuditedPhysicalTracks } from "./physical-network";
+import shorelineData from "./shoreline.json";
+export { nearestOnSegment } from "./geometry";
 
 export interface MapSeed {
   display: { width: number; height: number; [key: string]: unknown };
   paths: { id: string; routeIds: string[]; points: XY[]; [key: string]: unknown }[];
   infrastructure: { id: string; name: string; points: XY[]; [key: string]: unknown }[];
-  stops: { id: string; name: string; x: number; y: number; routeIds: string[]; [key: string]: unknown }[];
+  stops: { id: string; name: string; x: number; y: number; routeIds: string[]; stopIds?: string[]; [key: string]: unknown }[];
+  routes?: { id: string; shortName?: string; [key: string]: unknown }[];
+  patterns?: { id: string; routeId: string; pathId: string; headsign: string; stopIds?: string[]; [key: string]: unknown }[];
+  excludedServices?: NonNullable<MapSeed["patterns"]>;
 }
 
 export interface TrackNode { id: string; sourcePoint: XY; x: number; y: number; edgeIds: string[] }
@@ -17,16 +24,9 @@ export interface TrackEdge {
   sourceDistances: number[];
 }
 
-export function nearestOnSegment(p: XY, a: XY, b: XY): { t: number; point: XY; distance: number } {
-  const dx = b[0] - a[0], dy = b[1] - a[1];
-  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
-  const point: XY = [a[0] + t * dx, a[1] + t * dy];
-  return { t, point, distance: metresBetween(p, point) };
-}
-
 /** A continuous, invertible warp: straighten Toronto's street grid and give the
  * central network more space. Apply the SAME transform to every layer. There is
- * no per-route snapping that could move a stop or create a crossing. */
+ * no display-space route snapping that could create a crossing. */
 export function createSchematicTransform(points: XY[]) {
   const angle = STREET_GRID_DEGREES * Math.PI / 180;
   const c = Math.cos(angle), s = Math.sin(angle);
@@ -62,7 +62,8 @@ export function createSchematicTransform(points: XY[]) {
 }
 
 /** Input coordinates are canonical local metres, never already-warped pixels. */
-export function layoutStreetcarMap<T extends MapSeed>(seed: T) {
+export function layoutStreetcarMap<T extends MapSeed>(input: T) {
+  const seed = addAuditedPhysicalTracks(selectRailService(input));
   const sources = [
     ...seed.paths.map(p => ({ ...p, overlay: false })),
     ...seed.infrastructure.map(p => ({ ...p, routeIds: [] as string[], overlay: true })),
@@ -163,11 +164,12 @@ export function layoutStreetcarMap<T extends MapSeed>(seed: T) {
     graph: { coordinateSystem: "local-equirectangular-metres", snapToleranceMetres: TRACK_SNAP_METRES,
       provenance: "Inferred corridor centreline graph from scheduled shapes and audited overlays; not a surveyed inventory of switches or permitted turns.",
       nodes: nodes.filter(n => n.edgeIds.length), edges, observedTurns: [...turns.values()] },
-    context: buildContext(transform.toDisplay),
+    context: buildContext(transform),
   };
 }
 
-function buildContext(toDisplay: (p: XY) => XY) {
+function buildContext(transform: ReturnType<typeof createSchematicTransform>) {
+  const { toDisplay } = transform;
   const origin = toDisplay([0, 0]), geographicNorth = toDisplay([0, 100]);
   const streets: [string, number, number, number][] = [
     ["St Clair", 43.681, -79.44, 0], ["College", 43.656, -79.42, 0],
@@ -182,26 +184,29 @@ function buildContext(toDisplay: (p: XY) => XY) {
     ["Ossington", 43.652, -79.4217, 0],
   ];
   const terminals: [string, number, number][] = [
-    ["Long Branch", 43.5912, -79.5448], ["Humber", 43.637, -79.4915],
+    ["Long Branch", 43.5919323, -79.5441246], ["Humber", 43.631041, -79.478838],
     ["Dundas West", 43.6566, -79.4523], ["High Park", 43.6542, -79.456],
-    ["Gunns", 43.6738, -79.4664], ["St Clair", 43.6882, -79.3944],
+    ["Gunns", 43.6718954, -79.4718178], ["St Clair", 43.6882, -79.3944],
     ["Bathurst", 43.6662, -79.411], ["Spadina", 43.6678, -79.4039],
     ["Broadview", 43.6769, -79.3588], ["Main Street", 43.6891, -79.301],
-    ["Neville Park", 43.6736, -79.2812], ["Bingham", 43.68, -79.2894],
+    ["Neville Park", 43.6736, -79.2812], ["Bingham", 43.6815049, -79.2848082],
     ["Exhibition", 43.6352, -79.4165], ["Dufferin Gate", 43.6348, -79.4264],
     ["Union", 43.6452, -79.3807], ["Distillery", 43.6505, -79.3592],
   ];
-  const shoreline: XY[] = [[43.584,-79.55],[43.589,-79.535],[43.597,-79.52],[43.607,-79.505],
-    [43.618,-79.496],[43.626,-79.491],[43.628,-79.48],[43.629,-79.465],[43.631,-79.45],
-    [43.632,-79.445],[43.633,-79.42],[43.635,-79.40],[43.639,-79.382],[43.645,-79.36],
-    [43.652,-79.33],[43.660,-79.30],[43.665,-79.275]];
+  const shoreline = shorelineData.points.map(p => projectToLocalMetres(p as XY));
+  const displayShoreline = shoreline.slice(1).flatMap((p, i) => {
+    const points = transform.segmentPoints(shoreline[i], p).points;
+    return i ? points.slice(1) : points;
+  });
   return {
-    note: "Approximate orientation labels and shoreline, carried forward from the audited SnakeTTC map; not service or track data.",
+    note: "Orientation labels are approximate. Mainland shoreline uses City of Toronto geometry under the same transform as rail; context does not define track connections.",
     labels: [
       ...streets.map(([text, lat, lon, angle]) => ({ text, kind: "street", angle, point: toDisplay(projectToLocalMetres([lat, lon])) })),
       ...terminals.map(([text, lat, lon]) => ({ text, kind: "terminal", angle: 0, point: toDisplay(projectToLocalMetres([lat, lon])) })),
     ],
-    shoreline: shoreline.map(p => toDisplay(projectToLocalMetres(p))),
+    shoreline: displayShoreline,
+    shorelineSource: { url: shorelineData.sourceUrl, attribution: shorelineData.attribution,
+      retrievedAt: shorelineData.retrievedAt, note: shorelineData.note },
     north: { angle: Math.atan2(geographicNorth[1] - origin[1], geographicNorth[0] - origin[0]) * 180 / Math.PI },
   };
 }
