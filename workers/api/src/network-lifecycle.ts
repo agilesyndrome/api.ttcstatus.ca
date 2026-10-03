@@ -8,7 +8,7 @@ export async function requestMapGeneration(env: SyncEnv, versionId: number): Pro
      VALUES (?, 'streetcar', 'snake-v1', 'pending', ?)`,
   ).bind(versionId, createdAt).run();
 
-  const response = await env.MAP_GENERATOR.fetch("https://map-generator.internal/internal/generate", {
+  const response = await env.MAP_GENERATOR.fetch("https://map-generator.internal/api/internal/generate", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ versionId, mode: "streetcar", style: "snake-v1" }),

@@ -1,0 +1,11 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
+import { StopDetails } from '../components/StopDetails';
+import { projectSnapshot } from '../../map/live-status';
+import { demoData, demoSnapshot } from './fixtures';
+const meta = { component: StopDetails, args: { data: demoData, onClose: fn() }, tags: ['autodocs'] } satisfies Meta<typeof StopDetails>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+export const Overview: Story = {};
+export const Stop: Story = { args: { feature: demoData.features[0] } };
+export const Streetcar: Story = { args: { car: projectSnapshot(demoData, demoSnapshot, Date.parse(demoSnapshot.fetchedAt))[0] } };

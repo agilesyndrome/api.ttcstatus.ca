@@ -42,6 +42,53 @@ test("a terminal loop retains its complete cycle", () => {
   assert.deepEqual(map.paths[0].points.at(0), map.paths[0].points.at(-1));
 });
 
+test("coarse chords reuse a connected bend on the same route in both directions", () => {
+  const input = seed([[[0,0],[600,0]], [[600,0],[0,0]], [[0,0],[300,22],[600,0]]]);
+  input.paths.forEach(path => { path.routeIds = ["queen"]; });
+  input.stops = [{ id: "platform", name: "Platform", routeIds: ["queen"], x: 300, y: 22 }];
+  const map = layoutStreetcarMap(input);
+  assert.equal(map.graph.edges.length, 2);
+  assert.deepEqual(map.paths[0].edgeRefs, map.paths[2].edgeRefs);
+  assert.deepEqual(map.paths[1].edgeRefs, map.paths[0].edgeRefs.toReversed().map(step => ({ ...step, direction: -step.direction })));
+  assert.deepEqual(map.paths[0].sourcePoints, input.paths[0].points);
+  assert.ok(map.graph.edges.every(edge => edge.pathIds.length === 3));
+  assert.equal(map.stops[0].distanceAlongMetres, map.graph.edges[0].lengthMetres);
+});
+
+test("chord consolidation preserves distinct corridors, disconnected parallels and loops", () => {
+  for (const points of [
+    [[[0,0],[600,0]], [[0,0],[300,50],[600,0]]],
+    [[[0,0],[600,0]], [[0,22],[300,22],[600,22]]],
+  ]) {
+    const input = seed(points);
+    input.paths.forEach(path => { path.routeIds = ["queen"]; });
+    const map = layoutStreetcarMap(input);
+    assert.ok(map.graph.edges.some(edge => edge.pathIds.includes("p0") && !edge.pathIds.includes("p1")));
+  }
+  const map = layoutStreetcarMap(seed([[[0,0],[600,0]], [[0,0],[300,22],[600,0]]]));
+  assert.equal(map.graph.edges.length, 3, "different routes alone cannot establish a shared corridor");
+  const loop = seed([[[0,0],[600,0]], [[0,0],[400,22],[200,22],[600,0]]]);
+  loop.paths.forEach(path => { path.routeIds = ["queen"]; });
+  const loopMap = layoutStreetcarMap(loop);
+  assert.ok(loopMap.paths[1].edgeRefs.length > loopMap.paths[0].edgeRefs.length);
+  assert.ok(loopMap.paths[1].points.slice(1).some((p,i) => p[0] < loopMap.paths[1].points[i][0]), "the reverse traversal through the loop survives");
+});
+
+test("Queen at Spadina displays a single corridor despite three simplified GTFS alignments", async () => {
+  const map = JSON.parse(await readFile("streetcar-schematic.json", "utf8"));
+  const feature = map.stops.find(stop => stop.id === "stop:5534");
+  const queen = map.graph.edges.filter(edge => edge.routeIds.includes("501") && edge.points.slice(1).some((b,i) => {
+    const a = edge.points[i], x = feature.x;
+    if (Math.min(a[0], b[0]) >= x || Math.max(a[0], b[0]) <= x) return false;
+    const y = a[1] + (b[1]-a[1]) * (x-a[0]) / (b[0]-a[0]);
+    return Math.abs(y-feature.y) < 6;
+  }));
+  assert.equal(queen.length, 1);
+  assert.ok(queen[0].pathIds.includes("shape:shp-501-67"));
+  assert.ok(queen[0].pathIds.includes("shape:shp-501-64"));
+  assert.ok(queen[0].pathIds.includes("shape:shp-501-16"));
+});
+
 test("distance mapping retains warp slope changes and puts stops on the displayed rail", () => {
   const input = seed([[[-9000,0],[9000,0]]]);
   input.stops = [{ id: "stop", name: "Middle", routeIds: ["r0"], x: 2500, y: 0 }];
@@ -218,7 +265,7 @@ test("preview rebuilds an older schematic from retained source geometry", async 
     await writeFile(input, JSON.stringify(stale));
     await previewMap(input, output, join(directory,"map.svg"));
     const rebuilt = JSON.parse(await readFile(output, "utf8"));
-    assert.equal(rebuilt.generatorVersion, "snake-v1.3.0");
+    assert.equal(rebuilt.generatorVersion, "snake-v1.3.1");
     assert.deepEqual(rebuilt.graph, expected.graph);
     assert.deepEqual(rebuilt.context.shoreline, expected.context.shoreline);
     assert.deepEqual(rebuilt.excludedServices, expected.excludedServices);

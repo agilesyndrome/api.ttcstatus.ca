@@ -1,7 +1,9 @@
 import { boundsOf, searchFeatures, type Bounds, type Edge, type Feature, type Point, type Route, type ViewerData } from "./model";
 import { fitCamera, moveCamera, zoomCamera } from "./camera";
 import { nearestOnSegment } from "../../workers/map-generator/src/geometry";
-import { loadVehicleSnapshot, projectSnapshot, streetcarBody, type PlottedVehicle } from "./live-status";
+import { projectSnapshot, streetcarBody, type PlottedVehicle } from "./live-status";
+import { VehiclePoller, requestVehicleUpdate } from "./live-updates";
+import { DEFAULT_LIVE_UPDATE_SECONDS } from "../../workers/shared/live-config";
 import { vehicleIsStale, type VehicleSnapshot } from "../../workers/shared/live-vehicles";
 
 const data: ViewerData = JSON.parse(document.querySelector("#map-data")!.textContent!);
@@ -22,6 +24,9 @@ const liveSummary = document.querySelector<HTMLElement>("#live-summary")!;
 const liveTimestamp = document.querySelector<HTMLElement>("#live-timestamp")!;
 const carElements = new Map<string, SVGGElement>();
 let liveSnapshot: VehicleSnapshot | undefined, cars: PlottedVehicle[] = [];
+const carsById = new Map<string, PlottedVehicle>();
+let selectedVehicleId: string | undefined;
+let liveFailed = false, liveUpdateSeconds = DEFAULT_LIVE_UPDATE_SECONDS, liveRetrySeconds = DEFAULT_LIVE_UPDATE_SECONDS;
 let selected: Feature | undefined, selectedRoute: string | undefined, hovered: Feature | undefined;
 let moreLabels = false, scheduledFrame = false;
 const rect = () => viewport.getBoundingClientRect();
@@ -98,8 +103,9 @@ for (const feature of data.features) {
   markersLayer.append(marker); markerElements.set(feature.id,marker);
 }
 svg.append(markersLayer);
-const vehiclesLayer = shape("g", { id: "live-vehicles", display: "none" }); svg.append(vehiclesLayer);
+const vehiclesLayer = shape("g", { id: "live-vehicles", display: "none" });
 const labelsLayer = shape("g",{class:"map-label","aria-hidden":"true"}); svg.append(labelsLayer);
+svg.append(vehiclesLayer);
 document.querySelector("#north-arrow")!.setAttribute("transform",`rotate(${data.northAngle} 18 18)`);
 
 interface Box { x: number; y: number; width: number; height: number }
@@ -109,22 +115,34 @@ function renderLabels(scale: number) {
   const fits = (box: Box) => box.x>8 && box.y>10 && box.x+box.width<rect().width-8 && box.y+box.height<rect().height-8 &&
     !occupied.some(p => box.x<p.x+p.width+4 && box.x+box.width+4>p.x && box.y<p.y+p.height+4 && box.y+box.height+4>p.y);
   const visible = (p: Point) => { const [x,y] = screenPoint(p); return x>=0 && y>=0 && x<=rect().width && y<=rect().height; };
+  // Reserve quiet street names before the detailed boarding labels fill in.
+  for (const label of data.labels) {
+    if (!visible(label.point)) continue;
+    const [x,y] = screenPoint(label.point), width = label.text.length*6.5+10, height = 22;
+    const vertical = Math.abs(label.angle)===90;
+    const box = {x:x-(vertical ? height : width)/2,y:y-(vertical ? width : height)/2,width:vertical ? height : width,height:vertical ? width : height};
+    if (!fits(box)) continue;
+    occupied.push(box);
+    const group = shape("g",{class:"street-label",transform:`translate(${label.point.join(" ")}) scale(${1/scale}) rotate(${label.angle})`});
+    const text = shape("text",{"text-anchor":"middle","dominant-baseline":"central","font-size":12,fill:"#7c8789","letter-spacing":.6});
+    text.textContent = label.text; group.append(text); labelsLayer.append(group);
+  }
   const labelFeatures = data.features.filter(f => visible(f.point) &&
-    (f.kind === "terminal" || f.id === selected?.id || f.id === hovered?.id || zoomLevel()>=(moreLabels ? 1 : 2.6)))
+    (f.kind === "terminal" || f.id === selected?.id || f.id === hovered?.id || zoomLevel()>=(moreLabels ? 1 : 5.5)))
     .sort((a,b) => Number(b.id === selected?.id)-Number(a.id === selected?.id) || Number(b.id === hovered?.id)-Number(a.id === hovered?.id) ||
       Number(b.kind === "terminal")-Number(a.kind === "terminal") || Number(b.routeIds.includes(selectedRoute ?? ""))-Number(a.routeIds.includes(selectedRoute ?? "")));
   for (const f of labelFeatures) {
     const [x,y] = screenPoint(f.point), terminal = f.kind === "terminal";
     const name = f.name.replace(/\s+/g," ");
     const text = name.length>43 && zoomLevel()<5 ? `${name.slice(0,40)}…` : name;
-    const sub = zoomLevel()>=3 && !terminal ? sortedRoutes(f.routeIds).map(r => r.number).join(" · ") : "";
+    const sub = zoomLevel()>=7 && !terminal ? sortedRoutes(f.routeIds).map(r => r.number).join(" · ") : "";
     const width = text.length*(terminal ? 6.7 : 5.8)+12, height = sub ? 35 : 23;
     const offsets = [[10,-height-3],[10,5],[-width-10,-height-3],[-width-10,5],[-width/2,-height-11],[-width/2,12]];
     const box = offsets.map(([dx,dy]) => ({x:x+dx,y:y+dy,width,height})).find(fits);
     if (!box) continue;
     occupied.push(box);
     const p = worldPoint(rect().left+box.x,rect().top+box.y);
-    const group = shape("g",{transform:`translate(${p[0]} ${p[1]}) scale(${1/scale})`});
+    const group = shape("g",{class:terminal ? "terminal-label" : "stop-label",transform:`translate(${p[0]} ${p[1]}) scale(${1/scale})`});
     group.append(shape("rect",{width,height,rx:4,fill:"#fffdf7",opacity:.95}));
     const title = shape("text",{x:6,y:15,fill:f.id === selected?.id ? "#167c7e" : "#25343c","font-size":terminal ? 12 : 11,"font-weight":terminal ? 650 : 500});
     title.textContent = text; group.append(title);
@@ -143,17 +161,6 @@ function renderLabels(scale: number) {
     badge.append(shape("rect",{x:-17,y:-10,width:34,height:20,rx:5,fill:"#fffdf7",stroke:route.color,"stroke-width":1.5}));
     const text = shape("text",{"text-anchor":"middle","dominant-baseline":"central","font-size":11,"font-weight":700,fill:route.color});
     text.textContent = route.number; badge.append(text); labelsLayer.append(badge);
-  }
-  for (const label of data.labels) {
-    if (!visible(label.point)) continue;
-    const [x,y] = screenPoint(label.point), width = label.text.length*5.6+10, height = 20;
-    const vertical = Math.abs(label.angle)===90;
-    const box = {x:x-(vertical ? height : width)/2,y:y-(vertical ? width : height)/2,width:vertical ? height : width,height:vertical ? width : height};
-    if (!fits(box)) continue;
-    occupied.push(box);
-    const group = shape("g",{transform:`translate(${label.point.join(" ")}) scale(${1/scale}) rotate(${label.angle})`});
-    const text = shape("text",{"text-anchor":"middle","dominant-baseline":"central","font-size":11,fill:"#697980"});
-    text.textContent = label.text; group.append(text); labelsLayer.append(group);
   }
 }
 function drawSoon() {
@@ -190,18 +197,17 @@ function renderVehicles(scale: number) {
   for (const car of cars) {
     const group = carElements.get(car.vehicle.id)!;
     group.setAttribute("opacity", car.stale ? ".45" : selectedRoute && car.vehicle.routeId !== selectedRoute ? ".25" : "1");
-    const color = routes.get(car.vehicle.routeId ?? "")?.color ?? "#b4393f";
     const body = streetcarBody(car, data.edges, scale);
     Array.from(group.children).forEach((child, i) => {
       const section = body[4 - i];
       child.setAttribute("transform", `translate(${section.point.join(" ")}) rotate(${section.angle}) scale(${1 / scale})`);
-      child.querySelector("rect")!.setAttribute("fill", color);
     });
     group.classList.toggle("off-track", !car.match);
   }
 }
 
 function selectVehicle(car: PlottedVehicle) {
+  selectedVehicleId = car.vehicle.id;
   selected = undefined; hovered = undefined; tooltip.hidden = true;
   details.replaceChildren();
   details.append(element("p", "eyebrow", "Flexity streetcar"));
@@ -229,49 +235,82 @@ function hitVehicle(x: number, y: number): PlottedVehicle | undefined {
 }
 
 function updateSnapshotAge() {
-  if (!liveSnapshot) return;
+  const active = liveToggle.checked && !document.hidden && navigator.onLine;
+  if (!liveSnapshot) {
+    if (!navigator.onLine) liveSummary.textContent = "Offline. Live status will resume when connected.";
+    else if (liveFailed) liveSummary.textContent = active ? `Live status unavailable. Retry in ${liveRetrySeconds}s.` : "Live status unavailable. Enable live status to retry.";
+    else liveSummary.textContent = active ? "Loading streetcar positions…" : "Live updates paused. Loading the startup snapshot.";
+    return;
+  }
   cars.forEach(car => { car.stale = vehicleIsStale(car.vehicle, liveSnapshot!); });
   cars.forEach(car => carElements.get(car.vehicle.id)?.setAttribute("aria-label", `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`));
   const offTrack = cars.filter(car => !car.match).length, stale = cars.filter(car => car.stale).length;
   liveSummary.textContent = cars.length ? `${cars.length} cars reported${offTrack ? ` · ${offTrack} off mapped track` : ""}${stale ? ` · ${stale} stale` : ""}.` : "No Flexity positions reported.";
   if (liveSnapshot.invalidPositions) liveSummary.textContent += ` ${liveSnapshot.invalidPositions} invalid GPS fixes omitted.`;
+  if (!navigator.onLine) liveSummary.textContent += " Offline; keeping last positions.";
+  else if (liveFailed) liveSummary.textContent += active ? ` Refresh unavailable; keeping last positions. Retry in ${liveRetrySeconds}s.` : " Refresh unavailable; keeping last positions.";
+  if (!active) liveSummary.textContent += " Updates paused.";
+  const timestamp = liveSnapshot.feedTimestamp ?? liveSnapshot.fetchedAt;
+  const interval = liveUpdateSeconds % 60 === 0 ? `${liveUpdateSeconds / 60} min` : `${liveUpdateSeconds}s`;
+  liveTimestamp.textContent = `Positions · ${new Date(timestamp).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit", second: "2-digit" })} · updates every ${interval}`;
   drawSoon();
 }
 
-async function bootLiveStatus() {
-  // Static file previews use the public API. HTTP previews and production use
-  // their own Worker, keeping upstream protobuf acquisition out of the browser.
-  const endpoint = location.protocol === "file:" ? "https://api.ttcstatus.ca/v1/vehicles/streetcar" : "/v1/vehicles/streetcar";
-  try {
-    liveSnapshot = await loadVehicleSnapshot(endpoint);
-    cars = projectSnapshot(data, liveSnapshot);
-    for (const car of cars) {
+function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
+  // A cached or delayed feed must not move the entire fleet back in time.
+  if (liveSnapshot?.feedTimestamp && snapshot.feedTimestamp && Date.parse(snapshot.feedTimestamp) < Date.parse(liveSnapshot.feedTimestamp)) return;
+  const projected = projectSnapshot(data, snapshot, Date.now(), cars);
+  liveSnapshot = snapshot; cars = projected;
+  carsById.clear(); cars.forEach(car => carsById.set(car.vehicle.id, car));
+  // Keep existing SVG groups (and keyboard focus); add/remove only changed IDs.
+  for (const [id, group] of carElements) {
+    if (!carsById.has(id)) { group.remove(); carElements.delete(id); }
+  }
+  for (const car of cars) {
+    if (!carElements.has(car.vehicle.id)) {
+      const id = car.vehicle.id;
       const group = shape("g", { class: "live-car", "data-vehicle": car.vehicle.id, role: "button", tabindex: 0,
         "aria-label": `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.` });
       // Five articulated sections, drawn tail-first so the cab sits on top.
       for (let i = 0; i < 5; i++) {
         const section = shape("g");
-        section.append(shape("rect", { x: -3, y: -3.5, width: 6, height: 7, rx: i === 4 ? 2.2 : 1.2, stroke: "#fffdf7", "stroke-width": 1 }));
+        section.append(shape("rect", { x: -3, y: -3.5, width: 6, height: 7, rx: i === 4 ? 2.2 : 1.2, fill: "#DA291C", stroke: "#fffdf7", "stroke-width": 1.3 }));
         section.append(shape("path", { d: i === 4 ? "M1 -2 L1 2" : "M-1.5 -1.5 H1.5 M-1.5 1.5 H1.5", stroke: "#183340", "stroke-width": 1.2, "stroke-linecap": "round" }));
         group.append(section);
       }
       group.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); selectVehicle(car); }
+        const current = carsById.get(id);
+        if (current && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); event.stopPropagation(); selectVehicle(current); }
       });
-      group.addEventListener("focus", () => { const [x, y] = screenPoint(car.point); if (x < 15 || y < 15 || x > rect().width - 15 || y > rect().height - 15) focusPoint(car.point, zoomLevel()); });
+      group.addEventListener("focus", () => { const current = carsById.get(id); if (!current) return;
+        const [x, y] = screenPoint(current.point); if (x < 15 || y < 15 || x > rect().width - 15 || y > rect().height - 15) focusPoint(current.point, zoomLevel()); });
       vehiclesLayer.append(group); carElements.set(car.vehicle.id, group);
     }
-    const timestamp = liveSnapshot.feedTimestamp ?? liveSnapshot.fetchedAt;
-    liveTimestamp.textContent = `Snapshot · ${new Date(timestamp).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit", second: "2-digit" })} · loads once`;
-    updateSnapshotAge();
-    // This timer only updates age labels; no polling or simulated movement.
-    setInterval(updateSnapshotAge, 30_000);
-  } catch {
-    liveSummary.textContent = "Live status unavailable. Reload to try again.";
-    liveTimestamp.textContent = "The streetcar map is still available.";
   }
+  if (selectedVehicleId) {
+    const selectedCar = carsById.get(selectedVehicleId);
+    if (selectedCar) selectVehicle(selectedCar);
+    else { const id = selectedVehicleId; closeDetails(); details.append(element("p", "tip", `Car ${id} is no longer reported in the latest feed.`)); }
+  }
+  tooltip.hidden = true; drawSoon();
 }
-liveToggle.addEventListener("change", () => { tooltip.hidden = true; drawSoon(); });
+
+// File previews use the public API; HTTP previews use their own Worker.
+const liveEndpoint = location.protocol === "file:" ? "https://api.ttcstatus.ca/api/v1/vehicles/streetcar" : "/api/v1/vehicles/streetcar";
+const livePoller = new VehiclePoller({
+  request: (signal, etag) => requestVehicleUpdate(liveEndpoint, signal, etag),
+  onSnapshot: acceptVehicleSnapshot,
+  onStatus: status => { liveFailed = status.failed; liveUpdateSeconds = status.updateSeconds; liveRetrySeconds = status.retrySeconds; updateSnapshotAge(); },
+});
+function syncLiveActivity() {
+  livePoller.setActive(liveToggle.checked && !document.hidden && navigator.onLine);
+  tooltip.hidden = true; updateSnapshotAge(); drawSoon();
+}
+liveToggle.addEventListener("change", syncLiveActivity);
+document.addEventListener("visibilitychange", syncLiveActivity);
+window.addEventListener("online", syncLiveActivity); window.addEventListener("offline", syncLiveActivity);
+window.addEventListener("pagehide", () => livePoller.setActive(false));
+window.addEventListener("pageshow", syncLiveActivity);
 function focusPoint(point: Point, level = 3.5) {
   const width = initial.width/Math.max(1,Math.min(12,level)), height = width/(rect().width/rect().height);
   camera = {x:point[0]-width/2,y:point[1]-height/2,width,height}; tooltip.hidden = true; drawSoon();
@@ -296,8 +335,9 @@ function chooseRoute(id?: string, focus = false) {
   if (!selected) showOverview();
   drawSoon();
 }
-function closeDetails() { selected = undefined; showOverview(); drawSoon(); }
+function closeDetails() { selected = undefined; selectedVehicleId = undefined; showOverview(); drawSoon(); }
 function showOverview() {
+  selectedVehicleId = undefined;
   details.replaceChildren();
   details.append(element("p","eyebrow",selectedRoute ? "Route highlighted" : "Explore Toronto"));
   const route = selectedRoute ? routes.get(selectedRoute) : undefined;
@@ -311,6 +351,7 @@ function showOverview() {
   details.append(stats,element("p","tip","Zoom in to reveal stop names and route numbers. Hover for a quick look; select a stop for the full details."));
 }
 function selectFeature(feature: Feature, focus = false) {
+  selectedVehicleId = undefined;
   selected = feature; hovered = undefined; tooltip.hidden = true;
   if (selectedRoute && !feature.routeIds.includes(selectedRoute)) chooseRoute(undefined);
   details.replaceChildren();
@@ -477,4 +518,6 @@ new ResizeObserver(() => {
   previousLevel<1.01 ? fit() : focusPoint(point,previousLevel);
 }).observe(viewport);
 showOverview(); draw();
-void bootLiveStatus();
+void livePoller.refreshOnce();
+// Age labels continue to update locally while network requests are paused.
+setInterval(updateSnapshotAge, 30_000);

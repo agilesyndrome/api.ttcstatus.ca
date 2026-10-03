@@ -1,0 +1,12 @@
+@import '../map/viewer.css';
+.map-filters { padding-bottom: 18px; }
+.map-filters h2,.live-status h2 { font-size: 13px; margin-bottom: 12px; }
+.map-filters label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 10px 0; cursor: pointer; }
+.map-filters input { accent-color: #278f91; width: 16px; height: 16px; }
+.live-status h2 { display: flex; align-items: center; gap: 8px; }
+.route-button:disabled { opacity: .5; cursor: default; }
+.loading-page { padding: 40px; max-width: 680px; margin: auto; }
+.loading-page button { padding: 10px 16px; }
+.loading-page footer { margin-top: 30px; color: var(--muted); font-size: 12px; }
+#details details { font-size: 12px; line-height: 1.7; }
+#details summary { cursor: pointer; }

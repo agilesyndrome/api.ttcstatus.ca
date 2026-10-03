@@ -1,13 +1,13 @@
 .PHONY: admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
 
 admin/sync:
-	op run --env-file=.env -- ./bin/api POST /v1/admin/sync
+	op run --env-file=.env -- ./bin/api POST /api/v1/admin/sync
 
 admin/sync/status:
-	op run --env-file=.env -- ./bin/api GET /v1/feed/status | jq
+	op run --env-file=.env -- ./bin/api GET /api/v1/feed/status | jq
 
 map/streetcar:
-	@./bin/api GET /v1/map/streetcar --fail --show-error
+	@./bin/api GET /api/v1/map/streetcar --fail --show-error
 
 map/streetcar/svg:
 	@npm run map:preview
@@ -16,7 +16,7 @@ map/debug:
 	@set -eu; \
 		tmp=$$(mktemp ./streetcarmap.json.XXXXXX); \
 		trap 'rm -f "$$tmp"' EXIT HUP INT TERM; \
-		./bin/api GET /v1/map/streetcar --fail --show-error --output "$$tmp"; \
+		./bin/api GET /api/v1/map/streetcar --fail --show-error --output "$$tmp"; \
 		mv "$$tmp" streetcarmap.json
 	@$(MAKE) --no-print-directory map/streetcar/svg
 	@node scripts/open-map.mjs

@@ -4,7 +4,6 @@ import type { LiveVehicle, VehicleSnapshot } from "../../shared/live-vehicles";
 const { transit_realtime } = GtfsBindings;
 
 export const DEFAULT_VEHICLE_FEED_URL = "https://bustime.ttc.ca/gtfsrt/vehicles";
-export const SNAPSHOT_CACHE_SECONDS = 15;
 const MAX_FEED_BYTES = 5_000_000;
 
 function isoTimestamp(value: number | { toString(): string } | null | undefined): string | null {

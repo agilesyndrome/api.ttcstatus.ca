@@ -7,12 +7,12 @@ usage() {
 Usage: bin/api METHOD ENDPOINT [curl options...]
 
 Examples:
-  bin/api GET /v1/map/streetcar
-  bin/api GET /v1/feed/status
-  bin/api POST /v1/admin/sync
+  bin/api GET /api/v1/map/streetcar
+  bin/api GET /api/v1/feed/status
+  bin/api POST /api/v1/admin/sync
 
 Set API_HOST to override https://api.ttcstatus.ca.
-SYNC_TOKEN is required for /v1/admin/* endpoints.
+SYNC_TOKEN is required for /api/v1/admin/* endpoints.
 EOF
 }
 
@@ -37,7 +37,7 @@ fi
 
 curl_args=(--request "$method" --silent)
 
-if [[ $endpoint == /v1/admin/* ]]; then
+if [[ $endpoint == /api/v1/admin/* ]]; then
   if [[ -z ${SYNC_TOKEN:-} ]]; then
     echo "SYNC_TOKEN must be set for admin endpoints" >&2
     exit 1

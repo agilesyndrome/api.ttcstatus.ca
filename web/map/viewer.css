@@ -34,7 +34,7 @@ button[aria-pressed="true"] { background: #e2edeb; border-color: #278f91; }
 .live-dot { width: 6px; height: 6px; background: #278f91; border-radius: 50%; }
 .live-status p { font-size: 11px; line-height: 1.6; color: var(--muted); margin: 8px 0 0; }
 #live-timestamp { font-size: 10px; }
-.live-car { cursor: pointer; }
+.live-car { cursor: pointer; filter: drop-shadow(0 1px 1px #25343c50); }
 .live-car:focus { outline: none; filter: drop-shadow(0 0 3px #278f91); }
 .live-car.off-track rect { stroke-dasharray: 2 1; }
 .map-label { pointer-events: none; }

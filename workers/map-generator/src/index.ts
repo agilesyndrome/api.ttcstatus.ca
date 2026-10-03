@@ -44,15 +44,15 @@ async function debugRender(request: Request, env: Env): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContextLike): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/healthz") {
+    if (request.method === "GET" && url.pathname === "/api/healthz") {
       return json({ ok: true, worker: "ttcstatus-map-generator" });
     }
 
-    if (request.method === "POST" && url.pathname === "/debug/render") {
+    if (request.method === "POST" && url.pathname === "/api/debug/render") {
       return debugRender(request, env);
     }
 
-    if (request.method !== "POST" || url.pathname !== "/internal/generate") {
+    if (request.method !== "POST" || url.pathname !== "/api/internal/generate") {
       return json({ error: "not-found" }, 404);
     }
 

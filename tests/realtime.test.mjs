@@ -125,13 +125,18 @@ test("public vehicle endpoint returns CORS JSON, reuses its edge cache and never
   try {
     globalThis.caches = { default: { match: async key => entries.get(key.url)?.clone(), put: async (key,response) => entries.set(key.url,response) } };
     globalThis.fetch = async () => { upstreamCalls++; return new Response(encode([observation("4400")])); };
-    const request = new Request("https://api.example/v1/vehicles/streetcar");
+    const request = new Request("https://api.example/api/v1/vehicles/streetcar");
     const first = await apiWorker.fetch(request,env,ctx);
     assert.equal(first.status,200); assert.equal(first.headers.get("access-control-allow-origin"),"*");
-    assert.equal(first.headers.get("cache-control"),"public, max-age=15");
+    assert.match(first.headers.get("cache-control"),/^public, max-age=(29|30)$/);
+    assert.equal(first.headers.get("x-live-update-seconds"),"30");
     assert.equal((await first.json()).vehicles[0].id,"4400");
     await Promise.all(tasks);
     assert.equal((await apiWorker.fetch(request,env,ctx)).status,200);
+    assert.equal(upstreamCalls,1);
+    const unchanged = await apiWorker.fetch(new Request(request.url, { headers:{ "if-none-match":first.headers.get("etag") } }),env,ctx);
+    assert.equal(unchanged.status,304); assert.equal(await unchanged.text(),"");
+    assert.equal(unchanged.headers.get("x-live-update-seconds"),"30");
     assert.equal(upstreamCalls,1);
   } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 });
@@ -141,8 +146,22 @@ test("public endpoint makes upstream failure an uncached 503 while the static ma
     console.error = () => {};
     globalThis.caches = { default: { match: async () => undefined, put: () => { throw new Error("Do not cache failures"); } } };
     globalThis.fetch = async () => new Response("down",{status:502});
-    const response = await apiWorker.fetch(new Request("https://api.example/v1/vehicles/streetcar"),{SOURCE_ATTRIBUTION:""},{waitUntil() { throw new Error("Do not cache failures"); }});
+    const response = await apiWorker.fetch(new Request("https://api.example/api/v1/vehicles/streetcar"),{SOURCE_ATTRIBUTION:""},{waitUntil() { throw new Error("Do not cache failures"); }});
     assert.equal(response.status,503); assert.equal(response.headers.get("cache-control"),"no-store");
     assert.equal((await response.json()).error,"vehicles-unavailable");
   } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; console.error = originalError; }
+});
+test("runtime interval changes invalidate old cache entries and advertise the five-minute cadence", async () => {
+  const originalFetch=globalThis.fetch,originalCaches=globalThis.caches;
+  let calls=0;const entries=new Map(),tasks=[];
+  try {
+    globalThis.fetch=async ()=>{calls++;return new Response(encode([observation("4400")]));};
+    globalThis.caches={default:{match:async key=>entries.get(key.url)?.clone(),put:async(key,response)=>entries.set(key.url,response)}};
+    const env={SOURCE_ATTRIBUTION:"interval-test",REALTIME_UPDATE_SECONDS:"30"},ctx={waitUntil:task=>tasks.push(task)},request=new Request("https://api.example/api/v1/vehicles/streetcar");
+    const first=await apiWorker.fetch(request,env,ctx);await Promise.all(tasks);
+    const second=await apiWorker.fetch(new Request(request.url,{headers:{"if-none-match":first.headers.get("etag")}}),{...env,REALTIME_UPDATE_SECONDS:"300"},ctx);
+    assert.equal(calls,2);assert.equal(second.status,304);assert.equal(second.headers.get("x-live-update-seconds"),"300");
+    assert.match(second.headers.get("cache-control"),/^public, max-age=(299|300)$/);
+    assert.ok(second.headers.get("access-control-expose-headers").includes("X-Live-Update-Seconds"));
+  } finally {globalThis.fetch=originalFetch;globalThis.caches=originalCaches;}
 });

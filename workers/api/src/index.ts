@@ -6,7 +6,9 @@ import type {
   ScheduledControllerLike,
 } from "../../shared/cloudflare";
 import { syncStaticGtfs, type SyncEnv } from "./sync";
-import { DEFAULT_VEHICLE_FEED_URL, fetchVehicleSnapshot, SNAPSHOT_CACHE_SECONDS } from "./realtime";
+import { DEFAULT_VEHICLE_FEED_URL } from "./realtime";
+import { VehicleSnapshotCache } from "./vehicle-snapshot-cache";
+import { liveUpdateSeconds } from "../../shared/live-config";
 
 interface Env extends SyncEnv {
   DB: D1Database;
@@ -17,6 +19,7 @@ interface Env extends SyncEnv {
   NO_VALIDATOR_REFETCH_DAYS?: string;
   SYNC_TOKEN?: string;
   REALTIME_VEHICLE_URL?: string;
+  REALTIME_UPDATE_SECONDS?: string;
 }
 
 interface ActiveArtifact {
@@ -35,6 +38,7 @@ function cors(headers = new Headers()): Headers {
   headers.set("access-control-allow-origin", "*");
   headers.set("access-control-allow-methods", "GET, HEAD, POST, OPTIONS");
   headers.set("access-control-allow-headers", "Authorization, Content-Type, If-None-Match");
+  headers.set("access-control-expose-headers", "ETag, X-Live-Update-Seconds, X-Live-Next-Update-At, Retry-After");
   return headers;
 }
 
@@ -80,7 +84,7 @@ async function mapResponse(request: Request, env: Env, ctx: ExecutionContextLike
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheKey = new Request(
-    `https://ttcstatus-cache.invalid/v1/map/streetcar?v=${artifact.version_id}&etag=${artifact.etag}`,
+    `https://ttcstatus-cache.invalid/api/v1/map/streetcar?v=${artifact.version_id}&etag=${artifact.etag}`,
     { method: "GET" },
   );
   const cached = await cache.match(cacheKey);
@@ -151,20 +155,32 @@ async function networkResponse(env: Env): Promise<Response> {
   );
 }
 
-async function vehicleResponse(env: Env, ctx: ExecutionContextLike): Promise<Response> {
+// Keep only the current configuration in an isolate; edge caching is shared
+// within a Cloudflare location, not a global single-poller guarantee.
+let vehicleStore: { key: string; cache: VehicleSnapshotCache } | undefined;
+async function vehicleResponse(request: Request, env: Env, ctx: ExecutionContextLike): Promise<Response> {
   const source = env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL;
+  const updateSeconds = liveUpdateSeconds(env.REALTIME_UPDATE_SECONDS);
   const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(`https://ttcstatus-cache.invalid/v1/vehicles/streetcar?source=${encodeURIComponent(source)}`);
+  const storeKey = JSON.stringify([source, env.SOURCE_ATTRIBUTION, updateSeconds]);
+  const key = new Request(`https://ttcstatus-cache.invalid/api/v1/vehicles/streetcar?config=${encodeURIComponent(storeKey)}`);
   const cached = await cache.match(key);
-  if (cached) return cached;
+  const conditional = (response: Response) => request.headers.get("if-none-match") === response.headers.get("etag")
+    ? new Response(null, { status: 304, headers: response.headers }) : response;
+  if (cached) return conditional(cached);
   try {
-    const snapshot = await fetchVehicleSnapshot(source, env.SOURCE_ATTRIBUTION);
-    const response = json(snapshot, 200, { "cache-control": `public, max-age=${SNAPSHOT_CACHE_SECONDS}` });
+    if (vehicleStore?.key !== storeKey) vehicleStore = { key: storeKey, cache: new VehicleSnapshotCache(source, env.SOURCE_ATTRIBUTION, updateSeconds) };
+    const result = await vehicleStore.cache.get();
+    const remainingSeconds = Math.max(0, Math.floor((result.nextUpdateAt - Date.now()) / 1000));
+    const response = json(result.snapshot, 200, { "cache-control": `public, max-age=${remainingSeconds}`,
+      etag: result.etag, "x-live-update-seconds": String(updateSeconds),
+      "x-live-next-update-at": new Date(result.nextUpdateAt).toISOString() });
     ctx.waitUntil(cache.put(key, response.clone()));
-    return response;
+    return conditional(response);
   } catch (error) {
     console.error("Streetcar snapshot failed", error);
-    return json({ error: "vehicles-unavailable", message: "Live streetcar positions are temporarily unavailable." }, 503, { "cache-control": "no-store" });
+    return json({ error: "vehicles-unavailable", message: "Live streetcar positions are temporarily unavailable." }, 503,
+      { "cache-control": "no-store", "x-live-update-seconds": String(updateSeconds), "retry-after": String(updateSeconds) });
   }
 }
 
@@ -198,7 +214,7 @@ async function debugMapResponse(request: Request, env: Env): Promise<Response> {
   if (!authorizedSync(request, env)) return json({ error: "unauthorized" }, 401, { "cache-control": "no-store" });
 
   const body = await request.text();
-  const response = await env.MAP_GENERATOR.fetch("https://map-generator.internal/debug/render", {
+  const response = await env.MAP_GENERATOR.fetch("https://map-generator.internal/api/debug/render", {
     method: "POST",
     headers: {
       authorization: `Bearer ${env.SYNC_TOKEN}`,
@@ -220,33 +236,33 @@ export default {
       return new Response(null, { status: 204, headers: cors() });
     }
 
-    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/healthz") {
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/api/healthz") {
       return request.method === "HEAD"
         ? new Response(null, { status: 200, headers: cors() })
         : json({ ok: true, worker: "ttcstatus-api" }, 200, { "cache-control": "no-store" });
     }
 
-    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/v1/map/streetcar") {
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/api/v1/map/streetcar") {
       return mapResponse(request, env, ctx);
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/network") {
+    if (request.method === "GET" && url.pathname === "/api/v1/network") {
       return networkResponse(env);
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/vehicles/streetcar") {
-      return vehicleResponse(env, ctx);
+    if (request.method === "GET" && url.pathname === "/api/v1/vehicles/streetcar") {
+      return vehicleResponse(request, env, ctx);
     }
 
-    if (request.method === "GET" && url.pathname === "/v1/feed/status") {
+    if (request.method === "GET" && url.pathname === "/api/v1/feed/status") {
       return feedStatusResponse(env);
     }
 
-    if (request.method === "POST" && url.pathname === "/v1/debug/map/streetcar.svg") {
+    if (request.method === "POST" && url.pathname === "/api/v1/debug/map/streetcar.svg") {
       return debugMapResponse(request, env);
     }
 
-    if (request.method === "POST" && url.pathname === "/v1/admin/sync") {
+    if (request.method === "POST" && url.pathname === "/api/v1/admin/sync") {
       if (!env.SYNC_TOKEN) return json({ error: "manual-sync-disabled" }, 404, { "cache-control": "no-store" });
       if (!authorizedSync(request, env)) return json({ error: "unauthorized" }, 401, { "cache-control": "no-store" });
       ctx.waitUntil(

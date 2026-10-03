@@ -5,6 +5,7 @@ import { selectRailService } from "./rail-service";
 import { addAuditedPhysicalTracks } from "./physical-network";
 import { fitGeographicTransform, localToMap, transformSegment } from "../../shared/map-projection";
 import shorelineData from "./shoreline.json";
+import { CHORD_MERGE_METRES, consolidateCorridorChords } from "./corridor-graph";
 export { nearestOnSegment } from "./geometry";
 
 export interface MapSeed {
@@ -62,7 +63,7 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
     }
     nodeBySource.set(source.id, list);
   }
-  const edges: TrackEdge[] = [];
+  let edges: TrackEdge[] = [];
   const byPair = new Map<string, TrackEdge>();
   const traversals = new Map<string, { edgeId: string; direction: 1 | -1 }[]>();
   for (const source of sources) {
@@ -96,6 +97,7 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
     }
     traversals.set(source.id, traversal);
   }
+  edges = consolidateCorridorChords(edges, nodes, traversals);
   const byId = new Map(edges.map(e => [e.id, e]));
   const turns = new Map<string, { nodeId: string; fromEdgeId: string; toEdgeId: string; pathIds: string[] }>();
   for (const source of sources.filter(s => !s.overlay)) {
@@ -138,6 +140,7 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
     infrastructure: seed.infrastructure.map(p => ({ ...p, sourcePoints: p.points, points: pathPoints(p.id), edgeRefs: traversals.get(p.id) })),
     stops,
     graph: { coordinateSystem: "local-equirectangular-metres", snapToleranceMetres: TRACK_SNAP_METRES,
+      chordMergeToleranceMetres: CHORD_MERGE_METRES,
       provenance: "Inferred corridor centreline graph from scheduled shapes and audited overlays; not a surveyed inventory of switches or permitted turns.",
       nodes: nodes.filter(n => n.edgeIds.length), edges, observedTurns: [...turns.values()] },
     context: buildContext(transform),

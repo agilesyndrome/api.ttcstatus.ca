@@ -63,11 +63,3 @@ export function streetcarBody(car: PlottedVehicle, edges: Edge[], scale: number)
   }
   return body;
 }
-
-export async function loadVehicleSnapshot(endpoint: string): Promise<VehicleSnapshot> {
-  const response = await fetch(endpoint, { signal: AbortSignal.timeout(15_000) });
-  if (!response.ok) throw new Error(`Live status returned HTTP ${response.status}`);
-  const snapshot = await response.json() as VehicleSnapshot;
-  if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.vehicles)) throw new Error("Invalid live snapshot");
-  return snapshot;
-}

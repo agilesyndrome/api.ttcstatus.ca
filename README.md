@@ -159,11 +159,11 @@ service or directed turn permissions.
 
 ## Public API
 
-### `GET /healthz`
+### `GET /api/healthz`
 
 Worker health check.
 
-### `GET /v1/map/streetcar`
+### `GET /api/v1/map/streetcar`
 
 Returns the complete pre-generated `snake-v1` streetcar map JSON.
 
@@ -179,26 +179,38 @@ The response includes:
 
 The endpoint supports `ETag` / `If-None-Match` and is cached by immutable network version at the edge.
 
-### `GET /v1/network`
+### `GET /api/v1/network`
 
 Returns active network version metadata and import counts.
 
-### `GET /v1/vehicles/streetcar`
+### `GET /api/v1/vehicles/streetcar`
 
 Returns one normalized TTC GTFS-Realtime vehicle snapshot: `schemaVersion`,
 `fetchedAt`, `feedTimestamp`, source/attribution, `invalidPositions`, and `vehicles`.
 Each Flexity observation includes its identity, latitude/longitude, observation
 time, and route/trip/bearing/speed when supplied. Coordinates remain independent
 of the static network version; the viewer projects against its own map artifact.
-The Worker caches successful snapshots at the edge for 15 seconds and returns
-an uncached `503 vehicles-unavailable` on acquisition/decoding failure. Configure
-`REALTIME_VEHICLE_URL` to override `https://bustime.ttc.ca/gtfsrt/vehicles`.
+The Worker caches successful snapshots for `REALTIME_UPDATE_SECONDS` (default
+`30`, valid whole seconds from `30` to `300`). This one setting controls upstream
+cache lifetime and the browser cadence; no viewer rebuild is needed to change it.
+`X-Live-Update-Seconds` advertises the interval and `X-Live-Next-Update-At` lets
+viewers join the shared cache's next refresh. `ETag` / `If-None-Match` return an
+empty `304` when observations are unchanged. These headers are exposed through
+CORS, including for file previews. Configure `REALTIME_VEHICLE_URL` to override
+`https://bustime.ttc.ca/gtfsrt/vehicles`.
 
-### `GET /v1/feed/status`
+Simultaneous misses within an isolate share a pending acquisition. The edge cache
+shares snapshots within a Cloudflare location; this is not a global single poller.
+Requests are demand-driven, so an unused map causes no background TTC downloads.
+Acquisition/decoding failures return an uncached `503 vehicles-unavailable` with
+`Retry-After`; the isolate throttles repeated upstream failures for the configured
+interval. No vehicle history is persisted.
+
+### `GET /api/v1/feed/status`
 
 Operational source/import status. This endpoint is intentionally `no-store`.
 
-### `POST /v1/debug/map/streetcar.svg` (debug endpoint)
+### `POST /api/v1/debug/map/streetcar.svg` (debug endpoint)
 
 Renders a previously generated `streetcarmap.json` bundle as standalone SVG.
 The authenticated API proxy forwards the JSON to the map-generator debug
@@ -211,19 +223,19 @@ For remote rendering of a custom JSON bundle (the local Make targets do not
 need this endpoint):
 
 ```bash
-curl -sS -X POST https://api.ttcstatus.ca/v1/debug/map/streetcar.svg \
+curl -sS -X POST https://api.ttcstatus.ca/api/v1/debug/map/streetcar.svg \
   -H "Authorization: Bearer $SYNC_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @streetcarmap.json > streetcar-debug.svg
 ```
 
-### `POST /v1/admin/sync`
+### `POST /api/v1/admin/sync`
 
 Optional manual sync endpoint. It is only enabled when a `SYNC_TOKEN` Worker secret exists and requires:
 
 `Authorization: Bearer <SYNC_TOKEN>`
 
-The endpoint returns `202 Accepted` after scheduling the sync in the background. Check `/v1/feed/status` for import or map-generation errors and `/v1/map/streetcar` once the active artifact is ready.
+The endpoint returns `202 Accepted` after scheduling the sync in the background. Check `/api/v1/feed/status` for import or map-generation errors and `/api/v1/map/streetcar` once the active artifact is ready.
 
 Convenience commands (admin commands read `.env` through 1Password CLI;
 map commands use the public endpoint without credentials):
@@ -302,6 +314,47 @@ npm run deploy:map
 npm run deploy:api
 ```
 
+## React UI and Storybook
+
+The homepage is a React/TypeScript app in `web/ui/`. `pages/HomePage.tsx` owns
+selection, filters and one shared feed subscription. `components/` contains the
+header, footer, SVG map, layer filters, route legend, feed status and stop/vehicle
+details. The map reuses `web/map/` camera, model and GPS projection helpers.
+
+```bash
+npm run dev:viewer       # React homepage + credential-free local API, port 4173
+npm run storybook        # Components and interaction examples, port 6006
+npm run build:api        # Typecheck + React assets + standalone HTML viewer
+npm run build:storybook  # Standalone component catalogue in storybook-static/
+```
+
+Storybook uses fixed local fixtures and never requests the TTC feed. Each
+component has its own stories; search, filters and route selection include
+`play` interaction checks. After `npx playwright install chromium`, run
+`npm run test:ui` against the running React preview and `npm run test:stories`
+against running Storybook for browser checks. `UI_URL`, `STORYBOOK_URL` and
+`CHROMIUM_PATH` can override the defaults. Browser UI checks intercept TTC
+responses with fixtures. Feed stories cover loading, empty, live, stale, paused
+and unavailable states. The setup follows the official
+[Storybook React/Vite framework](https://storybook.js.org/docs/get-started/frameworks/react-vite/).
+
+Vite writes the homepage and hashed JS/CSS into `public/` for the existing Worker
+asset deployment. The standalone HTML preview remains at `/map/`. All API Worker
+routes now start with `/api/`, including `/api/healthz`; the previous `/v1/*` and
+`/healthz` paths are retired. Unknown `/api/*` requests return JSON errors.
+The map-generator service routes also moved under `/api/`; deploy the map Worker
+before the API Worker when releasing this change.
+
+For 100 visible viewers at the default 30-second cadence, the site receives about
+3.3 snapshot requests per second on average. One page hook serves every UI
+component; route and layer changes do not open more feed subscriptions. Worker
+edge caching and in-flight acquisition sharing reuse the fleet snapshot. ETags
+avoid resending unchanged fleets; static map geometry is loaded separately and
+is not sent with each update. Cache sharing is per Cloudflare location/isolate,
+not a guarantee of one global TTC fetch. The 100-viewer unit test verifies
+coalescing inside one snapshot store. This is cached HTTP polling, with up to
+one configured interval of latency, rather than a persistent push connection.
+
 ## Local development
 
 Preview the interactive map with real streetcar positions, without credentials
@@ -311,11 +364,32 @@ or a D1 import:
 npm run dev:viewer
 ```
 
-Open `http://127.0.0.1:4173/map/` and check **Show live status**. Each page load
-requests one snapshot; toggling the checkbox reuses it. Reload for a new snapshot.
-The local server uses the same TTC acquisition and decoder as the API Worker,
-with a 15-second shared cache to avoid a feed request for every viewer. Set `PORT`
-to change the preview port. Restart the server after editing source files.
+Open `http://127.0.0.1:4173/`. The React homepage loads the map from
+`/api/v1/map/streetcar` and enables live streetcars by default. Positions refresh
+every 30 seconds while the layer is enabled.
+Updates pause with the layer off, in hidden tabs, or offline; returning to an
+overdue view refreshes immediately. Only one request runs at a time. Failed
+refreshes keep the last positions and retry with backoff up to five minutes.
+Unchanged feeds use `304`, and existing car markers and keyboard focus survive
+refreshes. New cars are added and cars absent from a full snapshot are removed.
+
+The public TTC feed provides complete GTFS-Realtime HTTP snapshots. No documented
+public push transport was found, so this implementation polls snapshots rather
+than opening an SSE/WebSocket connection. GTFS defines feed messages as HTTP GET
+responses: [GTFS-Realtime reference](https://gtfs.org/documentation/realtime/reference/#message-feedmessage).
+Movement reflects received GPS fixes; positions are not extrapolated between them.
+
+Change `REALTIME_UPDATE_SECONDS` in `workers/api/wrangler.jsonc` to `60`, `120`,
+or `300` (five minutes). The browser learns the setting from every API response,
+including errors and `304`. Invalid values fall back to 30 seconds. The local
+server uses the same acquisition/cache modules and accepts the same setting:
+
+```bash
+REALTIME_UPDATE_SECONDS=300 npm run dev:viewer
+```
+
+Use `npm run dev:viewer -- --port 4175` to change the preview port. React components
+reload as you edit them; restart after changing environment settings.
 
 The feed reports Flexity cars numbered 4400–4663, including those without assigned
 trips. Replacement buses are excluded by vehicle identity. Stale observations
@@ -332,13 +406,16 @@ its complete geographic transform (including projection reference, rotation,
 compression, and display scale). `gpsToMap` / `mapToGps` support free geographic
 locations such as a person's position. `matchGpsToTrack` operates in source metres,
 uses route and bearing hints, then interpolates the retained edge distance mapping.
-It accepts a previous edge for future continuity; it never matches in display
+Each refresh supplies the previous matched edge for continuity; it never matches in display
 pixels or treats a geometric crossing as a graph connection. Matching is an
 estimate against the inferred, simplified graph rather than surveyed track.
 
 Transport and decoding live in `workers/api/src/realtime.ts`; the plain observation
 contract lives in `workers/shared/live-vehicles.ts`; snapshot projection and body
-placement live in `web/map/live-status.ts`. No live history is written to D1/R2.
+placement live in `web/map/live-status.ts`. `web/map/live-updates.ts` owns cancellable
+polling, cadence, ETags, timeouts and backoff; `workers/api/src/vehicle-snapshot-cache.ts`
+shares acquisitions, and `workers/shared/live-config.ts` validates the interval.
+No live history is written to D1/R2.
 Streaming acquisition can later replace the snapshot transport while reusing
 these models and projection functions. The current phase does not infer a trip
 pattern or direction when the source omits them.
