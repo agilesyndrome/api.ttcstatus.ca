@@ -119,8 +119,14 @@ export class R2ZipArchive {
 
     if (entry.compressionMethod === 0) return compressed.body;
     if (entry.compressionMethod === 8) {
+      // TypeScript's DOM and WebWorker libraries expose the decompressor's
+      // writable side as BufferSource, while Cloudflare's stream accepts the
+      // Uint8Array body returned by R2. The runtime stream contract is the
+      // compatible byte-to-byte transform we need here.
+      const inflater = new DecompressionStream("deflate-raw" as CompressionFormat) as unknown as
+        TransformStream<Uint8Array, Uint8Array>;
       return compressed.body.pipeThrough(
-        new DecompressionStream("deflate-raw" as CompressionFormat),
+        inflater,
       );
     }
     throw new Error(`Unsupported ZIP compression method ${entry.compressionMethod} for ${name}`);
