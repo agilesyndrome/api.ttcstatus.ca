@@ -174,6 +174,25 @@ function authorizedSync(request: Request, env: Env): boolean {
   return header === `Bearer ${env.SYNC_TOKEN}`;
 }
 
+async function debugMapResponse(request: Request, env: Env): Promise<Response> {
+  if (!env.SYNC_TOKEN) return json({ error: "debug-render-disabled" }, 404, { "cache-control": "no-store" });
+  if (!authorizedSync(request, env)) return json({ error: "unauthorized" }, 401, { "cache-control": "no-store" });
+
+  const body = await request.text();
+  const response = await env.MAP_GENERATOR.fetch("https://map-generator.internal/debug/render", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.SYNC_TOKEN}`,
+      "content-type": request.headers.get("content-type") ?? "application/json",
+    },
+    body,
+  });
+
+  const headers = cors(new Headers(response.headers));
+  headers.set("cache-control", "no-store");
+  return new Response(response.body, { status: response.status, headers });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContextLike): Promise<Response> {
     const url = new URL(request.url);
@@ -198,6 +217,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/v1/feed/status") {
       return feedStatusResponse(env);
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/debug/map/streetcar.svg") {
+      return debugMapResponse(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/admin/sync") {

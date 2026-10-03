@@ -4,6 +4,7 @@ import type { D1Database } from "../../shared/cloudflare";
 export interface MapGeneratorEnv {
   DB: D1Database;
   SOURCE_ATTRIBUTION: string;
+  SYNC_TOKEN?: string;
 }
 
 export interface VersionRow {

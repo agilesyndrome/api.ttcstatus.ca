@@ -109,6 +109,24 @@ Returns active network version metadata and import counts.
 
 Operational source/import status. This endpoint is intentionally `no-store`.
 
+### `POST /v1/debug/map/streetcar.svg` (debug endpoint)
+
+Renders a previously generated `streetcarmap.json` bundle as standalone SVG.
+The authenticated API proxy forwards the JSON to the map-generator debug
+renderer; it does not read D1, fetch GTFS, or invoke the sync pipeline. The
+request body is the map JSON and requires `Authorization: Bearer <SYNC_TOKEN>`.
+The endpoint is disabled with `404` until `SYNC_TOKEN` is configured on both
+Workers, and accepts bundles up to 2 MB.
+
+For local debugging:
+
+```bash
+curl -sS -X POST https://api.ttcstatus.ca/v1/debug/map/streetcar.svg \
+  -H "Authorization: Bearer $SYNC_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data-binary @streetcarmap.json > streetcar-debug.svg
+```
+
 ### `POST /v1/admin/sync`
 
 Optional manual sync endpoint. It is only enabled when a `SYNC_TOKEN` Worker secret exists and requires:
@@ -143,7 +161,15 @@ Both projects must have the same D1 database bound to the `DB` binding. Replace
 `REPLACE_WITH_D1_DATABASE_ID` in both Wrangler configurations before the first deploy;
 Wrangler cannot deploy a remote D1 binding with that placeholder.
 
-The static import is intentionally a background production job and should run on a **Workers Paid** plan: Cloudflare currently gives paid Workers substantially more CPU budget than the Free plan, while Cron invocations have a 15-minute wall-time ceiling. Normal API reads remain lightweight because they never parse GTFS.
+Enter the Cloudflare build and deploy commands without Markdown backticks. For the
+map project, use these literal values:
+
+```text
+Build command: npm run build:map
+Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc
+```
+
+The static import is intentionally a background production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. Normal API reads remain lightweight because they never parse GTFS.
 
 Create one D1 database and one R2 bucket:
 
@@ -170,6 +196,12 @@ Optional manual-sync secret:
 
 ```bash
 npx wrangler secret put SYNC_TOKEN -c workers/api/wrangler.jsonc
+```
+
+The map-generator debug renderer uses the same secret name independently:
+
+```bash
+npx wrangler secret put SYNC_TOKEN -c workers/map-generator/wrangler.jsonc
 ```
 
 Deploy the map generator first because the API Worker has a Service Binding to it:

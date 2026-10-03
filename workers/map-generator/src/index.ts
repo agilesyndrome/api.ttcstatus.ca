@@ -1,4 +1,5 @@
 import type { D1Database, ExecutionContextLike } from "../../shared/cloudflare";
+import { renderDebugMapSvg, type DebugMapBundle } from "./debug-render";
 import { generateStreetcarMap, type MapGeneratorEnv } from "./generate";
 
 interface Env extends MapGeneratorEnv {
@@ -12,11 +13,43 @@ function json(value: unknown, status = 200): Response {
   });
 }
 
+function authorized(request: Request, env: Env): boolean {
+  return Boolean(env.SYNC_TOKEN) && request.headers.get("authorization") === `Bearer ${env.SYNC_TOKEN}`;
+}
+
+async function debugRender(request: Request, env: Env): Promise<Response> {
+  if (!env.SYNC_TOKEN) return json({ error: "debug-render-disabled" }, 404);
+  if (!authorized(request, env)) return json({ error: "unauthorized" }, 401);
+
+  try {
+    const body = await request.text();
+    if (new TextEncoder().encode(body).byteLength > 2_000_000) {
+      return json({ error: "map-json-too-large" }, 413);
+    }
+    const bundle = JSON.parse(body) as DebugMapBundle;
+    const svg = renderDebugMapSvg(bundle);
+    return new Response(svg, {
+      headers: {
+        "cache-control": "no-store",
+        "content-type": "image/svg+xml; charset=utf-8",
+        "content-disposition": "inline; filename=streetcar-debug.svg",
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid map JSON";
+    return json({ error: "invalid-map-json", message }, 400);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContextLike): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/healthz") {
       return json({ ok: true, worker: "ttcstatus-map-generator" });
+    }
+
+    if (request.method === "POST" && url.pathname === "/debug/render") {
+      return debugRender(request, env);
     }
 
     if (request.method !== "POST" || url.pathname !== "/internal/generate") {

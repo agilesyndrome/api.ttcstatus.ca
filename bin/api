@@ -35,7 +35,7 @@ else
   url="$api_host$endpoint"
 fi
 
-curl_args=(--request "$method")
+curl_args=(--request "$method" --silent)
 
 if [[ $endpoint == /v1/admin/* ]]; then
   if [[ -z ${SYNC_TOKEN:-} ]]; then
