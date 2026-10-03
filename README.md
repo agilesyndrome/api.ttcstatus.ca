@@ -70,6 +70,27 @@ overlay because that format omitted its geographic display transform. Production
 generation uses D1 source coordinates directly. Optional positional arguments are
 input JSON, output JSON, output SVG.
 
+Download the current published JSON, render it locally, and open it in your
+default browser with one command (run `npm install` first):
+
+```bash
+make map/debug
+```
+
+This saves the API response as `streetcarmap.json`, generates
+`streetcar-schematic.json` and `streetcar-debug.svg`, and opens a local
+`streetcar-debug.html` wrapper so SVG file associations cannot send the preview
+to an image editor. Rendering uses the same code as the map-generator Worker;
+there is no JSON re-upload, sync, or debug token required. The JSON endpoint
+returns the pre-generated map; this command does not regenerate the production
+artifact from GTFS. Failed downloads stop the command and preserve the previous
+input file.
+
+Use `make map/streetcar/svg` to render an existing `streetcarmap.json` without
+downloading again. Set `API_HOST` to select another API, or `MAP_OPEN` to a browser
+opener executable (for example, `MAP_OPEN=echo make map/debug` to print the preview
+URL in a headless environment).
+
 See [the SnakeTTC map contract](./docs/snakettc-map-contract.md) for gameplay and
 distance mapping. SnakeTTC currently uses its own hand-built graph; consuming this
 bundle requires a game-side adapter.
@@ -149,7 +170,8 @@ request body is the map JSON and requires `Authorization: Bearer <SYNC_TOKEN>`.
 The endpoint is disabled with `404` until `SYNC_TOKEN` is configured on both
 Workers, and accepts bundles up to 2 MB.
 
-For local debugging:
+For remote rendering of a custom JSON bundle (the local Make targets do not
+need this endpoint):
 
 ```bash
 curl -sS -X POST https://api.ttcstatus.ca/v1/debug/map/streetcar.svg \
@@ -166,7 +188,8 @@ Optional manual sync endpoint. It is only enabled when a `SYNC_TOKEN` Worker sec
 
 The endpoint returns `202 Accepted` after scheduling the sync in the background. Check `/v1/feed/status` for import or map-generation errors and `/v1/map/streetcar` once the active artifact is ready.
 
-Convenience commands (the `.env` file is read by 1Password CLI):
+Convenience commands (admin commands read `.env` through 1Password CLI;
+map commands use the public endpoint without credentials):
 
 ```bash
 make admin/sync
