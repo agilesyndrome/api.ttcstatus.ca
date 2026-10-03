@@ -119,6 +119,21 @@ The Cron Trigger is the normal production path.
 
 ## Provisioning
 
+### Cloudflare deploy configuration
+
+This repository contains two Workers, so configure two Cloudflare Workers Builds projects
+from the same repository:
+
+- API project: root directory `/`, build command `npm run build:api`, deploy command
+  `npx wrangler deploy -c workers/api/wrangler.jsonc`
+- Map project: root directory `/`, build command `npm run build:map`, deploy command
+  `npx wrangler deploy -c workers/map-generator/wrangler.jsonc`
+
+Deploy the map project before the API project because the API uses a Service Binding to it.
+Both projects must have the same D1 database bound to the `DB` binding. Replace
+`REPLACE_WITH_D1_DATABASE_ID` in both Wrangler configurations before the first deploy;
+Wrangler cannot deploy a remote D1 binding with that placeholder.
+
 The static import is intentionally a background production job and should run on a **Workers Paid** plan: Cloudflare currently gives paid Workers substantially more CPU budget than the Free plan, while Cron invocations have a 15-minute wall-time ceiling. Normal API reads remain lightweight because they never parse GTFS.
 
 Create one D1 database and one R2 bucket:

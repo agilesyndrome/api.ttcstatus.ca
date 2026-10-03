@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "npm run typecheck",
+    "build:api": "npm run typecheck",
+    "build:map": "npm run typecheck",
     "typecheck": "tsc --noEmit",
     "dev:api": "wrangler dev -c workers/api/wrangler.jsonc",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
