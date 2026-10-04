@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import { installAccountFixture } from './auth-fixture.mjs';
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('streetcar-schematic.json', 'utf8'));
 const compiled = await build({ stdin: { contents: `export { buildViewerData } from './web/map/model'; export { mapToGps } from './workers/shared/map-projection';`, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'esm' });
@@ -15,6 +16,7 @@ const errors = [];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, colorScheme: 'light', permissions: ['geolocation'], geolocation: { ...gps, accuracy: 20 } });
+  const accounts = await installAccountFixture(context, { signedIn: true });
   context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
   await context.route('**/api/v1/map/streetcar?format=schematic-v1', route => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', route => route.fulfill({ json: {
@@ -172,12 +174,14 @@ try {
   assert.ok(await page.getByLabel('Sort stops', { exact: true }).locator('option[value="distance"]').isDisabled());
 
   const corrupt = await context.newPage();
+  await corrupt.addInitScript(() => { window.__testUser = 'user_corrupt'; });
   await corrupt.addInitScript(() => { localStorage.setItem('ttc:journal:v1', JSON.stringify([{ vehicleId: 'bad', latitude: 43.6 }])); });
   await corrupt.goto(origin + '/#view=journal');
   await corrupt.getByText('Your first catch is waiting.', { exact: false }).waitFor();
   await corrupt.close();
   const full = await context.newPage();
-  await full.addInitScript(() => localStorage.setItem('ttc:journal:v1', JSON.stringify(Array.from({ length: 500 }, (_, index) => ({ vehicleId: 'saved-' + index, label: 'Saved ' + index, recordedAt: '2026-10-03T12:00:00.000Z', note: '' })))));
+  accounts.journals.set('user_full', { entries: Array.from({ length: 500 }, (_, index) => ({ vehicleId: 'saved-' + index, label: 'Saved ' + index, recordedAt: '2026-10-03T12:00:00.000Z', note: '' })), revision: 1 });
+  await full.addInitScript(() => { window.__testUser = 'user_full'; });
   await full.goto(origin + '/#car=4400');
   await full.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   assert.ok(await full.getByRole('button', { name: 'Journal full · 500 cars', exact: true }).isDisabled());
@@ -189,12 +193,13 @@ try {
   await full.getByText('This import would exceed the 500-car journal limit.', { exact: false }).waitFor();
   await full.close();
   const privateTab = await context.newPage();
+  await privateTab.addInitScript(() => { window.__testUser = 'user_private'; });
   await privateTab.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error('blocked'); }; Storage.prototype.setItem = () => { throw new Error('blocked'); }; });
   await privateTab.goto(origin + '/#car=4400');
   await privateTab.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await privateTab.getByRole('button', { name: 'Add to journal', exact: false }).click();
   await privateTab.getByRole('button', { name: 'Open journal', exact: false }).click();
-  await privateTab.getByText('Browser storage is unavailable.', { exact: false }).waitFor();
+  await privateTab.getByText('Your journal is saved to your account.', { exact: true }).waitFor();
   assert.equal(await privateTab.locator('.journal-entry').count(), 1);
   const privateDownload = privateTab.waitForEvent('download');
   await privateTab.getByRole('button', { name: 'Back up journal', exact: true }).click();

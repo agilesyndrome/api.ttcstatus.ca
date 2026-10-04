@@ -1,4 +1,7 @@
-.PHONY: admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
+.PHONY: dev admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
+
+dev:
+	@npm run dev:viewer
 
 admin/sync:
 	op run --env-file=.env -- ./bin/api POST /api/v1/admin/sync

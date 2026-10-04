@@ -9,8 +9,10 @@ import { syncStaticGtfs, type SyncEnv } from "./sync";
 import { DEFAULT_VEHICLE_FEED_URL } from "./realtime";
 import { VehicleSnapshotCache } from "./vehicle-snapshot-cache";
 import { liveUpdateSeconds } from "../../shared/live-config";
+import { ifNoneMatchMatches } from "../../shared/etag";
+import { authenticateAccount, authConfig, ownedAccountResponse, publicProfileResponse, type AccountEnv } from './accounts';
 
-interface Env extends SyncEnv {
+interface Env extends SyncEnv, AccountEnv {
   DB: D1Database;
   GTFS_BUCKET: R2Bucket;
   MAP_GENERATOR: Fetcher;
@@ -71,7 +73,7 @@ async function mapResponse(request: Request, env: Env, ctx: ExecutionContextLike
   }
 
   const quotedEtag = `"${artifact.etag}"`;
-  if (request.headers.get("if-none-match") === quotedEtag) {
+  if (ifNoneMatchMatches(request.headers.get("if-none-match"), quotedEtag)) {
     return new Response(null, {
       status: 304,
       headers: cors(new Headers({
@@ -165,7 +167,7 @@ async function vehicleResponse(request: Request, env: Env, ctx: ExecutionContext
   const storeKey = JSON.stringify([source, env.SOURCE_ATTRIBUTION, updateSeconds]);
   const key = new Request(`https://ttcstatus-cache.invalid/api/v1/vehicles/streetcar?config=${encodeURIComponent(storeKey)}`);
   const cached = await cache.match(key);
-  const conditional = (response: Response) => request.headers.get("if-none-match") === response.headers.get("etag")
+  const conditional = (response: Response) => ifNoneMatchMatches(request.headers.get("if-none-match"), response.headers.get("etag"))
     ? new Response(null, { status: 304, headers: response.headers }) : response;
   if (cached) return conditional(cached);
   try {
@@ -234,6 +236,18 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors() });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/v1/auth/config') {
+      return json(authConfig(env), 200, { 'cache-control': 'no-store' });
+    }
+    if (url.pathname.startsWith('/api/v1/me/')) {
+      const identity = await authenticateAccount(request, env);
+      if (identity instanceof Response) return identity;
+      return ownedAccountResponse(request, env, identity);
+    }
+    if (request.method === 'GET' && url.pathname.startsWith('/api/v1/profiles/')) {
+      return publicProfileResponse(env, url.pathname.slice('/api/v1/profiles/'.length));
     }
 
     if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/api/healthz") {

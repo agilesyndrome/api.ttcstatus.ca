@@ -35,6 +35,9 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
   const interact = useRef(onInteract); interact.current = onInteract;
   const scale = size.width / camera.width;
   const level = initial.width / camera.width;
+  // At network scale, one compact marker per car leaves the tracks readable.
+  // Reveal the full outlined, articulated body once there is room for it.
+  const detailedCars = level >= 2.5;
 
   // Camera updates during a gesture are limited to one render per animation frame.
   function move(next: Bounds) {
@@ -162,7 +165,15 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
         {readableLabels.map(feature => <g key={feature.id} transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}><text x={8} y={-7} fontSize={11} fill="#43535e">{feature.name}</text></g>)}
       </g>
       {cars.filter(car => (includeOvernight || !data.routes.find(route => route.id === car.vehicle.routeId)?.overnight) && (!selectedRoute || car.vehicle.routeId === selectedRoute)).map(car => <g key={car.vehicle.id} data-vehicle={car.vehicle.id} className={`live-car${car.match ? '' : ' off-track'}`} role="button" tabIndex={0} aria-label={`Streetcar ${car.vehicle.label}${car.stale ? ', stale position' : ''}`} opacity={car.stale ? .45 : 1} onKeyDown={event => selectKey(event, () => onSelectVehicle(car))}>
-        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{selectedVehicleId === car.vehicle.id && <circle className="selected-car-ring" cx={car.point[0]} cy={car.point[1]} r={15 / scale} fill="#278f9120" stroke="#278f91" vectorEffect="non-scaling-stroke" />}{streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}><rect x={-4} y={-3} width={8} height={6} rx={1.5} fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#fffdf7" /></g>)}
+        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{selectedVehicleId === car.vehicle.id && <circle className="selected-car-ring" cx={car.point[0]} cy={car.point[1]} r={15 / scale} fill="#278f9120" stroke="#278f91" vectorEffect="non-scaling-stroke" />}{detailedCars ? streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}>
+          <rect className="streetcar-halo" x={-4} y={-4} width={8} height={8} rx={1.6} fill="#fffdf7" stroke="#fffdf7" strokeWidth={3.5} />
+          <rect className="streetcar-body" x={-4} y={-4} width={8} height={8} rx={1.6} fill="#fffdf7" stroke="#25343c" strokeWidth={1.2} />
+          <path d="M-2 0H2" fill="none" stroke={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} strokeWidth={2} strokeLinecap="round" />
+        </g>) : <g transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}>
+          <rect x={-7} y={-6} width={14} height={12} rx={3} fill="transparent" />
+          <rect className="streetcar-halo" x={-4} y={-2.5} width={8} height={5} rx={2} fill="#fffdf7" stroke="#fffdf7" strokeWidth={2} />
+          <rect className="streetcar-body" x={-4} y={-2.5} width={8} height={5} rx={2} fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#25343c" strokeWidth={.75} />
+        </g>}
       </g>)}
       {locationPoint && <g className="location-marker" transform={`translate(${locationPoint.join(' ')}) scale(${1 / scale})`} role="img" aria-label="Your approximate location"><circle r={16} fill="#477cb125" /><circle r={6} fill="#477cb1" stroke="#fff" strokeWidth={2} /></g>}
       {([['A', comparisonStops?.from], ['B', comparisonStops?.to]] as const).map(([letter, stop]) => stop && <g key={letter} className="comparison-marker" data-endpoint={letter} transform={`translate(${stop.point.join(' ')}) scale(${1 / scale})`} role="img" aria-label={`${letter === 'A' ? 'Start' : 'Destination'}: ${stop.name}`}><path d="M0 0L-10 -13A12 12 0 1 1 10 -13Z" fill={letter === 'A' ? '#278f91' : '#b4393f'} stroke="var(--surface)" strokeWidth={2} /><text x={0} y={-15} textAnchor="middle" fontSize={11} fontWeight={700} fill="white">{letter}</text></g>)}

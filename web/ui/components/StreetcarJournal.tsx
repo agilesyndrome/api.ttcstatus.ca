@@ -2,8 +2,8 @@ import { useId, useMemo, useRef, useState } from 'react';
 import type { PlottedVehicle } from '../../map/live-status';
 import { downloadFile } from '../download';
 import { JOURNAL_LIMIT, journalBackup, journalBadges, mergeJournal, readJournalBackup, type JournalEntry } from '../journal';
-interface Props { entries: JournalEntry[]; persistent: boolean; cars: PlottedVehicle[]; active: boolean; loaded?: boolean; failed?: boolean; onChange(update: (entries: JournalEntry[]) => JournalEntry[]): void; onSelect(car: PlottedVehicle): void; onFleet(): void }
-export function StreetcarJournal({ entries, persistent, cars, active, loaded = true, failed = false, onChange, onSelect, onFleet }: Props) {
+interface Props { entries: JournalEntry[]; persistent: boolean; accountSaved?: boolean; cars: PlottedVehicle[]; active: boolean; loaded?: boolean; failed?: boolean; onChange(update: (entries: JournalEntry[]) => JournalEntry[]): void; onSelect(car: PlottedVehicle): void; onFleet(): void }
+export function StreetcarJournal({ entries, persistent, accountSaved = false, cars, active, loaded = true, failed = false, onChange, onSelect, onFleet }: Props) {
   const id = useId();
   const latest = useRef(entries); latest.current = entries;
   const input = useRef<HTMLInputElement>(null);
@@ -37,7 +37,7 @@ export function StreetcarJournal({ entries, persistent, cars, active, loaded = t
     <p className="microcopy">Badges reflect your manually saved collection. An overnight assignment earns Blue Night collector at any time of day.</p></details>
     <button className="action-button export-fleet" onClick={onFleet}>Find a streetcar in Fleet →</button>
     {!persistent && <p className="tip" role="status">Browser storage is unavailable. Your journal lasts for this tab; download a backup to keep it.</p>}
-    <p className="microcopy">Saved only in this browser, up to {JOURNAL_LIMIT} different cars. No GPS coordinates are recorded. Notes and dates are included in backups.</p>
+    <p className="microcopy">{accountSaved ? 'Saved privately to your account' : 'Saved only in this browser'}, up to {JOURNAL_LIMIT} different cars. No GPS coordinates are recorded. Notes and dates are included in backups.</p>
     <div className="comparison-actions journal-backups"><button className="action-button" disabled={!entries.length} onClick={() => downloadFile(journalBackup(entries), 'ttc-streetcar-journal.json', 'application/json')}>Back up journal</button><button className="action-button" onClick={() => input.current?.click()}>Restore backup</button><input ref={input} type="file" accept=".json,application/json" aria-label="Journal backup file" className="sr-only" onChange={event => { void restore(event.target.files?.[0]); }} /></div>
     {message && <p className="tip" role="status">{message}</p>}
     <div className="tool-form"><div className="form-control"><label htmlFor={id + '-search'}>Search your journal</label><input id={id + '-search'} type="search" value={query} onChange={event => { setQuery(event.target.value); setPage(0); }} placeholder="Car, route or note" /></div></div>

@@ -138,6 +138,25 @@ test("public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     assert.equal(unchanged.status,304); assert.equal(await unchanged.text(),"");
     assert.equal(unchanged.headers.get("x-live-update-seconds"),"30");
     assert.equal(upstreamCalls,1);
+    const etag = first.headers.get("etag");
+    // Compression can change the browser's validator to W/"...". Exercise
+    // both edge-cache hits and misses that reuse the isolate's snapshot.
+    for (const edgeHit of [true, false]) {
+      if (!edgeHit) entries.clear();
+      for (const validator of [`W/${etag}`, `"older", W/${etag}`, "*"]) {
+        const response = await apiWorker.fetch(new Request(request.url, { headers: { "if-none-match": validator } }), env, ctx);
+        assert.equal(response.status,304,`${validator}, edge hit: ${edgeHit}`);
+        assert.equal(await response.text(),"");
+        assert.equal(response.headers.get("etag"),etag);
+        assert.equal(response.headers.get("x-live-next-update-at"),first.headers.get("x-live-next-update-at"));
+        assert.equal(response.headers.get("access-control-allow-origin"),"*");
+        if (!edgeHit) entries.clear();
+      }
+    }
+    const different = await apiWorker.fetch(new Request(request.url, { headers: { "if-none-match": 'W/"different"' } }), env, ctx);
+    assert.equal(different.status,200);
+    assert.equal((await different.json()).vehicles[0].id,"4400");
+    assert.equal(upstreamCalls,1);
   } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 });
 test("public endpoint makes upstream failure an uncached 503 while the static map remains independent", async () => {

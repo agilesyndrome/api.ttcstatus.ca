@@ -2,6 +2,11 @@
 
 Cloudflare Workers + D1 + R2 backend for TTCstatus.
 
+Clerk sign-up/login, protected account Journals, and opt-in public badge profiles
+are implemented. See [Clerk setup](docs/clerk-setup.md) for the two required
+Cloudflare bindings, the D1 migration, local development, and activation steps.
+The TTC status map and transit APIs remain available without signing in.
+
 The first implementation focuses on the static streetcar network. A scheduled Worker checks the TTC Surface GTFS source nightly, downloads it **only when the source changes**, imports the streetcar subset into D1, invokes a separate map-generator Worker, and publishes a precomputed `snake-v1` map artifact for fast API reads.
 
 ## Architecture in this revision
@@ -442,7 +447,7 @@ The React homepage now includes:
   filters boarding places/stations, listed accessible boarding and saved stops,
   and pages through results. Sort geographically after using Near me. The
   directory includes overnight service independently of map layers.
-- **Streetcar journal**: explicitly add a selected car to a browser-local
+- **Streetcar journal**: sign in and explicitly add a selected car to an account
   collection of up to 500 unique vehicle IDs. Write notes, search the collection,
   see whether a car is in the current live feed, and earn five collection badges.
   Recording does not save GPS fixes or observation history. Download a JSON
@@ -460,11 +465,11 @@ The React homepage now includes:
   menus, modifier keys and open dialogs, and can be disabled persistently.
   Tool tabs also support arrow keys, Home and End.
 
-These features reuse the existing single vehicle subscription and loaded map.
-No new API endpoints, database migrations or additional TTC polling are needed.
-Storage restrictions keep preferences, bookmarks and the journal in memory for
-the current visit. A journal backup can preserve the collection when storage is
-unavailable. Geolocation runs only after pressing **Find nearby stops** and requires
+These features reuse the existing single vehicle subscription and loaded map,
+without additional TTC polling. Account journals use the protected API and D1
+tables described in [Clerk setup](docs/clerk-setup.md). Storage restrictions keep
+preferences and bookmarks in memory for the current visit; journals are saved
+to the signed-in account. Geolocation runs only after pressing **Find nearby stops** and requires
 a secure browser context (HTTPS or localhost).
 
 Run the fixture-based browser checks against a local preview:
@@ -472,6 +477,7 @@ Run the fixture-based browser checks against a local preview:
 ```bash
 npm run dev:viewer
 npm run test:ui
+npm run test:mobile
 npm run test:hackathon
 npm run test:exploration
 npm run test:collection
@@ -482,6 +488,9 @@ vehicle filtering, route activity, themes, mobile layout, and blocked browser
 storage/clipboard/location. It intercepts API requests with local fixtures.
 Use `UI_URL` and `CHROMIUM_PATH` to select a preview or installed Chromium.
 New component states are also available in Storybook.
+
+`test:mobile` checks iPhone touch selection, the collapsible details panel,
+search keyboard dismissal, comparison picking, and 320–430px layouts.
 `test:exploration` checks fleet paging/sorting, downloaded CSV content and formula
 escaping, geographic sorting, comparison links and picking, shortcut opt-out,
 following across virtual-time feed refreshes, and layouts down to 320 pixels.
@@ -494,10 +503,11 @@ Preview the interactive map with real streetcar positions, without credentials
 or a D1 import:
 
 ```bash
-npm run dev:viewer
+make dev
 ```
 
-Open `http://127.0.0.1:4173/`. The React homepage loads the map from
+This runs `npm run dev:viewer`. Open `http://127.0.0.1:4173/`.
+The React homepage loads the map from
 `/api/v1/map/streetcar` and enables live streetcars by default. Positions refresh
 every 30 seconds while the layer is enabled.
 Updates pause with the layer off, in hidden tabs, or offline; returning to an

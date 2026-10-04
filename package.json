@@ -22,6 +22,8 @@
     "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open",
     "build:storybook": "storybook build",
     "test:ui": "node scripts/check-ui.mjs",
+    "test:auth": "node scripts/check-auth.mjs",
+    "test:mobile": "node scripts/check-mobile.mjs",
     "test:hackathon": "node scripts/check-hackathon.mjs",
     "test:exploration": "node scripts/check-exploration.mjs",
     "test:collection": "node scripts/check-collection.mjs",
@@ -43,6 +45,8 @@
     "wrangler": "^4.40.0"
   },
   "dependencies": {
+    "@clerk/backend": "^3.22.0",
+    "@clerk/react": "^6.17.5",
     "gtfs-realtime-bindings": "^2.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

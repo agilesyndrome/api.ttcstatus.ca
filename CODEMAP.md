@@ -95,7 +95,11 @@ the live layer is enabled, visible, and online.
 | `map-export.ts` | Frozen SVG serialization with embedded paper styling, attribution and route key; omits location and saved-stop markers. |
 | `download.ts` | Blob downloads with object-URL cleanup. |
 | `components/StopBrowser.tsx` | Searchable paged boarding-stop and terminal directory. |
-| `components/StreetcarJournal.tsx` | Local collection, notes, badges, current-feed lookup and merge-only backup restore. |
+| `components/StreetcarJournal.tsx` | Collection, notes, badges, current-feed lookup and merge-only backup restore. The homepage saves it to the authenticated account. |
+| `auth.tsx` | Runtime Clerk configuration, provider, account controls and Journal sign-in prompt. Public map rendering stays independent of auth readiness. |
+| `hooks/useAccountJournal.ts` | Per-user Journal loading/saving and revision conflict handling, with account-switch isolation. |
+| `pages/ProfilePage.tsx` | Private profile settings and public `/u/<username>#badges` views. |
+| `workers/api/src/accounts.ts` | Clerk bearer verification, owned profile/journal API, opt-in public badge projection and bounded input validation. |
 | `components/MapExport.tsx` | Accessible preview modal, frozen-position toggle and SVG/print/PDF actions. |
 | `stories/` | Local fixtures, component variants and interaction checks. |
 

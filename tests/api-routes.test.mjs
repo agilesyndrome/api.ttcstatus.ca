@@ -45,3 +45,20 @@ test('protected routes keep authorization and service calls use the migrated pat
   assert.equal((await generator.fetch(new Request('https://example.test/api/debug/render', { method: 'POST' }), {}, ctx)).status, 404);
   assert.equal((await generator.fetch(new Request('https://example.test/api/internal/generate', { method: 'POST', body: '{}' }), {}, ctx)).status, 400);
 });
+
+test('map GET and HEAD accept compressed weak ETags and validator lists', async () => {
+  const env = { DB: { prepare() { return { first: async () => ({ etag: 'map-v1', version_id: 7 }) }; } } };
+  for (const method of ['GET', 'HEAD']) {
+    for (const validator of ['W/"map-v1"', '"older", W/"map-v1"', '*']) {
+      const response = await api.fetch(new Request('https://example.test/api/v1/map/streetcar', { method, headers: { 'if-none-match': validator } }), env, ctx);
+      assert.equal(response.status, 304);
+      assert.equal(await response.text(), '');
+      assert.equal(response.headers.get('etag'), '"map-v1"');
+      assert.equal(response.headers.get('x-network-version'), '7');
+      assert.equal(response.headers.get('access-control-allow-origin'), '*');
+    }
+  }
+  // A wildcard must not turn an absent map into a successful cache validation.
+  const missing = await api.fetch(new Request('https://example.test/api/v1/map/streetcar', { headers: { 'if-none-match': '*' } }), { DB: db }, ctx);
+  assert.equal(missing.status, 503);
+});
