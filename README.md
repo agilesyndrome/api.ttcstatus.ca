@@ -247,6 +247,36 @@ make map/streetcar
 
 The Cron Trigger is the normal production path.
 
+## Rebuild an outdated production map
+
+If the homepage reports “Viewer requires a generated schematic with a graph and
+geographic context”, the stored map predates the current generator. Deploying
+Workers does not rebuild existing D1 artifacts; normal static sync may skip an
+unchanged feed. Rebuild from the already-imported production network instead:
+
+```bash
+npm run map:regenerate:remote -- --dry-run  # Read-only generation and viewer validation
+npm run map:regenerate:remote             # Validate, store and activate the new map
+```
+
+This command uses your Wrangler Cloudflare login and a temporary
+[remote D1 binding](https://developers.cloudflare.com/workers/wrangler/api/#getplatformproxy).
+It does not need the admin `SYNC_TOKEN`, download GTFS, or reimport the network.
+It shares the static-sync lock, validates the React contract before storing,
+switches the map pointer only after all chunks exist, and retains the previous
+artifact for rollback. If the active map already uses the current generator,
+it leaves that artifact unchanged. Release steps after updating generator code:
+
+```bash
+npm run build:api
+npm run deploy:map
+npm run map:regenerate:remote
+npm run deploy:api
+```
+
+The React homepage revalidates map data on load and uses a schematic-format URL
+so an older cached seed map cannot prevent it from picking up the repaired map.
+
 ## Provisioning
 
 ### Cloudflare deploy configuration

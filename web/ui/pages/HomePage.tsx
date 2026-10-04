@@ -28,7 +28,7 @@ export function HomePage() {
     setError(undefined);
     async function load() {
       try {
-        const response = await fetch('/api/v1/map/streetcar', { signal: controller.signal });
+        const response = await fetch('/api/v1/map/streetcar?format=schematic-v1', { signal: controller.signal, cache: 'no-cache' });
         if (!response.ok) throw new Error(response.status === 503 ? 'The streetcar map is being prepared. Please try again shortly.' : `Map request failed (${response.status}).`);
         setData(buildViewerData(await response.json() as ViewerSource));
       } catch (error) { if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Unable to load the streetcar map.'); }

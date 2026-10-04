@@ -83,6 +83,11 @@ adapter only during development. `.storybook/` uses an independent Vite config
 so component stories never start the TTC acquisition adapter. Production Worker
 routing reserves `/api/*` for JSON/API responses and serves `/` from UI assets.
 
+`scripts/regenerate-map.mjs` rebuilds the active production map through a
+Wrangler remote D1 binding. It uses the same repository, pure builder, viewer
+validator and artifact store; the sync lock and one guarded publication statement
+protect the existing active map until its replacement is complete.
+
 ## Review invariants
 
 Future changes should preserve these rules:

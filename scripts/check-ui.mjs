@@ -14,7 +14,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   let mapCalls = 0, feedCalls = 0, conditional = false;
-  await page.route('**/api/v1/map/streetcar', request => { mapCalls++; return request.fulfill({ json: map }); });
+  await page.route('**/api/v1/map/streetcar?format=schematic-v1', request => { mapCalls++; return request.fulfill({ json: map }); });
   await page.route('**/api/v1/vehicles/streetcar', async request => {
     feedCalls++;
     const headers = { etag: '"fixture"', 'x-live-update-seconds': '30', 'x-live-next-update-at': new Date(Date.now() + 1100).toISOString() };

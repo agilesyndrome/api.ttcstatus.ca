@@ -22,7 +22,8 @@
     "storybook": "storybook dev -p 6006 --host 127.0.0.1 --no-open",
     "build:storybook": "storybook build",
     "test:ui": "node scripts/check-ui.mjs",
-    "test:stories": "node scripts/check-stories.mjs"
+    "test:stories": "node scripts/check-stories.mjs",
+    "map:regenerate:remote": "node scripts/regenerate-map.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",
