@@ -611,3 +611,30 @@ The v1 generator establishes the important separation between canonical GTFS geo
 - automated route-connectivity regression tests
 
 Those changes can happen inside the map-generator Worker without changing the public API contract.
+
+
+### Streetcar Snake on xplore
+
+The small 🐍 button at the bottom right of the explorer map opens Streetcar
+Snake on the same schematic and shared live vehicle feed. Arcade collects each
+fresh on-track streetcar once and grows the train; hitting your own tail ends
+the run. Purist drives one streetcar at up to 50 km/h and ends on collision with
+another fresh on-track streetcar. Feed positions refresh on the explorer's
+normal cadence, and stale or off-track reports do not affect either mode.
+
+Free play, signed route missions with return trips, manual switches, keyboard
+controls, touch pedals, swipe steering, pinch zoom, next-stop guidance, a
+minimap, sound muting and local high scores are available. Use ↑/↓ or +/− for
+speed, ←/→/Space for switches, P to pause and Escape to return to xplore. The
+run also pauses when the page becomes hidden or loses focus.
+
+The complete original game remains playable at `/snake/v1/`, including its
+original map, modes, missions, multipliers, Transit Control events and resume
+cookies. Its simulation, styles and icons are copied from `../snakettc`; only
+HTML asset URLs and manifest paths are rebased for the archive. No sibling
+project is required to build or serve the archive.
+
+Run `npm test` for simulation checks and `npm run test:snake` against a local
+viewer for desktop, phone and legacy browser checks. `UI_URL` and
+`CHROMIUM_PATH` select the preview URL and browser. Browser checks use fixture
+streetcars and do not depend on TTC feed availability.

@@ -38,8 +38,23 @@ npm run deploy:api
 ```
 
 These instructions do not deploy or modify production by themselves. The map
-continues to work when Clerk keys are missing, with an “Accounts coming soon”
-indicator and a locked Journal.
+continues to work when Clerk keys are missing, with an “Accounts unavailable”
+indicator and a locked Journal. **Retry accounts** reloads runtime configuration
+after a configuration fix or temporary request failure.
+
+If accounts are unavailable after publishing, check the deployed runtime, rather
+than only the Cloudflare build environment:
+
+```sh
+curl https://ttcstatus.ca/api/v1/auth/config
+npx wrangler secret list -c workers/api/wrangler.jsonc
+npx wrangler d1 migrations list ttcstatus --remote -c workers/api/wrangler.jsonc
+```
+
+The config endpoint must return `enabled: true` and the production publishable
+key. Both Clerk keys must be **runtime bindings on ttcstatus-api**. Build variables
+alone do not become Worker bindings. `0002_accounts.sql` must also be applied;
+adding keys does not create the account tables.
 
 ## Clerk CLI
 

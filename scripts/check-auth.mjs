@@ -13,6 +13,31 @@ try {
   await context.route('**/api/v1/map/streetcar?format=schematic-v1', route => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', route => route.fulfill({ json: { schemaVersion: 1, fetchedAt: new Date().toISOString(), feedTimestamp: new Date().toISOString(), source: 'auth-test', attribution: 'Fixture', invalidPositions: 0, vehicles: [] } }));
   const page = await context.newPage();
+  for (const failure of ['disabled', 'http', 'network', 'invalid']) {
+    let failed = false;
+    const configFailure = route => {
+      if (failed) return route.fallback();
+      failed = true;
+      if (failure === 'network') return route.abort('failed');
+      return route.fulfill({ status: failure === 'http' ? 503 : 200, json: failure === 'disabled' ? { enabled: false, publishableKey: null } : { enabled: true, publishableKey: 123 } });
+    };
+    await context.route('**/api/v1/auth/config', configFailure);
+    await page.goto(origin);
+    await page.locator('#map').waitFor();
+    await page.getByText('Accounts unavailable', { exact: true }).waitFor();
+    if (failure === 'disabled') {
+      for (const width of [320, 390, 900, 1440]) {
+        await page.setViewportSize({ width, height: 960 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `unavailable accounts do not overflow at ${width}`);
+      }
+    }
+    await page.getByRole('tab', { name: 'Journal', exact: true }).click();
+    await page.getByRole('heading', { name: 'Make it your journal.' }).waitFor();
+    assert.ok(!(await page.locator('body').innerText()).includes('coming soon'));
+    await page.getByRole('button', { name: 'Retry accounts', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).first().waitFor();
+    await context.unroute('**/api/v1/auth/config', configFailure);
+  }
   await page.goto(origin);
   await page.locator('#map').waitFor();
   await page.getByRole('button', { name: 'Sign in', exact: true }).waitFor();
@@ -69,6 +94,6 @@ try {
   await page.goto(origin + '/u/private#badges');
   await page.getByText('This profile is private or does not exist.', { exact: true }).waitFor();
   assert.deepEqual(errors, []);
-  console.log('Auth UI passed with an isolated Clerk fixture: public map, sign-in/sign-up controls, protected Journal, explicit legacy import, account switching/sign-out, private profile defaults, badge sharing settings, public/private profile views and 320–1440px layouts.');
+  console.log('Auth UI passed with an isolated Clerk fixture: configuration failures and recovery, public map, sign-in/sign-up controls, protected Journal, explicit legacy import, account switching/sign-out, private profile defaults, badge sharing settings, public/private profile views and 320–1440px layouts.');
   await context.close();
 } finally { await browser.close(); }

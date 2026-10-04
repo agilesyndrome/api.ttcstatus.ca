@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { boundsOf, buildViewerData, type Feature, type ViewerData, type ViewerSource, type Point } from '../../map/model';
 import { gpsToMap } from '../../../workers/shared/map-projection';
 import { projectSnapshot, type PlottedVehicle } from '../../map/live-status';
@@ -31,6 +31,8 @@ import { MapExport } from '../components/MapExport';
 import { AccountRequired, AuthControls, useAccount } from '../auth';
 import { useAccountJournal } from '../hooks/useAccountJournal';
 
+const SnakeGame = lazy(() => import('../components/SnakeGame').then(module => ({ default: module.SnakeGame })));
+
 const validBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 export function HomePage() {
@@ -59,6 +61,7 @@ export function HomePage() {
   const [toId, setToId] = useState(initialLink.toId);
   const [picking, setPicking] = useState<PickingStop>();
   const [following, setFollowing] = useState(false);
+  const [snakeOpen, setSnakeOpen] = useState(false);
   const [shortcutHelp, setShortcutHelp] = useState(false);
   const [shortcutsEnabled, setShortcutsEnabled] = usePreference('ttc:shortcuts:v1', true, validBoolean);
   const [focusPoint, setFocusPoint] = useState<Point>();
@@ -67,7 +70,7 @@ export function HomePage() {
   const [resetKey, setResetKey] = useState(0);
   const theme = useTheme();
   const pendingCar = useRef(selection?.kind === 'car' ? selection.id : undefined);
-  const feed = useVehicleFeed(filters.live && Boolean(data));
+  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data));
   const previous = useRef<PlottedVehicle[]>([]);
   const sidebar = useRef<HTMLDivElement>(null);
   const cars = useMemo(() => data && feed.snapshot ? projectSnapshot(data, feed.snapshot, feed.now, previous.current) : [], [data, feed.snapshot, feed.now]);
@@ -251,7 +254,7 @@ export function HomePage() {
     setExportCars(includeCars);
     if (capturedMap.current && exportDetails.current) setExportImage(exportMap(capturedMap.current, { ...exportDetails.current, includeCars }));
   }
-  useShortcuts(shortcutsEnabled, {
+  useShortcuts(shortcutsEnabled && !snakeOpen, {
     '/': () => document.querySelector<HTMLInputElement>('.search input')?.focus(),
     e: () => setPanel('explore'), f: () => setPanel('fleet'), c: () => setPanel('compare'),
     d: () => setPanel('stops'), j: () => setPanel('journal'), p: previewMap,
@@ -262,8 +265,8 @@ export function HomePage() {
   const panelTitle = panel === 'explore'
     ? car ? `Car ${car.vehicle.label}` : feature?.name ?? (selection?.kind === 'car' ? `Car ${selection.id}` : 'Explore streetcars')
     : { fleet: 'Streetcar fleet', compare: 'Compare stops', stops: 'Stop directory', journal: 'Streetcar journal' }[panel];
-  return <><PageHeader data={data} cars={cars} onSelect={selectFeature} onSelectVehicle={car => selectVehicle(car, true)} onReset={reset} actions={headerActions} />
-    {data ? <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}><TransitMap data={data} cars={filters.live ? cars : []} selectedRoute={selectedRoute} selectedFeature={feature} selectedVehicleId={car?.vehicle.id} focusPoint={focusPoint} focusBounds={comparisonBounds} locationPoint={locationPoint} comparisonStops={panel === 'compare' ? comparisonStops : undefined} pickingLabel={picking ? `Choose a ${picking === 'from' ? 'start' : 'destination'} boarding stop` : undefined} onInteract={() => setFollowing(false)} onExport={previewMap} savedStopIds={savedStops} showLabels={filters.labels} includeOvernight={filters.overnight} resetKey={resetKey} onSelectFeature={selectFeature} onSelectVehicle={car => selectVehicle(car)} />
+  return <>{snakeOpen && data && <Suspense fallback={<div className="snake-loading" role="status">Loading Streetcar Snake…</div>}><SnakeGame data={data} cars={cars} feed={feed} onClose={() => { setSnakeOpen(false); requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.snake-launch')?.focus()); }} /></Suspense>}<PageHeader data={data} cars={cars} onSelect={selectFeature} onSelectVehicle={car => selectVehicle(car, true)} onReset={reset} actions={headerActions} />
+    {data ? <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}><TransitMap mapTools={<button className="snake-launch" aria-label="Play Streetcar Snake" title="Play Streetcar Snake" onClick={() => setSnakeOpen(true)}>🐍</button>} data={data} cars={filters.live ? cars : []} selectedRoute={selectedRoute} selectedFeature={feature} selectedVehicleId={car?.vehicle.id} focusPoint={focusPoint} focusBounds={comparisonBounds} locationPoint={locationPoint} comparisonStops={panel === 'compare' ? comparisonStops : undefined} pickingLabel={picking ? `Choose a ${picking === 'from' ? 'start' : 'destination'} boarding stop` : undefined} onInteract={() => setFollowing(false)} onExport={previewMap} savedStopIds={savedStops} showLabels={filters.labels} includeOvernight={filters.overnight} resetKey={resetKey} onSelectFeature={selectFeature} onSelectVehicle={car => selectVehicle(car)} />
       <aside className="sidebar" aria-label="Stop and route details">
         <button className="mobile-panel-toggle" aria-expanded={mobilePanelOpen} aria-controls="sidebar-content" aria-label={mobilePanelOpen ? 'Collapse details' : 'Show details and map tools'} onClick={() => setMobilePanelOpen(open => !open)}>
           <span className="panel-handle" aria-hidden="true" />

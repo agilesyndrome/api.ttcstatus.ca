@@ -274,8 +274,14 @@ function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
       // Five articulated sections, drawn tail-first so the cab sits on top.
       for (let i = 0; i < 5; i++) {
         const section = shape("g");
-        section.append(shape("rect", { x: -3, y: -3.5, width: 6, height: 7, rx: i === 4 ? 2.2 : 1.2, fill: "#DA291C", stroke: "#fffdf7", "stroke-width": 1.3 }));
-        section.append(shape("path", { d: i === 4 ? "M1 -2 L1 2" : "M-1.5 -1.5 H1.5 M-1.5 1.5 H1.5", stroke: "#183340", "stroke-width": 1.2, "stroke-linecap": "round" }));
+        if (i === 4) {
+          section.setAttribute("class", "streetcar-cab");
+          section.append(shape("path", { d: "M-4 -5H3L7 0L3 5H-4Z", fill: "#DA291C", stroke: "#fffdf7", "stroke-width": 1.3, "stroke-linejoin": "round" }));
+          section.append(shape("path", { d: "M0 -2.5L3 0L0 2.5", fill: "none", stroke: "#fffdf7", "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+        } else {
+          section.append(shape("rect", { x: -3, y: -3.5, width: 6, height: 7, rx: 1.2, fill: "#DA291C", stroke: "#fffdf7", "stroke-width": 1.3 }));
+          section.append(shape("path", { d: "M-1.5 -1.5 H1.5 M-1.5 1.5 H1.5", stroke: "#183340", "stroke-width": 1.2, "stroke-linecap": "round" }));
+        }
         group.append(section);
       }
       group.addEventListener("keydown", event => {

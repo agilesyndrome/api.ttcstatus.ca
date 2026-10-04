@@ -1,0 +1,22 @@
+{
+  "name": "TTC Streetcar Snake",
+  "short_name": "Streetcar Snake",
+  "description": "Snake, but on Toronto's streetcar tracks.",
+  "start_url": "/snake/v1/",
+  "scope": "/snake/v1/",
+  "display": "standalone",
+  "background_color": "#f1eee5",
+  "theme_color": "#d71920",
+  "icons": [
+    {
+      "src": "/snake/v1/apple-touch-icon.png?v=2",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/snake/v1/icon.png?v=2",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

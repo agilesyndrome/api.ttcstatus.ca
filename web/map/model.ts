@@ -8,8 +8,11 @@ export interface Feature {
   routeIds: string[]; accessible: boolean | null; boardingPoints: number;
   platformNames: string[]; destinations: Record<string, string[]>; replacementRouteIds: string[];
   stopIds?: string[];
+  edgeId?: string; distanceAlongMetres?: number;
 }
-export interface StopPattern { routeId: string; stopIds: string[]; headsign: string }
+export interface StopPattern { routeId: string; stopIds: string[]; headsign: string; pathId?: string }
+export interface EdgeRef { edgeId: string; direction: 1 | -1 }
+export interface GamePath { id: string; routeIds: string[]; edgeRefs: EdgeRef[] }
 export interface Edge extends ProjectionEdge { infrastructureIds: string[] }
 export interface ViewerData {
   features: Feature[]; routes: Route[]; edges: Edge[];
@@ -18,15 +21,17 @@ export interface ViewerData {
   northAngle: number; snapshot: string; bounds: Bounds;
   geographicTransform: GeographicTransform;
   patterns?: StopPattern[];
+  paths?: GamePath[];
 }
 export interface Bounds { x: number; y: number; width: number; height: number }
-interface SourceStop { id: string; name: string; x: number; y: number; routeIds: string[]; stopIds: string[]; accessible?: boolean }
+interface SourceStop { id: string; name: string; x: number; y: number; routeIds: string[]; stopIds: string[]; accessible?: boolean; edgeId?: string; distanceAlongMetres?: number }
 export interface ViewerSource {
   display: { geographicTransform: GeographicTransform };
   generatedAt?: string; source?: { fetchedAt?: string };
   routes: { id: string; shortName?: string; longName?: string; color?: string }[];
   stops: SourceStop[];
   patterns: StopPattern[];
+  paths?: GamePath[];
   excludedServices?: { routeId: string }[];
   graph: { edges: Edge[] };
   infrastructure: { id: string; name: string }[];
@@ -66,7 +71,8 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     }
     return { id,name,kind,point,routeIds, boardingPoints: stopIds.length,
       accessible: stops.some(s => s.accessible) ? true : null,
-      platformNames: unique(stops.map(s => s.name)), destinations, replacementRouteIds: [], stopIds };
+      platformNames: unique(stops.map(s => s.name)), destinations, replacementRouteIds: [], stopIds,
+      ...(stops.length === 1 && stops[0].edgeId ? { edgeId: stops[0].edgeId, distanceAlongMetres: stops[0].distanceAlongMetres } : {}) };
   };
   const terminals: Feature[] = [], grouped = new Set<string>();
   const replacementIds = new Set((source.excludedServices ?? []).map(p => p.routeId));
@@ -95,7 +101,8 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     shoreline:source.context.shoreline, labels:source.context.labels.filter(l => l.kind !== "terminal"),
     northAngle:source.context.north.angle, snapshot:source.source?.fetchedAt ?? source.generatedAt ?? "",
     bounds:boundsOf([...edges.flatMap(e => e.points),...features.map(f => f.point)],45),
-    geographicTransform:source.display.geographicTransform, patterns: source.patterns };
+    geographicTransform:source.display.geographicTransform, patterns: source.patterns,
+    paths: source.paths?.map(path => ({ id: path.id, routeIds: path.routeIds, edgeRefs: path.edgeRefs })) };
 }
 
 export function searchFeatures(features: Feature[], routes: Route[], query: string): Feature[] {

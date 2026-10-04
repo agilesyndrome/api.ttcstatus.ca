@@ -52,8 +52,32 @@ from rounded display pixels and records that limitation in `previewSource`.
 Production uses canonical source data. Source simplification and a 12-metre
 snapping tolerance mean this correspondence is unsuitable for survey precision.
 
-SnakeTTC's existing `N()`/`E()` map in `public/game.js` does not load this contract.
-Its adapter should create its node/edge/adjacency collections from the bundle,
-use metre distances for movement, and convert poses through the mapping above.
-Existing cookie checkpoints containing the old hard-coded edge IDs require
-migration or invalidation when the game adopts this map.
+The xplore game's engine in `web/ui/snake/engine.ts` builds adjacency from the
+bundle's real edge endpoints, advances in source metres and draws on the same
+`TransitMap` as the explorer. Route missions resolve pattern `pathId` values to
+ordered directed `paths[].edgeRefs`. Stops retain their edge attachment for
+next-stop guidance. Manual turnouts override route guidance, and degree-two
+geometry nodes do not consume a queued switch.
+
+The explorer remains the sole owner of the live vehicle poller. Opening the game
+enables that poller even when the explorer's live layer is off; closing returns
+to the layer preference. Arcade couples each fresh, matched vehicle identity
+once per run and grows the consist. Purist keeps one car, is governed to 50 km/h,
+and ends on contact with a fresh matched vehicle. Stale and off-track reports
+remain visible but cannot become pickups or collision hazards. There are no
+fictional replacement pickups when the feed is unavailable. The displayed cars
+retain the explorer's snapshot cadence; no independent game feed or invented
+vehicle motion is added.
+
+The game supplies directional virtual rails offset three metres from the
+centreline and same-edge terminal reversals. These are simulation conventions,
+not surveyed track or dispatch permissions. Collisions and consist spacing use
+source metres; high-speed movement is sampled in steps of at most three metres.
+The game pauses when the page is hidden or loses focus.
+
+The original `N()`/`E()` game is archived unchanged at
+`public/snake/v1/game.js`, with its HTML asset links and PWA manifest scoped to
+`/snake/v1/`. Its classic modes, missions, fictional events, multipliers, sound,
+cookie checkpoints, controls and original map remain playable there. The
+integrated game uses separate `ttc:snake:v2:*` local storage preferences and
+scores, so it does not interpret classic cookie positions as shared-map edges.

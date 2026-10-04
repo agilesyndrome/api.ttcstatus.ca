@@ -233,3 +233,55 @@ textarea:focus-visible,select:focus-visible { outline: 3px solid var(--accent); 
   .map-print-output { display: block; position: static; width: 100%; margin: 0; padding: 0; background: white; }
   .map-print-output .map-print-sheet { width: auto; height: auto; max-width: 100%; max-height: 180mm; border: 0; border-radius: 0; margin: 0 auto; break-inside: avoid; print-color-adjust: exact; }
 }
+
+.snake-launch { position: absolute; right: 18px; bottom: 24px; width: 44px; height: 44px; border-radius: 50%; font-size: 23px; background: var(--surface); box-shadow: 0 3px 16px #25343c15; z-index: 2; }
+.snake-loading { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--surface); }
+.snake-game { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; padding: 0; border: 0; margin: 0; color: var(--text); background: var(--canvas); overflow: hidden; }
+.snake-game::backdrop { background: var(--canvas); }
+.snake-world,.snake-world .map-viewport { position: absolute; inset: 0; }
+#snake-map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.snake-world .map-hint,.snake-world .north { display: none; }
+.snake-world .map-controls { bottom: auto; top: calc(135px + env(safe-area-inset-top)); left: 16px; }
+.snake-top { position: absolute; top: env(safe-area-inset-top); left: 0; right: 0; padding: 16px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.snake-top strong { font-size: 18px; }
+.snake-top small { display: block; max-width: min(65vw,500px); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.snake-top button { pointer-events: auto; width: 44px; height: 44px; background: var(--surface); }
+.snake-hud { position: absolute; top: calc(80px + env(safe-area-inset-top)); left: 16px; display: flex; gap: 18px; padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; font-size: 12px; }
+.snake-hud b { font-size: 19px; }
+.snake-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(460px,calc(100% - 32px)); max-height: calc(100dvh - 165px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow: auto; background: var(--surface); padding: 24px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 16px 80px #25343c25; }
+.snake-menu h1 { font-size: 27px; margin-bottom: 16px; }
+.snake-menu p { font-size: 12px; line-height: 1.6; margin: 12px 0; color: var(--muted); }
+.snake-menu label { display: grid; gap: 6px; font-size: 12px; font-weight: 650; }
+.snake-menu select { width: 100%; min-height: 44px; padding: 8px; background: var(--canvas); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+.snake-menu .snake-mute { display: flex; align-items: center; margin: 14px 0; }
+.snake-menu .primary-action { display: block; width: 100%; min-height: 44px; background: #278f91; color: white; }
+.snake-menu a { display: block; text-align: center; margin-top: 16px; color: var(--accent); font-size: 12px; }
+.snake-status { position: absolute; top: calc(190px + env(safe-area-inset-top)); left: 16px; max-width: min(330px,calc(100% - 32px)); padding: 10px 12px; border-radius: 9px; background: var(--surface); pointer-events: none; opacity: .94; }
+.snake-status p { font-size: 12px; margin: 0 0 5px; }
+.snake-status small { display: block; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.snake-paused { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); display: grid; gap: 14px; text-align: center; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.snake-paused button { min-height: 44px; }
+.snake-switches { position: absolute; bottom: calc(95px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); text-align: center; }
+.snake-switches small { display: inline-block; background: var(--surface); padding: 6px 10px; border-radius: 6px 6px 0 0; font-size: 11px; }
+.snake-switches > div { display: flex; gap: 6px; max-width: 100%; overflow: auto; padding: 4px; background: var(--surface); border-radius: 8px; }
+.snake-switches button { min-height: 44px; min-width: 70px; padding: 6px 10px; white-space: nowrap; font-size: 12px; }
+.snake-pedals { position: absolute; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px; right: 16px; display: flex; align-items: stretch; justify-content: space-between; gap: 10px; }
+.snake-pedals > button { min-height: 64px; width: 150px; font-size: 13px; font-weight: 650; touch-action: none; user-select: none; -webkit-user-select: none; background: var(--surface); }
+.snake-pedals > div { display: flex; gap: 6px; align-items: center; }
+.snake-pedals > div button { min-height: 44px; padding: 8px 12px; font-size: 12px; background: var(--surface); }
+.snake-brake { border-color: #b4393f; }
+.snake-accelerator { border-color: #278f91; }
+@media (max-width: 640px) {
+  .snake-launch { right: 12px; bottom: 18px; }
+  .snake-menu { top: calc(50% + 45px); padding: 18px; }
+  .snake-menu h1 { font-size: 23px; }
+  .snake-pedals { left: 10px; right: 10px; gap: 6px; }
+  .snake-pedals > button { width: 100px; font-size: 11px; padding: 8px; }
+  .snake-pedals > div { flex-direction: column; gap: 4px; }
+  .snake-pedals > div button { min-height: 30px; padding: 4px 8px; font-size: 10px; }
+  .snake-status { top: calc(184px + env(safe-area-inset-top)); padding: 7px 9px; }
+  .snake-status small { font-size: 9px; }
+}
+.snake-minimap { position: absolute; top: calc(80px + env(safe-area-inset-top)); right: 16px; width: 180px; height: 120px; background: var(--surface); padding: 8px; border: 1px solid var(--border); border-radius: 9px; pointer-events: none; }
+@media (max-width: 640px) { .snake-minimap { right: 16px; width: 104px; height: 72px; padding: 5px; } }
+@media (max-height: 560px) { .snake-menu { top: 50%; max-height: calc(100dvh - 32px); } .snake-status { top: calc(135px + env(safe-area-inset-top)); } .snake-world .map-controls { top: auto; bottom: 16px; left: 180px; } }

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { fitCamera, moveCamera, zoomCamera } from '../../map/camera';
 import { boundsOf, type Bounds, type Feature, type Point, type ViewerData } from '../../map/model';
 import { streetcarBody, type PlottedVehicle } from '../../map/live-status';
@@ -9,6 +9,7 @@ interface Props {
   savedStopIds?: string[]; locationPoint?: Point; selectedVehicleId?: string;
   focusBounds?: Bounds; comparisonStops?: { from?: Feature; to?: Feature }; pickingLabel?: string;
   onInteract?(): void; onExport?(): void;
+  overlay?: ReactNode | ((scale: number) => ReactNode); mapTools?: ReactNode; driving?: boolean; mapId?: string;
   onSelectFeature(feature: Feature): void; onSelectVehicle(car: PlottedVehicle): void;
 }
 const points = (values: Point[]) => values.map(point => point.join(',')).join(' ');
@@ -20,7 +21,7 @@ const Tracks = memo(function Tracks({ data, selectedRoute, includeOvernight }: P
   })}</g>;
 });
 
-export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, savedStopIds = [], locationPoint, selectedVehicleId, focusBounds, comparisonStops, pickingLabel, onInteract, onExport, onSelectFeature, onSelectVehicle }: Props) {
+export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, savedStopIds = [], locationPoint, selectedVehicleId, focusBounds, comparisonStops, pickingLabel, onInteract, onExport, overlay, mapTools, driving = false, mapId = 'map', onSelectFeature, onSelectVehicle }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
   const initial = fitCamera(data.bounds, size.width / size.height);
@@ -83,9 +84,9 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
 
   useEffect(() => {
     if (!focusPoint) return;
-    const fitted = initialRef.current, width = fitted.width / 5, height = fitted.height / 5;
+    const fitted = initialRef.current, width = driving ? cameraRef.current.width : fitted.width / 5, height = driving ? cameraRef.current.height : fitted.height / 5;
     move({ x: focusPoint[0] - width / 2, y: focusPoint[1] - height / 2, width, height });
-  }, [focusPoint]);
+  }, [focusPoint, driving]);
   useEffect(() => { if (focusBounds) move(fitCamera(focusBounds, size.width / size.height)); }, [focusBounds]);
 
   const selectKey = (event: React.KeyboardEvent, action: () => void) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); action(); } };
@@ -121,7 +122,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
   const shoreline = data.shoreline;
   const water = shoreline.length ? [...shoreline, [5000, shoreline.at(-1)![1]], [5000, 5000], [-5000, 5000], [-5000, shoreline[0][1]]] as Point[] : [];
   return <section className="map-viewport" aria-label="Interactive streetcar map">
-    <svg ref={svg} id="map" role="group" tabIndex={0} aria-label="Toronto streetcar network. Arrow keys pan; plus and minus zoom; Home fits the map." viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
+    <svg ref={svg} id={mapId} role="group" tabIndex={0} aria-label={driving ? 'Toronto streetcar game map. Drag or pinch to explore.' : 'Toronto streetcar network. Arrow keys pan; plus and minus zoom; Home fits the map.'} viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
       onPointerDown={event => { if (event.button !== 0) return; if (!pointers.current.size) { moved.current = false; start.current = [event.clientX, event.clientY]; } else moved.current = true; pointers.current.set(event.pointerId, [event.clientX, event.clientY]); event.currentTarget.setPointerCapture(event.pointerId); }}
       onPointerMove={event => {
         const previous = pointers.current.get(event.pointerId); if (!previous) return;
@@ -129,6 +130,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
         pointers.current.set(event.pointerId, [event.clientX, event.clientY]);
         const after = [...pointers.current.values()];
         const rect = event.currentTarget.getBoundingClientRect();
+        if (driving && event.pointerType === 'touch' && after.length === 1) { moved.current = true; return; }
         if (after.length > 1) {
           moved.current = true;
           const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -150,6 +152,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
       onPointerCancel={event => { pointers.current.delete(event.pointerId); moved.current = true; }}
       onDoubleClick={event => { interact.current?.(); zoom(.5, world(event.clientX, event.clientY)); }}
       onKeyDown={event => {
+        if (driving) return;
         const directions: Record<string, Point> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
         if (directions[event.key]) { event.preventDefault(); interact.current?.(); const [x, y] = directions[event.key]; move(moveCamera(camera, x * camera.width * .08, y * camera.height * .08)); }
         else if (['+', '=', '-'].includes(event.key)) { event.preventDefault(); interact.current?.(); zoom(event.key === '-' ? 1 / .7 : .7); }
@@ -165,19 +168,28 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
         {readableLabels.map(feature => <g key={feature.id} transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}><text x={8} y={-7} fontSize={11} fill="#43535e">{feature.name}</text></g>)}
       </g>
       {cars.filter(car => (includeOvernight || !data.routes.find(route => route.id === car.vehicle.routeId)?.overnight) && (!selectedRoute || car.vehicle.routeId === selectedRoute)).map(car => <g key={car.vehicle.id} data-vehicle={car.vehicle.id} className={`live-car${car.match ? '' : ' off-track'}`} role="button" tabIndex={0} aria-label={`Streetcar ${car.vehicle.label}${car.stale ? ', stale position' : ''}`} opacity={car.stale ? .45 : 1} onKeyDown={event => selectKey(event, () => onSelectVehicle(car))}>
-        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{selectedVehicleId === car.vehicle.id && <circle className="selected-car-ring" cx={car.point[0]} cy={car.point[1]} r={15 / scale} fill="#278f9120" stroke="#278f91" vectorEffect="non-scaling-stroke" />}{detailedCars ? streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}>
+        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{selectedVehicleId === car.vehicle.id && <circle className="selected-car-ring" cx={car.point[0]} cy={car.point[1]} r={15 / scale} fill="#278f9120" stroke="#278f91" vectorEffect="non-scaling-stroke" />}{detailedCars ? streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} className={index === 4 ? 'streetcar-cab' : undefined} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}>
+          {index === 4 ? <>
+            {/* The body is drawn tail-first; the larger, pointed cab faces +x. */}
+            <path className="streetcar-halo" d="M-4 -5H3L7 0L3 5H-4Z" fill="#fffdf7" stroke="#fffdf7" strokeWidth={3.5} strokeLinejoin="round" />
+            <path className="streetcar-body" d="M-4 -5H3L7 0L3 5H-4Z" fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#25343c" strokeWidth={1.2} strokeLinejoin="round" />
+            <path d="M0 -2.5L3 0L0 2.5" fill="none" stroke="#fffdf7" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          </> : <>
           <rect className="streetcar-halo" x={-4} y={-4} width={8} height={8} rx={1.6} fill="#fffdf7" stroke="#fffdf7" strokeWidth={3.5} />
           <rect className="streetcar-body" x={-4} y={-4} width={8} height={8} rx={1.6} fill="#fffdf7" stroke="#25343c" strokeWidth={1.2} />
           <path d="M-2 0H2" fill="none" stroke={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} strokeWidth={2} strokeLinecap="round" />
-        </g>) : <g transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}>
+          </>}
+        </g>) : <g className="streetcar-cab" transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}>
           <rect x={-7} y={-6} width={14} height={12} rx={3} fill="transparent" />
-          <rect className="streetcar-halo" x={-4} y={-2.5} width={8} height={5} rx={2} fill="#fffdf7" stroke="#fffdf7" strokeWidth={2} />
-          <rect className="streetcar-body" x={-4} y={-2.5} width={8} height={5} rx={2} fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#25343c" strokeWidth={.75} />
+          <path className="streetcar-halo" d="M-4 -3H1L5 0L1 3H-4Z" fill="#fffdf7" stroke="#fffdf7" strokeWidth={2} strokeLinejoin="round" />
+          <path className="streetcar-body" d="M-4 -3H1L5 0L1 3H-4Z" fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#25343c" strokeWidth={.75} strokeLinejoin="round" />
         </g>}
       </g>)}
       {locationPoint && <g className="location-marker" transform={`translate(${locationPoint.join(' ')}) scale(${1 / scale})`} role="img" aria-label="Your approximate location"><circle r={16} fill="#477cb125" /><circle r={6} fill="#477cb1" stroke="#fff" strokeWidth={2} /></g>}
       {([['A', comparisonStops?.from], ['B', comparisonStops?.to]] as const).map(([letter, stop]) => stop && <g key={letter} className="comparison-marker" data-endpoint={letter} transform={`translate(${stop.point.join(' ')}) scale(${1 / scale})`} role="img" aria-label={`${letter === 'A' ? 'Start' : 'Destination'}: ${stop.name}`}><path d="M0 0L-10 -13A12 12 0 1 1 10 -13Z" fill={letter === 'A' ? '#278f91' : '#b4393f'} stroke="var(--surface)" strokeWidth={2} /><text x={0} y={-15} textAnchor="middle" fontSize={11} fontWeight={700} fill="white">{letter}</text></g>)}
+      {typeof overlay === 'function' ? overlay(scale) : overlay}
     </svg>
+    {mapTools}
     <div className={`map-hint${pickingLabel ? ' picking-hint' : ''}`} role={pickingLabel ? 'status' : undefined}>{pickingLabel ?? 'Drag to explore · Scroll or pinch to zoom · Select a stop'}</div>
     <div className="north" aria-hidden="true"><span>N</span><svg viewBox="0 0 36 36"><path d="M7 18H29M21 13L29 18L21 23" transform={`rotate(${data.northAngle} 18 18)`} /></svg></div>
     <nav className="map-controls" aria-label="Map controls"><button aria-label="Zoom in" onClick={() => { interact.current?.(); zoom(.7); }}>+</button><output>{Math.round(level * 100)}%</output><button aria-label="Zoom out" onClick={() => { interact.current?.(); zoom(1 / .7); }}>−</button><button onClick={() => { interact.current?.(); move(initial); }}>Fit map</button>{onExport && <button aria-label="Print or download map" onClick={onExport}>Save map</button>}</nav>

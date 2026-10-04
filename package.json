@@ -28,7 +28,8 @@
     "test:exploration": "node scripts/check-exploration.mjs",
     "test:collection": "node scripts/check-collection.mjs",
     "test:stories": "node scripts/check-stories.mjs",
-    "map:regenerate:remote": "node scripts/regenerate-map.mjs"
+    "map:regenerate:remote": "node scripts/regenerate-map.mjs",
+    "test:snake": "node scripts/check-snake.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",
