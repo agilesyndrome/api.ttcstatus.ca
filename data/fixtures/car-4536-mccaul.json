@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "fetchedAt": "2026-10-04T16:54:54.085Z",
+  "feedTimestamp": "2026-10-04T16:54:19.000Z",
+  "source": "https://bustime.ttc.ca/gtfsrt/vehicles",
+  "attribution": "Contains information licensed under the Open Government Licence - Toronto",
+  "invalidPositions": 0,
+  "vehicles": [
+    {
+      "id": "4536",
+      "label": "4536",
+      "latitude": 43.65190505981445,
+      "longitude": -79.39038848876953,
+      "observedAt": "2026-10-04T16:54:00.000Z",
+      "routeId": "501",
+      "tripId": "60614010",
+      "bearing": 255,
+      "speedMetresPerSecond": 0
+    }
+  ]
+}

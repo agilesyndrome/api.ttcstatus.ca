@@ -1,9 +1,9 @@
 import type { Edge, EdgeRef, Point, ViewerData } from '../../../../shared/map/model';
 import { boundsOf } from '../../../../shared/map/model';
 import {
+  localToMap,
   mapToGps,
   pointAlongEdge,
-  transformSegment,
   matchGpsToTrack,
 } from '../../../../shared/map/projection';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
@@ -23,17 +23,11 @@ function geometry(edge: Edge, sourcePoints: Point[], data: ViewerData): Edge {
   const clean = sourcePoints.filter(
     (p, i) => !i || distance(p, sourcePoints[i - 1]) > 0.001,
   );
-  const points: Point[] = [],
-    sourceDistances: number[] = [];
-  let lengthMetres = 0;
-  for (let i = 1; i < clean.length; i++) {
-    const segment = transformSegment(clean[i - 1], clean[i], data.geographicTransform);
-    points.push(...segment.points.slice(i === 1 ? 0 : 1));
-    sourceDistances.push(
-      ...segment.sourceDistances.slice(i === 1 ? 0 : 1).map((d) => d + lengthMetres),
-    );
-    lengthMetres += distance(clean[i - 1], clean[i]);
-  }
+  const sourceDistances = [0];
+  for (let i = 1; i < clean.length; i++)
+    sourceDistances.push(sourceDistances.at(-1)! + distance(clean[i - 1], clean[i]));
+  const points = clean.map((point) => localToMap(point, data.geographicTransform));
+  const lengthMetres = sourceDistances.at(-1)!;
   return { ...edge, sourcePoints: clean, points, sourceDistances, lengthMetres };
 }
 function nearest(point: Point, edges: Edge[]) {
@@ -226,9 +220,25 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
   // Split existing edges at stations so the fake interchange works in either
   // direction, and expand every mission reference in its original order.
   function split(hit: NonNullable<ReturnType<typeof nearest>>) {
-    const { edge, metres, point, segment } = hit;
+    const { edge, metres, point } = hit;
     if (metres < 20) return { node: edge.a, point: edge.sourcePoints[0] };
     if (edge.lengthMetres - metres < 20)
+      return { node: edge.b, point: edge.sourcePoints.at(-1)! };
+    // A station can be encountered more than once while the transfer hubs are
+    // assembled. If the nearest projection is already at a vertex, reuse that
+    // vertex instead of manufacturing a zero-length split edge.
+    let segment = 1;
+    let travelled = 0;
+    while (segment < edge.sourcePoints.length - 1) {
+      const next =
+        travelled + distance(edge.sourcePoints[segment - 1], edge.sourcePoints[segment]);
+      if (metres <= next) break;
+      travelled = next;
+      segment++;
+    }
+    if (distance(point, edge.sourcePoints[segment - 1]) < 1)
+      return { node: edge.a, point: edge.sourcePoints[0] };
+    if (distance(point, edge.sourcePoints[segment]) < 1)
       return { node: edge.b, point: edge.sourcePoints.at(-1)! };
     const node = `snake:station:${edge.id}:${Math.round(metres)}`;
     const first = geometry(
@@ -241,6 +251,8 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
       [point, ...edge.sourcePoints.slice(segment)],
       data,
     );
+    if (first.sourcePoints.length < 2 || second.sourcePoints.length < 2)
+      return { node: edge.a, point: edge.sourcePoints[0] };
     data.edges = data.edges.flatMap((e) => (e.id === edge.id ? [first, second] : [e]));
     data.paths = data.paths?.map((path) => ({
       ...path,
@@ -299,6 +311,18 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
       );
     });
     transfers.push({ name: station.name, nodeId: hub.node });
+  }
+  const invalid = new Set(
+    data.edges
+      .filter((edge) => edge.lengthMetres <= 0.1 || edge.sourcePoints.length < 2)
+      .map((edge) => edge.id),
+  );
+  if (invalid.size) {
+    data.edges = data.edges.filter((edge) => !invalid.has(edge.id));
+    data.paths = data.paths?.map((path) => ({
+      ...path,
+      edgeRefs: path.edgeRefs.filter((ref) => !invalid.has(ref.edgeId)),
+    }));
   }
   // Reattach ALL stations, including grouped terminal records, to the game
   // geometry. Keep names, boarding IDs and service metadata from Toronto.

@@ -72,6 +72,11 @@ scheduled shapes. Matching 509/510/310 segments within 55 metres are aligned to
 that corridor; their original projected GTFS vertices remain in `gtfsSourcePoints`.
 The inferred graph's distances follow the physical alignment.
 
+The physical overlays also include McCaul's Queen–Dundas–College connections
+and nine audited turnback loops, including Coxwell, Oakwood and Kipling. These
+remain available when scheduled GTFS shapes omit them. See the
+[physical loop audit](docs/physical-loop-audit.md) for coverage and source notes.
+
 The debug SVG draws shared edges once, uses distinct schematic route colours,
 labels major streets and terminals, and includes a City of Toronto mainland
 shoreline and north arrow. The shoreline is simplified in metres and uses the

@@ -4,7 +4,10 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 import { MapFilters } from './MapFilters';
 const meta = {
   component: MapFilters,
-  args: { value: { live: true, labels: false, overnight: false }, onChange: fn() },
+  args: {
+    value: { live: true, labels: false, overnight: false, streetcar: true, subway: true },
+    onChange: fn(),
+  },
   tags: ['autodocs'],
 } satisfies Meta<typeof MapFilters>;
 export default meta;
@@ -18,6 +21,8 @@ export const Default: Story = {
       live: true,
       labels: true,
       overnight: false,
+      streetcar: true,
+      subway: true,
     });
   },
 };

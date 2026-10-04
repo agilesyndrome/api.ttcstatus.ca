@@ -572,10 +572,17 @@ test('Toronto rail vertices and entire segments remain outside Lake Ontario', as
 test('preview rebuilds an older schematic from retained source geometry', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'ttc-map-preview-'));
   try {
-    const expected = JSON.parse(
+    const source = JSON.parse(
       await readFile('data/fixtures/streetcar-schematic.json', 'utf8'),
     );
-    const stale = structuredClone(expected);
+    // The current generator may add audited infrastructure absent from the
+    // immutable fixture. Compare two fresh rebuilds, not old generated geometry.
+    const expected = await previewMap(
+      'data/fixtures/streetcar-schematic.json',
+      join(directory, 'expected.json'),
+      join(directory, 'expected.svg'),
+    );
+    const stale = structuredClone(source);
     stale.generatorVersion = 'snake-v1.1.0';
     stale.graph.nodes[0].x = -99999;
     stale.context.shoreline = [
@@ -587,7 +594,7 @@ test('preview rebuilds an older schematic from retained source geometry', async 
     await writeFile(input, JSON.stringify(stale));
     await previewMap(input, output, join(directory, 'map.svg'));
     const rebuilt = JSON.parse(await readFile(output, 'utf8'));
-    assert.equal(rebuilt.generatorVersion, 'snake-v1.4.0');
+    assert.equal(rebuilt.generatorVersion, 'snake-v1.4.1');
     assert.deepEqual(rebuilt.graph, expected.graph);
     assert.deepEqual(rebuilt.context.shoreline, expected.context.shoreline);
     assert.deepEqual(rebuilt.excludedServices, expected.excludedServices);

@@ -149,7 +149,13 @@ test('route pulse separates stale cars and calculates median speed from supplied
 });
 
 test('map links safely round-trip stops, routes and streetcars with reserved characters and layer state', () => {
-  const filters = { live: false, labels: true, overnight: true };
+  const filters = {
+    live: false,
+    labels: true,
+    overnight: true,
+    streetcar: false,
+    subway: false,
+  };
   for (const kind of ['stop', 'route', 'car']) {
     const selection = { kind, id: 'terminal:Queen & King/#北' };
     assert.deepEqual(readMapLink(mapLinkHash(selection, filters)), {

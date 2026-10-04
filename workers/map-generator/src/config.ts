@@ -5,7 +5,7 @@
  * generated public artifact. Bump GENERATOR_VERSION whenever a change here can
  * alter output geometry or the bundle schema.
  */
-export const GENERATOR_VERSION = 'snake-v1.4.0';
+export const GENERATOR_VERSION = 'snake-v1.4.1';
 export const MAP_STYLE = 'snake-v1';
 export const MAP_MODE = 'streetcar';
 

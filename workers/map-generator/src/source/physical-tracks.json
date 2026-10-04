@@ -1107,5 +1107,3489 @@
       "310"
     ],
     "alignmentToleranceMetres": 55
+  },
+  {
+    "id": "mccaul-loop",
+    "name": "McCaul turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9423201, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6514113,
+        -79.3901914
+      ],
+      [
+        43.6514546,
+        -79.3902027
+      ],
+      [
+        43.6514959,
+        -79.39021
+      ],
+      [
+        43.6515339,
+        -79.3902119
+      ],
+      [
+        43.6515618,
+        -79.3902029
+      ],
+      [
+        43.6515894,
+        -79.3901837
+      ],
+      [
+        43.6516536,
+        -79.3901332
+      ],
+      [
+        43.6517003,
+        -79.3900977
+      ],
+      [
+        43.651738,
+        -79.3900868
+      ],
+      [
+        43.6517847,
+        -79.3900875
+      ],
+      [
+        43.6518214,
+        -79.3900951
+      ],
+      [
+        43.651855,
+        -79.390108
+      ],
+      [
+        43.6518887,
+        -79.3901298
+      ],
+      [
+        43.6519124,
+        -79.3901697
+      ],
+      [
+        43.6519239,
+        -79.3902107
+      ],
+      [
+        43.6519272,
+        -79.3902452
+      ],
+      [
+        43.651917,
+        -79.3902928
+      ],
+      [
+        43.6519012,
+        -79.3903248
+      ],
+      [
+        43.6518631,
+        -79.3903564
+      ],
+      [
+        43.6518341,
+        -79.3903687
+      ],
+      [
+        43.6518032,
+        -79.3903822
+      ],
+      [
+        43.6517732,
+        -79.3903771
+      ],
+      [
+        43.6517363,
+        -79.3903706
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "mccaul-connection-681159851",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681159851, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6591226,
+        -79.3937848
+      ],
+      [
+        43.6591382,
+        -79.3936812
+      ],
+      [
+        43.6591416,
+        -79.3936349
+      ],
+      [
+        43.6591396,
+        -79.3936028
+      ],
+      [
+        43.6591352,
+        -79.3935806
+      ],
+      [
+        43.6591261,
+        -79.3935478
+      ],
+      [
+        43.659113,
+        -79.3935256
+      ],
+      [
+        43.6591005,
+        -79.3935127
+      ],
+      [
+        43.6590737,
+        -79.3934874
+      ],
+      [
+        43.6589919,
+        -79.3934398
+      ],
+      [
+        43.6589631,
+        -79.3934277
+      ],
+      [
+        43.6587343,
+        -79.3933301
+      ],
+      [
+        43.6586278,
+        -79.3932863
+      ],
+      [
+        43.6584631,
+        -79.3932163
+      ],
+      [
+        43.6581218,
+        -79.3930715
+      ],
+      [
+        43.65809,
+        -79.3930572
+      ],
+      [
+        43.6577013,
+        -79.392894
+      ],
+      [
+        43.6570298,
+        -79.3926083
+      ],
+      [
+        43.6566871,
+        -79.3924625
+      ],
+      [
+        43.6562674,
+        -79.3922763
+      ],
+      [
+        43.6558587,
+        -79.3921017
+      ],
+      [
+        43.6558076,
+        -79.3920799
+      ],
+      [
+        43.6557352,
+        -79.3920478
+      ],
+      [
+        43.6556943,
+        -79.3920297
+      ],
+      [
+        43.6553004,
+        -79.3918683
+      ],
+      [
+        43.6547935,
+        -79.3916555
+      ],
+      [
+        43.6544249,
+        -79.3915054
+      ],
+      [
+        43.6543861,
+        -79.391489
+      ],
+      [
+        43.6543284,
+        -79.3914658
+      ],
+      [
+        43.6543054,
+        -79.3914561
+      ],
+      [
+        43.6542996,
+        -79.391454
+      ],
+      [
+        43.654288,
+        -79.3914492
+      ],
+      [
+        43.6542341,
+        -79.3914271
+      ],
+      [
+        43.6541862,
+        -79.3914075
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "506",
+          "306"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681159852",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681159852, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6541333,
+        -79.3913433
+      ],
+      [
+        43.6542064,
+        -79.3913728
+      ],
+      [
+        43.6542408,
+        -79.3913868
+      ],
+      [
+        43.6542876,
+        -79.3914058
+      ],
+      [
+        43.6543065,
+        -79.3914132
+      ],
+      [
+        43.6543126,
+        -79.391416
+      ],
+      [
+        43.6543342,
+        -79.3914243
+      ],
+      [
+        43.6543428,
+        -79.3914279
+      ],
+      [
+        43.6543917,
+        -79.3914494
+      ],
+      [
+        43.654504,
+        -79.3914936
+      ],
+      [
+        43.6547298,
+        -79.3915898
+      ],
+      [
+        43.6550975,
+        -79.3917406
+      ],
+      [
+        43.6554158,
+        -79.3918734
+      ],
+      [
+        43.6554862,
+        -79.391903
+      ],
+      [
+        43.655743,
+        -79.3920111
+      ],
+      [
+        43.655813,
+        -79.3920406
+      ],
+      [
+        43.6558701,
+        -79.392065
+      ],
+      [
+        43.6562541,
+        -79.3922288
+      ],
+      [
+        43.656681,
+        -79.3924192
+      ],
+      [
+        43.6570419,
+        -79.3925711
+      ],
+      [
+        43.6572245,
+        -79.3926498
+      ],
+      [
+        43.6573675,
+        -79.392711
+      ],
+      [
+        43.6577517,
+        -79.3928725
+      ],
+      [
+        43.6580476,
+        -79.3929992
+      ],
+      [
+        43.6581299,
+        -79.3930336
+      ],
+      [
+        43.6582431,
+        -79.3930811
+      ],
+      [
+        43.6586327,
+        -79.3932454
+      ],
+      [
+        43.6587432,
+        -79.3932924
+      ],
+      [
+        43.658948,
+        -79.3933795
+      ],
+      [
+        43.658999,
+        -79.3934013
+      ],
+      [
+        43.6590635,
+        -79.3934224
+      ],
+      [
+        43.659095,
+        -79.3934251
+      ],
+      [
+        43.6591198,
+        -79.3934236
+      ],
+      [
+        43.6591455,
+        -79.3934137
+      ],
+      [
+        43.6591649,
+        -79.3934029
+      ],
+      [
+        43.6591826,
+        -79.3933852
+      ],
+      [
+        43.6592017,
+        -79.393356
+      ],
+      [
+        43.6592177,
+        -79.3933171
+      ],
+      [
+        43.6592445,
+        -79.3932254
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "506",
+          "306"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681170699",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681170699, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6542064,
+        -79.3913728
+      ],
+      [
+        43.65424,
+        -79.3913916
+      ],
+      [
+        43.6542558,
+        -79.3914024
+      ],
+      [
+        43.6542668,
+        -79.3914168
+      ],
+      [
+        43.6542787,
+        -79.39143
+      ],
+      [
+        43.654288,
+        -79.3914492
+      ],
+      [
+        43.6542974,
+        -79.3914679
+      ],
+      [
+        43.6543013,
+        -79.3914806
+      ],
+      [
+        43.6543063,
+        -79.3915031
+      ],
+      [
+        43.6543105,
+        -79.3915335
+      ],
+      [
+        43.6543089,
+        -79.3915635
+      ],
+      [
+        43.6543021,
+        -79.3916166
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681171002",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681171002, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6541333,
+        -79.3913433
+      ],
+      [
+        43.654201,
+        -79.3913594
+      ],
+      [
+        43.6542239,
+        -79.391361
+      ],
+      [
+        43.6542458,
+        -79.3913567
+      ],
+      [
+        43.6542685,
+        -79.3913474
+      ],
+      [
+        43.6542886,
+        -79.3913293
+      ],
+      [
+        43.6543093,
+        -79.3913008
+      ],
+      [
+        43.6543249,
+        -79.3912653
+      ],
+      [
+        43.6543581,
+        -79.3911501
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681172043",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681172043, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6543537,
+        -79.3912864
+      ],
+      [
+        43.654334,
+        -79.3913473
+      ],
+      [
+        43.6543255,
+        -79.3913711
+      ],
+      [
+        43.654319,
+        -79.391382
+      ],
+      [
+        43.6543114,
+        -79.3913901
+      ],
+      [
+        43.6542876,
+        -79.3914058
+      ],
+      [
+        43.6542776,
+        -79.3914122
+      ],
+      [
+        43.6542668,
+        -79.3914168
+      ],
+      [
+        43.6542494,
+        -79.3914212
+      ],
+      [
+        43.6542353,
+        -79.3914196
+      ],
+      [
+        43.6541862,
+        -79.3914075
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681172056",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681172056, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6544249,
+        -79.3915054
+      ],
+      [
+        43.6543868,
+        -79.3914844
+      ],
+      [
+        43.6543689,
+        -79.3914678
+      ],
+      [
+        43.6543561,
+        -79.3914535
+      ],
+      [
+        43.6543428,
+        -79.3914279
+      ],
+      [
+        43.6543356,
+        -79.3914115
+      ],
+      [
+        43.6543299,
+        -79.3913938
+      ],
+      [
+        43.6543255,
+        -79.3913711
+      ],
+      [
+        43.6543269,
+        -79.3913445
+      ],
+      [
+        43.6543267,
+        -79.3913415
+      ],
+      [
+        43.6543333,
+        -79.3912764
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681172191",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681172191, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6543759,
+        -79.3911528
+      ],
+      [
+        43.6543704,
+        -79.391268
+      ],
+      [
+        43.6543677,
+        -79.3913087
+      ],
+      [
+        43.6543671,
+        -79.391337
+      ],
+      [
+        43.6543713,
+        -79.391362
+      ],
+      [
+        43.6543742,
+        -79.3913735
+      ],
+      [
+        43.6543779,
+        -79.3913843
+      ],
+      [
+        43.6543877,
+        -79.3914054
+      ],
+      [
+        43.6543956,
+        -79.3914225
+      ],
+      [
+        43.6544212,
+        -79.391446
+      ],
+      [
+        43.6544595,
+        -79.3914697
+      ],
+      [
+        43.654504,
+        -79.3914936
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681284219",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681284219, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6501102,
+        -79.3898686
+      ],
+      [
+        43.6501417,
+        -79.3897897
+      ],
+      [
+        43.6501457,
+        -79.3897833
+      ],
+      [
+        43.650163,
+        -79.3897613
+      ],
+      [
+        43.650182,
+        -79.3897444
+      ],
+      [
+        43.6502048,
+        -79.3897333
+      ],
+      [
+        43.6502209,
+        -79.3897265
+      ],
+      [
+        43.6502322,
+        -79.3897252
+      ],
+      [
+        43.6502356,
+        -79.3897229
+      ],
+      [
+        43.6502542,
+        -79.3897229
+      ],
+      [
+        43.6502604,
+        -79.3897239
+      ],
+      [
+        43.6502926,
+        -79.38973
+      ],
+      [
+        43.6503288,
+        -79.3897407
+      ],
+      [
+        43.65037,
+        -79.3897561
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "301"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681284222",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681284222, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6503676,
+        -79.3897944
+      ],
+      [
+        43.6502871,
+        -79.3897625
+      ],
+      [
+        43.6502599,
+        -79.3897464
+      ],
+      [
+        43.6502512,
+        -79.3897383
+      ],
+      [
+        43.6502375,
+        -79.3897275
+      ],
+      [
+        43.6502356,
+        -79.3897229
+      ],
+      [
+        43.6502177,
+        -79.3896961
+      ],
+      [
+        43.6502051,
+        -79.38967
+      ],
+      [
+        43.6501909,
+        -79.3896323
+      ],
+      [
+        43.6501869,
+        -79.3895887
+      ],
+      [
+        43.6501867,
+        -79.3895811
+      ],
+      [
+        43.6501914,
+        -79.3894908
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "301"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681284223",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681284223, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6517363,
+        -79.3903706
+      ],
+      [
+        43.6514969,
+        -79.3902724
+      ],
+      [
+        43.6510595,
+        -79.3900871
+      ],
+      [
+        43.6506014,
+        -79.389898
+      ],
+      [
+        43.6503676,
+        -79.3897944
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "mccaul-connection-681284224",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681284224, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6502397,
+        -79.3893972
+      ],
+      [
+        43.6502225,
+        -79.3895318
+      ],
+      [
+        43.6502249,
+        -79.3895774
+      ],
+      [
+        43.6502288,
+        -79.3896065
+      ],
+      [
+        43.6502385,
+        -79.3896431
+      ],
+      [
+        43.6502482,
+        -79.3896639
+      ],
+      [
+        43.6502627,
+        -79.3896821
+      ],
+      [
+        43.6502752,
+        -79.3896971
+      ],
+      [
+        43.6502871,
+        -79.3897089
+      ],
+      [
+        43.6503045,
+        -79.3897209
+      ],
+      [
+        43.65037,
+        -79.3897561
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "301"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-681284225",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 681284225, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6503676,
+        -79.3897944
+      ],
+      [
+        43.6503006,
+        -79.3897779
+      ],
+      [
+        43.6502706,
+        -79.3897759
+      ],
+      [
+        43.6502563,
+        -79.3897756
+      ],
+      [
+        43.6502431,
+        -79.3897781
+      ],
+      [
+        43.6502223,
+        -79.3897836
+      ],
+      [
+        43.6502026,
+        -79.3897947
+      ],
+      [
+        43.6501928,
+        -79.389803
+      ],
+      [
+        43.6501716,
+        -79.3898276
+      ],
+      [
+        43.650159,
+        -79.3898497
+      ],
+      [
+        43.6501449,
+        -79.3898852
+      ],
+      [
+        43.6501117,
+        -79.3899992
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "301"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-1167869910",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1167869910, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6514113,
+        -79.3901914
+      ],
+      [
+        43.6515461,
+        -79.3902487
+      ],
+      [
+        43.6518341,
+        -79.3903687
+      ],
+      [
+        43.6520007,
+        -79.3904398
+      ],
+      [
+        43.6522622,
+        -79.3905484
+      ],
+      [
+        43.6524892,
+        -79.3906433
+      ],
+      [
+        43.6529386,
+        -79.3908334
+      ],
+      [
+        43.653332,
+        -79.3910003
+      ],
+      [
+        43.6535006,
+        -79.3910724
+      ],
+      [
+        43.6541333,
+        -79.3913433
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mccaul-connection-1167869911",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1167869911, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.65037,
+        -79.3897561
+      ],
+      [
+        43.6506097,
+        -79.3898591
+      ],
+      [
+        43.6506175,
+        -79.3898617
+      ],
+      [
+        43.6510415,
+        -79.3900394
+      ],
+      [
+        43.6513506,
+        -79.3901662
+      ],
+      [
+        43.6514113,
+        -79.3901914
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "mccaul-connection-1168164850",
+    "name": "McCaul connecting tracks (Queen–Dundas–College)",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1168164850, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6541862,
+        -79.3914075
+      ],
+      [
+        43.6539307,
+        -79.3912961
+      ],
+      [
+        43.653494,
+        -79.3911076
+      ],
+      [
+        43.6527964,
+        -79.3908153
+      ],
+      [
+        43.6524811,
+        -79.3906815
+      ],
+      [
+        43.6524246,
+        -79.3906581
+      ],
+      [
+        43.6522166,
+        -79.3905719
+      ],
+      [
+        43.6518358,
+        -79.3904109
+      ],
+      [
+        43.6517363,
+        -79.3903706
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "305"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "wolseley-physical-9457366",
+    "name": "Wolseley turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9457366, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6478431,
+        -79.4042015
+      ],
+      [
+        43.6479331,
+        -79.404229
+      ],
+      [
+        43.6479693,
+        -79.4042246
+      ],
+      [
+        43.6480017,
+        -79.4042142
+      ],
+      [
+        43.6480325,
+        -79.4041822
+      ],
+      [
+        43.6480455,
+        -79.4041646
+      ],
+      [
+        43.6480549,
+        -79.4041541
+      ],
+      [
+        43.6480966,
+        -79.404079
+      ],
+      [
+        43.6481185,
+        -79.4040366
+      ],
+      [
+        43.6481631,
+        -79.4040057
+      ],
+      [
+        43.6481917,
+        -79.4039971
+      ],
+      [
+        43.6482367,
+        -79.4039982
+      ],
+      [
+        43.6482641,
+        -79.4040082
+      ],
+      [
+        43.6482895,
+        -79.404025
+      ],
+      [
+        43.6483131,
+        -79.4040516
+      ],
+      [
+        43.6483294,
+        -79.4040828
+      ],
+      [
+        43.6483412,
+        -79.4041123
+      ],
+      [
+        43.6483488,
+        -79.4041451
+      ],
+      [
+        43.6483497,
+        -79.404194
+      ],
+      [
+        43.6483441,
+        -79.4042327
+      ],
+      [
+        43.6483341,
+        -79.4042678
+      ],
+      [
+        43.6483192,
+        -79.4043074
+      ],
+      [
+        43.6482919,
+        -79.4043348
+      ],
+      [
+        43.6482685,
+        -79.4043533
+      ],
+      [
+        43.648242,
+        -79.4043625
+      ],
+      [
+        43.648215,
+        -79.4043726
+      ],
+      [
+        43.6481866,
+        -79.4043727
+      ],
+      [
+        43.6481541,
+        -79.4043693
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "511"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "511"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "college-physical-680559068",
+    "name": "College turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 680559068, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6501708,
+        -79.4399854
+      ],
+      [
+        43.650173,
+        -79.4399191
+      ],
+      [
+        43.6501791,
+        -79.4398855
+      ],
+      [
+        43.6501898,
+        -79.439857
+      ],
+      [
+        43.650207,
+        -79.4398246
+      ],
+      [
+        43.650224,
+        -79.4398018
+      ],
+      [
+        43.6502444,
+        -79.4397824
+      ],
+      [
+        43.6502631,
+        -79.4397708
+      ],
+      [
+        43.6502817,
+        -79.4397616
+      ],
+      [
+        43.6502882,
+        -79.4397587
+      ],
+      [
+        43.6503341,
+        -79.4397542
+      ],
+      [
+        43.6503894,
+        -79.4397696
+      ],
+      [
+        43.6505091,
+        -79.4398167
+      ],
+      [
+        43.6506184,
+        -79.4398662
+      ],
+      [
+        43.6507107,
+        -79.4399051
+      ],
+      [
+        43.6507215,
+        -79.4399095
+      ],
+      [
+        43.6507785,
+        -79.439942
+      ],
+      [
+        43.6508067,
+        -79.4399621
+      ],
+      [
+        43.650828,
+        -79.4399835
+      ],
+      [
+        43.650836,
+        -79.4399946
+      ],
+      [
+        43.6508513,
+        -79.4400258
+      ],
+      [
+        43.6508601,
+        -79.4400492
+      ],
+      [
+        43.6508665,
+        -79.4400796
+      ],
+      [
+        43.6508673,
+        -79.4401076
+      ],
+      [
+        43.6508673,
+        -79.4401465
+      ],
+      [
+        43.6508578,
+        -79.4401869
+      ],
+      [
+        43.6507989,
+        -79.4402997
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "505",
+          "506"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "505",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "woodbine-physical-9454851",
+    "name": "Woodbine turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9454851, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6683166,
+        -79.3120565
+      ],
+      [
+        43.6682822,
+        -79.3120663
+      ],
+      [
+        43.6682561,
+        -79.3120681
+      ],
+      [
+        43.6682361,
+        -79.3120666
+      ],
+      [
+        43.668223,
+        -79.312062
+      ],
+      [
+        43.6682131,
+        -79.3120586
+      ],
+      [
+        43.6681934,
+        -79.3120469
+      ],
+      [
+        43.6681706,
+        -79.3120267
+      ],
+      [
+        43.6681552,
+        -79.3120049
+      ],
+      [
+        43.6681342,
+        -79.3119644
+      ],
+      [
+        43.6681232,
+        -79.311929
+      ],
+      [
+        43.6681117,
+        -79.3118865
+      ],
+      [
+        43.6681058,
+        -79.3118672
+      ],
+      [
+        43.6680994,
+        -79.3118246
+      ],
+      [
+        43.6680959,
+        -79.3117827
+      ],
+      [
+        43.6680943,
+        -79.3117235
+      ],
+      [
+        43.6680897,
+        -79.3116794
+      ],
+      [
+        43.6680715,
+        -79.3116057
+      ],
+      [
+        43.6680285,
+        -79.3114752
+      ],
+      [
+        43.6680048,
+        -79.3114347
+      ],
+      [
+        43.6679885,
+        -79.3114144
+      ],
+      [
+        43.6679691,
+        -79.3113952
+      ],
+      [
+        43.6679348,
+        -79.3113749
+      ],
+      [
+        43.6676737,
+        -79.311271
+      ],
+      [
+        43.6676434,
+        -79.311267
+      ],
+      [
+        43.667613,
+        -79.3112716
+      ],
+      [
+        43.6675914,
+        -79.311281
+      ],
+      [
+        43.6675835,
+        -79.3112886
+      ],
+      [
+        43.6675718,
+        -79.3112998
+      ],
+      [
+        43.6675545,
+        -79.3113266
+      ],
+      [
+        43.667533,
+        -79.3113716
+      ],
+      [
+        43.6675025,
+        -79.3114687
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "woodbine-physical-114705653",
+    "name": "Woodbine turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 114705653, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6681058,
+        -79.3118672
+      ],
+      [
+        43.6680392,
+        -79.3116312
+      ],
+      [
+        43.6680061,
+        -79.3115488
+      ],
+      [
+        43.6679654,
+        -79.3114982
+      ],
+      [
+        43.667892,
+        -79.3114512
+      ],
+      [
+        43.6676587,
+        -79.3113635
+      ],
+      [
+        43.6676305,
+        -79.3113558
+      ],
+      [
+        43.6675997,
+        -79.3113563
+      ],
+      [
+        43.6675786,
+        -79.3113644
+      ],
+      [
+        43.6675613,
+        -79.3113798
+      ],
+      [
+        43.6675481,
+        -79.3113961
+      ],
+      [
+        43.6675342,
+        -79.3114177
+      ],
+      [
+        43.6675231,
+        -79.3114367
+      ],
+      [
+        43.6675089,
+        -79.3114726
+      ],
+      [
+        43.6674851,
+        -79.3115527
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "woodbine-physical-683213760",
+    "name": "Woodbine turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213760, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6679707,
+        -79.3121948
+      ],
+      [
+        43.6680298,
+        -79.3121558
+      ],
+      [
+        43.6680387,
+        -79.3121494
+      ],
+      [
+        43.6680744,
+        -79.3121159
+      ],
+      [
+        43.668101,
+        -79.3120757
+      ],
+      [
+        43.6681181,
+        -79.3120233
+      ],
+      [
+        43.6681226,
+        -79.311964
+      ],
+      [
+        43.6681117,
+        -79.3118865
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "sunnyside-physical-9454815",
+    "name": "Sunnyside turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9454815, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6386709,
+        -79.4477788
+      ],
+      [
+        43.6387258,
+        -79.4479047
+      ],
+      [
+        43.6387581,
+        -79.447944
+      ],
+      [
+        43.6387849,
+        -79.4479654
+      ],
+      [
+        43.6388163,
+        -79.4479853
+      ],
+      [
+        43.6388472,
+        -79.4480092
+      ],
+      [
+        43.6388988,
+        -79.4480391
+      ],
+      [
+        43.6389503,
+        -79.4480738
+      ],
+      [
+        43.6389887,
+        -79.4481086
+      ],
+      [
+        43.6390092,
+        -79.4481439
+      ],
+      [
+        43.6390178,
+        -79.4481636
+      ],
+      [
+        43.6390316,
+        -79.4482139
+      ],
+      [
+        43.6390321,
+        -79.4482877
+      ],
+      [
+        43.6390248,
+        -79.4483267
+      ],
+      [
+        43.6390123,
+        -79.4483573
+      ],
+      [
+        43.638988,
+        -79.4483973
+      ],
+      [
+        43.6389667,
+        -79.4484208
+      ],
+      [
+        43.6389418,
+        -79.4484366
+      ],
+      [
+        43.6389162,
+        -79.4484477
+      ],
+      [
+        43.6389092,
+        -79.448449
+      ],
+      [
+        43.6388937,
+        -79.4484502
+      ],
+      [
+        43.6388739,
+        -79.4484481
+      ],
+      [
+        43.6388585,
+        -79.4484439
+      ],
+      [
+        43.6388461,
+        -79.4484387
+      ],
+      [
+        43.6388275,
+        -79.4484288
+      ],
+      [
+        43.6388122,
+        -79.4484171
+      ],
+      [
+        43.6387853,
+        -79.4483845
+      ],
+      [
+        43.6387644,
+        -79.4483468
+      ],
+      [
+        43.6387408,
+        -79.4482858
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "508"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fleet-physical-9457376",
+    "name": "Fleet turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9457376, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6361755,
+        -79.4054844
+      ],
+      [
+        43.636142,
+        -79.405367
+      ],
+      [
+        43.6361158,
+        -79.4053108
+      ],
+      [
+        43.6361011,
+        -79.4052921
+      ],
+      [
+        43.6360934,
+        -79.4052823
+      ],
+      [
+        43.6360345,
+        -79.4052522
+      ],
+      [
+        43.6359467,
+        -79.4052344
+      ],
+      [
+        43.6359248,
+        -79.4052312
+      ],
+      [
+        43.6358871,
+        -79.4052186
+      ],
+      [
+        43.6358586,
+        -79.4052077
+      ],
+      [
+        43.6358392,
+        -79.4051918
+      ],
+      [
+        43.6358222,
+        -79.4051759
+      ],
+      [
+        43.6358059,
+        -79.4051499
+      ],
+      [
+        43.635795,
+        -79.4051147
+      ],
+      [
+        43.6357905,
+        -79.4050812
+      ],
+      [
+        43.6357874,
+        -79.4050564
+      ],
+      [
+        43.6357903,
+        -79.4050086
+      ],
+      [
+        43.635795,
+        -79.4049697
+      ],
+      [
+        43.6358011,
+        -79.4049339
+      ],
+      [
+        43.6358131,
+        -79.4048658
+      ],
+      [
+        43.6358659,
+        -79.4045976
+      ],
+      [
+        43.6359035,
+        -79.4043939
+      ],
+      [
+        43.635914,
+        -79.4043251
+      ],
+      [
+        43.6359193,
+        -79.40429
+      ],
+      [
+        43.6359218,
+        -79.404224
+      ],
+      [
+        43.6359202,
+        -79.4041492
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "509",
+          "511"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "509",
+          "511"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fleet-physical-23483891",
+    "name": "Fleet turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 23483891, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.63611,
+        -79.4049805
+      ],
+      [
+        43.6361124,
+        -79.4050439
+      ],
+      [
+        43.636109,
+        -79.4050899
+      ],
+      [
+        43.6361017,
+        -79.4051193
+      ],
+      [
+        43.6360771,
+        -79.405173
+      ],
+      [
+        43.6360486,
+        -79.4052053
+      ],
+      [
+        43.6360254,
+        -79.4052213
+      ],
+      [
+        43.635989,
+        -79.4052338
+      ],
+      [
+        43.6359467,
+        -79.4052344
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "509",
+          "511"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fleet-physical-302350073",
+    "name": "Fleet turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 302350073, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6358131,
+        -79.4048658
+      ],
+      [
+        43.6358549,
+        -79.4047627
+      ],
+      [
+        43.6358935,
+        -79.4047303
+      ],
+      [
+        43.6359375,
+        -79.4047167
+      ],
+      [
+        43.6359824,
+        -79.4047233
+      ],
+      [
+        43.6359919,
+        -79.40473
+      ],
+      [
+        43.6360272,
+        -79.4047548
+      ],
+      [
+        43.636052,
+        -79.4047831
+      ],
+      [
+        43.6360742,
+        -79.4048312
+      ],
+      [
+        43.6360917,
+        -79.4048923
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "509",
+          "511"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "oakwood-physical-530115850",
+    "name": "Oakwood turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 530115850, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6798905,
+        -79.4343989
+      ],
+      [
+        43.6798746,
+        -79.4345145
+      ],
+      [
+        43.6798743,
+        -79.4345829
+      ],
+      [
+        43.6798788,
+        -79.4346112
+      ],
+      [
+        43.6798873,
+        -79.4346385
+      ],
+      [
+        43.6798982,
+        -79.4346629
+      ],
+      [
+        43.6799139,
+        -79.4346878
+      ],
+      [
+        43.6799249,
+        -79.4346967
+      ],
+      [
+        43.6799815,
+        -79.4347329
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "512"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "oakwood-physical-530115851",
+    "name": "Oakwood turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 530115851, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6797662,
+        -79.4357639
+      ],
+      [
+        43.6797195,
+        -79.4357429
+      ],
+      [
+        43.6797035,
+        -79.4357329
+      ],
+      [
+        43.6796899,
+        -79.4357226
+      ],
+      [
+        43.6796682,
+        -79.4356973
+      ],
+      [
+        43.6796425,
+        -79.4356574
+      ],
+      [
+        43.6796282,
+        -79.4356091
+      ],
+      [
+        43.6796223,
+        -79.4355709
+      ],
+      [
+        43.6796245,
+        -79.4355197
+      ],
+      [
+        43.6796285,
+        -79.435477
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "512"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "oakwood-physical-530115852",
+    "name": "Oakwood turnback loop",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 530115852, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6797634,
+        -79.4348572
+      ],
+      [
+        43.6797889,
+        -79.434788
+      ],
+      [
+        43.6798148,
+        -79.4347523
+      ],
+      [
+        43.6798419,
+        -79.4347301
+      ],
+      [
+        43.6798696,
+        -79.4347157
+      ],
+      [
+        43.6799044,
+        -79.4347106
+      ],
+      [
+        43.6799215,
+        -79.4347141
+      ],
+      [
+        43.6799384,
+        -79.4347176
+      ],
+      [
+        43.6799815,
+        -79.4347329
+      ],
+      [
+        43.680057,
+        -79.4347627
+      ],
+      [
+        43.6801949,
+        -79.4348186
+      ],
+      [
+        43.6805659,
+        -79.4349692
+      ],
+      [
+        43.6806047,
+        -79.4349899
+      ],
+      [
+        43.6806234,
+        -79.4350057
+      ],
+      [
+        43.6806515,
+        -79.4350385
+      ],
+      [
+        43.6806648,
+        -79.4350566
+      ],
+      [
+        43.6806788,
+        -79.4350815
+      ],
+      [
+        43.6806875,
+        -79.4351042
+      ],
+      [
+        43.6806942,
+        -79.4351224
+      ],
+      [
+        43.6807003,
+        -79.4351558
+      ],
+      [
+        43.6807013,
+        -79.4351938
+      ],
+      [
+        43.6806965,
+        -79.4352427
+      ],
+      [
+        43.6805988,
+        -79.4356531
+      ],
+      [
+        43.6805082,
+        -79.4358871
+      ],
+      [
+        43.6804797,
+        -79.4359319
+      ],
+      [
+        43.6804532,
+        -79.4359736
+      ],
+      [
+        43.6804045,
+        -79.4359976
+      ],
+      [
+        43.6803308,
+        -79.4359912
+      ],
+      [
+        43.6801144,
+        -79.435903
+      ],
+      [
+        43.6800129,
+        -79.4358627
+      ],
+      [
+        43.6799531,
+        -79.435839
+      ],
+      [
+        43.6797662,
+        -79.4357639
+      ],
+      [
+        43.6797174,
+        -79.4357517
+      ],
+      [
+        43.6796828,
+        -79.435758
+      ],
+      [
+        43.6796479,
+        -79.4357727
+      ],
+      [
+        43.6795989,
+        -79.4358294
+      ],
+      [
+        43.6795485,
+        -79.4359793
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "512"
+        ]
+      },
+      {
+        "end": "end",
+        "routes": [
+          "512"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-9423178",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9423178, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6731016,
+        -79.3193787
+      ],
+      [
+        43.6730028,
+        -79.3193367
+      ],
+      [
+        43.6729719,
+        -79.3193242
+      ],
+      [
+        43.6729413,
+        -79.3193119
+      ],
+      [
+        43.6728881,
+        -79.3192903
+      ],
+      [
+        43.672839,
+        -79.3192705
+      ],
+      [
+        43.672812,
+        -79.3192596
+      ],
+      [
+        43.6726713,
+        -79.319203
+      ],
+      [
+        43.6717368,
+        -79.318816
+      ],
+      [
+        43.6714265,
+        -79.3186875
+      ],
+      [
+        43.6708445,
+        -79.3184465
+      ],
+      [
+        43.6706471,
+        -79.3183647
+      ],
+      [
+        43.6702365,
+        -79.3181952
+      ],
+      [
+        43.6698801,
+        -79.318048
+      ],
+      [
+        43.6695537,
+        -79.3179132
+      ],
+      [
+        43.6693773,
+        -79.3178404
+      ],
+      [
+        43.6692256,
+        -79.3177774
+      ],
+      [
+        43.668959,
+        -79.3176668
+      ],
+      [
+        43.6689249,
+        -79.3176527
+      ],
+      [
+        43.6689108,
+        -79.3176464
+      ],
+      [
+        43.6687771,
+        -79.3175917
+      ],
+      [
+        43.668701,
+        -79.3175604
+      ],
+      [
+        43.6686155,
+        -79.3175252
+      ],
+      [
+        43.6679335,
+        -79.3172441
+      ],
+      [
+        43.6671706,
+        -79.3169294
+      ],
+      [
+        43.6668967,
+        -79.3168149
+      ],
+      [
+        43.6665462,
+        -79.3166693
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-23733144",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 23733144, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6668967,
+        -79.3168149
+      ],
+      [
+        43.6668584,
+        -79.3167911
+      ],
+      [
+        43.6668401,
+        -79.3167711
+      ],
+      [
+        43.6668302,
+        -79.316758
+      ],
+      [
+        43.6668217,
+        -79.3167444
+      ],
+      [
+        43.6668113,
+        -79.3167229
+      ],
+      [
+        43.6668052,
+        -79.3167014
+      ],
+      [
+        43.6667982,
+        -79.3166768
+      ],
+      [
+        43.6667921,
+        -79.3166455
+      ],
+      [
+        43.6667778,
+        -79.3165496
+      ],
+      [
+        43.6667627,
+        -79.3164565
+      ],
+      [
+        43.6667573,
+        -79.3164364
+      ],
+      [
+        43.6667506,
+        -79.3164163
+      ],
+      [
+        43.6667338,
+        -79.3163822
+      ],
+      [
+        43.6667152,
+        -79.3163532
+      ],
+      [
+        43.6667017,
+        -79.3163379
+      ],
+      [
+        43.6666868,
+        -79.3163209
+      ],
+      [
+        43.6666615,
+        -79.3162986
+      ],
+      [
+        43.6666323,
+        -79.31628
+      ],
+      [
+        43.6665886,
+        -79.3162609
+      ],
+      [
+        43.6665709,
+        -79.3162572
+      ],
+      [
+        43.6665556,
+        -79.316254
+      ],
+      [
+        43.6665257,
+        -79.3162535
+      ],
+      [
+        43.6665007,
+        -79.3162564
+      ],
+      [
+        43.6664975,
+        -79.3162577
+      ],
+      [
+        43.6664746,
+        -79.316271
+      ],
+      [
+        43.6664581,
+        -79.3162864
+      ],
+      [
+        43.6664313,
+        -79.3163225
+      ],
+      [
+        43.6664157,
+        -79.3163556
+      ],
+      [
+        43.6664089,
+        -79.3163813
+      ],
+      [
+        43.6664037,
+        -79.316415
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-683213729",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213729, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6664211,
+        -79.3162728
+      ],
+      [
+        43.6664065,
+        -79.3163679
+      ],
+      [
+        43.6664037,
+        -79.316415
+      ],
+      [
+        43.6664056,
+        -79.3164566
+      ],
+      [
+        43.6664097,
+        -79.3164799
+      ],
+      [
+        43.6664235,
+        -79.3165231
+      ],
+      [
+        43.6664373,
+        -79.316547
+      ],
+      [
+        43.6664611,
+        -79.3165704
+      ],
+      [
+        43.6665076,
+        -79.3166083
+      ],
+      [
+        43.6665556,
+        -79.3166331
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-683213767",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213767, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6665462,
+        -79.3166693
+      ],
+      [
+        43.666481,
+        -79.3166522
+      ],
+      [
+        43.6664499,
+        -79.3166492
+      ],
+      [
+        43.6664235,
+        -79.3166509
+      ],
+      [
+        43.6664148,
+        -79.3166516
+      ],
+      [
+        43.6664077,
+        -79.3166539
+      ],
+      [
+        43.6663903,
+        -79.3166629
+      ],
+      [
+        43.6663665,
+        -79.31668
+      ],
+      [
+        43.6663566,
+        -79.3166909
+      ],
+      [
+        43.6663442,
+        -79.3167068
+      ],
+      [
+        43.666326,
+        -79.3167461
+      ],
+      [
+        43.6662886,
+        -79.3168617
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-683213768",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213768, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6662859,
+        -79.3167478
+      ],
+      [
+        43.6663039,
+        -79.3166924
+      ],
+      [
+        43.6663121,
+        -79.3166755
+      ],
+      [
+        43.6663192,
+        -79.3166632
+      ],
+      [
+        43.6663289,
+        -79.3166482
+      ],
+      [
+        43.6663393,
+        -79.3166393
+      ],
+      [
+        43.6663638,
+        -79.3166183
+      ],
+      [
+        43.6663852,
+        -79.3166056
+      ],
+      [
+        43.6664143,
+        -79.316596
+      ],
+      [
+        43.6664157,
+        -79.316596
+      ],
+      [
+        43.6664268,
+        -79.3165957
+      ],
+      [
+        43.666448,
+        -79.3165985
+      ],
+      [
+        43.666472,
+        -79.3166036
+      ],
+      [
+        43.666497,
+        -79.3166099
+      ],
+      [
+        43.6665556,
+        -79.3166331
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-683213769",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213769, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6665462,
+        -79.3166693
+      ],
+      [
+        43.6664915,
+        -79.3166486
+      ],
+      [
+        43.6664584,
+        -79.3166324
+      ],
+      [
+        43.6664422,
+        -79.3166234
+      ],
+      [
+        43.6664241,
+        -79.3166081
+      ],
+      [
+        43.6664143,
+        -79.316596
+      ],
+      [
+        43.6664136,
+        -79.3165951
+      ],
+      [
+        43.6663992,
+        -79.3165747
+      ],
+      [
+        43.6663881,
+        -79.316554
+      ],
+      [
+        43.6663769,
+        -79.3165258
+      ],
+      [
+        43.6663704,
+        -79.3164998
+      ],
+      [
+        43.666367,
+        -79.3164837
+      ],
+      [
+        43.6663652,
+        -79.3164627
+      ],
+      [
+        43.6663638,
+        -79.3164412
+      ],
+      [
+        43.6663662,
+        -79.3164125
+      ],
+      [
+        43.6663728,
+        -79.3163595
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "coxwell-physical-683213772",
+    "name": "Coxwell turnback loop and connecting tracks",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 683213772, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.6665556,
+        -79.3166331
+      ],
+      [
+        43.6667451,
+        -79.3167128
+      ],
+      [
+        43.6668217,
+        -79.3167444
+      ],
+      [
+        43.6671812,
+        -79.3168923
+      ],
+      [
+        43.6679368,
+        -79.3172048
+      ],
+      [
+        43.6686155,
+        -79.3174851
+      ],
+      [
+        43.668703,
+        -79.3175213
+      ],
+      [
+        43.6687775,
+        -79.3175521
+      ],
+      [
+        43.6693498,
+        -79.317789
+      ],
+      [
+        43.6698777,
+        -79.3180092
+      ],
+      [
+        43.6705567,
+        -79.3182868
+      ],
+      [
+        43.670655,
+        -79.3183277
+      ],
+      [
+        43.6727521,
+        -79.319192
+      ],
+      [
+        43.6728197,
+        -79.3192225
+      ],
+      [
+        43.6728958,
+        -79.319255
+      ],
+      [
+        43.6729793,
+        -79.3192887
+      ],
+      [
+        43.6730134,
+        -79.3193029
+      ],
+      [
+        43.6730411,
+        -79.3193134
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "506"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kipling-physical-9454782",
+    "name": "Kipling turnback loop and Lake Shore connections",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 9454782, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.598423,
+        -79.5170461
+      ],
+      [
+        43.5985638,
+        -79.517106
+      ],
+      [
+        43.5986432,
+        -79.5171369
+      ],
+      [
+        43.598936,
+        -79.5172602
+      ],
+      [
+        43.5989724,
+        -79.5172774
+      ],
+      [
+        43.5990108,
+        -79.5173183
+      ],
+      [
+        43.5990269,
+        -79.517347
+      ],
+      [
+        43.5990429,
+        -79.5174004
+      ],
+      [
+        43.5990455,
+        -79.5174762
+      ],
+      [
+        43.5990368,
+        -79.5175184
+      ],
+      [
+        43.5990186,
+        -79.5175611
+      ],
+      [
+        43.5990038,
+        -79.5175881
+      ],
+      [
+        43.5989646,
+        -79.5176169
+      ],
+      [
+        43.5989367,
+        -79.5176243
+      ],
+      [
+        43.5988928,
+        -79.517627
+      ],
+      [
+        43.5988556,
+        -79.5176096
+      ],
+      [
+        43.5988223,
+        -79.5175699
+      ],
+      [
+        43.5987891,
+        -79.5174603
+      ],
+      [
+        43.5987839,
+        -79.5174096
+      ],
+      [
+        43.5987725,
+        -79.5173344
+      ],
+      [
+        43.5987454,
+        -79.5172683
+      ],
+      [
+        43.5987065,
+        -79.5172232
+      ],
+      [
+        43.5986312,
+        -79.5171758
+      ],
+      [
+        43.5985509,
+        -79.517144
+      ],
+      [
+        43.5984145,
+        -79.5170873
+      ]
+    ],
+    "connections": []
+  },
+  {
+    "id": "kipling-physical-699214220",
+    "name": "Kipling turnback loop and Lake Shore connections",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 699214220, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.5981541,
+        -79.5171588
+      ],
+      [
+        43.5981786,
+        -79.517092
+      ],
+      [
+        43.5981867,
+        -79.5170807
+      ],
+      [
+        43.5982073,
+        -79.5170556
+      ],
+      [
+        43.5982258,
+        -79.517038
+      ],
+      [
+        43.5982467,
+        -79.5170263
+      ],
+      [
+        43.5982654,
+        -79.5170179
+      ],
+      [
+        43.5982827,
+        -79.5170119
+      ],
+      [
+        43.5982902,
+        -79.5170102
+      ],
+      [
+        43.5983131,
+        -79.5170121
+      ],
+      [
+        43.5983574,
+        -79.5170239
+      ],
+      [
+        43.598423,
+        -79.5170461
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "507",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kipling-physical-1341324842",
+    "name": "Kipling turnback loop and Lake Shore connections",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1341324842, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.5984145,
+        -79.5170873
+      ],
+      [
+        43.598345,
+        -79.5170585
+      ],
+      [
+        43.5983181,
+        -79.5170437
+      ],
+      [
+        43.5983076,
+        -79.5170368
+      ],
+      [
+        43.5982911,
+        -79.5170226
+      ],
+      [
+        43.5982827,
+        -79.5170119
+      ],
+      [
+        43.5982771,
+        -79.5170047
+      ],
+      [
+        43.5982588,
+        -79.5169793
+      ],
+      [
+        43.5982457,
+        -79.5169478
+      ],
+      [
+        43.5982379,
+        -79.5169173
+      ],
+      [
+        43.5982317,
+        -79.5168726
+      ],
+      [
+        43.5982339,
+        -79.5168443
+      ],
+      [
+        43.5982393,
+        -79.5167759
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "507",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kipling-physical-1341324843",
+    "name": "Kipling turnback loop and Lake Shore connections",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1341324843, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.5982884,
+        -79.5166842
+      ],
+      [
+        43.598271,
+        -79.5168157
+      ],
+      [
+        43.5982703,
+        -79.5168591
+      ],
+      [
+        43.5982719,
+        -79.5168835
+      ],
+      [
+        43.5982787,
+        -79.5169123
+      ],
+      [
+        43.5982875,
+        -79.5169368
+      ],
+      [
+        43.5982972,
+        -79.5169559
+      ],
+      [
+        43.5983196,
+        -79.516983
+      ],
+      [
+        43.5983511,
+        -79.5170092
+      ],
+      [
+        43.598423,
+        -79.5170461
+      ]
+    ],
+    "connections": [
+      {
+        "end": "start",
+        "routes": [
+          "501",
+          "507",
+          "508"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "kipling-physical-1341324844",
+    "name": "Kipling turnback loop and Lake Shore connections",
+    "kind": "physical",
+    "scheduledService": false,
+    "sourceNote": "Physical corridor verified against TTC Streetcar Overhead Operations, Exhibit 2 (2023): https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf . Geometry: OpenStreetMap way 1341324844, retrieved 2026-10-04; © OpenStreetMap contributors, ODbL https://www.openstreetmap.org/copyright . Centreline graph does not encode directional switch permissions.",
+    "verifiedAt": "2026-10-04",
+    "points": [
+      [
+        43.5984145,
+        -79.5170873
+      ],
+      [
+        43.5983407,
+        -79.5170679
+      ],
+      [
+        43.5983147,
+        -79.5170658
+      ],
+      [
+        43.598301,
+        -79.5170663
+      ],
+      [
+        43.5982865,
+        -79.5170689
+      ],
+      [
+        43.59827,
+        -79.5170726
+      ],
+      [
+        43.5982559,
+        -79.5170809
+      ],
+      [
+        43.5982377,
+        -79.5170943
+      ],
+      [
+        43.5982228,
+        -79.5171116
+      ],
+      [
+        43.5982086,
+        -79.5171336
+      ],
+      [
+        43.5981957,
+        -79.5171634
+      ],
+      [
+        43.5981619,
+        -79.5172603
+      ]
+    ],
+    "connections": [
+      {
+        "end": "end",
+        "routes": [
+          "501",
+          "507",
+          "508"
+        ]
+      }
+    ]
   }
 ]
