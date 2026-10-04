@@ -69,11 +69,39 @@ fictional replacement pickups when the feed is unavailable. The displayed cars
 retain the explorer's snapshot cadence; no independent game feed or invented
 vehicle motion is added.
 
-The game supplies directional virtual rails offset three metres from the
-centreline and same-edge terminal reversals. These are simulation conventions,
-not surveyed track or dispatch permissions. Collisions and consist spacing use
-source metres; high-speed movement is sampled in steps of at most three metres.
-The game pauses when the page is hidden or loses focus.
+The game supplies directional virtual rails offset 3.2 metres from the
+centreline and smooth same-edge terminal turnback connectors. The head and
+following cars travel through the connector in measured metres; reversal does
+not teleport the train between rails. Named terminal sizes follow the classic
+game's Union/station/loop/carhouse distinctions. These are simulation conventions,
+not surveyed track or dispatch permissions. Collision bodies follow connected
+track segments in source metres, including bends and switches, rather than
+straight tangent capsules. Both live-car and self-collisions require overlap on
+the same directed graph edge. The opposite rail stays separate through loops
+and return trips; entering your own occupied rail still ends an arcade run.
+Trail samples retain their edge, direction and source distance so the rear
+follows the switches actually taken. High-speed movement is sampled in steps
+of at most three metres.
+Closed graph edges continue in their current direction. Signed mission terminal
+departures reverse the ordered path even when extra branches are present.
+
+An amber ring marks the next fork. The green path and arrow show the train's
+actual departure, dashed for automatic routing and solid for a manual selection.
+Switch labels name the branch direction and service or infrastructure. Preview,
+next-stop guidance and movement use the same routing and mission rejoin rules.
+Automatic free-play routing prefers service continuity and avoids yard/diversion
+tracks; explicit switches override it. Left/right select the outermost available
+branch and straight selects the smallest turn, including curved-only forks.
+Warnings use the original 4.5-second lookahead bounded to 230–1400 metres.
+
+The original acceleration/braking rates are 34/58 km/h per second in purist and
+360/420 in arcade. Both held pedals combine; released pedals retain speed.
+Governors remain 50/2000 km/h. Keyboard and pointer holds highlight the same
+pedals and release on cancellation, lost capture or blur. A two-finger pinch
+beginning anywhere in the cockpit releases the pedals and zooms only the map,
+without throwing a switch or resizing the controls. The game pauses when the
+page is hidden or loses focus. See [the driving review](./snake-driving-review.md)
+for the comparison with the classic implementation and regression coverage.
 
 The original `N()`/`E()` game is archived unchanged at
 `public/snake/v1/game.js`, with its HTML asset links and PWA manifest scoped to

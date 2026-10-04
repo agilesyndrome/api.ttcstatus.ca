@@ -625,8 +625,14 @@ normal cadence, and stale or off-track reports do not affect either mode.
 Free play, signed route missions with return trips, manual switches, keyboard
 controls, touch pedals, swipe steering, pinch zoom, next-stop guidance, a
 minimap, sound muting and local high scores are available. Use ↑/↓ or +/− for
-speed, ←/→/Space for switches, P to pause and Escape to return to xplore. The
+speed, ←/→/Space or Q/E/R for switches, P to pause and Escape to return to xplore. The
 run also pauses when the page becomes hidden or loses focus.
+
+Amber switch markers and green departure arrows show the selected track;
+automatic guidance is dashed and manual selection is solid. Terminal turnbacks
+carry the train onto the opposite rail without false tail collisions. Original
+pedal rates and held-control feedback are retained. See the
+[driving review](./docs/snake-driving-review.md) for the classic-game comparison.
 
 The complete original game remains playable at `/snake/v1/`, including its
 original map, modes, missions, multipliers, Transit Control events and resume

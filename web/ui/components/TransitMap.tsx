@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { fitCamera, moveCamera, zoomCamera } from '../../map/camera';
 import { boundsOf, type Bounds, type Feature, type Point, type ViewerData } from '../../map/model';
 import { streetcarBody, type PlottedVehicle } from '../../map/live-status';
 
+export interface TransitMapControls { zoomBy(factor: number, clientPoint?: Point): void; cancelGesture(): void }
 interface Props {
   data: ViewerData; cars?: PlottedVehicle[]; selectedRoute?: string; selectedFeature?: Feature; focusPoint?: Point;
   showLabels?: boolean; includeOvernight?: boolean; resetKey?: number;
@@ -10,6 +11,7 @@ interface Props {
   focusBounds?: Bounds; comparisonStops?: { from?: Feature; to?: Feature }; pickingLabel?: string;
   onInteract?(): void; onExport?(): void;
   overlay?: ReactNode | ((scale: number) => ReactNode); mapTools?: ReactNode; driving?: boolean; mapId?: string;
+  controlsRef?: RefObject<TransitMapControls | null>;
   onSelectFeature(feature: Feature): void; onSelectVehicle(car: PlottedVehicle): void;
 }
 const points = (values: Point[]) => values.map(point => point.join(',')).join(' ');
@@ -21,7 +23,7 @@ const Tracks = memo(function Tracks({ data, selectedRoute, includeOvernight }: P
   })}</g>;
 });
 
-export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, savedStopIds = [], locationPoint, selectedVehicleId, focusBounds, comparisonStops, pickingLabel, onInteract, onExport, overlay, mapTools, driving = false, mapId = 'map', onSelectFeature, onSelectVehicle }: Props) {
+export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, savedStopIds = [], locationPoint, selectedVehicleId, focusBounds, comparisonStops, pickingLabel, onInteract, onExport, overlay, mapTools, driving = false, mapId = 'map', controlsRef, onSelectFeature, onSelectVehicle }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
   const initial = fitCamera(data.bounds, size.width / size.height);
@@ -53,6 +55,17 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
     const rect = svg.current!.getBoundingClientRect(), current = cameraRef.current;
     return [current.x + (clientX - rect.left) * current.width / rect.width, current.y + (clientY - rect.top) * current.height / rect.height];
   }
+  useEffect(() => {
+    if (!controlsRef) return;
+    controlsRef.current = {
+      zoomBy: (factor, clientPoint) => zoom(factor, clientPoint ? world(...clientPoint) : undefined),
+      cancelGesture: () => {
+        for (const id of pointers.current.keys()) if (svg.current?.hasPointerCapture(id)) svg.current.releasePointerCapture(id);
+        pointers.current.clear(); moved.current = true;
+      },
+    };
+    return () => { controlsRef.current = null; };
+  }, [controlsRef, data]);
   useEffect(() => {
     const node = svg.current!;
     const observer = new ResizeObserver(([entry]) => {

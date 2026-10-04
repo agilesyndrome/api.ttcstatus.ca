@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Point, ViewerData } from '../../map/model';
 import type { PlottedVehicle } from '../../map/live-status';
 import type { FeedState } from './LiveFeedStatus';
-import { TransitMap } from './TransitMap';
+import { TransitMap, type TransitMapControls } from './TransitMap';
 import { localToMap } from '../../../workers/shared/map-projection';
 import { SnakeEngine, gameMissions, type Mode, type Turn } from '../snake/engine';
 
@@ -33,6 +33,10 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
   const pedals = useRef(new Map<number, number>());
   const audio = useRef<AudioContext | undefined>(undefined);
   const soundMuted = useRef(muted); soundMuted.current = muted;
+  const mapControls = useRef<TransitMapControls | null>(null);
+  const touches = useRef(new Map<number, Point>());
+  const pinching = useRef(false);
+  const pinchDistance = useRef(0);
   const swipe = useRef<{ x: number; y: number; multiple: boolean } | undefined>(undefined);
   const originBounds = useMemo(() => {
     const point = engine.pose().point, width = data.bounds.width / 7, height = data.bounds.height / 7;
@@ -61,35 +65,36 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
   useEffect(() => {
     const node = dialog.current!;
     node.showModal();
-    return () => { node.close(); void audio.current?.close(); };
-  }, []);
+    const preventPageZoom = (event: Event) => { if (engine.status === 'running' || engine.status === 'paused') event.preventDefault(); };
+    const gestures = ['gesturestart', 'gesturechange', 'gestureend'];
+    gestures.forEach(name => node.addEventListener(name, preventPageZoom, { passive: false }));
+    return () => { gestures.forEach(name => node.removeEventListener(name, preventPageZoom)); node.close(); void audio.current?.close(); };
+  }, [engine]);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
       if (event.target instanceof HTMLElement && event.target.closest('input,select,textarea,a')) return;
       const key = event.key.toLowerCase();
       if (key === ' ' && event.target instanceof HTMLElement && event.target.closest('button')) return;
-      if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', '+', '=', '-', 'p'].includes(key)) return;
+      if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', '+', '=', '-', '_', 'q', 'e', 'r', 'p'].includes(key)) return;
       if (engine.status === 'ready' || engine.status === 'over') return;
       event.preventDefault(); event.stopPropagation();
-      keys.current.add(key);
+      keys.current.add(event.code || key);
       if (event.repeat) return;
       if (key === 'p') pause();
-      else if (key === 'arrowleft') steer('left');
-      else if (key === 'arrowright') steer('right');
-      else if (key === ' ') steer('straight');
+      else if (key === 'arrowleft' || key === 'q') steer('left');
+      else if (key === 'arrowright' || key === 'e') steer('right');
+      else if (key === ' ' || key === 'r') steer('straight');
     };
-    const keyup = (event: KeyboardEvent) => keys.current.delete(event.key.toLowerCase());
-    const away = () => { keys.current.clear(); pedals.current.clear(); if (engine.status === 'running') { engine.pause(); redraw(); } };
+    const keyup = (event: KeyboardEvent) => keys.current.delete(event.code || event.key.toLowerCase());
+    const away = () => { keys.current.clear(); pedals.current.clear(); touches.current.clear(); pinching.current = false; mapControls.current?.cancelGesture(); if (engine.status === 'running') { engine.pause(); redraw(); } };
     const visibility = () => { if (document.hidden) away(); };
     window.addEventListener('keydown', keydown, true); window.addEventListener('keyup', keyup);
     window.addEventListener('blur', away); document.addEventListener('visibilitychange', visibility);
     let frame: number, previous = 0, lastDraw = 0;
     const animate = (now: number) => {
       const before = engine.count;
-      const brake = keys.current.has('arrowdown') || keys.current.has('-') || [...pedals.current.values()].includes(-1);
-      const throttle = keys.current.has('arrowup') || keys.current.has('+') || keys.current.has('=') || [...pedals.current.values()].includes(1);
-      engine.tick(previous ? (now - previous) / 1000 : 0, traffic.current, brake ? -1 : throttle ? 1 : 0);
+      engine.tick(previous ? (now - previous) / 1000 : 0, traffic.current, heldPedals());
       previous = now;
       if (engine.count > before) chime();
       if (now - lastDraw >= 32) { redraw(); lastDraw = now; }
@@ -107,7 +112,15 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
     try { localStorage.setItem('ttc:snake:v2:best', String(engine.count)); } catch { /* A run does not require browser storage. */ }
   }, [engine.count, best, engine]);
 
+  function heldPedals() {
+    const has = (codes: string[]) => codes.some(code => keys.current.has(code));
+    return { accelerator: has(['ArrowUp','Equal','NumpadAdd','arrowup','+','=']) || [...pedals.current.values()].includes(1),
+      brake: has(['ArrowDown','Minus','NumpadSubtract','arrowdown','-','_']) || [...pedals.current.values()].includes(-1) };
+  }
   const pose = engine.pose(), body = engine.body(), upcoming = engine.upcoming(), nextStop = engine.nextStop();
+  const preview = engine.routePreview((upcoming?.distance ?? 0) + 85), held = heldPedals();
+  const previewEnd = preview.at(-1)!, previewBefore = preview.at(-2) ?? previewEnd;
+  const previewAngle = Math.atan2(previewEnd[1] - previewBefore[1], previewEnd[0] - previewBefore[0]) * 180 / Math.PI;
   const fresh = cars.filter(car => !car.stale && car.match && !engine.collected.has(car.vehicle.id));
   const visibleCars = cars.filter(car => !engine.collected.has(car.vehicle.id));
   const playing = engine.status === 'running' || engine.status === 'paused';
@@ -121,7 +134,36 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
     onKeyUp: () => pedals.current.delete(-value - 10),
     onBlur: () => pedals.current.delete(-value - 10),
   });
-  return <dialog ref={dialog} className="snake-game" aria-labelledby="snake-title" onCancel={event => { event.preventDefault(); onClose(); }}>
+  function pinchStart(event: React.PointerEvent<HTMLDialogElement>) {
+    if (event.pointerType !== 'touch' || !playing) return;
+    touches.current.set(event.pointerId, [event.clientX, event.clientY]);
+    if (touches.current.size < 2) return;
+    event.preventDefault(); event.stopPropagation();
+    const [a, b] = [...touches.current.values()];
+    pinchDistance.current = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (!pinching.current) {
+      pinching.current = true; keys.current.clear(); pedals.current.clear(); swipe.current = undefined;
+      mapControls.current?.cancelGesture(); redraw();
+      for (const id of touches.current.keys()) event.currentTarget.setPointerCapture(id);
+    }
+  }
+  function pinchMove(event: React.PointerEvent<HTMLDialogElement>) {
+    if (!touches.current.has(event.pointerId)) return;
+    touches.current.set(event.pointerId, [event.clientX, event.clientY]);
+    if (!pinching.current) return;
+    event.preventDefault(); event.stopPropagation();
+    if (touches.current.size < 2) return;
+    const [a, b] = [...touches.current.values()], distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (distance && pinchDistance.current) mapControls.current?.zoomBy(pinchDistance.current / distance, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+    pinchDistance.current = distance;
+  }
+  function pinchEnd(event: React.PointerEvent<HTMLDialogElement>) {
+    touches.current.delete(event.pointerId);
+    if (!pinching.current) return;
+    event.preventDefault(); event.stopPropagation();
+    if (!touches.current.size) { pinching.current = false; pinchDistance.current = 0; mapControls.current?.cancelGesture(); }
+  }
+  return <dialog ref={dialog} onPointerDownCapture={pinchStart} onPointerMoveCapture={pinchMove} onPointerUpCapture={pinchEnd} onPointerCancelCapture={pinchEnd} className="snake-game" aria-labelledby="snake-title" onCancel={event => { event.preventDefault(); onClose(); }}>
     <div className="snake-world" onPointerDown={event => {
       if (event.pointerType !== 'touch' || !(event.target as Element).closest('svg')) return;
       if (swipe.current) swipe.current.multiple = true;
@@ -133,10 +175,13 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
       if (Math.hypot(dx, dy) < 45) return;
       steer(Math.abs(dx) > Math.abs(dy) ? dx < 0 ? 'left' : 'right' : 'straight');
     }} onPointerCancel={() => { swipe.current = undefined; }}>
-      <TransitMap mapId="snake-map" data={data} cars={visibleCars} includeOvernight showLabels driving focusPoint={follow && playing ? pose.point : undefined} focusBounds={originBounds} onInteract={() => setFollow(false)} onSelectFeature={noSelection} onSelectVehicle={noSelection} overlay={scale => <g className="snake-train" pointerEvents="none">
+      <TransitMap controlsRef={mapControls} mapId="snake-map" data={data} cars={visibleCars} includeOvernight showLabels driving focusPoint={follow && playing ? pose.point : undefined} focusBounds={originBounds} onInteract={() => setFollow(false)} onSelectFeature={noSelection} onSelectVehicle={noSelection} overlay={scale => <g className="snake-train" pointerEvents="none">
+        <polyline data-snake-route-preview data-selection={upcoming?.manual ? 'manual' : 'automatic'} points={preview.map(point => point.join(',')).join(' ')} fill="none" stroke="var(--surface)" strokeWidth={9} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+        <polyline points={preview.map(point => point.join(',')).join(' ')} fill="none" stroke="#087f5b" strokeWidth={5} strokeDasharray={upcoming?.manual ? undefined : '6 4'} vectorEffect="non-scaling-stroke" strokeLinecap="round" opacity={.85} />
+        {preview.length > 1 && <path d="M-8 -6L0 0L-8 6" transform={`translate(${previewEnd.join(' ')}) rotate(${previewAngle}) scale(${1 / scale})`} fill="none" stroke="#087f5b" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />}
         <polyline points={body.map(sample => sample.point.join(',')).join(' ')} fill="none" stroke="var(--surface)" strokeWidth={9} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
         <polyline points={body.map(sample => sample.point.join(',')).join(' ')} fill="none" stroke="#278f91" strokeWidth={5} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
-        {upcoming && <circle cx={upcoming.point[0]} cy={upcoming.point[1]} r={3} fill="none" stroke="#c17e16" strokeWidth={3} vectorEffect="non-scaling-stroke" />}
+        {upcoming && <circle cx={upcoming.point[0]} cy={upcoming.point[1]} r={13 / scale} fill="#f4a30025" stroke="#f4a300" strokeWidth={3} vectorEffect="non-scaling-stroke" />}
         {engine.carCentres().map((car, index) => {
           const front = localToMap([car.source[0] + car.tangent[0] * 15.1, car.source[1] + car.tangent[1] * 15.1], data.geographicTransform);
           const back = localToMap([car.source[0] - car.tangent[0] * 15.1, car.source[1] - car.tangent[1] * 15.1], data.geographicTransform);
@@ -150,7 +195,7 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
         })}
       </g>} />
     </div>
-    <header className="snake-top"><div><strong id="snake-title">🐍 Streetcar Snake</strong><small>{engine.status === 'ready' ? 'Toronto, on the rails' : `${engine.mode === 'purist' ? 'Purist' : 'Arcade'} · ${engine.mission ? engine.mission.label : 'Free play'}`}</small></div><button aria-label="Close Streetcar Snake" onClick={onClose}>✕</button></header>
+    <header className="snake-top"><div><strong id="snake-title">🐍 Streetcar Snake</strong><small>{engine.status === 'ready' ? 'Toronto, on the rails' : `${engine.mode === 'purist' ? 'Purist' : 'Arcade'} · ${engine.mission ? `${data.routes.find(route => route.id === engine.mission?.routeId)?.number} · ${engine.destination}` : 'Free play'}`}</small></div><button aria-label="Close Streetcar Snake" onClick={onClose}>✕</button></header>
     {playing && <Minimap data={data} point={pose.point} />}
     <div className="snake-hud"><span><b data-snake-count>{engine.count}</b> {engine.count === 1 ? 'car' : 'cars'}</span><span><b data-snake-speed>{Math.round(engine.speed)}</b> km/h</span><span>{engine.trips ? `${engine.trips} trips · ` : ''}Best {best}</span></div>
     {playing && <div className="snake-status"><p role="status">{engine.message}</p>{nextStop && <p>Next stop: {nextStop.name} · {Math.round(nextStop.metres)} m</p>}<small>{feedText}</small>{feed.snapshot && <small>Positions: {new Date(feed.snapshot.feedTimestamp ?? feed.snapshot.fetchedAt).toLocaleTimeString()} · {feed.snapshot.attribution}</small>}</div>}
@@ -162,17 +207,17 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
       <p>{mode === 'arcade' ? 'Couple live streetcars into an ever longer train. Avoid your own tail. Start at 180 km/h, with arcade overdrive up to 2000.' : 'Drive one streetcar at up to 50 km/h. Touch another streetcar and the run ends.'}</p>
       <label>Route<select aria-label="Route" value={missionId} onChange={event => setMissionId(event.target.value)}><option value="">Free play — all tracks</option>{missions.map(mission => <option key={mission.id} value={mission.id}>{mission.label}</option>)}</select></label>
       <p>Route missions follow the signed path. Reach the terminal for a return trip and, in arcade, a bonus car. Manual switches let you divert.</p>
-      <p className="snake-instructions">↑ / ↓ accelerate and brake · ← / → / Space throw switches · P pauses. On mobile, hold the pedals and tap a switch or swipe. Pinch to zoom.</p>
+      <p className="snake-instructions">↑ / ↓ accelerate and brake · ← / → / Space (or Q / E / R) throw switches · P pauses. On mobile, hold the pedals and tap a switch or swipe. Pinch to zoom.</p>
       <p className="snake-feed-note">{feedText}. Only fresh, on-track reports count. Positions update with the map’s live feed.</p>
       <label className="snake-mute"><input type="checkbox" checked={muted} onChange={event => { setMuted(event.target.checked); try { localStorage.setItem('ttc:snake:v2:muted', event.target.checked ? '1' : '0'); } catch { /* Optional preference. */ } }} />Mute sounds</label>
       <button className="primary-action" onClick={depart}>{engine.status === 'over' ? 'Play again' : 'Depart'}</button>
       <a href="/snake/v1/">Play the classic original ↗</a>
     </section> : <>
       {engine.status === 'paused' && <div className="snake-paused"><strong>Paused</strong><button onClick={pause}>Resume driving</button></div>}
-      <div className="snake-switches" aria-label="Switch controls"><small>{upcoming ? `Switch in ${Math.round(upcoming.distance)} m` : 'Queue the next switch'}</small><div>
-        {upcoming ? upcoming.choices.map(choice => <button key={choice.edgeId} aria-pressed={engine.queued === choice.edgeId || engine.queued === choice.turn} onClick={() => steer(choice.edgeId)}>{choice.label}</button>) : (['left', 'straight', 'right'] as Turn[]).map(turn => <button key={turn} aria-pressed={engine.queued === turn} onClick={() => steer(turn)}>{turn === 'left' ? '← Left' : turn === 'right' ? 'Right →' : '↑ Straight'}</button>)}
+      <div className="snake-switches" aria-label="Switch controls"><small>{engine.turningAround ? `Turning around · ${Math.round(engine.turnbackRemaining)} m` : upcoming ? `${upcoming.manual ? 'Selected' : 'Auto'}: ${upcoming.selected.label} · ${Math.round(upcoming.distance)} m` : engine.queued ? `Queued: ${engine.queued}` : 'Queue the next switch'}</small><div>
+        {upcoming ? upcoming.choices.map(choice => <button key={choice.edgeId} aria-pressed={upcoming.selected.edgeId === choice.edgeId} data-selection={upcoming.selected.edgeId === choice.edgeId ? upcoming.manual ? 'manual' : 'automatic' : undefined} onClick={() => steer(choice.edgeId)}>{choice.label}</button>) : (['left', 'straight', 'right'] as Turn[]).map(turn => <button key={turn} aria-pressed={engine.queued === turn} onClick={() => steer(turn)}>{turn === 'left' ? '← Left' : turn === 'right' ? 'Right →' : '↑ Straight'}</button>)}
       </div></div>
-      <div className="snake-pedals"><button className="snake-brake" {...pedal(-1)}>Hold to brake</button><div><button onClick={pause}>{engine.status === 'paused' ? 'Resume' : 'Pause'}</button><button aria-pressed={follow} onClick={() => setFollow(current => !current)}>{follow ? 'Following' : 'Follow car'}</button></div><button className="snake-accelerator" {...pedal(1)}>Hold to accelerate</button></div>
+      <div className="snake-pedals"><button className="snake-brake" aria-pressed={held.brake} data-held={held.brake} {...pedal(-1)}>Hold to brake</button><div><button onClick={pause}>{engine.status === 'paused' ? 'Resume' : 'Pause'}</button><button aria-pressed={follow} onClick={() => setFollow(current => !current)}>{follow ? 'Following' : 'Follow car'}</button></div><button className="snake-accelerator" aria-pressed={held.accelerator} data-held={held.accelerator} {...pedal(1)}>Hold to accelerate</button></div>
     </>}
   </dialog>;
 }

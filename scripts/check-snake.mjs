@@ -5,8 +5,19 @@ import { chromium } from 'playwright';
 
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('streetcar-schematic.json', 'utf8'));
-const compiled = await build({ stdin: { contents: `export { mapToGps, pointAlongEdge } from './workers/shared/map-projection';`, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'esm' });
-const { mapToGps, pointAlongEdge } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+const compiled = await build({ stdin: { contents: `export { mapToGps, pointAlongEdge } from './workers/shared/map-projection'; export { demoData } from './web/ui/stories/fixtures';`, resolveDir: process.cwd(), loader: 'ts' }, bundle: true, write: false, format: 'esm' });
+const { mapToGps, pointAlongEdge, demoData } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+const fixtureEdge = (id,a,b,sourcePoints,routeIds=['501']) => {
+  const lengthMetres=Math.hypot(sourcePoints[1][0]-sourcePoints[0][0],sourcePoints[1][1]-sourcePoints[0][1]);
+  return {id,a,b,sourcePoints,routeIds,points:sourcePoints.map(([x,y])=>[x+50,150-y]),sourceDistances:[0,lengthMetres],lengthMetres,infrastructureIds:[]};
+};
+// A known fork makes switch/preview tests reproducible instead of depending on
+// a random starting edge and whatever branches happen to be near it.
+const forkMap={display:{geographicTransform:demoData.geographicTransform},routes:[{id:'501',shortName:'501',longName:'Queen'},{id:'504',shortName:'504',longName:'King'}],
+  graph:{edges:[fixtureEdge('stem','a','b',[[0,0],[350,0]]),fixtureEdge('straight','b','c',[[350,0],[450,0]]),fixtureEdge('left','b','d',[[350,0],[350,100]]),fixtureEdge('right','b','e',[[350,0],[350,-100]],['504'])]},
+  stops:[{id:'left-stop',name:'Left stop',x:400,y:110,routeIds:['501'],stopIds:['left-stop'],edgeId:'left',distanceAlongMetres:40},
+    {id:'right-stop',name:'Right stop',x:400,y:210,routeIds:['504'],stopIds:['right-stop'],edgeId:'right',distanceAlongMetres:60}],
+  patterns:[],paths:[],infrastructure:[],context:{shoreline:[],labels:[],north:{angle:-90}}};
 const errors = [], requests = [];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
@@ -70,8 +81,9 @@ try {
   assert.ok(await launch.evaluate(element => element === document.activeElement), 'closing restores launcher focus');
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await mobileContext.addInitScript(()=>{Math.random=()=>.5;});
   await mobileContext.route('**/api/v1/auth/config', route => route.fulfill({ json: { enabled: false } }));
-  await mobileContext.route('**/api/v1/map/streetcar?format=schematic-v1', route => route.fulfill({ json: map }));
+  await mobileContext.route('**/api/v1/map/streetcar?format=schematic-v1', route => route.fulfill({ json: forkMap }));
   await mobileContext.route('**/api/v1/vehicles/streetcar', route => route.fulfill({ json: { schemaVersion: 1, source:'empty-fixture', attribution:'Fixture', fetchedAt: new Date().toISOString(), feedTimestamp: null, invalidPositions:0, vehicles:[] } }));
   const mobile = await mobileContext.newPage();
   mobile.on('pageerror', error => errors.push(error.message));
@@ -79,6 +91,10 @@ try {
   const cockpit = mobile.getByRole('dialog');
   await cockpit.getByRole('button', { name: 'Depart', exact:true }).tap();
   await mobile.waitForTimeout(150);
+  await cockpit.getByRole('button',{name:'Pause',exact:true}).tap();
+  await cockpit.getByText('Paused',{exact:true}).waitFor({timeout:2000});
+  await cockpit.getByRole('button',{name:'Resume driving',exact:true}).tap();
+  assert.equal(await cockpit.getByRole('button',{name:'↑ Straight · 501',exact:true}).getAttribute('data-selection'),'automatic');
   assert.ok(await cockpit.getByRole('button', { name:'Hold to brake' }).isVisible());
   assert.ok(await cockpit.getByRole('button', { name:'Hold to accelerate' }).isVisible());
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -89,11 +105,36 @@ try {
   assert.ok(Number(await cockpit.locator('[data-snake-speed]').innerText()) < 180);
   const touch = await mobileContext.newCDPSession(mobile);
   await touch.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x:240,y:460,id:1}] });
+  await mobile.waitForTimeout(80);
   await touch.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:150,y:460,id:1}] });
+  await mobile.waitForTimeout(80);
   await touch.send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
-  assert.equal(await cockpit.getByRole('button',{name:'← Left',exact:true}).getAttribute('aria-pressed'),'true','single-finger swipe steers');
+  const left=cockpit.getByRole('button',{name:'← Left · 501',exact:true});
+  assert.equal(await left.getAttribute('aria-pressed'),'true','single-finger swipe steers');
+  assert.equal(await left.getAttribute('data-selection'),'manual');
+  await cockpit.getByText(/Next stop: Left stop/).waitFor();
   assert.equal(await cockpit.getByRole('button',{name:'Following',exact:true}).getAttribute('aria-pressed'),'true','steering does not disable camera following');
+  await mobile.waitForTimeout(350); // Let Chromium finish the preceding CDP swipe's touch gesture.
   await cockpit.getByRole('button', { name:'Pause', exact:true }).tap();
+  await cockpit.getByText('Paused',{exact:true}).waitFor({timeout:2000});
+  const selectedPreview=await cockpit.locator('[data-snake-route-preview]').getAttribute('points');
+  await mobile.keyboard.press('e');
+  assert.equal(await cockpit.getByRole('button',{name:'Right → · 504',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.notEqual(await cockpit.locator('[data-snake-route-preview]').getAttribute('points'),selectedPreview,'selected track changes the green departure preview');
+  await cockpit.getByText(/Next stop: Right stop/).waitFor();
+  await mobile.keyboard.press('r');
+  assert.equal(await cockpit.getByRole('button',{name:'↑ Straight · 501',exact:true}).getAttribute('data-selection'),'manual');
+  await mobile.keyboard.press('q');
+  assert.equal(await left.getAttribute('aria-pressed'),'true');
+  await mobile.keyboard.down('ArrowDown'); await mobile.waitForTimeout(60);
+  assert.equal(await brake.getAttribute('data-held'),'true','keyboard braking highlights the same pedal');
+  await mobile.keyboard.up('ArrowDown'); await mobile.waitForTimeout(60);
+  assert.equal(await brake.getAttribute('data-held'),'false');
+  const accelerator=cockpit.getByRole('button',{name:'Hold to accelerate'});
+  await mobile.keyboard.down('Shift'); await mobile.keyboard.down('Equal'); await mobile.waitForTimeout(60);
+  assert.equal(await accelerator.getAttribute('data-held'),'true');
+  await mobile.keyboard.up('Shift'); await mobile.keyboard.up('Equal'); await mobile.waitForTimeout(60);
+  assert.equal(await accelerator.getAttribute('data-held'),'false','releasing Shift before + does not leave the accelerator stuck');
   const beforePinch=(await cockpit.locator('#snake-map').getAttribute('viewBox')).split(' ').map(Number)[2];
   await touch.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x:120,y:580,id:1},{x:250,y:580,id:2}] });
   await touch.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:90,y:580,id:1},{x:280,y:580,id:2}] });
@@ -101,7 +142,17 @@ try {
   await mobile.waitForTimeout(100);
   const afterPinch=(await cockpit.locator('#snake-map').getAttribute('viewBox')).split(' ').map(Number)[2];
   assert.ok(afterPinch<beforePinch,'two-finger pinch zooms the shared map');
-  assert.equal(await cockpit.getByRole('button',{name:'← Left',exact:true}).getAttribute('aria-pressed'),'true','pinch never changes the queued switch');
+  assert.equal(await left.getAttribute('aria-pressed'),'true','pinch never changes the queued switch');
+  const brakeBox=await brake.boundingBox(),acceleratorBox=await accelerator.boundingBox(),hudBox=await cockpit.locator('.snake-hud').boundingBox();
+  const pedalPoints=[{x:brakeBox.x+brakeBox.width/2,y:brakeBox.y+brakeBox.height/2,id:1},{x:acceleratorBox.x+acceleratorBox.width/2,y:acceleratorBox.y+acceleratorBox.height/2,id:2}];
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:pedalPoints});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:pedalPoints.map((point,index)=>({...point,x:point.x+(index?20:-20)}))});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await mobile.waitForTimeout(100);
+  assert.ok(Number((await cockpit.locator('#snake-map').getAttribute('viewBox')).split(' ')[2])<afterPinch,'pinch beginning on the pedals still zooms the map');
+  assert.equal(await brake.getAttribute('data-held'),'false'); assert.equal(await accelerator.getAttribute('data-held'),'false','pinch releases both pedals');
+  assert.equal((await cockpit.locator('.snake-hud').boundingBox()).width,hudBox.width,'zoom keeps cockpit controls at their original size');
+  assert.equal(await left.getAttribute('aria-pressed'),'true','a pinch over controls does not throw another switch');
+  assert.ok(await cockpit.getByText('Paused',{exact:true}).isVisible(),'pinching over controls does not resume a paused run');
   await mobile.screenshot({ path: '/tmp/ttc-snake-mobile.png' });
   await cockpit.getByRole('button', { name:'Close Streetcar Snake' }).tap();
 
@@ -115,6 +166,6 @@ try {
   await page.waitForTimeout(250);
   await page.screenshot({ path:'/tmp/ttc-snake-legacy.png' });
   assert.deepEqual(requests,[]); assert.deepEqual(errors,[]);
-  console.log('Snake browser checks passed: shared map/feed, arcade motion, keyboard and pause, purist governor, mobile pedals, focus restoration, playable legacy archive.');
+  console.log('Snake browser checks passed: shared map/feed, selected track previews and Q/E/R, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, playable legacy archive.');
   await context.close(); await mobileContext.close();
 } finally { await browser.close(); }
