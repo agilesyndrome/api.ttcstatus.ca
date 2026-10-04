@@ -12,3 +12,6 @@ export const LiveStreetcar: Story = { args: { cars: projectSnapshot(demoData, de
 export const SelectedStop: Story = { args: { selectedFeature: demoData.features[0], showLabels: true } };
 
 export const OvernightRoutes: Story = { args: { selectedRoute: '301', includeOvernight: true } };
+export const PersonalMap: Story = { args: { savedStopIds: ['queen'], locationPoint: [180, 190], selectedFeature: demoData.features[0] } };
+export const ComparisonEndpoints: Story = { args: { comparisonStops: { from: demoData.features[2], to: demoData.features[0] } } };
+export const PickingEndpoint: Story = { args: { pickingLabel: 'Choose a destination boarding stop' } };

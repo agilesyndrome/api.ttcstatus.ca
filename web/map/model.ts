@@ -7,7 +7,9 @@ export interface Feature {
   id: string; name: string; kind: "stop" | "terminal"; point: Point;
   routeIds: string[]; accessible: boolean | null; boardingPoints: number;
   platformNames: string[]; destinations: Record<string, string[]>; replacementRouteIds: string[];
+  stopIds?: string[];
 }
+export interface StopPattern { routeId: string; stopIds: string[]; headsign: string }
 export interface Edge extends ProjectionEdge { infrastructureIds: string[] }
 export interface ViewerData {
   features: Feature[]; routes: Route[]; edges: Edge[];
@@ -15,6 +17,7 @@ export interface ViewerData {
   shoreline: Point[]; labels: { text: string; kind: string; angle: number; point: Point }[];
   northAngle: number; snapshot: string; bounds: Bounds;
   geographicTransform: GeographicTransform;
+  patterns?: StopPattern[];
 }
 export interface Bounds { x: number; y: number; width: number; height: number }
 interface SourceStop { id: string; name: string; x: number; y: number; routeIds: string[]; stopIds: string[]; accessible?: boolean }
@@ -23,7 +26,7 @@ export interface ViewerSource {
   generatedAt?: string; source?: { fetchedAt?: string };
   routes: { id: string; shortName?: string; longName?: string; color?: string }[];
   stops: SourceStop[];
-  patterns: { routeId: string; stopIds: string[]; headsign: string }[];
+  patterns: StopPattern[];
   excludedServices?: { routeId: string }[];
   graph: { edges: Edge[] };
   infrastructure: { id: string; name: string }[];
@@ -63,7 +66,7 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     }
     return { id,name,kind,point,routeIds, boardingPoints: stopIds.length,
       accessible: stops.some(s => s.accessible) ? true : null,
-      platformNames: unique(stops.map(s => s.name)), destinations, replacementRouteIds: [] };
+      platformNames: unique(stops.map(s => s.name)), destinations, replacementRouteIds: [], stopIds };
   };
   const terminals: Feature[] = [], grouped = new Set<string>();
   const replacementIds = new Set((source.excludedServices ?? []).map(p => p.routeId));
@@ -92,7 +95,7 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     shoreline:source.context.shoreline, labels:source.context.labels.filter(l => l.kind !== "terminal"),
     northAngle:source.context.north.angle, snapshot:source.source?.fetchedAt ?? source.generatedAt ?? "",
     bounds:boundsOf([...edges.flatMap(e => e.points),...features.map(f => f.point)],45),
-    geographicTransform:source.display.geographicTransform };
+    geographicTransform:source.display.geographicTransform, patterns: source.patterns };
 }
 
 export function searchFeatures(features: Feature[], routes: Route[], query: string): Feature[] {

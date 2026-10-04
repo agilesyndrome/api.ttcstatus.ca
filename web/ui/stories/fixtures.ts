@@ -8,15 +8,20 @@ export const demoData: ViewerData = {
     { id: '507', number: '507', name: 'Long Branch', color: '#278f91', overnight: false, scheduled: false },
   ],
   features: [
-    { id: 'queen', name: 'Queen at Spadina', kind: 'stop', point: [150, 150], routeIds: ['501'], accessible: true, boardingPoints: 2, platformNames: ['Queen eastbound', 'Queen westbound'], destinations: { '501': ['Neville Park', 'Humber'] }, replacementRouteIds: [] },
-    { id: 'king', name: 'King at Spadina', kind: 'stop', point: [150, 260], routeIds: ['504'], accessible: null, boardingPoints: 2, platformNames: ['King'], destinations: { '504': ['Dundas West'] }, replacementRouteIds: [] },
-    { id: 'terminal', name: 'Humber Loop', kind: 'terminal', point: [50, 150], routeIds: ['501'], accessible: true, boardingPoints: 1, platformNames: ['Humber'], destinations: {}, replacementRouteIds: [] },
+    { id: 'queen', name: 'Queen at Spadina', kind: 'stop', point: [150, 150], routeIds: ['501'], accessible: true, boardingPoints: 2, platformNames: ['Queen eastbound', 'Queen westbound'], destinations: { '501': ['Neville Park', 'Humber'] }, replacementRouteIds: [], stopIds: ['queen-e', 'queen-w'] },
+    { id: 'king', name: 'King at Spadina', kind: 'stop', point: [150, 260], routeIds: ['504'], accessible: null, boardingPoints: 2, platformNames: ['King'], destinations: { '504': ['Dundas West'] }, replacementRouteIds: [], stopIds: ['king-e', 'king-w'] },
+    { id: 'terminal', name: 'Humber Loop', kind: 'terminal', point: [50, 150], routeIds: ['501'], accessible: true, boardingPoints: 1, platformNames: ['Humber'], destinations: {}, replacementRouteIds: [], stopIds: ['humber'] },
   ],
   edges: [
     { id: 'queen-edge', a: 'a', b: 'b', points: [[50, 150], [450, 150]], sourcePoints: [[0, 0], [400, 0]], sourceDistances: [0, 400], lengthMetres: 400, routeIds: ['501', '301'], infrastructureIds: [] },
     { id: 'king-edge', a: 'c', b: 'd', points: [[50, 260], [450, 260]], sourcePoints: [[0, -110], [400, -110]], sourceDistances: [0, 400], lengthMetres: 400, routeIds: ['504'], infrastructureIds: [] },
   ],
   infrastructure: [], shoreline: [[0, 360], [500, 360]], labels: [], northAngle: -90,
+  patterns: [
+    { routeId: '501', stopIds: ['humber', 'queen-e'], headsign: 'Neville Park' },
+    { routeId: '501', stopIds: ['queen-w', 'humber'], headsign: 'Humber' },
+    { routeId: '301', stopIds: ['humber', 'queen-e'], headsign: 'Queen overnight' },
+  ],
   snapshot: '2026-10-03T12:00:00Z', bounds: { x: 0, y: 80, width: 500, height: 340 },
   geographicTransform: { version: 1, rotationDegrees: 0, xAxis: { lower: -10000, upper: 10000, outerScale: 1 }, yAxis: { lower: -10000, upper: 10000, outerScale: 1 }, minX: 0, maxY: 0, scaleX: 1, scaleY: 1, offsetX: 50, offsetY: 150, projection: { latitude: 43.65, longitude: -79.4, metresPerLatitudeDegree: 110540, metresPerLongitudeDegree: 80540 } },
 };
