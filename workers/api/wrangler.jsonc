@@ -4,6 +4,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-02",
   "workers_dev": true,
+  "previews": {},
   "assets": {
     "directory": "../../public",
     "run_worker_first": ["/api/*"]
