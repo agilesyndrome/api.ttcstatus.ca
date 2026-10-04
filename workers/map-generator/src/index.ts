@@ -1,6 +1,8 @@
-import type { D1Database, ExecutionContextLike } from "../../shared/cloudflare";
-import { renderDebugMapSvg, type DebugMapBundle } from "./debug-render";
-import { generateStreetcarMap, type MapGeneratorEnv } from "./generate";
+import { authorizedSync } from '../../shared/http/admin-auth';
+import { BodyTooLargeError, readLimitedBytes } from '../../shared/http/streams';
+import type { D1Database, ExecutionContextLike } from '../../shared/cloudflare/bindings';
+import { renderDebugMapSvg, type DebugMapBundle } from './rendering/debug-render';
+import { generateStreetcarMap, type MapGeneratorEnv } from './generate';
 
 interface Env extends MapGeneratorEnv {
   DB: D1Database;
@@ -9,60 +11,68 @@ interface Env extends MapGeneratorEnv {
 function json(value: unknown, status = 200): Response {
   return Response.json(value, {
     status,
-    headers: { "cache-control": "no-store" },
+    headers: { 'cache-control': 'no-store' },
   });
 }
 
-function authorized(request: Request, env: Env): boolean {
-  return Boolean(env.SYNC_TOKEN) && request.headers.get("authorization") === `Bearer ${env.SYNC_TOKEN}`;
-}
-
 async function debugRender(request: Request, env: Env): Promise<Response> {
-  if (!env.SYNC_TOKEN) return json({ error: "debug-render-disabled" }, 404);
-  if (!authorized(request, env)) return json({ error: "unauthorized" }, 401);
+  if (!env.SYNC_TOKEN) return json({ error: 'debug-render-disabled' }, 404);
+  if (!(await authorizedSync(request, env))) return json({ error: 'unauthorized' }, 401);
 
   try {
-    const body = await request.text();
-    if (new TextEncoder().encode(body).byteLength > 2_000_000) {
-      return json({ error: "map-json-too-large" }, 413);
-    }
+    const body = request.body
+      ? new TextDecoder().decode(await readLimitedBytes(request.body, 2_000_000))
+      : '';
+
     const bundle = JSON.parse(body) as DebugMapBundle;
     const svg = renderDebugMapSvg(bundle);
     return new Response(svg, {
       headers: {
-        "cache-control": "no-store",
-        "content-type": "image/svg+xml; charset=utf-8",
-        "content-disposition": "inline; filename=streetcar-debug.svg",
+        'cache-control': 'no-store',
+        'content-type': 'image/svg+xml; charset=utf-8',
+        'content-disposition': 'inline; filename=streetcar-debug.svg',
+        'content-security-policy':
+          "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        'x-content-type-options': 'nosniff',
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "invalid map JSON";
-    return json({ error: "invalid-map-json", message }, 400);
+    if (error instanceof BodyTooLargeError)
+      return json({ error: 'map-json-too-large' }, 413);
+    const message = error instanceof Error ? error.message : 'invalid map JSON';
+    return json({ error: 'invalid-map-json', message }, 400);
   }
 }
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContextLike): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/api/healthz") {
-      return json({ ok: true, worker: "ttcstatus-map-generator" });
+    if (request.method === 'GET' && url.pathname === '/api/healthz') {
+      return json({ ok: true, worker: 'ttcstatus-map-generator' });
     }
 
-    if (request.method === "POST" && url.pathname === "/api/debug/render") {
+    if (request.method === 'POST' && url.pathname === '/api/debug/render') {
       return debugRender(request, env);
     }
 
-    if (request.method !== "POST" || url.pathname !== "/api/internal/generate") {
-      return json({ error: "not-found" }, 404);
+    if (request.method !== 'POST' || url.pathname !== '/api/internal/generate') {
+      return json({ error: 'not-found' }, 404);
     }
 
     let versionId: number | undefined;
     try {
-      const body = await request.json() as { versionId?: number; mode?: string; style?: string };
+      const body = (await request.json()) as {
+        versionId?: number;
+        mode?: string;
+        style?: string;
+      };
       versionId = Number(body.versionId);
-      if (!Number.isInteger(versionId) || versionId <= 0) return json({ error: "invalid-version-id" }, 400);
-      if (body.mode && body.mode !== "streetcar") return json({ error: "unsupported-mode" }, 400);
-      if (body.style && body.style !== "snake-v1") return json({ error: "unsupported-style" }, 400);
+      if (!Number.isInteger(versionId) || versionId <= 0)
+        return json({ error: 'invalid-version-id' }, 400);
+      if (body.mode && body.mode !== 'streetcar')
+        return json({ error: 'unsupported-mode' }, 400);
+      if (body.style && body.style !== 'snake-v1')
+        return json({ error: 'unsupported-style' }, 400);
 
       await env.DB.prepare(
         `UPDATE map_generation_jobs
@@ -71,8 +81,10 @@ export default {
            SELECT id FROM map_generation_jobs
            WHERE version_id = ? AND mode = 'streetcar'
            ORDER BY id DESC LIMIT 1
-         )`
-      ).bind(new Date().toISOString(), versionId).run();
+         )`,
+      )
+        .bind(new Date().toISOString(), versionId)
+        .run();
 
       const artifactId = await generateStreetcarMap(env, versionId);
       return json({ ok: true, artifactId, versionId });
@@ -86,8 +98,10 @@ export default {
              SELECT id FROM map_generation_jobs
              WHERE version_id = ? AND mode = 'streetcar'
              ORDER BY id DESC LIMIT 1
-           )`
-        ).bind(new Date().toISOString(), message.slice(0, 2000), versionId).run();
+           )`,
+        )
+          .bind(new Date().toISOString(), message.slice(0, 2000), versionId)
+          .run();
       }
       return json({ error: message }, 500);
     }

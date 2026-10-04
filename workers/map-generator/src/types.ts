@@ -1,5 +1,5 @@
 /** D1 row shapes and map-generator domain types. Keep SQL naming at this edge. */
-import type { D1Database } from "../../shared/cloudflare";
+import type { D1Database } from '../../shared/cloudflare/bindings';
 
 export interface MapGeneratorEnv {
   DB: D1Database;

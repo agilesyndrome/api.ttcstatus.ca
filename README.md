@@ -46,7 +46,7 @@ Responsibilities:
 - Adds manually-audited infrastructure overlays that GTFS cannot describe when no scheduled trip uses them.
 - Writes the complete JSON map artifact back to D1 before the version can become active.
 
-The `snake-v1.3.0` generator provides one schematic layout for paths, graph nodes,
+The `snake-v1.3.1` generator provides one schematic layout for paths, graph nodes,
 stops and geographic context. It retains simplified source geometry in local
 metres, edge lengths and distance mappings so display distortion need not change
 game speed. The graph is inferred from scheduled shapes and the audited overlays;
@@ -62,7 +62,7 @@ Lake Shore to Long Branch through the Humber tunnel, and Kingston Road to Bingha
 when the feed does not schedule streetcars there. These use the TTC track-network
 reference, mapped OpenStreetMap rail and, for two intervening corridors, approximate
 City of Toronto road centrelines. Source notes and licences are in
-`workers/map-generator/src/physical-tracks.json`. Database overlays with matching
+`workers/map-generator/src/source/physical-tracks.json`. Database overlays with matching
 IDs take precedence over the bundled defaults.
 
 Detailed physical Queens Quay geometry also supplies bends missing from coarse
@@ -87,8 +87,8 @@ npm run typecheck
 npm test
 ```
 
-This reads `streetcarmap.json`, writes `streetcar-schematic.json`, and refreshes
-`streetcar-debug.svg`. It preserves the input map. For the legacy v1.0.1 fixture,
+This reads `data/fixtures/streetcarmap.json`, writes `dist/streetcar-schematic.json`, and refreshes
+`dist/streetcar-debug.svg`. It preserves the input map. For the legacy v1.0.1 fixture,
 the preview recovers approximate metre coordinates from the audited Ossington
 overlay because that format omitted its geographic display transform. Production
 generation uses D1 source coordinates directly. Optional positional arguments are
@@ -102,17 +102,18 @@ default browser with one command (run `npm install` first):
 make map/debug
 ```
 
-This saves the API response as `streetcarmap.json`, generates
-`streetcar-schematic.json` and `streetcar-debug.svg`, and opens a local
-`streetcar-debug.html` wrapper so SVG file associations cannot send the preview
+This saves the API response as `dist/streetcarmap.json`, generates
+`dist/streetcar-schematic.json` and `dist/streetcar-debug.svg`, and opens a local
+`dist/streetcar-debug.html` wrapper so SVG file associations cannot send the preview
 to an image editor. Rendering uses the same code as the map-generator Worker;
 there is no JSON re-upload, sync, or debug token required. The JSON endpoint
 returns the pre-generated map; this command does not regenerate the production
 artifact from GTFS. Failed downloads stop the command and preserve the previous
 input file.
 
-Use `make map/streetcar/svg` to render an existing `streetcarmap.json` without
-downloading again. Set `API_HOST` to select another API, or `MAP_OPEN` to a browser
+Use `make map/streetcar/svg` to render the downloaded `dist/streetcarmap.json` without
+downloading again. With no download, it uses `data/fixtures/streetcarmap.json`.
+Set `MAP_INPUT` to render a different local bundle. Set `API_HOST` to select another API, or `MAP_OPEN` to a browser
 opener executable (for example, `MAP_OPEN=echo make map/debug` to print the preview
 URL in a headless environment). The browser wrapper fits the entire map and
 legend into the viewport, with zoom buttons, drag-to-pan and a Fit map button.
@@ -217,7 +218,7 @@ Operational source/import status. This endpoint is intentionally `no-store`.
 
 ### `POST /api/v1/debug/map/streetcar.svg` (debug endpoint)
 
-Renders a previously generated `streetcarmap.json` bundle as standalone SVG.
+Renders a previously generated `data/fixtures/streetcarmap.json` bundle as standalone SVG.
 The authenticated API proxy forwards the JSON to the map-generator debug
 renderer; it does not read D1, fetch GTFS, or invoke the sync pipeline. The
 request body is the map JSON and requires `Authorization: Bearer <SYNC_TOKEN>`.
@@ -231,7 +232,7 @@ need this endpoint):
 curl -sS -X POST https://api.ttcstatus.ca/api/v1/debug/map/streetcar.svg \
   -H "Authorization: Bearer $SYNC_TOKEN" \
   -H "Content-Type: application/json" \
-  --data-binary @streetcarmap.json > streetcar-debug.svg
+  --data-binary @data/fixtures/streetcarmap.json > streetcar-debug.svg
 ```
 
 ### `POST /api/v1/admin/sync`
@@ -351,7 +352,7 @@ npm run deploy:api
 
 ## React UI and Storybook
 
-The homepage is a React/TypeScript app in `web/ui/`. `pages/HomePage.tsx` owns
+The homepage is a React/TypeScript app in `web/ui/`. `features/map/useHomeWorkspace.ts` owns
 selection, filters and one shared feed subscription. `components/` contains the
 header, footer, SVG map, layer filters, route legend, feed status and stop/vehicle
 details. Search accepts stops, routes and reported streetcar numbers (for example,
@@ -376,8 +377,8 @@ responses with fixtures. Feed stories cover loading, empty, live, stale, paused
 and unavailable states. The setup follows the official
 [Storybook React/Vite framework](https://storybook.js.org/docs/get-started/frameworks/react-vite/).
 
-Vite writes the homepage and hashed JS/CSS into `public/` for the existing Worker
-asset deployment. The standalone HTML preview remains at `/map/`. All API Worker
+Vite writes the homepage and hashed JS/CSS into `dist/` for Worker
+asset deployment. Static assets are copied from `public/`. The standalone HTML preview remains at `/map/`. All API Worker
 routes now start with `/api/`, including `/api/healthz`; the previous `/v1/*` and
 `/healthz` paths are retired. Unknown `/api/*` requests return JSON errors.
 The map-generator service routes also moved under `/api/`; deploy the map Worker
@@ -543,7 +544,7 @@ scheduled rail. The viewer shows counts, the snapshot time, vehicle details, and
 a failure message if the feed is unavailable. Cars have five articulated sections
 with exaggerated length for readability; the cab marks the reported position.
 
-`workers/shared/map-projection.ts` is the reusable GPS bridge, shared by the
+`shared/map/projection.ts` is the reusable GPS bridge, shared by the
 generator and viewer and usable in a future streaming Worker. The map serializes
 its complete geographic transform (including projection reference, rotation,
 compression, and display scale). `gpsToMap` / `mapToGps` support free geographic
@@ -553,11 +554,11 @@ Each refresh supplies the previous matched edge for continuity; it never matches
 pixels or treats a geometric crossing as a graph connection. Matching is an
 estimate against the inferred, simplified graph rather than surveyed track.
 
-Transport and decoding live in `workers/api/src/realtime.ts`; the plain observation
-contract lives in `workers/shared/live-vehicles.ts`; snapshot projection and body
-placement live in `web/map/live-status.ts`. `web/map/live-updates.ts` owns cancellable
-polling, cadence, ETags, timeouts and backoff; `workers/api/src/vehicle-snapshot-cache.ts`
-shares acquisitions, and `workers/shared/live-config.ts` validates the interval.
+Transport and decoding live in `workers/api/src/realtime/realtime.ts`; the plain observation
+contract lives in `shared/live/vehicles.ts`; snapshot projection and body
+placement live in `shared/map/live-status.ts`. `shared/live/polling.ts` owns cancellable
+polling, cadence, ETags, timeouts and backoff; `workers/api/src/realtime/vehicle-snapshot-cache.ts`
+shares acquisitions, and `shared/live/config.ts` validates the interval.
 No live history is written to D1/R2.
 Streaming acquisition can later replace the snapshot transport while reusing
 these models and projection functions. The current phase does not infer a trip
@@ -612,7 +613,6 @@ The v1 generator establishes the important separation between canonical GTFS geo
 
 Those changes can happen inside the map-generator Worker without changing the public API contract.
 
-
 ### Streetcar Snake on xplore
 
 The small 🐍 button at the bottom right of the explorer map opens Streetcar
@@ -644,3 +644,22 @@ Run `npm test` for simulation checks and `npm run test:snake` against a local
 viewer for desktop, phone and legacy browser checks. `UI_URL` and
 `CHROMIUM_PATH` select the preview URL and browser. Browser checks use fixture
 streetcars and do not depend on TTC feed availability.
+
+## Maintaining the code
+
+See [CODEMAP.md](CODEMAP.md) for module ownership and dependency boundaries.
+Application code lives under `workers/` and `web/`; `shared/` contains pure
+contracts and calculations used by both. Components and their stories are grouped
+by feature. Reference map bundles in `data/fixtures/` remain immutable fixtures;
+preview commands and production builds write generated output into `dist/`.
+
+Run `npm run check` for types, lint, formatting, unit/integration tests,
+credential scanning and import boundaries. Run `npm run format` before committing.
+Use the existing `test:ui`, `test:auth`, `test:mobile`, `test:hackathon`,
+`test:exploration`, `test:collection`, and `test:snake` commands against
+`npm run dev:viewer`; `test:stories` runs against `npm run storybook`.
+
+Build with `npm run build:api` before an API deployment: Wrangler serves `dist/`.
+The public paths, payloads, generator version, map fixtures and archived game remain
+unchanged by the refactor. [Security and deployment notes](docs/security.md)
+cover credential replacement and input limits.

@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+dist/
+storybook-static/
+package-lock.json
+data/
+public/snake/v1/
+workers/map-generator/src/source/*.json
+ARCHITECTURE.md
+.env*

@@ -1,0 +1,122 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { compileModules } from '../helpers/compile.mjs';
+import { createDatabase } from '../helpers/database.mjs';
+
+const {
+  ensureState,
+  acquireLock,
+  releaseLock,
+  activateNetworkVersion,
+  pruneOldNetworkVersions,
+} = await compileModules(`
+  export { ensureState, acquireLock, releaseLock } from './workers/api/src/sync/sync-common';
+  export { activateNetworkVersion, pruneOldNetworkVersions } from './workers/api/src/sync/network-lifecycle';
+`);
+const schema = await readFile('migrations/0001_initial.sql', 'utf8');
+function environment() {
+  const deleted = [];
+  return {
+    DB: createDatabase(schema),
+    STATIC_GTFS_URL: 'https://feed.test/static.zip',
+    GTFS_BUCKET: {
+      async delete(key) {
+        deleted.push(key);
+      },
+    },
+    deleted,
+  };
+}
+async function version(env, id, active = 0) {
+  await env.DB.prepare(
+    `INSERT INTO network_versions (id, source_key, source_url, r2_etag, r2_key, fetched_at, status, active)
+    VALUES (?, 'ttc-surface-gtfs', 'https://feed.test/static.zip', ?, ?, '2026-10-01', 'imported', ?)`,
+  )
+    .bind(id, `etag-${id}`, `version-${id}`, active)
+    .run();
+  return env.DB.prepare('SELECT * FROM network_versions WHERE id = ?').bind(id).first();
+}
+async function artifact(env, id, versionId, chunks = 1, active = 0) {
+  await env.DB.prepare(
+    `INSERT INTO map_artifacts (id, version_id, mode, style, generator_version, etag, byte_size, chunk_count, created_at, active)
+    VALUES (?, ?, 'streetcar', 'snake-v1', 'fixture', ?, 2, ?, '2026-10-01', ?)`,
+  )
+    .bind(id, versionId, `map-${id}`, chunks, active)
+    .run();
+}
+
+test('expired sync owners cannot release a replacement lease', async () => {
+  const env = environment();
+  await ensureState(env);
+  const oldLease = await acquireLock(env);
+  assert.ok(oldLease);
+  assert.equal(await acquireLock(env), null);
+  const replacement = '2099-01-01T00:00:00.000Z';
+  await env.DB.prepare('UPDATE source_state SET lock_until = ?').bind(replacement).run();
+  await releaseLock(env, oldLease);
+  assert.equal(
+    (await env.DB.prepare('SELECT lock_until FROM source_state').first()).lock_until,
+    replacement,
+  );
+  await releaseLock(env, replacement);
+  assert.equal(
+    (await env.DB.prepare('SELECT lock_until FROM source_state').first()).lock_until,
+    null,
+  );
+});
+
+test('publication refuses incomplete or mismatched artifacts without changing active pointers', async () => {
+  const env = environment();
+  await ensureState(env);
+  await version(env, 1, 1);
+  const next = await version(env, 2);
+  await artifact(env, 1, 1, 1, 1);
+  await artifact(env, 2, 2, 2);
+  await env.DB.prepare("INSERT INTO map_artifact_chunks VALUES (2, 0, '{}')").run();
+  await assert.rejects(activateNetworkVersion(env, next, 2), /incomplete/);
+  await assert.rejects(activateNetworkVersion(env, next, 1), /mismatched/);
+  assert.equal(
+    (await env.DB.prepare('SELECT id FROM network_versions WHERE active = 1').first()).id,
+    1,
+  );
+  assert.equal(
+    (await env.DB.prepare('SELECT id FROM map_artifacts WHERE active = 1').first()).id,
+    1,
+  );
+  await env.DB.prepare("INSERT INTO map_artifact_chunks VALUES (2, 1, '{}')").run();
+  await activateNetworkVersion(env, next, 2);
+  assert.equal(
+    (await env.DB.prepare('SELECT id FROM network_versions WHERE active = 1').first()).id,
+    2,
+  );
+  assert.equal(
+    (await env.DB.prepare('SELECT id FROM map_artifacts WHERE active = 1').first()).id,
+    2,
+  );
+});
+
+test('retention keeps the active map even when newer imports have failed', async () => {
+  const env = environment();
+  for (const id of [1, 2, 3, 4]) await version(env, id, id === 2 ? 1 : 0);
+  await artifact(env, 2, 2, 1, 1);
+  await env.DB.prepare("INSERT INTO map_artifact_chunks VALUES (2, 0, '{}')").run();
+  await pruneOldNetworkVersions(env);
+  assert.deepEqual(env.deleted, ['version-1']);
+  assert.equal(
+    (
+      await env.DB.prepare(
+        'SELECT raw_retained FROM network_versions WHERE id = 2',
+      ).first()
+    ).raw_retained,
+    1,
+  );
+  assert.equal(
+    (
+      await env.DB.prepare(
+        'SELECT payload FROM map_artifact_chunks WHERE artifact_id = 2',
+      ).first()
+    ).payload,
+    '{}',
+  );
+});

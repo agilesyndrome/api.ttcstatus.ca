@@ -4,23 +4,23 @@
 `paths`, `stops`, and `infrastructure` fields. It adds a shared corridor graph
 and source/display correspondence. Existing renderers can still draw `points`.
 
-| Field | Use |
-| --- | --- |
-| `graph.nodes[].id`, `edgeIds` | Build the game's node map and adjacency lists. IDs are deterministic for identical source data, not guaranteed across feed versions. |
-| `graph.edges[].a`, `b` | Endpoints of one reusable corridor segment. |
-| `graph.edges[].points` | Display polyline, ordered from `a` to `b`. |
-| `graph.edges[].lengthMetres` | Advance the simulation in actual source metres. Display pixels are not metres. |
-| `graph.edges[].sourcePoints` | Simplified canonical coordinates in local east/north metres, using `display.reference`. Raw GTFS shapes remain in D1. |
-| `graph.edges[].sourceDistances` | Source distance at each display vertex, including the warp's slope changes. |
-| `graph.edges[].routeIds`, `pathIds`, `infrastructureIds` | Service and infrastructure membership. One edge can carry multiple routes. |
-| `paths[].edgeRefs` | Ordered `{ edgeId, direction }` traversal of the path. `1` means a→b; `-1` means b→a. Patterns still identify their `pathId`. |
-| `graph.observedTurns` | Directed edge transitions observed in source shapes. Absence does not prove a physical turn is impossible. |
-| `stops[].edgeId`, `distanceAlongMetres`, `edgeFraction` | Optional position on a corridor. Stops over 100 metres from any matching-route corridor remain unattached. |
-| `stops[].sourcePoint` | Original geographic cluster position before display track attachment. |
-| `context` | Approximate street/terminal labels, shoreline and north direction. Decorative; never use it to add tracks or switches. |
-| `excludedServices` | Explicit replacement-bus patterns excluded from rail paths, stops and graph; original IDs and headsigns retained for auditing. Route IDs alone do not distinguish replacement buses. |
-| `paths[].gtfsSourcePoints` | Original projected GTFS vertices when a coarse scheduled path has been aligned to audited Queens Quay rail. `sourcePoints` and graph lengths then follow the mapped physical alignment. |
-| `context.shorelineSource` | City of Toronto mainland shoreline attribution, retrieval date and simplification note. The shoreline follows the rail display transform, including warp breakpoints. |
+| Field                                                    | Use                                                                                                                                                                                     |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `graph.nodes[].id`, `edgeIds`                            | Build the game's node map and adjacency lists. IDs are deterministic for identical source data, not guaranteed across feed versions.                                                    |
+| `graph.edges[].a`, `b`                                   | Endpoints of one reusable corridor segment.                                                                                                                                             |
+| `graph.edges[].points`                                   | Display polyline, ordered from `a` to `b`.                                                                                                                                              |
+| `graph.edges[].lengthMetres`                             | Advance the simulation in actual source metres. Display pixels are not metres.                                                                                                          |
+| `graph.edges[].sourcePoints`                             | Simplified canonical coordinates in local east/north metres, using `display.reference`. Raw GTFS shapes remain in D1.                                                                   |
+| `graph.edges[].sourceDistances`                          | Source distance at each display vertex, including the warp's slope changes.                                                                                                             |
+| `graph.edges[].routeIds`, `pathIds`, `infrastructureIds` | Service and infrastructure membership. One edge can carry multiple routes.                                                                                                              |
+| `paths[].edgeRefs`                                       | Ordered `{ edgeId, direction }` traversal of the path. `1` means a→b; `-1` means b→a. Patterns still identify their `pathId`.                                                           |
+| `graph.observedTurns`                                    | Directed edge transitions observed in source shapes. Absence does not prove a physical turn is impossible.                                                                              |
+| `stops[].edgeId`, `distanceAlongMetres`, `edgeFraction`  | Optional position on a corridor. Stops over 100 metres from any matching-route corridor remain unattached.                                                                              |
+| `stops[].sourcePoint`                                    | Original geographic cluster position before display track attachment.                                                                                                                   |
+| `context`                                                | Approximate street/terminal labels, shoreline and north direction. Decorative; never use it to add tracks or switches.                                                                  |
+| `excludedServices`                                       | Explicit replacement-bus patterns excluded from rail paths, stops and graph; original IDs and headsigns retained for auditing. Route IDs alone do not distinguish replacement buses.    |
+| `paths[].gtfsSourcePoints`                               | Original projected GTFS vertices when a coarse scheduled path has been aligned to audited Queens Quay rail. `sourcePoints` and graph lengths then follow the mapped physical alignment. |
+| `context.shorelineSource`                                | City of Toronto mainland shoreline attribution, retrieval date and simplification note. The shoreline follows the rail display transform, including warp breakpoints.                   |
 
 To draw a vehicle at source distance `d` from edge endpoint `a`, find successive
 entries `sourceDistances[i] <= d <= sourceDistances[i+1]`. Interpolate between
@@ -52,7 +52,7 @@ from rounded display pixels and records that limitation in `previewSource`.
 Production uses canonical source data. Source simplification and a 12-metre
 snapping tolerance mean this correspondence is unsuitable for survey precision.
 
-The xplore game's engine in `web/ui/snake/engine.ts` builds adjacency from the
+The xplore game's engine in `web/ui/features/snake/engine.ts` builds adjacency from the
 bundle's real edge endpoints, advances in source metres and draws on the same
 `TransitMap` as the explorer. Route missions resolve pattern `pathId` values to
 ordered directed `paths[].edgeRefs`. Stops retain their edge attachment for

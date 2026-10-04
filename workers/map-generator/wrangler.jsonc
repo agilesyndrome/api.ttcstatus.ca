@@ -5,18 +5,18 @@
   "compatibility_date": "2026-10-02",
   "workers_dev": false,
   "limits": {
-    "cpu_ms": 300000
+    "cpu_ms": 300000,
   },
   "observability": { "enabled": true },
   "vars": {
-    "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto"
+    "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "ttcstatus",
       "database_id": "7c7e47b4-da33-42de-a521-df30b79e41f2",
-      "migrations_dir": "../../migrations"
-    }
-  ]
+      "migrations_dir": "../../migrations",
+    },
+  ],
 }

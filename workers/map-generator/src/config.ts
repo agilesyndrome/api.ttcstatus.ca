@@ -5,13 +5,9 @@
  * generated public artifact. Bump GENERATOR_VERSION whenever a change here can
  * alter output geometry or the bundle schema.
  */
-export const GENERATOR_VERSION = "snake-v1.3.1";
-export const MAP_STYLE = "snake-v1";
-export const MAP_MODE = "streetcar";
-
-export const DISPLAY_WIDTH = 1600;
-export const DISPLAY_HEIGHT = 1100;
-export const DISPLAY_PADDING = 70;
+export const GENERATOR_VERSION = 'snake-v1.3.1';
+export const MAP_STYLE = 'snake-v1';
+export const MAP_MODE = 'streetcar';
 
 // Conservative v1 simplification. Future topology-aware generation should
 // replace raw RDP, but this keeps the present implementation inexpensive.
@@ -25,5 +21,11 @@ export const STREET_GRID_DEGREES = 16;
 export const ARTIFACT_CHUNK_CHARACTERS = 300_000;
 
 // Local planar reference point used only for short-distance map math in Toronto.
-export const REFERENCE_LATITUDE = 43.65;
-export const REFERENCE_LONGITUDE = -79.38;
+
+export {
+  DISPLAY_WIDTH,
+  DISPLAY_HEIGHT,
+  DISPLAY_PADDING,
+  REFERENCE_LATITUDE,
+  REFERENCE_LONGITUDE,
+} from '../../../shared/map/config';

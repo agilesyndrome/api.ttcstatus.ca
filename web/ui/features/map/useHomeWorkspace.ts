@@ -1,0 +1,534 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { boundsOf, type Feature, type Point } from '../../../../shared/map/model';
+import { gpsToMap } from '../../../../shared/map/projection';
+import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
+import { useVehicleFeed } from './useVehicleFeed';
+import { useStaticMap } from './useStaticMap';
+import { useMapExport } from '../export/useMapExport';
+import { usePreference } from '../../hooks/usePreferences';
+import { useTheme } from '../../hooks/useTheme';
+import { useShortcuts } from '../../hooks/useShortcuts';
+import {
+  DEFAULT_FILTERS,
+  mapLinkHash,
+  nearbyStops,
+  readMapLink,
+  validFilters,
+  validSavedStops,
+  type Location,
+  type Selection,
+  type SidebarPanel,
+} from '../../commute';
+import type { PickingStop } from '../comparison/StopComparison';
+import {
+  JOURNAL_LIMIT,
+  journalEntry,
+  mergeJournal,
+  validJournal,
+} from '../../../../shared/accounts/journal';
+import { useAccount } from '../accounts/auth';
+import { useAccountJournal } from '../journal/useAccountJournal';
+
+const validBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+
+// One workspace owns selection and tool transitions; renderers only consume it.
+export function useHomeWorkspace() {
+  const { data, error, retry: retryMap } = useStaticMap();
+  const [filters, setFilters] = usePreference(
+    'ttc:filters:v1',
+    DEFAULT_FILTERS,
+    validFilters,
+  );
+  const [savedStops, setSavedStops, savedPersistent] = usePreference<string[]>(
+    'ttc:stops:v1',
+    [],
+    validSavedStops,
+  );
+  const account = useAccount();
+  const accountJournal = useAccountJournal();
+  const journal = accountJournal.entries;
+  const setJournal = accountJournal.change;
+  const [initialLink] = useState(() => readMapLink(window.location.hash));
+  const [selection, setSelection] = useState<Selection | undefined>(
+    initialLink.selection,
+  );
+  const [selectedRoute, setSelectedRoute] = useState<string | undefined>(() => {
+    const link = initialLink;
+    return link.selection?.kind === 'route' ? link.selection.id : link.contextRoute;
+  });
+  const [panel, setPanel] = useState<SidebarPanel>(initialLink.panel ?? 'explore');
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(
+    Boolean(
+      initialLink.selection || (initialLink.panel && initialLink.panel !== 'explore'),
+    ),
+  );
+  const [fromId, setFromId] = useState(initialLink.fromId);
+  const [toId, setToId] = useState(initialLink.toId);
+  const [picking, setPicking] = useState<PickingStop>();
+  const [following, setFollowing] = useState(false);
+  const [snakeOpen, setSnakeOpen] = useState(false);
+  const [shortcutHelp, setShortcutHelp] = useState(false);
+  const [shortcutsEnabled, setShortcutsEnabled] = usePreference(
+    'ttc:shortcuts:v1',
+    true,
+    validBoolean,
+  );
+  const [focusPoint, setFocusPoint] = useState<Point>();
+  const [location, setLocation] = useState<Location>();
+  const [notice, setNotice] = useState('');
+  const [resetKey, setResetKey] = useState(0);
+  const theme = useTheme();
+  const pendingCar = useRef(selection?.kind === 'car' ? selection.id : undefined);
+  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data));
+  const previous = useRef<PlottedVehicle[]>([]);
+  const sidebar = useRef<HTMLDivElement>(null);
+  const cars = useMemo(
+    () =>
+      data && feed.snapshot
+        ? projectSnapshot(data, feed.snapshot, feed.now, previous.current)
+        : [],
+    [data, feed.snapshot, feed.now],
+  );
+  const feature = useMemo(() => {
+    const stop =
+      selection?.kind === 'stop'
+        ? data?.features.find((feature) => feature.id === selection.id)
+        : undefined;
+    return stop ? { ...stop } : undefined; // Reselecting a bookmark focuses it again, without moving on feed refreshes.
+  }, [selection, data]);
+  const car =
+    selection?.kind === 'car'
+      ? cars.find((car) => car.vehicle.id === selection.id)
+      : undefined;
+  const locationPoint = useMemo(
+    () =>
+      data && location
+        ? gpsToMap(location.latitude, location.longitude, data.geographicTransform)
+        : undefined,
+    [data, location],
+  );
+  const comparisonStops = useMemo(
+    () => ({
+      from: data?.features.find((stop) => stop.id === fromId),
+      to: data?.features.find((stop) => stop.id === toId),
+    }),
+    [data, fromId, toId],
+  );
+  const comparisonBounds = useMemo(
+    () =>
+      panel === 'compare' && comparisonStops.from && comparisonStops.to
+        ? boundsOf([comparisonStops.from.point, comparisonStops.to.point], 70)
+        : undefined,
+    [panel, comparisonStops],
+  );
+  const shownRoutes =
+    data?.routes.filter((route) => filters.overnight || !route.overnight) ?? [];
+  const { exportImage, exportCars, previewMap, changeExportCars, closeExport } =
+    useMapExport({ data, shownRoutes, feed, panel, comparisonStops });
+  useEffect(() => {
+    previous.current = cars;
+  }, [cars]);
+  useEffect(() => {
+    if (panel === 'explore' && selection) {
+      setMobilePanelOpen(true);
+      sidebar.current?.scrollTo({ top: 0 });
+    }
+  }, [selection, panel]);
+  useEffect(() => {
+    if (panel !== 'explore') setMobilePanelOpen(true);
+    sidebar.current?.scrollTo({ top: 0 });
+    if (panel !== 'compare') setPicking(undefined);
+    if (panel !== 'explore') {
+      setFollowing(false);
+      pendingCar.current = undefined;
+    }
+  }, [panel]);
+
+  useEffect(() => {
+    const restore = () => {
+      const link = readMapLink(window.location.hash);
+      setSelection(link.selection);
+      setNotice('');
+      setFocusPoint(undefined);
+      setSelectedRoute(
+        link.selection?.kind === 'route' ? link.selection.id : link.contextRoute,
+      );
+      setPanel(link.panel ?? 'explore');
+      setFromId(link.fromId);
+      setToId(link.toId);
+      setPicking(undefined);
+      setFollowing(false);
+      pendingCar.current = link.selection?.kind === 'car' ? link.selection.id : undefined;
+      setFilters({
+        ...DEFAULT_FILTERS,
+        ...link.filters,
+        ...(link.selection?.kind === 'car' ? { live: true } : {}),
+      });
+    };
+    // A shared link takes precedence over local layer preferences.
+    if (window.location.hash) restore();
+    window.addEventListener('hashchange', restore);
+    return () => window.removeEventListener('hashchange', restore);
+  }, []);
+  useEffect(() => {
+    if (!data) return;
+    const url = new URL(window.location.href);
+    url.hash = mapLinkHash(selection, filters, selectedRoute, { panel, fromId, toId });
+    window.history.replaceState(null, '', url);
+  }, [data, selection, filters, selectedRoute, panel, fromId, toId]);
+
+  useEffect(() => {
+    if (!data || !selection) return;
+    if (
+      (selection.kind === 'stop' && !feature) ||
+      (selection.kind === 'route' &&
+        !data.routes.some((route) => route.id === selection.id && route.scheduled))
+    ) {
+      setNotice(
+        'That shared stop or route is no longer in this map. Choose another below.',
+      );
+      setSelection(undefined);
+      setSelectedRoute(undefined);
+    } else if (
+      selection.kind === 'route' &&
+      data.routes.find((route) => route.id === selection.id)?.overnight
+    ) {
+      setFilters((current) =>
+        current.overnight ? current : { ...current, overnight: true },
+      );
+    } else if (
+      feature?.routeIds.length &&
+      feature.routeIds.every(
+        (id) => data.routes.find((route) => route.id === id)?.overnight,
+      )
+    ) {
+      setFilters((current) =>
+        current.overnight ? current : { ...current, overnight: true },
+      );
+    }
+  }, [data, selection, feature, setFilters]);
+  useEffect(() => {
+    if (!data || !selectedRoute) return;
+    const route = data.routes.find(
+      (route) => route.id === selectedRoute && route.scheduled,
+    );
+    if (!route) setSelectedRoute(undefined);
+    else if (feature && !feature.routeIds.includes(selectedRoute))
+      setSelectedRoute(undefined);
+    else if (route.overnight)
+      setFilters((current) =>
+        current.overnight ? current : { ...current, overnight: true },
+      );
+  }, [data, selectedRoute, feature, setFilters]);
+  useEffect(() => {
+    if (!car || pendingCar.current !== car.vehicle.id) return;
+    pendingCar.current = undefined;
+    if (selectedRoute && selectedRoute !== car.vehicle.routeId)
+      setSelectedRoute(undefined);
+    setFilters((current) => ({
+      ...current,
+      live: true,
+      overnight:
+        current.overnight ||
+        Boolean(
+          data?.routes.find((route) => route.id === car.vehicle.routeId)?.overnight,
+        ),
+    }));
+    setFocusPoint([...car.point]);
+  }, [car, data, selectedRoute, setFilters]);
+  useEffect(() => {
+    if (!data) return;
+    if (
+      fromId &&
+      !data.features.some((stop) => stop.id === fromId && stop.boardingPoints > 0)
+    ) {
+      setFromId(undefined);
+      setNotice(
+        'A shared comparison stop is no longer available. Choose a current boarding stop.',
+      );
+    }
+    if (
+      toId &&
+      !data.features.some((stop) => stop.id === toId && stop.boardingPoints > 0)
+    ) {
+      setToId(undefined);
+      setNotice(
+        'A shared comparison stop is no longer available. Choose a current boarding stop.',
+      );
+    }
+  }, [data, fromId, toId]);
+  useEffect(() => {
+    if (following && car && !car.stale) setFocusPoint([...car.point]);
+  }, [following, car?.vehicle.id, car?.point[0], car?.point[1], car?.stale]);
+
+  function reset() {
+    setMobilePanelOpen(false);
+    pendingCar.current = undefined;
+    setSelection(undefined);
+    setSelectedRoute(undefined);
+    setNotice('');
+    setFocusPoint(undefined);
+    setPanel('explore');
+    setFromId(undefined);
+    setToId(undefined);
+    setPicking(undefined);
+    setFollowing(false);
+    setResetKey((key) => key + 1);
+  }
+  function selectFeature(next: Feature) {
+    setMobilePanelOpen(true);
+    pendingCar.current = undefined;
+    setFocusPoint(undefined);
+    setNotice('');
+    setFollowing(false);
+    if (panel === 'compare' && picking) {
+      if (!next.boardingPoints) {
+        setNotice('Choose a boarding stop for this comparison.');
+        return;
+      }
+      if (picking === 'from') setFromId(next.id);
+      else setToId(next.id);
+      setPicking(undefined);
+      return;
+    }
+    setPanel('explore');
+    setSelection({ kind: 'stop', id: next.id });
+    if (selectedRoute && !next.routeIds.includes(selectedRoute))
+      setSelectedRoute(undefined);
+  }
+  function selectVehicle(next: PlottedVehicle, focus = false) {
+    setMobilePanelOpen(true);
+    pendingCar.current = undefined;
+    setSelection({ kind: 'car', id: next.vehicle.id });
+    setNotice('');
+    setPanel('explore');
+    setFollowing(false);
+    if (focus) {
+      setSelectedRoute(undefined);
+      setFilters((current) => ({
+        ...current,
+        live: true,
+        overnight:
+          current.overnight ||
+          Boolean(
+            data?.routes.find((route) => route.id === next.vehicle.routeId)?.overnight,
+          ),
+      }));
+      setFocusPoint([...next.point]);
+    }
+  }
+  function selectRoute(id?: string) {
+    pendingCar.current = undefined;
+    setSelectedRoute(id);
+    setSelection(id ? { kind: 'route', id } : undefined);
+    setFocusPoint(undefined);
+    setNotice('');
+    setFollowing(false);
+  }
+  function surprise() {
+    if (!data) return;
+    const stops = data.features.filter(
+      (stop) =>
+        stop.id !== feature?.id &&
+        stop.boardingPoints > 0 &&
+        stop.routeIds.some((id) =>
+          data.routes.some(
+            (route) => route.id === id && (filters.overnight || !route.overnight),
+          ),
+        ),
+    );
+    if (stops.length) selectFeature(stops[Math.floor(Math.random() * stops.length)]);
+  }
+  function locate(next: Location) {
+    if (!data) return;
+    setLocation(next);
+    setFollowing(false);
+    if (nearbyStops(data, next).length)
+      setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
+    else {
+      setFocusPoint(undefined);
+      setResetKey((key) => key + 1);
+    }
+  }
+  function toggleSave() {
+    if (!feature) return;
+    if (!savedStops.includes(feature.id) && savedStops.length >= 100) {
+      setNotice('Your 100 saved stops are full. Remove a stop to save another.');
+      return;
+    }
+    setSavedStops((current) =>
+      current.includes(feature.id)
+        ? current.filter((id) => id !== feature.id)
+        : current.length < 100
+          ? [...current, feature.id]
+          : current,
+    );
+  }
+  function changeComparison(from?: string, to?: string) {
+    setFromId(from);
+    setToId(to);
+    setPicking(undefined);
+    setFocusPoint(undefined);
+    setSelectedRoute(undefined);
+    setNotice('');
+    if (selection?.kind === 'route') setSelection(undefined);
+  }
+  function pickStop(end?: PickingStop) {
+    if (end) setMobilePanelOpen(false);
+    setPicking(end);
+    setSelectedRoute(undefined);
+    setNotice('');
+    if (selection?.kind === 'route') setSelection(undefined);
+  }
+  function collectCar() {
+    if (!account.userId) {
+      setPanel('journal');
+      setMobilePanelOpen(true);
+      return;
+    }
+    if (!accountJournal.ready) {
+      setNotice('Wait for your journal to load or finish saving, then try again.');
+      return;
+    }
+    if (
+      !car ||
+      journal.length >= JOURNAL_LIMIT ||
+      journal.some((entry) => entry.vehicleId === car.vehicle.id)
+    )
+      return;
+    const entry = journalEntry(car, data?.routes ?? []);
+    if (!validJournal([entry])) {
+      setNotice('This car’s supplied identifier cannot be saved in the journal.');
+      return;
+    }
+    setJournal((current) =>
+      current.some((item) => item.vehicleId === entry.vehicleId) ||
+      current.length >= JOURNAL_LIMIT
+        ? current
+        : [...current, entry],
+    );
+    setNotice('Car ' + car.vehicle.label + ' added to your journal.');
+  }
+  function importEarlierJournal() {
+    try {
+      const earlier: unknown = JSON.parse(
+        localStorage.getItem('ttc:journal:v1') ?? 'null',
+      );
+      if (!validJournal(earlier)) {
+        setNotice(
+          'No valid earlier journal was found in this browser. You can restore a backup instead.',
+        );
+        return;
+      }
+      const merged = mergeJournal(journal, earlier);
+      setJournal(() => merged.entries);
+      setNotice(`${merged.added} earlier cars added. Existing notes were kept.`);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Unable to import this browser’s earlier journal.',
+      );
+    }
+  }
+  useShortcuts(shortcutsEnabled && !snakeOpen, {
+    '/': () => document.querySelector<HTMLInputElement>('.search input')?.focus(),
+    e: () => setPanel('explore'),
+    f: () => setPanel('fleet'),
+    c: () => setPanel('compare'),
+    d: () => setPanel('stops'),
+    j: () => setPanel('journal'),
+    p: previewMap,
+    s: toggleSave,
+    n: theme.toggle,
+    r: reset,
+    '?': () => setShortcutHelp(true),
+  });
+
+  const panelTitle =
+    panel === 'explore'
+      ? car
+        ? `Car ${car.vehicle.label}`
+        : (feature?.name ??
+          (selection?.kind === 'car' ? `Car ${selection.id}` : 'Explore streetcars'))
+      : {
+          fleet: 'Streetcar fleet',
+          compare: 'Compare stops',
+          stops: 'Stop directory',
+          journal: 'Streetcar journal',
+        }[panel];
+
+  return {
+    data,
+    error,
+    retryMap,
+    filters,
+    setFilters,
+    savedStops,
+    setSavedStops,
+    savedPersistent,
+    accountJournal,
+    journal,
+    setJournal,
+    exportImage,
+    exportCars,
+    initialLink,
+    selection,
+    setSelection,
+    selectedRoute,
+    setSelectedRoute,
+    panel,
+    setPanel,
+    mobilePanelOpen,
+    setMobilePanelOpen,
+    fromId,
+    setFromId,
+    toId,
+    setToId,
+    picking,
+    setPicking,
+    following,
+    setFollowing,
+    snakeOpen,
+    setSnakeOpen,
+    shortcutHelp,
+    setShortcutHelp,
+    shortcutsEnabled,
+    setShortcutsEnabled,
+    focusPoint,
+    setFocusPoint,
+    location,
+    setLocation,
+    notice,
+    setNotice,
+    resetKey,
+    theme,
+    pendingCar,
+    feed,
+    sidebar,
+    cars,
+    feature,
+    car,
+    locationPoint,
+    comparisonStops,
+    comparisonBounds,
+    selectFeature,
+    selectVehicle,
+    selectRoute,
+    surprise,
+    locate,
+    toggleSave,
+    changeComparison,
+    pickStop,
+    collectCar,
+    importEarlierJournal,
+    previewMap,
+    changeExportCars,
+    closeExport,
+    reset,
+    shownRoutes,
+    panelTitle,
+  };
+}
+
+export type HomeWorkspaceState = ReturnType<typeof useHomeWorkspace>;

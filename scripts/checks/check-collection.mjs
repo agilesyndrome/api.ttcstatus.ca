@@ -1,0 +1,465 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { build } from 'esbuild';
+import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
+const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
+const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
+const compiled = await build({
+  stdin: {
+    contents: `export { buildViewerData } from './shared/map/model'; export { mapToGps } from './shared/map/projection';`,
+    resolveDir: process.cwd(),
+    loader: 'ts',
+  },
+  bundle: true,
+  write: false,
+  format: 'esm',
+});
+const { buildViewerData, mapToGps } = await import(
+  'data:text/javascript;base64,' +
+    Buffer.from(compiled.outputFiles[0].text).toString('base64')
+);
+const data = buildViewerData(map);
+const stop = data.features.find(
+  (stop) => stop.boardingPoints && stop.accessible === true,
+);
+const gps = mapToGps(stop.point, data.geographicTransform);
+const day = data.routes.find((route) => route.number === '501');
+const night = data.routes.find((route) => route.overnight && route.scheduled);
+const errors = [];
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+try {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 960 },
+    colorScheme: 'light',
+    permissions: ['geolocation'],
+    geolocation: { ...gps, accuracy: 20 },
+  });
+  const accounts = await installAccountFixture(context, { signedIn: true });
+  context.on('page', (page) =>
+    page.on('pageerror', (error) => errors.push(error.message)),
+  );
+  await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
+    route.fulfill({ json: map }),
+  );
+  await context.route('**/api/v1/vehicles/streetcar', (route) =>
+    route.fulfill({
+      json: {
+        schemaVersion: 1,
+        source: 'collection-fixture',
+        attribution: 'Offline collection fixture',
+        fetchedAt: new Date().toISOString(),
+        feedTimestamp: new Date().toISOString(),
+        invalidPositions: 0,
+        vehicles: Array.from({ length: 26 }, (_, index) => ({
+          id: String(4400 + index),
+          label: String(4400 + index),
+          ...gps,
+          routeId: index === 5 ? night.id : day.id,
+          observedAt: new Date(Date.now() - (index === 1 ? 600000 : 0)).toISOString(),
+        })),
+      },
+    }),
+  );
+  const page = await context.newPage();
+  await page.goto(origin);
+  await page.locator('[data-vehicle="4400"]').waitFor();
+  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
+  assert.equal(await page.locator('#panel-stops .list-choice').count(), 20);
+  await page.getByRole('button', { name: 'Next stops', exact: true }).click();
+  assert.ok(
+    (await page.locator('#panel-stops .fleet-pagination').innerText()).includes('Page 2'),
+  );
+  await page.getByLabel('Listed accessible boarding', { exact: true }).check();
+  assert.ok(
+    (await page.locator('#panel-stops .fleet-pagination').innerText()).includes('Page 1'),
+  );
+  await page.getByLabel('Saved stops only', { exact: true }).check();
+  await page.getByText('No places match these filters.', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Reset stop filters' }).click();
+  await page
+    .getByRole('searchbox', { name: 'Search stops', exact: true })
+    .fill(stop.name);
+  await page
+    .locator('#panel-stops .list-choice')
+    .filter({ hasText: stop.name })
+    .first()
+    .click();
+  assert.equal(
+    await page
+      .getByRole('tab', { name: 'Explore', exact: true })
+      .getAttribute('aria-selected'),
+    'true',
+  );
+  await page.getByRole('button', { name: 'Save stop', exact: false }).click();
+  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.locator('.location-marker').waitFor();
+  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset stop filters' }).click();
+  await page.getByLabel('Sort stops', { exact: true }).selectOption('distance');
+  assert.ok(
+    (await page.locator('#panel-stops .list-choice').first().innerText()).includes(
+      stop.name,
+    ),
+  );
+  await page.getByLabel('Saved stops only', { exact: true }).check();
+  assert.equal(await page.locator('#panel-stops .list-choice').count(), 1);
+  await page.screenshot({ path: '/tmp/ttc-hackathon-stops.png' });
+
+  async function collect(id) {
+    await page.getByRole('tab', { name: 'Fleet', exact: true }).click();
+    await page.getByRole('searchbox', { name: 'Find in fleet', exact: true }).fill(id);
+    await page.locator('.fleet-list .list-choice').first().click();
+    await page.getByRole('button', { name: 'Add to journal', exact: false }).click();
+    assert.ok(
+      await page
+        .getByRole('button', { name: 'In your journal', exact: false })
+        .isDisabled(),
+    );
+  }
+  await collect('4400');
+  await collect('4401');
+  await collect('4405');
+  await page.getByRole('button', { name: 'Open journal', exact: false }).click();
+  assert.equal(await page.locator('.journal-entry').count(), 3);
+  assert.ok(
+    (await page.locator('.journal-badge.earned').allTextContents()).some((text) =>
+      text.includes('Blue Night collector'),
+    ),
+  );
+  const car = page.getByRole('article', { name: 'Collected car 4400', exact: true });
+  await car.getByRole('button', { name: 'Edit note' }).click();
+  const note = 'Queen ride ☕\n<script>window.journalInjected=true</script>';
+  await page.getByLabel('Note for car 4400', { exact: true }).fill(note);
+  await page.keyboard.press('f');
+  assert.equal(
+    await page
+      .getByRole('tab', { name: 'Journal', exact: true })
+      .getAttribute('aria-selected'),
+    'true',
+    'shortcuts do not intercept textarea editing',
+  );
+  await page.getByLabel('Note for car 4400', { exact: true }).fill(note);
+  await page.getByRole('button', { name: 'Save note', exact: true }).click();
+  assert.equal(await car.locator('.journal-note').innerText(), note);
+  assert.equal(await page.evaluate(() => window.journalInjected), undefined);
+  await page.reload();
+  await page.getByRole('heading', { name: 'Streetcar journal.', exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole('article', { name: 'Collected car 4400', exact: true })
+      .locator('.journal-note')
+      .innerText(),
+    note,
+  );
+  assert.ok(
+    !page.url().includes('Queen') && !page.url().includes('4400'),
+    'sharing the journal tab does not share its contents',
+  );
+  const backupDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Back up journal', exact: true }).click();
+  const backup = await backupDownload;
+  assert.equal(backup.suggestedFilename(), 'ttc-streetcar-journal.json');
+  const contents = await readFile(await backup.path(), 'utf8');
+  const payload = JSON.parse(contents);
+  assert.equal(payload.entries.length, 3);
+  assert.ok(
+    !contents.includes('latitude') &&
+      !contents.includes('longitude') &&
+      !contents.includes('observedAt'),
+  );
+  const imported = structuredClone(payload);
+  imported.entries[0].note = 'Do not overwrite my saved note';
+  imported.entries.push({
+    vehicleId: '9900',
+    label: '9900',
+    recordedAt: '2026-10-03T12:00:00.000Z',
+    note: 'Restored car',
+  });
+  await page.getByLabel('Journal backup file').setInputFiles({
+    name: 'backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(imported)),
+  });
+  await page.getByText('1 new car restored.', { exact: false }).waitFor();
+  assert.equal(await page.locator('.journal-entry').count(), 4);
+  assert.equal(
+    await page
+      .getByRole('article', { name: 'Collected car 4400', exact: true })
+      .locator('.journal-note')
+      .innerText(),
+    note,
+  );
+  await page.getByLabel('Journal backup file').setInputFiles({
+    name: 'invalid.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{'),
+  });
+  await page
+    .getByText('This is not a valid JSON journal backup.', { exact: true })
+    .waitFor();
+  assert.equal(await page.locator('.journal-entry').count(), 4);
+  await page
+    .getByRole('searchbox', { name: 'Search your journal', exact: true })
+    .fill('Restored car');
+  assert.equal(await page.locator('.journal-entry').count(), 1);
+  await page
+    .getByRole('article', { name: 'Collected car 9900' })
+    .getByRole('button', { name: 'Remove', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Keep car', exact: true }).click();
+  assert.equal(await page.locator('.journal-entry').count(), 1);
+  await page
+    .getByRole('article', { name: 'Collected car 9900' })
+    .getByRole('button', { name: 'Remove', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Confirm removal', exact: true }).click();
+  assert.equal(await page.locator('.journal-entry').count(), 0);
+  await page
+    .getByRole('searchbox', { name: 'Search your journal', exact: true })
+    .fill('');
+  await page.screenshot({ path: '/tmp/ttc-hackathon-journal.png' });
+
+  // Capture a map containing location and bookmark markers, then verify neither is exported.
+  await page.getByRole('tab', { name: 'Explore', exact: true }).click();
+  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.locator('.location-marker').waitFor();
+  await page.getByRole('button', { name: 'Switch to night theme' }).click();
+  await page.getByRole('button', { name: 'Print or download map', exact: true }).click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Take this map with you.',
+    exact: true,
+  });
+  await dialog.waitFor();
+  await page.getByRole('button', { name: 'Download map (.svg)', exact: true }).waitFor();
+  const svgDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download map (.svg)', exact: true }).click();
+  const svg = await readFile(await (await svgDownload).path(), 'utf8');
+  const info = await page.evaluate((svg) => {
+    const xml = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const root = xml.documentElement;
+    return {
+      errors: xml.querySelectorAll('parsererror').length,
+      cars: xml.querySelectorAll('.live-car').length,
+      privateMarkers: xml.querySelectorAll('.location-marker,.saved-marker').length,
+      tracks: xml.querySelectorAll('.track').length,
+      interactive: xml.querySelectorAll(
+        '[tabindex],[data-feature],[data-vehicle],script,foreignObject,image,a',
+      ).length,
+      body: root.textContent,
+      viewBox: xml.querySelector('svg svg').getAttribute('viewBox'),
+    };
+  }, svg);
+  assert.equal(info.errors, 0);
+  assert.equal(info.privateMarkers, 0);
+  assert.equal(info.interactive, 0);
+  assert.ok(info.tracks > 0 && info.cars > 0);
+  assert.ok(
+    info.body.includes('Offline collection fixture') &&
+      info.body.includes('OpenStreetMap'),
+  );
+  await page.evaluate(() =>
+    document.querySelector('#map').setAttribute('viewBox', '0 0 100 100'),
+  );
+  const firstImage = await dialog.locator('img').getAttribute('src');
+  await page.getByLabel('Include visible streetcar positions', { exact: true }).uncheck();
+  await page.waitForFunction(
+    (old) => document.querySelector('.map-print-sheet').getAttribute('src') !== old,
+    firstImage,
+  );
+  const noCarsDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download map (.svg)', exact: true }).click();
+  const withoutCars = await readFile(await (await noCarsDownload).path(), 'utf8');
+  assert.ok(
+    withoutCars.includes('viewBox="' + info.viewBox + '"'),
+    'the export stays frozen after the underlying camera changes',
+  );
+  assert.ok(
+    !withoutCars.includes('class="live-car') &&
+      !withoutCars.includes('Vehicle snapshot:'),
+  );
+  await page.evaluate(() => {
+    window.print = () => {
+      window.printRequested = true;
+    };
+  });
+  await page.getByRole('button', { name: 'Print / save PDF', exact: true }).click();
+  assert.ok(await page.evaluate(() => window.printRequested));
+  await page.emulateMedia({ media: 'print' });
+  assert.equal(await page.locator('.workspace').isVisible(), false);
+  assert.equal(await dialog.locator('.export-options').first().isVisible(), false);
+  assert.equal(await dialog.locator('.map-print-sheet').isVisible(), false);
+  assert.equal(
+    await page.locator('.map-print-output .map-print-sheet').isVisible(),
+    true,
+  );
+  assert.equal(
+    await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor),
+    'rgb(255, 255, 255)',
+  );
+  await page.pdf({
+    path: '/tmp/ttc-hackathon-map.pdf',
+    preferCSSPageSize: true,
+    printBackground: true,
+  });
+  await page.emulateMedia({ media: 'screen' });
+  await page.screenshot({ path: '/tmp/ttc-hackathon-map-export.png' });
+  await page.keyboard.press('Escape');
+  assert.equal(await dialog.isVisible(), false);
+
+  // Phone layouts include all five tabs and the complete print dialog.
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const name of ['Stops', 'Journal']) {
+      await page.getByRole('tab', { name, exact: true }).click();
+      assert.ok(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+        'no horizontal overflow at ' + width,
+      );
+      assert.ok(
+        await page.evaluate(() =>
+          [...document.querySelectorAll('.sidebar-tabs button')].every(
+            (button) => button.scrollWidth <= button.clientWidth,
+          ),
+        ),
+        'all tab labels fit at ' + width,
+      );
+    }
+    await page
+      .getByRole('button', { name: 'Print or download map', exact: true })
+      .click();
+    await dialog.locator('img').waitFor();
+    assert.ok(
+      await page.evaluate(
+        () =>
+          document.querySelector('.map-export').getBoundingClientRect().right <=
+          innerWidth,
+      ),
+    );
+    await page.keyboard.press('Escape');
+    await page.screenshot({ path: '/tmp/ttc-hackathon-collection-' + width + '.png' });
+  }
+  await page.getByRole('tab', { name: 'Stops', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(
+    await page
+      .getByRole('tab', { name: 'Journal', exact: true })
+      .getAttribute('aria-selected'),
+    'true',
+  );
+  await page.keyboard.press('ArrowRight');
+  assert.equal(
+    await page
+      .getByRole('tab', { name: 'Explore', exact: true })
+      .getAttribute('aria-selected'),
+    'true',
+  );
+  await page.getByRole('button', { name: 'Clear location', exact: true }).click();
+  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
+  assert.equal(await page.getByLabel('Sort stops', { exact: true }).inputValue(), 'name');
+  assert.ok(
+    await page
+      .getByLabel('Sort stops', { exact: true })
+      .locator('option[value="distance"]')
+      .isDisabled(),
+  );
+
+  const corrupt = await context.newPage();
+  await corrupt.addInitScript(() => {
+    window.__testUser = 'user_corrupt';
+  });
+  await corrupt.addInitScript(() => {
+    localStorage.setItem(
+      'ttc:journal:v1',
+      JSON.stringify([{ vehicleId: 'bad', latitude: 43.6 }]),
+    );
+  });
+  await corrupt.goto(origin + '/#view=journal');
+  await corrupt.getByText('Your first catch is waiting.', { exact: false }).waitFor();
+  await corrupt.close();
+  const full = await context.newPage();
+  accounts.journals.set('user_full', {
+    entries: Array.from({ length: 500 }, (_, index) => ({
+      vehicleId: 'saved-' + index,
+      label: 'Saved ' + index,
+      recordedAt: '2026-10-03T12:00:00.000Z',
+      note: '',
+    })),
+    revision: 1,
+  });
+  await full.addInitScript(() => {
+    window.__testUser = 'user_full';
+  });
+  await full.goto(origin + '/#car=4400');
+  await full.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
+  assert.ok(
+    await full
+      .getByRole('button', { name: 'Journal full · 500 cars', exact: true })
+      .isDisabled(),
+  );
+  await full.getByRole('button', { name: 'Open journal', exact: false }).click();
+  assert.equal(await full.locator('.journal-entry').count(), 10);
+  assert.ok(
+    (await full.locator('#panel-journal .fleet-pagination').innerText()).includes(
+      'Page 1 of 50',
+    ),
+  );
+  const overflow = {
+    format: 'ttc-streetcar-journal',
+    version: 1,
+    entries: [
+      {
+        vehicleId: 'extra',
+        label: 'Extra',
+        recordedAt: '2026-10-03T12:00:00.000Z',
+        note: '',
+      },
+    ],
+  };
+  await full.getByLabel('Journal backup file').setInputFiles({
+    name: 'overflow.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(overflow)),
+  });
+  await full
+    .getByText('This import would exceed the 500-car journal limit.', { exact: false })
+    .waitFor();
+  await full.close();
+  const privateTab = await context.newPage();
+  await privateTab.addInitScript(() => {
+    window.__testUser = 'user_private';
+  });
+  await privateTab.addInitScript(() => {
+    Storage.prototype.getItem = () => {
+      throw new Error('blocked');
+    };
+    Storage.prototype.setItem = () => {
+      throw new Error('blocked');
+    };
+  });
+  await privateTab.goto(origin + '/#car=4400');
+  await privateTab.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
+  await privateTab.getByRole('button', { name: 'Add to journal', exact: false }).click();
+  await privateTab.getByRole('button', { name: 'Open journal', exact: false }).click();
+  await privateTab
+    .getByText('Your journal is saved to your account.', { exact: true })
+    .waitFor();
+  assert.equal(await privateTab.locator('.journal-entry').count(), 1);
+  const privateDownload = privateTab.waitForEvent('download');
+  await privateTab.getByRole('button', { name: 'Back up journal', exact: true }).click();
+  assert.equal(
+    JSON.parse(await readFile(await (await privateDownload).path(), 'utf8')).entries
+      .length,
+    1,
+  );
+  await privateTab.close();
+  assert.deepEqual(errors, []);
+  console.log(
+    'Collection UI passed: stop directory/filter/paging/GPS sorting, manual journal/notes/badges/persistence/backup/merge/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and five-tab keyboard navigation; no browser errors.',
+  );
+  await context.close();
+} finally {
+  await browser.close();
+}
