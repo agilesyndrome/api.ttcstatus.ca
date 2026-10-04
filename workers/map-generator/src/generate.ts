@@ -1,9 +1,9 @@
-import { storeMapArtifact } from "./artifact-store";
-import { buildStreetcarMapBundle } from "./build-map";
-import { loadMapSourceData } from "./repository";
-import type { MapGeneratorEnv } from "./types";
+import { storeMapArtifact } from './artifacts/artifact-store';
+import { buildStreetcarMapBundle } from './layout/build-map';
+import { loadMapSourceData } from './source/repository';
+import type { MapGeneratorEnv } from './types';
 
-export type { MapGeneratorEnv } from "./types";
+export type { MapGeneratorEnv } from './types';
 
 /**
  * Map generation orchestration deliberately stays tiny:

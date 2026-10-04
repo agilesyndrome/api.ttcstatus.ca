@@ -7,16 +7,16 @@
   "workers_dev": true,
   "previews": {},
   "assets": {
-    "directory": "../../public",
+    "directory": "../../dist",
     "run_worker_first": ["/api/*"],
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
   },
   "limits": {
-    "cpu_ms": 300000
+    "cpu_ms": 300000,
   },
   "observability": { "enabled": true },
   "triggers": {
-    "crons": ["17 7 * * *"]
+    "crons": ["17 7 * * *"],
   },
   "vars": {
     "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca",
@@ -25,26 +25,26 @@
     "REALTIME_VEHICLE_URL": "https://bustime.ttc.ca/gtfsrt/vehicles",
     "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/bd4809dd-e289-4de8-bbde-c5c00dafbf4f/resource/28514055-d011-4ed7-8bb0-97961dfe2b66/download/SurfaceGTFS.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
-    "NO_VALIDATOR_REFETCH_DAYS": "7"
+    "NO_VALIDATOR_REFETCH_DAYS": "7",
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "ttcstatus",
       "database_id": "7c7e47b4-da33-42de-a521-df30b79e41f2",
-      "migrations_dir": "../../migrations"
-    }
+      "migrations_dir": "../../migrations",
+    },
   ],
   "r2_buckets": [
     {
       "binding": "GTFS_BUCKET",
-      "bucket_name": "ttcstatus-static-gtfs"
-    }
+      "bucket_name": "ttcstatus-static-gtfs",
+    },
   ],
   "services": [
     {
       "binding": "MAP_GENERATOR",
-      "service": "ttcstatus-map-generator"
-    }
-  ]
+      "service": "ttcstatus-map-generator",
+    },
+  ],
 }

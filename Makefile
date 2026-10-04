@@ -1,3 +1,5 @@
+MAP_INPUT ?= $(if $(wildcard dist/streetcarmap.json),dist/streetcarmap.json,data/fixtures/streetcarmap.json)
+
 .PHONY: dev admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
 
 dev:
@@ -13,13 +15,14 @@ map/streetcar:
 	@./bin/api GET /api/v1/map/streetcar --fail --show-error
 
 map/streetcar/svg:
-	@npm run map:preview
+	@npm run map:preview -- "$(MAP_INPUT)"
 
 map/debug:
 	@set -eu; \
-		tmp=$$(mktemp ./streetcarmap.json.XXXXXX); \
+		mkdir -p dist; \
+		tmp=$$(mktemp ./dist/streetcarmap.json.XXXXXX); \
 		trap 'rm -f "$$tmp"' EXIT HUP INT TERM; \
 		./bin/api GET /api/v1/map/streetcar --fail --show-error --output "$$tmp"; \
-		mv "$$tmp" streetcarmap.json
-	@$(MAKE) --no-print-directory map/streetcar/svg
-	@node scripts/open-map.mjs
+		mv "$$tmp" dist/streetcarmap.json
+	@$(MAKE) --no-print-directory map/streetcar/svg MAP_INPUT=dist/streetcarmap.json
+	@node scripts/preview/open-map.mjs

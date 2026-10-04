@@ -12,3 +12,5 @@ node_modules/
 /public/assets/
 /public/index.html
 /storybook-static/
+
+/dist/
