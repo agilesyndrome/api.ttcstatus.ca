@@ -6,6 +6,9 @@ import { streetcarBody, type PlottedVehicle } from '../../map/live-status';
 interface Props {
   data: ViewerData; cars?: PlottedVehicle[]; selectedRoute?: string; selectedFeature?: Feature; focusPoint?: Point;
   showLabels?: boolean; includeOvernight?: boolean; resetKey?: number;
+  savedStopIds?: string[]; locationPoint?: Point; selectedVehicleId?: string;
+  focusBounds?: Bounds; comparisonStops?: { from?: Feature; to?: Feature }; pickingLabel?: string;
+  onInteract?(): void; onExport?(): void;
   onSelectFeature(feature: Feature): void; onSelectVehicle(car: PlottedVehicle): void;
 }
 const points = (values: Point[]) => values.map(point => point.join(',')).join(' ');
@@ -17,7 +20,7 @@ const Tracks = memo(function Tracks({ data, selectedRoute, includeOvernight }: P
   })}</g>;
 });
 
-export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, onSelectFeature, onSelectVehicle }: Props) {
+export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, savedStopIds = [], locationPoint, selectedVehicleId, focusBounds, comparisonStops, pickingLabel, onInteract, onExport, onSelectFeature, onSelectVehicle }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
   const initial = fitCamera(data.bounds, size.width / size.height);
@@ -29,6 +32,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
   const start = useRef<Point | undefined>(undefined);
   const frame = useRef<number | undefined>(undefined);
   const pending = useRef<Bounds>(camera);
+  const interact = useRef(onInteract); interact.current = onInteract;
   const scale = size.width / camera.width;
   const level = initial.width / camera.width;
 
@@ -58,7 +62,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
       }
     });
     observer.observe(node);
-    const wheel = (event: WheelEvent) => { event.preventDefault(); zoom(Math.exp(Math.max(-160, Math.min(160, event.deltaY)) * .0025), world(event.clientX, event.clientY)); };
+    const wheel = (event: WheelEvent) => { event.preventDefault(); interact.current?.(); zoom(Math.exp(Math.max(-160, Math.min(160, event.deltaY)) * .0025), world(event.clientX, event.clientY)); };
     node.addEventListener('wheel', wheel, { passive: false });
     return () => { observer.disconnect(); node.removeEventListener('wheel', wheel); if (frame.current !== undefined) cancelAnimationFrame(frame.current); };
   }, [data]);
@@ -79,20 +83,35 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
     const fitted = initialRef.current, width = fitted.width / 5, height = fitted.height / 5;
     move({ x: focusPoint[0] - width / 2, y: focusPoint[1] - height / 2, width, height });
   }, [focusPoint]);
+  useEffect(() => { if (focusBounds) move(fitCamera(focusBounds, size.width / size.height)); }, [focusBounds]);
 
   const selectKey = (event: React.KeyboardEvent, action: () => void) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); action(); } };
   const allowedRoutes = new Set(data.routes.filter(route => includeOvernight || !route.overnight).map(route => route.id));
-  const visibleFeatures = data.features.filter(feature => (feature.kind === 'terminal' || feature.routeIds.some(id => allowedRoutes.has(id))) && (!selectedRoute || feature.routeIds.includes(selectedRoute) || selectedFeature?.id === feature.id));
+  const isEndpoint = (feature: Feature) => feature.id === comparisonStops?.from?.id || feature.id === comparisonStops?.to?.id;
+  const visibleFeatures = data.features.filter(feature => (isEndpoint(feature) || selectedFeature?.id === feature.id || feature.kind === 'terminal' || feature.routeIds.some(id => allowedRoutes.has(id))) && (!selectedRoute || feature.routeIds.includes(selectedRoute) || selectedFeature?.id === feature.id || isEndpoint(feature)));
   // Keep labels readable; reveal ordinary stops at closer zoom levels.
   const labelFeatures = visibleFeatures
-    .filter(feature => feature.kind === 'terminal' || selectedFeature?.id === feature.id || level > (showLabels ? 1.5 : 3))
-    .sort((a, b) => Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) || Number(b.kind === 'terminal') - Number(a.kind === 'terminal'));
+    .filter(feature => isEndpoint(feature) || feature.kind === 'terminal' || selectedFeature?.id === feature.id || level > (showLabels ? 1.5 : 3))
+    .sort((a, b) => Number(isEndpoint(b)) - Number(isEndpoint(a)) || Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) || Number(b.kind === 'terminal') - Number(a.kind === 'terminal'));
   const occupied: { x: number; y: number; width: number; height: number }[] = [];
   const readableLabels = labelFeatures.filter(feature => {
     const x = (feature.point[0] - camera.x) * scale + 8;
     const y = (feature.point[1] - camera.y) * scale - 19;
     const box = { x, y, width: feature.name.length * 6 + 10, height: 20 };
     if (x < 8 || y < 35 || x + box.width > size.width - 8 || y + box.height > size.height - 65) return false;
+    if (occupied.some(other => box.x < other.x + other.width && box.x + box.width > other.x && box.y < other.y + other.height && box.y + box.height > other.y)) return false;
+    occupied.push(box); return true;
+  });
+  const readableContextLabels = data.labels.filter(label => label.kind === 'street' || label.kind === 'water').filter(label => {
+    // Context uses rotated text. Reserve its screen-space bounds so street
+    // names do not pile up over terminals when the whole map fits a phone.
+    const angle = label.angle * Math.PI / 180;
+    const width = label.text.length * 6, height = 16;
+    const x = (label.point[0] - camera.x) * scale, y = (label.point[1] - camera.y) * scale;
+    const corners = [[0, -height], [width, -height], [0, 0], [width, 0]].map(([dx, dy]) => [x + dx * Math.cos(angle) - dy * Math.sin(angle), y + dx * Math.sin(angle) + dy * Math.cos(angle)]);
+    const left = Math.min(...corners.map(point => point[0])), top = Math.min(...corners.map(point => point[1]));
+    const box = { x: left - 3, y: top - 3, width: Math.max(...corners.map(point => point[0])) - left + 6, height: Math.max(...corners.map(point => point[1])) - top + 6 };
+    if (box.x < 8 || box.y < 35 || box.x + box.width > size.width - 8 || box.y + box.height > size.height - 65) return false;
     if (occupied.some(other => box.x < other.x + other.width && box.x + box.width > other.x && box.y < other.y + other.height && box.y + box.height > other.y)) return false;
     occupied.push(box); return true;
   });
@@ -113,7 +132,7 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
           const oldDistance = distance(before[0], before[1]), newDistance = distance(after[0], after[1]);
           if (newDistance && oldDistance) zoom(oldDistance / newDistance, world((after[0][0] + after[1][0]) / 2, (after[0][1] + after[1][1]) / 2));
         } else if (start.current && Math.hypot(event.clientX - start.current[0], event.clientY - start.current[1]) > 4) moved.current = true;
-        if (moved.current) move(moveCamera(cameraRef.current, -(event.clientX - previous[0]) * cameraRef.current.width / rect.width, -(event.clientY - previous[1]) * cameraRef.current.height / rect.height));
+        if (moved.current) { interact.current?.(); move(moveCamera(cameraRef.current, -(event.clientX - previous[0]) * cameraRef.current.width / rect.width, -(event.clientY - previous[1]) * cameraRef.current.height / rect.height)); }
       }}
       onPointerUp={event => {
         if (!moved.current) {
@@ -126,28 +145,30 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, fo
         pointers.current.delete(event.pointerId); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onPointerCancel={event => { pointers.current.delete(event.pointerId); moved.current = true; }}
-      onDoubleClick={event => zoom(.5, world(event.clientX, event.clientY))}
+      onDoubleClick={event => { interact.current?.(); zoom(.5, world(event.clientX, event.clientY)); }}
       onKeyDown={event => {
         const directions: Record<string, Point> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-        if (directions[event.key]) { event.preventDefault(); const [x, y] = directions[event.key]; move(moveCamera(camera, x * camera.width * .08, y * camera.height * .08)); }
-        else if (['+', '=', '-'].includes(event.key)) { event.preventDefault(); zoom(event.key === '-' ? 1 / .7 : .7); }
-        else if (event.key === 'Home' || event.key === '0') { event.preventDefault(); move(initial); }
+        if (directions[event.key]) { event.preventDefault(); interact.current?.(); const [x, y] = directions[event.key]; move(moveCamera(camera, x * camera.width * .08, y * camera.height * .08)); }
+        else if (['+', '=', '-'].includes(event.key)) { event.preventDefault(); interact.current?.(); zoom(event.key === '-' ? 1 / .7 : .7); }
+        else if (event.key === 'Home' || event.key === '0') { event.preventDefault(); interact.current?.(); move(initial); }
       }}>
-      <g aria-hidden="true"><polygon points={points(water)} fill="#d8e8e9" /><polyline points={points(shoreline)} fill="none" stroke="#bdd7da" vectorEffect="non-scaling-stroke" /></g>
+      <g className="water-context" aria-hidden="true"><polygon points={points(water)} fill="#d8e8e9" /><polyline points={points(shoreline)} fill="none" stroke="#bdd7da" vectorEffect="non-scaling-stroke" /></g>
       <Tracks data={data} selectedRoute={selectedRoute} includeOvernight={includeOvernight} />
       {visibleFeatures.map(feature => <g key={feature.id} data-feature={feature.id} role="button" tabIndex={0} aria-label={feature.name} transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`} onKeyDown={event => selectKey(event, () => onSelectFeature(feature))}>
-        <title>{feature.name}</title><circle r={10} fill="transparent" />{selectedFeature?.id === feature.id && <circle r={12} fill="#278f9120" stroke="#278f91" />}<circle className="marker" r={feature.kind === 'terminal' ? 4.6 : 2.2} fill="#fffdf7" stroke="#43535e" />
+        <title>{feature.name}</title><circle r={10} fill="transparent" />{selectedFeature?.id === feature.id && <circle r={12} fill="#278f9120" stroke="#278f91" />}{savedStopIds.includes(feature.id) && <path className="saved-marker" d="M0 -12L2 -7L7 -7L3 -3L5 2L0 -1L-5 2L-3 -3L-7 -7L-2 -7Z" fill="#c17e16" stroke="#fffdf7" />}<circle className="marker" r={feature.kind === 'terminal' ? 4.6 : 2.2} fill="#fffdf7" stroke="#43535e" />
       </g>)}
       <g className="map-label" aria-hidden="true">
-        {data.labels.filter(label => label.kind === 'street' || label.kind === 'water').map((label, index) => <g key={index} transform={`translate(${label.point.join(' ')}) rotate(${label.angle}) scale(${1 / scale})`}><text fill="#7b8794" fontSize={11}>{label.text}</text></g>)}
+        {readableContextLabels.map((label, index) => <g key={index} transform={`translate(${label.point.join(' ')}) rotate(${label.angle}) scale(${1 / scale})`}><text fill="#7b8794" fontSize={11}>{label.text}</text></g>)}
         {readableLabels.map(feature => <g key={feature.id} transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}><text x={8} y={-7} fontSize={11} fill="#43535e">{feature.name}</text></g>)}
       </g>
       {cars.filter(car => (includeOvernight || !data.routes.find(route => route.id === car.vehicle.routeId)?.overnight) && (!selectedRoute || car.vehicle.routeId === selectedRoute)).map(car => <g key={car.vehicle.id} data-vehicle={car.vehicle.id} className={`live-car${car.match ? '' : ' off-track'}`} role="button" tabIndex={0} aria-label={`Streetcar ${car.vehicle.label}${car.stale ? ', stale position' : ''}`} opacity={car.stale ? .45 : 1} onKeyDown={event => selectKey(event, () => onSelectVehicle(car))}>
-        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}><rect x={-4} y={-3} width={8} height={6} rx={1.5} fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#fffdf7" /></g>)}
+        <title>Car {car.vehicle.label}{car.stale ? ' · Stale position' : ''}</title>{selectedVehicleId === car.vehicle.id && <circle className="selected-car-ring" cx={car.point[0]} cy={car.point[1]} r={15 / scale} fill="#278f9120" stroke="#278f91" vectorEffect="non-scaling-stroke" />}{streetcarBody(car, data.edges, scale).reverse().map((section, index) => <g key={index} transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}><rect x={-4} y={-3} width={8} height={6} rx={1.5} fill={data.routes.find(route => route.id === car.vehicle.routeId)?.color ?? '#b4393f'} stroke="#fffdf7" /></g>)}
       </g>)}
+      {locationPoint && <g className="location-marker" transform={`translate(${locationPoint.join(' ')}) scale(${1 / scale})`} role="img" aria-label="Your approximate location"><circle r={16} fill="#477cb125" /><circle r={6} fill="#477cb1" stroke="#fff" strokeWidth={2} /></g>}
+      {([['A', comparisonStops?.from], ['B', comparisonStops?.to]] as const).map(([letter, stop]) => stop && <g key={letter} className="comparison-marker" data-endpoint={letter} transform={`translate(${stop.point.join(' ')}) scale(${1 / scale})`} role="img" aria-label={`${letter === 'A' ? 'Start' : 'Destination'}: ${stop.name}`}><path d="M0 0L-10 -13A12 12 0 1 1 10 -13Z" fill={letter === 'A' ? '#278f91' : '#b4393f'} stroke="var(--surface)" strokeWidth={2} /><text x={0} y={-15} textAnchor="middle" fontSize={11} fontWeight={700} fill="white">{letter}</text></g>)}
     </svg>
-    <div className="map-hint">Drag to explore · Scroll or pinch to zoom · Select a stop</div>
+    <div className={`map-hint${pickingLabel ? ' picking-hint' : ''}`} role={pickingLabel ? 'status' : undefined}>{pickingLabel ?? 'Drag to explore · Scroll or pinch to zoom · Select a stop'}</div>
     <div className="north" aria-hidden="true"><span>N</span><svg viewBox="0 0 36 36"><path d="M7 18H29M21 13L29 18L21 23" transform={`rotate(${data.northAngle} 18 18)`} /></svg></div>
-    <nav className="map-controls" aria-label="Map controls"><button aria-label="Zoom in" onClick={() => zoom(.7)}>+</button><output>{Math.round(level * 100)}%</output><button aria-label="Zoom out" onClick={() => zoom(1 / .7)}>−</button><button onClick={() => move(initial)}>Fit map</button></nav>
+    <nav className="map-controls" aria-label="Map controls"><button aria-label="Zoom in" onClick={() => { interact.current?.(); zoom(.7); }}>+</button><output>{Math.round(level * 100)}%</output><button aria-label="Zoom out" onClick={() => { interact.current?.(); zoom(1 / .7); }}>−</button><button onClick={() => { interact.current?.(); move(initial); }}>Fit map</button>{onExport && <button aria-label="Print or download map" onClick={onExport}>Save map</button>}</nav>
   </section>;
 }

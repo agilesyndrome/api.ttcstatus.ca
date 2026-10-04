@@ -390,6 +390,106 @@ one configured interval of latency, rather than a persistent push connection.
 
 ## Local development
 
+### Hackathon: your commute cockpit
+
+The React homepage now includes:
+
+- **My stops**: save up to 100 stops, return to them with one click, and see gold
+  stars on the map. Bookmarks stay in this browser. Removed network stops remain
+  removable bookmarks rather than silently disappearing.
+- **Near me**: request your location to find the five closest boarding stops
+  within 2.5 km, with an optional filter for listed accessible boarding. Location
+  accuracy is displayed; coordinates stay in the tab and are never saved or
+  included in shared links. Clear location removes the marker and results.
+- **Streetcars nearby**: selected stops list up to three fresh vehicle reports
+  on their routes within 2 km. Choose a car to inspect and center it on the map.
+  Distances are straight-line geographic distances, not arrival predictions;
+  cars can be travelling either direction.
+- **Route pulse**: fresh vehicle counts per route, stale counts and the median
+  reported speed for a selected route. Counts describe observations rather than
+  service frequency, delays or route reliability. Missing speed stays unknown.
+- **Share map**: copy a link to a stop, route or streetcar and its map layers.
+  Clipboard restrictions reveal a selectable link. The URL updates as you
+  explore; opening a streetcar link focuses it after its live position arrives.
+  Missing stops/routes and cars absent from the feed have explanatory messages.
+- **Surprise me**: jump to a random boarding stop in the visible daytime or
+  overnight network and explore somewhere new.
+- **Day/night themes**: follow the system theme initially, with a persistent
+  manual toggle. Layer preferences also survive reloads; shared links override
+  those preferences.
+- **Fleet explorer**: the Fleet tab filters the shared snapshot by car/route,
+  assignment and fresh/stale/off-track status. Sort by car number, fresh reported
+  speed, or geographic distance after using Near me. Large results are paged in
+  groups of 20. Download all filtered reports as CSV, including timestamps,
+  freshness, vehicle coordinates and source attribution. Unknown speeds remain
+  blank; external
+  strings are escaped against spreadsheet formula execution. Personal location
+  is excluded from exports.
+- **Stop comparisons**: the Compare tab places A/B pins on the map, fits both
+  stops into view and compares geographic distance and listed accessible
+  boarding. Route connections require a streetcar pattern to visit the start
+  boarding point before the destination; shared route numbers and physical
+  track do not establish a connection. Variants report the number of intervening
+  stops and scheduled destinations. Swap endpoints, include overnight patterns,
+  choose from dropdowns or pick on the map/header search. Stop details offer
+  **Compare from here** and **Compare to here**. Comparisons and tab selection
+  are shareable. This is a static comparison, not a time-based journey planner;
+  it does not calculate transfers or arrival predictions.
+- **Follow a streetcar**: selecting a car offers an optional follow mode. Fresh
+  GPS fixes move the camera; stale fixes wait for recovery. Panning, zooming,
+  fitting the map, locating yourself or switching tools pauses following.
+- **Stop directory**: the Stops tab searches by place, street or route name,
+  filters boarding places/stations, listed accessible boarding and saved stops,
+  and pages through results. Sort geographically after using Near me. The
+  directory includes overnight service independently of map layers.
+- **Streetcar journal**: explicitly add a selected car to a browser-local
+  collection of up to 500 unique vehicle IDs. Write notes, search the collection,
+  see whether a car is in the current live feed, and earn five collection badges.
+  Recording does not save GPS fixes or observation history. Download a JSON
+  backup and restore it by merging new cars; existing notes are preserved.
+  Removal asks for confirmation. A supplied overnight assignment earns the Blue
+  Night badge regardless of when you save it.
+- **Take a map with you**: use **Save map** below the map to preview a frozen
+  copy of the current view. Download a self-contained SVG or print/save a PDF
+  through the browser. The paper palette, route key, north arrow, snapshot dates
+  and sources travel with the map. Your location marker and saved-stop stars
+  are omitted; visible car reports can also be excluded. Exports work offline.
+- **Keyboard help**: press `?` or click the header help button. `/` focuses
+  search; `E`, `F`, `C`, `D`, `J` open the tool tabs; `P` previews a printable map; `S` saves/removes the selected stop;
+  `N` switches theme; `R` resets the map. Shortcuts ignore text fields, select
+  menus, modifier keys and open dialogs, and can be disabled persistently.
+  Tool tabs also support arrow keys, Home and End.
+
+These features reuse the existing single vehicle subscription and loaded map.
+No new API endpoints, database migrations or additional TTC polling are needed.
+Storage restrictions keep preferences, bookmarks and the journal in memory for
+the current visit. A journal backup can preserve the collection when storage is
+unavailable. Geolocation runs only after pressing **Find nearby stops** and requires
+a secure browser context (HTTPS or localhost).
+
+Run the fixture-based browser checks against a local preview:
+
+```bash
+npm run dev:viewer
+npm run test:ui
+npm run test:hackathon
+npm run test:exploration
+npm run test:collection
+```
+
+`test:hackathon` covers persistence, deep links, location privacy, fresh/stale
+vehicle filtering, route activity, themes, mobile layout, and blocked browser
+storage/clipboard/location. It intercepts API requests with local fixtures.
+Use `UI_URL` and `CHROMIUM_PATH` to select a preview or installed Chromium.
+New component states are also available in Storybook.
+`test:exploration` checks fleet paging/sorting, downloaded CSV content and formula
+escaping, geographic sorting, comparison links and picking, shortcut opt-out,
+following across virtual-time feed refreshes, and layouts down to 320 pixels.
+`test:collection` checks stop-directory filters/paging/geographic sorting, manual
+journal recording and notes, badge unlocking, persistence, JSON backup/merge and
+removal, exported SVG contents/privacy, the print stylesheet and PDF output, and
+all five tabs at phone widths. It uses offline fixtures for all API requests.
+
 Preview the interactive map with real streetcar positions, without credentials
 or a D1 import:
 

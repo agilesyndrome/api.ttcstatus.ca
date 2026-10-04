@@ -51,7 +51,7 @@ This is preparation for the topology-aware schematic generator in `ARCHITECTURE.
 
 | File | Responsibility |
 | --- | --- |
-| `model.ts` | Builds viewer data, preserving the map's source geometry and transform. |
+| `model.ts` | Builds viewer data, preserving source geometry, transform, grouped boarding IDs and ordered streetcar stop patterns. |
 | `live-status.ts` | Pure snapshot projection and articulated streetcar placement, with previous-edge continuity. |
 | `live-updates.ts` | HTTP/ETag acquisition and cancellable, non-overlapping polling with server cadence, timeout and backoff. |
 | `viewer.ts` | Map rendering, camera interactions, stops, routes and optional live status. |
@@ -76,6 +76,27 @@ the live layer is enabled, visible, and online.
 | `components/LiveFeedStatus.tsx` | Loading, paused, stale and failed feed presentation. |
 | `components/StopDetails.tsx` | Stop and vehicle facts. |
 | `components/PageFooter.tsx` | Map context and source attribution. |
+| `commute.ts` | Geographic proximity, route activity, share-link encoding and stored-preference validation; pure functions with no network I/O. |
+| `hooks/usePreferences.ts` | Validated local preferences with an in-memory fallback when browser storage is blocked. |
+| `hooks/useTheme.ts` | System theme detection, persistent manual override and document palette. |
+| `components/MyStops.tsx` | Saved-stop selection, removal and changed-network bookmarks. |
+| `components/NearbyStops.tsx` | Click-triggered location acquisition, accessible-boarding filter and nearest boarding stops. |
+| `components/RoutePulse.tsx` | Fresh/stale vehicle observations and selected-route reported-speed summary. |
+| `components/ShareMap.tsx` | Clipboard link with a selectable fallback. |
+| `fleet.ts` | Pure fleet filtering/sorting and formula-safe CSV snapshot serialization. |
+| `comparison.ts` | Pure geographic stop comparison and ordered boarding-pattern connection checks; never infers a ride from physical track alone. |
+| `components/FleetExplorer.tsx` | Shared-snapshot filtering, paged streetcar selection and CSV download. |
+| `components/StopComparison.tsx` | A/B endpoint selection, map/search picking, swapping and comparison results. |
+| `components/SidebarTabs.tsx` | Accessible Explore/Fleet/Compare/Stops/Journal navigation with arrow-key focus management. |
+| `hooks/useShortcuts.ts` | Opt-out keyboard actions that respect typing, modifiers and dialogs. |
+| `components/KeyboardHelp.tsx` | Native modal shortcut help and persistent shortcut opt-out. |
+| `stops.ts` | Pure stop-directory filtering and geographic sorting. |
+| `journal.ts` | Bounded manual car collection, strict coordinate-free storage/backup validation, merge semantics and collection badges. |
+| `map-export.ts` | Frozen SVG serialization with embedded paper styling, attribution and route key; omits location and saved-stop markers. |
+| `download.ts` | Blob downloads with object-URL cleanup. |
+| `components/StopBrowser.tsx` | Searchable paged boarding-stop and terminal directory. |
+| `components/StreetcarJournal.tsx` | Local collection, notes, badges, current-feed lookup and merge-only backup restore. |
+| `components/MapExport.tsx` | Accessible preview modal, frozen-position toggle and SVG/print/PDF actions. |
 | `stories/` | Local fixtures, component variants and interaction checks. |
 
 `vite.config.mjs` builds homepage assets into `public/` and mounts the local API

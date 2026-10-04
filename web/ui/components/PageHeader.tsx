@@ -1,12 +1,12 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { searchFeatures, type Feature, type ViewerData } from '../../map/model';
 import type { PlottedVehicle } from '../../map/live-status';
 
 interface Props {
-  data?: ViewerData; cars?: PlottedVehicle[];
+  data?: ViewerData; cars?: PlottedVehicle[]; actions?: ReactNode;
   onSelect(feature: Feature): void; onSelectVehicle(car: PlottedVehicle): void; onReset(): void;
 }
-export function PageHeader({ data, cars = [], onSelect, onSelectVehicle, onReset }: Props) {
+export function PageHeader({ data, cars = [], actions, onSelect, onSelectVehicle, onReset }: Props) {
   const id = useId();
   const [query, setQuery] = useState('');
   const matches = data ? searchFeatures(data.features, data.routes, query) : [];
@@ -44,6 +44,6 @@ export function PageHeader({ data, cars = [], onSelect, onSelectVehicle, onReset
         {!matches.length && !matchingCars.length && <p>No matching stops or streetcars. Try a stop, route or streetcar number.</p>}
       </div>}
     </div>
-    <span className="snapshot">TTC status map</span>
+    {actions ?? <span className="snapshot">TTC status map</span>}
   </header>;
 }
