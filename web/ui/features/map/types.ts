@@ -12,6 +12,8 @@ export interface TransitMapProps {
   selectedRoute?: string;
   selectedFeature?: Feature;
   focusPoint?: Point;
+  /** Relative map scale for a focus point; 2.5 shows a neighborhood, 5 is detail view. */
+  focusPointLevel?: number;
   showLabels?: boolean;
   includeOvernight?: boolean;
   showStreetcar?: boolean;

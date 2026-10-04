@@ -1,6 +1,8 @@
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { formatDistance, nearbyCars } from '../../commute';
+import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
+import { StationArrivals } from './StationArrivals';
 interface Props {
   data: ViewerData;
   feature?: Feature;
@@ -11,6 +13,8 @@ interface Props {
   liveEnabled?: boolean;
   feedLoaded?: boolean;
   feedFailed?: boolean;
+  snapshot?: VehicleSnapshot;
+  now?: number;
   journalSaved?: boolean;
   journalFull?: boolean;
   onJournal?(): void;
@@ -32,6 +36,8 @@ export function StopDetails({
   liveEnabled,
   feedLoaded,
   feedFailed,
+  snapshot,
+  now = Date.now(),
   following,
   onFollow,
   journalSaved,
@@ -172,6 +178,11 @@ export function StopDetails({
       </section>
     );
   const nearby = nearbyCars(data, feature, cars);
+  const rapidRoutes = new Set(
+    data.routes
+      .filter((route) => /^(1|2|4|5|6)$/.test(route.number))
+      .map((route) => route.id),
+  );
   return (
     <section id="details" aria-live="polite">
       <p className="eyebrow">
@@ -234,54 +245,68 @@ export function StopDetails({
           </button>
         </div>
       )}
-      {onSelectVehicle && feature.boardingPoints > 0 && (
-        <div className="stop-cars">
-          <h2>Streetcars nearby</h2>
-          <p className="microcopy">
-            Fresh reports on this stop’s routes within 2 km. Straight-line distance; cars
-            may be travelling either way. These are not arrival predictions.
-          </p>
-          {!liveEnabled ? (
-            <p>Enable live streetcars to see nearby cars.</p>
-          ) : !feedLoaded ? (
-            <p>
-              {feedFailed
-                ? 'Live positions unavailable.'
-                : 'Waiting for vehicle positions…'}
+      {feature.boardingPoints > 0 &&
+        feature.routeIds.some((id) => rapidRoutes.has(id)) && (
+          <StationArrivals
+            data={data}
+            feature={feature}
+            snapshot={snapshot}
+            now={now}
+            enabled={liveEnabled}
+            failed={feedFailed}
+          />
+        )}
+      {onSelectVehicle &&
+        feature.boardingPoints > 0 &&
+        feature.routeIds.some((id) => !rapidRoutes.has(id)) && (
+          <div className="stop-cars">
+            <h2>Streetcars nearby</h2>
+            <p className="microcopy">
+              Fresh reports on this stop’s routes within 2 km. Straight-line distance;
+              cars may be travelling either way. These are not arrival predictions.
             </p>
-          ) : (
-            <>
-              {feedFailed && <p>Refresh unavailable; showing the last snapshot.</p>}
-              {nearby.length ? (
-                <ul className="compact-list">
-                  {nearby.map(({ car, metres }) => (
-                    <li key={car.vehicle.id}>
-                      <button
-                        className="list-choice"
-                        onClick={() => onSelectVehicle(car)}
-                      >
-                        <strong>
-                          Car {car.vehicle.label}
-                          <span className="distance">{formatDistance(metres)}</span>
-                        </strong>
-                        <small>
-                          {
-                            data.routes.find((route) => route.id === car.vehicle.routeId)
-                              ?.number
-                          }{' '}
-                          · View on map
-                        </small>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No fresh cars reported nearby on these routes.</p>
-              )}
-            </>
-          )}
-        </div>
-      )}
+            {!liveEnabled ? (
+              <p>Enable live streetcars to see nearby cars.</p>
+            ) : !feedLoaded ? (
+              <p>
+                {feedFailed
+                  ? 'Live positions unavailable.'
+                  : 'Waiting for vehicle positions…'}
+              </p>
+            ) : (
+              <>
+                {feedFailed && <p>Refresh unavailable; showing the last snapshot.</p>}
+                {nearby.length ? (
+                  <ul className="compact-list">
+                    {nearby.map(({ car, metres }) => (
+                      <li key={car.vehicle.id}>
+                        <button
+                          className="list-choice"
+                          onClick={() => onSelectVehicle(car)}
+                        >
+                          <strong>
+                            Car {car.vehicle.label}
+                            <span className="distance">{formatDistance(metres)}</span>
+                          </strong>
+                          <small>
+                            {
+                              data.routes.find(
+                                (route) => route.id === car.vehicle.routeId,
+                              )?.number
+                            }{' '}
+                            · View on map
+                          </small>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No fresh cars reported nearby on these routes.</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
       {Object.values(feature.destinations).flat().length > 0 && (
         <details>
           <summary>Scheduled destinations</summary>

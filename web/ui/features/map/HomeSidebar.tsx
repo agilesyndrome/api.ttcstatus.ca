@@ -1,6 +1,7 @@
 import { PageFooter } from '../../components/PageFooter';
 import { MapFilters } from '../map/MapFilters';
 import { RouteLegend } from '../map/RouteLegend';
+import { RouteGuide } from './RouteGuide';
 import { LiveFeedStatus } from '../map/LiveFeedStatus';
 
 import { StopDetails } from '../stops/StopDetails';
@@ -10,6 +11,7 @@ import { RoutePulse } from '../map/RoutePulse';
 import { ShareMap } from '../export/ShareMap';
 import { FleetExplorer } from '../fleet/FleetExplorer';
 import { StopComparison } from '../comparison/StopComparison';
+import { SavedComparisons } from '../comparison/SavedComparisons';
 import { SidebarTabs } from '../../components/SidebarTabs';
 
 import { StopBrowser } from '../stops/StopBrowser';
@@ -71,6 +73,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     panelTitle,
   } = workspace;
   if (!data) return null;
+  const guideRoute = data.routes.find((route) => route.id === selectedRoute);
   return (
     <aside className="sidebar" aria-label="Stop and route details">
       <button
@@ -149,52 +152,89 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                   : 'Waiting for this streetcar’s live position…'}
             </p>
           )}
-          <StopDetails
-            data={data}
-            feature={feature}
-            car={car}
-            cars={cars}
-            saved={Boolean(feature && savedStops.includes(feature.id))}
-            saveLimit={savedStops.length >= 100}
-            liveEnabled={filters.live}
-            feedLoaded={Boolean(feed.snapshot)}
-            feedFailed={feed.failed}
-            onJournal={car && car.vehicle.mode !== 'subway' ? collectCar : undefined}
-            journalSaved={Boolean(
-              car && journal.some((entry) => entry.vehicleId === car.vehicle.id),
-            )}
-            journalFull={journal.length >= JOURNAL_LIMIT}
-            onOpenJournal={() => setPanel('journal')}
-            onToggleSave={feature ? toggleSave : undefined}
-            following={following}
-            onFollow={car ? () => setFollowing((current) => !current) : undefined}
-            onCompare={
-              feature
-                ? (end) => {
-                    if (end === 'from') setFromId(feature.id);
-                    else setToId(feature.id);
-                    setPanel('compare');
-                    setPicking(undefined);
-                    setFocusPoint(undefined);
-                  }
-                : undefined
-            }
-            onSelectVehicle={(car) => selectVehicle(car, true)}
-            onClose={() => {
-              pendingCar.current = undefined;
-              setSelection(undefined);
-              setFocusPoint(undefined);
-              setFollowing(false);
-              setMobilePanelOpen(false);
-              if (window.matchMedia('(max-width: 640px)').matches)
-                document.getElementById('map')?.focus();
-            }}
-          />
+          {guideRoute && (
+            <div hidden={selection?.kind !== 'route'}>
+              <RouteGuide
+                key={guideRoute.id}
+                data={data}
+                route={guideRoute}
+                savedIds={savedStops}
+                onSelect={selectFeature}
+                onClose={() => selectRoute(undefined)}
+                onCompare={(from, to) => {
+                  changeComparison(from, to);
+                  setPanel('compare');
+                }}
+              />
+            </div>
+          )}
+          {(!guideRoute || selection?.kind !== 'route') && (
+            <>
+              {guideRoute && feature && (
+                <button
+                  className="text-button back-to-route"
+                  onClick={() => selectRoute(guideRoute.id)}
+                >
+                  ← Back to {guideRoute.number} stops
+                </button>
+              )}
+              <StopDetails
+                data={data}
+                feature={feature}
+                car={car}
+                cars={cars}
+                saved={Boolean(feature && savedStops.includes(feature.id))}
+                saveLimit={savedStops.length >= 100}
+                liveEnabled={filters.live}
+                feedLoaded={Boolean(feed.snapshot)}
+                feedFailed={feed.failed}
+                snapshot={feed.snapshot}
+                now={feed.now}
+                onJournal={car && car.vehicle.mode !== 'subway' ? collectCar : undefined}
+                journalSaved={Boolean(
+                  car && journal.some((entry) => entry.vehicleId === car.vehicle.id),
+                )}
+                journalFull={journal.length >= JOURNAL_LIMIT}
+                onOpenJournal={() => setPanel('journal')}
+                onToggleSave={feature ? toggleSave : undefined}
+                following={following}
+                onFollow={car ? () => setFollowing((current) => !current) : undefined}
+                onCompare={
+                  feature
+                    ? (end) => {
+                        if (end === 'from') setFromId(feature.id);
+                        else setToId(feature.id);
+                        setPanel('compare');
+                        setPicking(undefined);
+                        setFocusPoint(undefined);
+                      }
+                    : undefined
+                }
+                onSelectVehicle={(car) => selectVehicle(car, true)}
+                onClose={() => {
+                  pendingCar.current = undefined;
+                  setSelection(undefined);
+                  setFocusPoint(undefined);
+                  setFollowing(false);
+                  setMobilePanelOpen(false);
+                  if (window.matchMedia('(max-width: 640px)').matches)
+                    document.getElementById('map')?.focus();
+                }}
+              />
+            </>
+          )}
           <MyStops
             data={data}
             ids={savedStops}
             persistent={savedPersistent}
             onSelect={selectFeature}
+            snapshot={feed.snapshot}
+            cars={cars}
+            now={feed.now}
+            enabled={filters.live}
+            active={feed.active}
+            failed={feed.failed}
+            onRestore={setSavedStops}
             onRemove={(id) =>
               setSavedStops((current) => current.filter((stop) => stop !== id))
             }
@@ -286,6 +326,17 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
               }
             }}
             onRoute={selectRoute}
+          />
+          <SavedComparisons
+            data={data}
+            fromId={fromId}
+            toId={toId}
+            overnight={filters.overnight}
+            onChoose={(entry) => {
+              changeComparison(entry.fromId, entry.toId);
+              setFilters((current) => ({ ...current, overnight: entry.overnight }));
+              sidebar.current?.scrollTo({ top: 0 });
+            }}
           />
         </div>
         <div

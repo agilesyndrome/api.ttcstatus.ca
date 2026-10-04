@@ -190,7 +190,7 @@ export function StopComparison({
             </div>
           ) : (
             <p className="tip">
-              No direct streetcar connection is listed in this direction
+              No direct rail connection is listed in this direction
               {includeOvernight ? '' : ' on daytime routes'}. Try swapping stops or
               including overnight connections.
             </p>

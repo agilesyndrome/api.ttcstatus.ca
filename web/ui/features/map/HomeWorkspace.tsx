@@ -38,6 +38,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     shortcutsEnabled,
     setShortcutsEnabled,
     focusPoint,
+    focusPointLevel,
     resetKey,
     theme,
     feed,
@@ -129,6 +130,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             selectedFeature={feature}
             selectedVehicleId={car?.vehicle.id}
             focusPoint={focusPoint}
+            focusPointLevel={focusPointLevel}
             focusBounds={comparisonBounds}
             locationPoint={locationPoint}
             comparisonStops={panel === 'compare' ? comparisonStops : undefined}

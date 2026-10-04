@@ -8,6 +8,8 @@ Subway realtime comes from the TTC's [Subway Trip Updates](https://gtfsrt.ttc.ca
 
 Train markers use six longer, square-ended sections, retaining the directional cab. Streetcars retain five articulated sections. Both show route and vehicle numbers at detailed zoom and when selected, and can be found by number in search. The streetcar journal remains limited to streetcars. Fleet CSVs include position kind, predicted station, arrival time, and the appropriate source URL.
 
+Selecting a subway or LRT boarding stop opens an **Upcoming trains** board with up to six arrivals, ordered by predicted time. It matches the stop's boarding IDs and route against all reported stops in each train's update, so downstream predictions appear even while the train marker is at an earlier station. Each row shows the line, train, countdown, and Toronto arrival time. “Then” names the next reported station when mapped; it does not imply a final destination. Predictions older than two minutes, missing a subway observation timestamp, or already past their arrival time are excluded. Disabling live vehicles hides the board's predictions; an unavailable subway feed and a successful feed with no upcoming predictions have separate messages. An empty board is not evidence that service has ended. Subway markers are excluded from the separate nearby-streetcar list.
+
 ## Local preview
 
 Download Complete GTFS once from the catalogue above, then reuse the ZIP:

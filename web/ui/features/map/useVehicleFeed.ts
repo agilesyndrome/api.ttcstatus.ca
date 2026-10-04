@@ -23,9 +23,12 @@ export function useVehicleFeed(enabled: boolean): FeedState {
           const previous =
             current.snapshot &&
             Date.parse(current.snapshot.feedTimestamp ?? current.snapshot.fetchedAt);
-          return previous && timestamp < previous ? current : { ...current, snapshot };
+          return previous && timestamp < previous
+            ? current
+            : { ...current, snapshot, now: Date.now() };
         }),
-      onStatus: (status) => setState((current) => ({ ...current, ...status })),
+      onStatus: (status) =>
+        setState((current) => ({ ...current, ...status, now: Date.now() })),
     });
     poller.current = instance;
     const timer = window.setInterval(
@@ -42,7 +45,7 @@ export function useVehicleFeed(enabled: boolean): FeedState {
     const sync = () => {
       const active = enabled && !document.hidden && navigator.onLine;
       poller.current?.setActive(active);
-      setState((current) => ({ ...current, active }));
+      setState((current) => ({ ...current, active, now: Date.now() }));
     };
     const pause = () => {
       poller.current?.setActive(false);

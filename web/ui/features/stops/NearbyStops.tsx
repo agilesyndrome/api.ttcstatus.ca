@@ -77,9 +77,14 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
         {pending
           ? 'Finding your location…'
           : location
-            ? 'Refresh my location'
-            : 'Find nearby stops'}
+            ? 'Refresh & recenter map'
+            : 'Locate me & center map'}
       </button>
+      {!location && !pending && (
+        <p className="microcopy">
+          Centers the map on your approximate location at a neighborhood zoom.
+        </p>
+      )}
       {error && (
         <p role="alert" className="helper">
           {error}

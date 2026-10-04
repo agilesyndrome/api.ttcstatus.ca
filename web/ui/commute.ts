@@ -28,6 +28,30 @@ export const DEFAULT_FILTERS: MapFilterValues = {
   subway: true,
 };
 
+/** A deliberate stop/route selection should be visible even after hiding its layer. */
+export function revealRoutes(
+  filters: MapFilterValues,
+  routes: Route[],
+  ids: string[],
+): MapFilterValues {
+  const selected = routes.filter((route) => ids.includes(route.id));
+  const next = {
+    ...filters,
+    streetcar:
+      filters.streetcar || selected.some((route) => !/^(1|2|4|5|6)$/.test(route.number)),
+    subway:
+      filters.subway || selected.some((route) => /^(1|2|4|5|6)$/.test(route.number)),
+    overnight:
+      filters.overnight ||
+      (selected.length > 0 && selected.every((route) => route.overnight)),
+  };
+  return next.streetcar === filters.streetcar &&
+    next.subway === filters.subway &&
+    next.overnight === filters.overnight
+    ? filters
+    : next;
+}
+
 /** Measure geography, never distances on the compressed schematic. */
 export function distanceMetres(a: Location, b: Location): number {
   const radians = Math.PI / 180;
@@ -67,10 +91,18 @@ export function nearbyStops(
  * establish arrival predictions from the vehicle-position feed. */
 export function nearbyCars(data: ViewerData, feature: Feature, cars: PlottedVehicle[]) {
   const location = mapToGps(feature.point, data.geographicTransform);
+  const rapidRoutes = new Set(
+    data.routes
+      .filter((route) => /^(1|2|4|5|6)$/.test(route.number))
+      .map((route) => route.id),
+  );
   return cars
     .filter(
       (car) =>
         !car.stale &&
+        car.vehicle.mode !== 'subway' &&
+        car.vehicle.positionKind !== 'next-station' &&
+        !rapidRoutes.has(car.vehicle.routeId ?? '') &&
         car.vehicle.routeId &&
         feature.routeIds.includes(car.vehicle.routeId),
     )

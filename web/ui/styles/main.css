@@ -269,6 +269,103 @@ input:focus-visible,
   font-size: 11px;
   margin-left: 8px;
 }
+.station-arrivals {
+  margin-top: 20px;
+}
+.arrival-list li {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+}
+.arrival-list strong,
+.arrival-list small,
+.arrival-list time {
+  display: block;
+}
+.arrival-list strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.arrival-list small,
+.arrival-list time {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.arrival-time {
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.arrival-time strong {
+  color: var(--accent);
+}
+.route-guide {
+  padding-bottom: 20px;
+}
+.route-guide h1 {
+  font-size: 25px;
+  overflow-wrap: anywhere;
+}
+.guide-route-number {
+  border-bottom: 4px solid var(--route-color);
+}
+.route-stop-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.route-stop-list li {
+  display: flex;
+  align-items: center;
+  position: relative;
+  border-left: 3px solid var(--route-color);
+  margin-left: 14px;
+  padding-left: 10px;
+}
+.route-stop-list li + li {
+  padding-top: 4px;
+}
+.guide-sequence {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  flex: 0 0 28px;
+  text-align: center;
+  line-height: 28px;
+  font-size: 10px;
+  margin-left: -26px;
+  z-index: 1;
+}
+.route-stop-list .list-choice {
+  border-radius: 8px;
+  margin-left: 5px;
+}
+.back-to-route {
+  margin-bottom: 14px;
+}
+.saved-live-summary {
+  color: var(--accent) !important;
+  font-variant-numeric: tabular-nums;
+}
+.bookmark-backup {
+  margin-top: 12px;
+  font-size: 12px;
+}
+.bookmark-backup summary {
+  cursor: pointer;
+}
+.bookmark-backup .comparison-actions {
+  flex-wrap: wrap;
+}
+.saved-comparisons {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.saved-comparisons h2 {
+  font-size: 14px;
+}
 .nearby-stops .action-button {
   width: 100%;
 }
