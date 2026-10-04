@@ -10,6 +10,7 @@ export function useMapCamera({
   selectedRoute,
   selectedFeature,
   focusPoint,
+  focusPointLevel,
   focusBounds,
   resetKey = 0,
   onInteract,
@@ -24,6 +25,7 @@ export function useMapCamera({
   | 'selectedRoute'
   | 'selectedFeature'
   | 'focusPoint'
+  | 'focusPointLevel'
   | 'focusBounds'
   | 'resetKey'
   | 'onInteract'
@@ -165,10 +167,11 @@ export function useMapCamera({
   useEffect(() => {
     if (!focusPoint) return;
     const fitted = initialRef.current,
-      width = driving ? cameraRef.current.width : fitted.width / 5,
-      height = driving ? cameraRef.current.height : fitted.height / 5;
+      level = Math.max(1, focusPointLevel ?? 5),
+      width = driving ? cameraRef.current.width : fitted.width / level,
+      height = driving ? cameraRef.current.height : fitted.height / level;
     move({ x: focusPoint[0] - width / 2, y: focusPoint[1] - height / 2, width, height });
-  }, [focusPoint, driving]);
+  }, [focusPoint, focusPointLevel, driving]);
   useEffect(() => {
     if (focusBounds) move(fitCamera(focusBounds, size.width / size.height));
   }, [focusBounds]);

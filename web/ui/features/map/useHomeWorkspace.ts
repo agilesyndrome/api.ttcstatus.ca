@@ -11,8 +11,8 @@ import { useShortcuts } from '../../hooks/useShortcuts';
 import {
   DEFAULT_FILTERS,
   mapLinkHash,
-  nearbyStops,
   readMapLink,
+  revealRoutes,
   validFilters,
   validSavedStops,
   type Location,
@@ -74,6 +74,7 @@ export function useHomeWorkspace() {
     validBoolean,
   );
   const [focusPoint, setFocusPoint] = useState<Point>();
+  const [focusPointLevel, setFocusPointLevel] = useState<number>();
   const [location, setLocation] = useState<Location>();
   const [notice, setNotice] = useState('');
   const [resetKey, setResetKey] = useState(0);
@@ -154,6 +155,7 @@ export function useHomeWorkspace() {
       setSelection(link.selection);
       setNotice('');
       setFocusPoint(undefined);
+      setFocusPointLevel(undefined);
       setSelectedRoute(
         link.selection?.kind === 'route' ? link.selection.id : link.contextRoute,
       );
@@ -193,23 +195,8 @@ export function useHomeWorkspace() {
       );
       setSelection(undefined);
       setSelectedRoute(undefined);
-    } else if (
-      selection.kind === 'route' &&
-      data.routes.find((route) => route.id === selection.id)?.overnight
-    ) {
-      setFilters((current) =>
-        current.overnight ? current : { ...current, overnight: true },
-      );
-    } else if (
-      feature?.routeIds.length &&
-      feature.routeIds.every(
-        (id) => data.routes.find((route) => route.id === id)?.overnight,
-      )
-    ) {
-      setFilters((current) =>
-        current.overnight ? current : { ...current, overnight: true },
-      );
-    }
+    } else if (feature)
+      setFilters((current) => revealRoutes(current, data.routes, feature.routeIds));
   }, [data, selection, feature, setFilters]);
   useEffect(() => {
     if (!data || !selectedRoute) return;
@@ -219,10 +206,7 @@ export function useHomeWorkspace() {
     if (!route) setSelectedRoute(undefined);
     else if (feature && !feature.routeIds.includes(selectedRoute))
       setSelectedRoute(undefined);
-    else if (route.overnight)
-      setFilters((current) =>
-        current.overnight ? current : { ...current, overnight: true },
-      );
+    else setFilters((current) => revealRoutes(current, data.routes, [route.id]));
   }, [data, selectedRoute, feature, setFilters]);
   useEffect(() => {
     if (!car || pendingCar.current !== car.vehicle.id) return;
@@ -230,7 +214,7 @@ export function useHomeWorkspace() {
     if (selectedRoute && selectedRoute !== car.vehicle.routeId)
       setSelectedRoute(undefined);
     setFilters((current) => ({
-      ...current,
+      ...revealRoutes(current, data?.routes ?? [], [car.vehicle.routeId ?? '']),
       live: true,
       overnight:
         current.overnight ||
@@ -239,6 +223,7 @@ export function useHomeWorkspace() {
         ),
     }));
     setFocusPoint([...car.point]);
+    setFocusPointLevel(undefined);
   }, [car, data, selectedRoute, setFilters]);
   useEffect(() => {
     if (!data) return;
@@ -272,6 +257,7 @@ export function useHomeWorkspace() {
     setSelectedRoute(undefined);
     setNotice('');
     setFocusPoint(undefined);
+    setFocusPointLevel(undefined);
     setPanel('explore');
     setFromId(undefined);
     setToId(undefined);
@@ -280,9 +266,11 @@ export function useHomeWorkspace() {
     setResetKey((key) => key + 1);
   }
   function selectFeature(next: Feature) {
+    if (data) setFilters((current) => revealRoutes(current, data.routes, next.routeIds));
     setMobilePanelOpen(true);
     pendingCar.current = undefined;
     setFocusPoint(undefined);
+    setFocusPointLevel(undefined);
     setNotice('');
     setFollowing(false);
     if (panel === 'compare' && picking) {
@@ -310,7 +298,7 @@ export function useHomeWorkspace() {
     if (focus) {
       setSelectedRoute(undefined);
       setFilters((current) => ({
-        ...current,
+        ...revealRoutes(current, data?.routes ?? [], [next.vehicle.routeId ?? '']),
         live: true,
         overnight:
           current.overnight ||
@@ -319,6 +307,7 @@ export function useHomeWorkspace() {
           ),
       }));
       setFocusPoint([...next.point]);
+      setFocusPointLevel(undefined);
     }
   }
   function selectRoute(id?: string) {
@@ -326,6 +315,7 @@ export function useHomeWorkspace() {
     setSelectedRoute(id);
     setSelection(id ? { kind: 'route', id } : undefined);
     setFocusPoint(undefined);
+    setFocusPointLevel(undefined);
     setNotice('');
     setFollowing(false);
   }
@@ -347,12 +337,10 @@ export function useHomeWorkspace() {
     if (!data) return;
     setLocation(next);
     setFollowing(false);
-    if (nearbyStops(data, next).length)
-      setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
-    else {
-      setFocusPoint(undefined);
-      setResetKey((key) => key + 1);
-    }
+    // Center on the actual location even when there are no stops nearby. The
+    // wider neighborhood crop keeps the map useful without zooming into a marker.
+    setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
+    setFocusPointLevel(2.5);
   }
   function toggleSave() {
     if (!feature) return;
@@ -369,10 +357,21 @@ export function useHomeWorkspace() {
     );
   }
   function changeComparison(from?: string, to?: string) {
+    if (data)
+      setFilters((current) =>
+        revealRoutes(
+          current,
+          data.routes,
+          data.features
+            .filter((feature) => feature.id === from || feature.id === to)
+            .flatMap((feature) => feature.routeIds),
+        ),
+      );
     setFromId(from);
     setToId(to);
     setPicking(undefined);
     setFocusPoint(undefined);
+    setFocusPointLevel(undefined);
     setSelectedRoute(undefined);
     setNotice('');
     if (selection?.kind === 'route') setSelection(undefined);
@@ -454,7 +453,11 @@ export function useHomeWorkspace() {
       ? car
         ? `${car.vehicle.mode === 'subway' ? 'Train' : 'Car'} ${car.vehicle.label}`
         : (feature?.name ??
-          (selection?.kind === 'car' ? `Car ${selection.id}` : 'Explore streetcars'))
+          (selection?.kind === 'car'
+            ? `Car ${selection.id}`
+            : selection?.kind === 'route'
+              ? `${data?.routes.find((route) => route.id === selection.id)?.number ?? ''} route stops`
+              : 'Explore Toronto rail'))
       : {
           fleet: 'Streetcar fleet',
           compare: 'Compare stops',
@@ -500,6 +503,7 @@ export function useHomeWorkspace() {
     shortcutsEnabled,
     setShortcutsEnabled,
     focusPoint,
+    focusPointLevel,
     setFocusPoint,
     location,
     setLocation,

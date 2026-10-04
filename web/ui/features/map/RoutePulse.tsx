@@ -33,12 +33,12 @@ export function RoutePulse({
       <div className="section-heading">
         <h2>Route pulse</h2>
         <span className="pulse-total">
-          {loaded ? `${fresh} fresh fixes` : 'Waiting for feed'}
+          {loaded ? `${fresh} fresh reports` : 'Waiting for feed'}
         </span>
       </div>
       <p className="helper">
         {!loaded
-          ? 'Turn on live streetcars to see route activity.'
+          ? 'Turn on live vehicles to see route activity.'
           : !active
             ? 'Updates paused. Showing the last snapshot.'
             : failed

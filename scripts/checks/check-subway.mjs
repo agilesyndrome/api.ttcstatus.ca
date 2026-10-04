@@ -96,9 +96,51 @@ try {
     await page.locator('[data-vehicle="4400"] .vehicle-number').textContent(),
     /501 · 4400/,
   );
+  // A downstream station must show its own prediction, not the marker's next stop.
+  const station = map.stops.find((stop) =>
+    stop.stopIds.includes(subwayPredictions[0].stops[1].stopId),
+  );
+  const stationUrl = `${process.env.UI_URL || 'http://127.0.0.1:4173'}/#stop=${encodeURIComponent(station.id)}`;
+  await page.goto(stationUrl);
+  const board = page.getByRole('region', { name: 'Station arrivals' });
+  await board.getByText('Line 1 · Train 15', { exact: true }).waitFor();
+  assert.equal(
+    await board.locator('time').first().getAttribute('datetime'),
+    subwayPredictions[0].stops[1].arrivalAt,
+  );
+  assert.equal(
+    await page
+      .locator('#details')
+      .getByText('Streetcars nearby', { exact: true })
+      .count(),
+    0,
+  );
+  await board.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'dist/checks/arrivals-mobile.png' });
+  assert.ok(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  );
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  await board.getByText('Enable live vehicles to see arrival predictions.').waitFor();
+  assert.equal(await board.locator('time').count(), 0);
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
+  await board.getByText('Line 1 · Train 15', { exact: true }).waitFor();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await board.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'dist/checks/arrivals-desktop.png' });
+  snapshot.subwayStatus = 'unavailable';
+  await page.reload();
+  await board
+    .getByText('Subway arrival predictions are temporarily unavailable.')
+    .waitFor();
+  assert.equal(await board.locator('time').count(), 0);
+  snapshot.subwayStatus = 'available';
+  snapshot.subwayPredictions = [];
+  await page.reload();
+  await board.getByText(/No fresh upcoming predictions/).waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    'Subway routes, station predictions, train numbers, directional cabs, streetcars and phone layout passed.',
+    'Subway routes, station arrivals, pause/resume, empty/unavailable feeds, train numbers, directional cabs, streetcars and phone layout passed.',
   );
 } finally {
   await browser.close();
