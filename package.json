@@ -35,7 +35,9 @@
     "lint": "eslint .",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:secrets && npm run check:boundaries",
     "check:secrets": "node scripts/checks/check-secrets.mjs",
-    "check:boundaries": "node scripts/checks/check-boundaries.mjs"
+    "check:boundaries": "node scripts/checks/check-boundaries.mjs",
+    "map:import": "node scripts/preview/import-rail-map.mjs",
+    "test:subway": "node scripts/checks/check-subway.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",

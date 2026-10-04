@@ -122,7 +122,11 @@ export function useHomeWorkspace() {
     [panel, comparisonStops],
   );
   const shownRoutes =
-    data?.routes.filter((route) => filters.overnight || !route.overnight) ?? [];
+    data?.routes
+      .filter((route) => filters.overnight || !route.overnight)
+      .filter((route) =>
+        /^(1|2|4|5|6)$/.test(route.number) ? filters.subway : filters.streetcar,
+      ) ?? [];
   const { exportImage, exportCars, previewMap, changeExportCars, closeExport } =
     useMapExport({ data, shownRoutes, feed, panel, comparisonStops });
   useEffect(() => {
@@ -448,7 +452,7 @@ export function useHomeWorkspace() {
   const panelTitle =
     panel === 'explore'
       ? car
-        ? `Car ${car.vehicle.label}`
+        ? `${car.vehicle.mode === 'subway' ? 'Train' : 'Car'} ${car.vehicle.label}`
         : (feature?.name ??
           (selection?.kind === 'car' ? `Car ${selection.id}` : 'Explore streetcars'))
       : {

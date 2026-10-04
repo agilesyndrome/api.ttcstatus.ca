@@ -7,7 +7,9 @@ are implemented. See [Clerk setup](docs/clerk-setup.md) for the two required
 Cloudflare bindings, the D1 migration, local development, and activation steps.
 The TTC status map and transit APIs remain available without signing in.
 
-The first implementation focuses on the static streetcar network. A scheduled Worker checks the TTC Surface GTFS source nightly, downloads it **only when the source changes**, imports the streetcar subset into D1, invokes a separate map-generator Worker, and publishes a precomputed `snake-v1` map artifact for fast API reads.
+The status map includes streetcars and subway/LRT Lines **1, 2, 4, 5 and 6**, using TTC Complete GTFS. Live streetcars use GPS observations; subway trains use explicitly labelled next-station predictions from TTC Subway Trip Updates. See [subway map setup and feed semantics](docs/subway-map.md) for local preview, realtime coverage and production rollout. The historical `streetcar` API paths remain compatible.
+
+A scheduled Worker checks the static source nightly, downloads it only when it changes, imports the rail subset into D1, invokes the map generator, and publishes a precomputed `snake-v1` artifact.
 
 ## Architecture in this revision
 
@@ -23,7 +25,7 @@ Responsibilities:
 - Seven-day conservative fallback before a full fetch if the source ever stops publishing useful validators.
 - Streams the source ZIP directly into R2 rather than buffering it in Worker memory.
 - Reads individual ZIP entries from R2 using ranged reads and streaming `deflate-raw` decompression.
-- Imports only `route_type=0` streetcar data into versioned D1 rows.
+- Imports streetcars and Lines 1, 2, 4, 5 and 6 into versioned D1 rows.
 - Refuses to activate obviously incomplete imports.
 - Calls the map-generator Worker only when a new static feed was actually imported.
 - Activates the new network only after map generation succeeds.

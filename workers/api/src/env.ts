@@ -10,6 +10,7 @@ export interface Env extends SyncEnv, AccountEnv {
   SOURCE_ATTRIBUTION: string;
   NO_VALIDATOR_REFETCH_DAYS?: string;
   SYNC_TOKEN?: string;
+  REALTIME_SUBWAY_URL?: string;
   REALTIME_VEHICLE_URL?: string;
   REALTIME_UPDATE_SECONDS?: string;
 }

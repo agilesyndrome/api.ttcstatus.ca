@@ -140,7 +140,10 @@ export class SnakeEngine {
   private lastRecorded = -Infinity;
   private turnback?: Turnback;
 
-  constructor(readonly data: ViewerData) {
+  constructor(
+    readonly data: ViewerData,
+    readonly options: { easySwitches?: boolean } = {},
+  ) {
     this.edges = new Map(
       data.edges
         .filter(
@@ -359,7 +362,9 @@ export class SnakeEngine {
       : this.position.distance;
   }
   get warningDistance() {
-    return Math.max(230, Math.min(1400, (this.speed / 3.6) * 4.5));
+    return this.options.easySwitches
+      ? Math.max(400, Math.min(4000, (this.speed / 3.6) * 6))
+      : Math.max(230, Math.min(1400, (this.speed / 3.6) * 4.5));
   }
 
   choices(position = this.position): SwitchChoice[] {
@@ -729,7 +734,7 @@ export class SnakeEngine {
       refs = this.missionRefs;
     let queued: string | null | undefined = this.queued;
     const visited = new Set<string>();
-    for (let guard = 0; remaining > 0.00001 && guard < 1000; guard++) {
+    for (let guard = 0; remaining > 0.00001 && guard < 2500; guard++) {
       const edge = this.edges.get(position.edgeId)!;
       const available =
         position.direction === 1

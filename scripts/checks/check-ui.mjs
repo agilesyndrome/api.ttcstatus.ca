@@ -70,12 +70,12 @@ try {
   await first.click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
   await page.getByRole('button', { name: 'Close stop details' }).click();
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
   const paused = feedCalls;
   await page.waitForTimeout(1500);
   assert.equal(feedCalls, paused, 'disabled live layer stops requests');
   assert.equal(await page.locator('[data-vehicle]').count(), 0);
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).check();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
   await page.locator('[data-vehicle="4400"]').waitFor();
   const kingRoute = page.locator('.route-list').getByRole('button', { name: /504 King/ });
   await kingRoute.click();
@@ -110,13 +110,11 @@ try {
     'searched streetcar is centered in the map',
   );
   // The latest loaded fleet remains searchable with the live layer off.
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
   await page.getByRole('button', { name: 'Fit map', exact: true }).click();
   await search.fill('#4400');
   await search.press('Enter');
-  assert.ok(
-    await page.getByRole('checkbox', { name: 'Show live streetcars' }).isChecked(),
-  );
+  assert.ok(await page.getByRole('checkbox', { name: 'Show live vehicles' }).isChecked());
   await page.locator('[data-vehicle="4400"]').waitFor();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(100);

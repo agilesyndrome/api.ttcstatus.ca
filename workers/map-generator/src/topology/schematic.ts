@@ -100,18 +100,33 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
   const transform = createSchematicTransform(allPoints);
   const nodes: TrackNode[] = [];
   const nodeBySource = new Map<string, TrackNode[]>();
+  // Rapid-transit lines cross each other and surface rail at different grades.
+  const rapidIds = new Set(
+    (seed.routes ?? [])
+      .filter((r) => /^(1|2|4|5|6)$/.test(r.shortName ?? r.id))
+      .map((r) => r.id),
+  );
+  const layer = (source: { routeIds: string[] }) =>
+    source.routeIds
+      .filter((id) => rapidIds.has(id))
+      .sort()
+      .join('|') || 'surface';
+  const nodeLayers = new Map<string, string>();
   // Conservative source-space snapping only. Mere line crossings are never
   // made into switches: a source vertex must provide evidence of a connection.
   for (const source of sources) {
     const list: TrackNode[] = [];
     for (const point of source.points) {
       let node = nodes.find(
-        (n) => metresBetween(n.sourcePoint, point) <= TRACK_SNAP_METRES,
+        (n) =>
+          nodeLayers.get(n.id) === layer(source) &&
+          metresBetween(n.sourcePoint, point) <= TRACK_SNAP_METRES,
       );
       if (!node) {
         const [x, y] = transform.toDisplay(point);
         node = { id: `node:${nodes.length}`, sourcePoint: point, x, y, edgeIds: [] };
         nodes.push(node);
+        nodeLayers.set(node.id, layer(source));
       }
       list.push(node);
     }
@@ -134,6 +149,7 @@ export function layoutStreetcarMap<T extends MapSeed>(input: T) {
         }))
         .filter(
           (p) =>
+            nodeLayers.get(p.node.id) === layer(source) &&
             p.node !== a &&
             p.node !== b &&
             p.t > 0 &&

@@ -22,7 +22,7 @@ export function LiveFeedStatus({
   return (
     <section className="live-status" aria-label="Live feed status">
       <h2>
-        <span className="live-dot" aria-hidden="true" /> Live streetcars
+        <span className="live-dot" aria-hidden="true" /> Live trains & streetcars
       </h2>
       <p role="status">
         {snapshot
@@ -30,12 +30,23 @@ export function LiveFeedStatus({
           : failed
             ? 'Live positions unavailable.'
             : active
-              ? 'Loading streetcar positions…'
+              ? 'Loading vehicle reports…'
               : 'Live updates paused.'}{' '}
         {failed && snapshot && 'Refresh unavailable; keeping last positions.'}{' '}
         {failed && active && `Retry in ${retrySeconds}s.`}{' '}
         {!active && snapshot && 'Updates paused.'}
       </p>
+      {snapshot?.surfaceStatus === 'unavailable' && (
+        <p>Streetcar positions unavailable.</p>
+      )}
+      {snapshot?.subwayStatus && (
+        <p>
+          {snapshot.subwayStatus === 'unavailable'
+            ? 'Subway predictions unavailable.'
+            : `${snapshot.subwayPredictions?.length ?? 0} train predictions · markers show next reported station, not GPS.`}{' '}
+          Lines without live reports show routes only.
+        </p>
+      )}
       {snapshot && (
         <p>
           Positions ·{' '}

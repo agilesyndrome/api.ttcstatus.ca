@@ -1,6 +1,10 @@
 /** GPS observations stay independent of a network/map version. A later Worker
  * stream can deliver this same contract without changing projection/rendering. */
 export interface LiveVehicle {
+  mode?: 'streetcar' | 'subway';
+  positionKind?: 'gps' | 'next-station';
+  nextStopName?: string;
+  arrivalAt?: string;
   id: string;
   label: string;
   latitude: number;
@@ -11,7 +15,19 @@ export interface LiveVehicle {
   speedMetresPerSecond?: number;
   observedAt: string | null;
 }
+export interface SubwayPrediction {
+  id: string;
+  label: string;
+  routeId: string;
+  tripId: string;
+  observedAt: string | null;
+  stops: { stopId: string; sequence: number; arrivalAt: string }[];
+}
 export interface VehicleSnapshot {
+  surfaceStatus?: 'available' | 'unavailable';
+  subwaySource?: string;
+  subwayPredictions?: SubwayPrediction[];
+  subwayStatus?: 'available' | 'unavailable';
   schemaVersion: 1;
   fetchedAt: string;
   feedTimestamp: string | null;

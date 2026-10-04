@@ -65,7 +65,7 @@ export function FleetExplorer({
   return (
     <section className="fleet-explorer" aria-label="Fleet explorer">
       <p className="eyebrow">Meet the fleet</p>
-      <h1>Streetcar spotting</h1>
+      <h1>Train & streetcar spotting</h1>
       <p className="helper">
         Every car in the shared live snapshot, including overnight assignments. Choose a
         car to see it on the map.

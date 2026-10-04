@@ -163,6 +163,20 @@ export async function importNetworkVersion(
   const archive = await R2ZipArchive.open(env.GTFS_BUCKET, version.r2_key);
   const parsed = await parseStreetcarGtfs(archive);
   validateStreetcarImport(parsed);
+  if (/completegtfs\.zip/i.test(env.STATIC_GTFS_URL)) {
+    for (const number of ['1', '2', '4', '5', '6']) {
+      const route = parsed.routes.find((r) => r.shortName === number);
+      if (
+        !route ||
+        !parsed.patterns.some(
+          (p) =>
+            p.routeId === route.routeId &&
+            parsed.shapes.some((s) => s.shapeId === p.shapeId && s.points.length > 1),
+        )
+      )
+        throw new Error(`Complete GTFS is missing rail geometry for Line ${number}`);
+    }
+  }
   await persistNormalizedGtfs(env, version.id, parsed);
 
   await env.DB.prepare(

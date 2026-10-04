@@ -120,3 +120,17 @@ test('retention keeps the active map even when newer imports have failed', async
     '{}',
   );
 });
+
+test('switching to Complete GTFS clears old source validators while retaining the active network', async () => {
+  const env = environment();
+  await ensureState(env);
+  await env.DB.prepare(
+    "UPDATE source_state SET source_etag = 'old', source_last_modified = 'old', last_full_fetch_at = '2026-10-04', active_version_id = 42",
+  ).run();
+  env.STATIC_GTFS_URL = 'https://feed.test/completegtfs.zip';
+  const state = await ensureState(env);
+  assert.equal(state.source_etag, null);
+  assert.equal(state.source_last_modified, null);
+  assert.equal(state.last_full_fetch_at, null);
+  assert.equal(state.active_version_id, 42);
+});

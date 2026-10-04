@@ -21,7 +21,7 @@ export function PageHeader({
   const id = useId();
   const [query, setQuery] = useState('');
   const matches = data ? searchFeatures(data.features, data.routes, query) : [];
-  const number = query.trim().replace(/^(?:streetcar|car)\s*#?\s*|^#\s*/i, '');
+  const number = query.trim().replace(/^(?:streetcar|car|train)\s*#?\s*|^#\s*/i, '');
   const matchingCars = /^\d+$/.test(number)
     ? cars
         .filter(
@@ -57,19 +57,19 @@ export function PageHeader({
           ↔
         </span>
         <span>
-          <strong>Toronto streetcars</strong>
+          <strong>Toronto rail map</strong>
           <small>A city on rails</small>
         </span>
       </a>
       <div className="search">
         <label className="sr-only" htmlFor={id}>
-          Search stops, stations, routes or streetcar numbers
+          Search stops, stations, routes or vehicle numbers
         </label>
         <span aria-hidden="true">⌕</span>
         <input
           id={id}
           type="search"
-          placeholder="Find a stop, route or streetcar number…"
+          placeholder="Find a stop, route or vehicle number…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           aria-controls={`${id}-results`}
@@ -124,7 +124,8 @@ export function PageHeader({
                     closeSearch(true);
                   }}
                 >
-                  Streetcar {car.vehicle.label}
+                  {car.vehicle.mode === 'subway' ? 'Train' : 'Streetcar'}{' '}
+                  {car.vehicle.label}
                   <small>
                     {route ? `${route.number} ${route.name}` : 'Route not supplied'}
                     {car.stale && ' · Stale position'}
@@ -149,9 +150,7 @@ export function PageHeader({
               </button>
             ))}
             {!matches.length && !matchingCars.length && (
-              <p>
-                No matching stops or streetcars. Try a stop, route or streetcar number.
-              </p>
+              <p>No matching stops or vehicles. Try a stop, route or vehicle number.</p>
             )}
           </div>
         )}

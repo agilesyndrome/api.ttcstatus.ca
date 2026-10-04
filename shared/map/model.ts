@@ -206,10 +206,29 @@ export function buildViewerData(source: ViewerSource): ViewerData {
     if (!members.length && replacement) terminal.replacementRouteIds = [replacement.id];
     terminals.push(terminal);
   }
+  const rapidIds = new Set(
+    routes.filter((r) => /^(1|2|4|5|6)$/.test(r.number)).map((r) => r.id),
+  );
+  const rapidTerminals = new Set(
+    source.patterns
+      .filter((p) => rapidIds.has(p.routeId))
+      .flatMap((p) => [p.stopIds[0], p.stopIds.at(-1)]),
+  );
   const features = [
     ...source.stops
       .filter((s) => !grouped.has(s.id))
-      .map((s) => makeFeature(s.id, s.name, 'stop', [s.x, s.y], [s])),
+      .map((s) =>
+        makeFeature(
+          s.id,
+          s.name,
+          s.routeIds.some((id) => rapidIds.has(id)) &&
+            s.stopIds.some((id) => rapidTerminals.has(id))
+            ? 'terminal'
+            : 'stop',
+          [s.x, s.y],
+          [s],
+        ),
+      ),
     ...terminals,
   ];
   const edges = source.graph.edges.map((e) => ({

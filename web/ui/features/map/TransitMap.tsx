@@ -13,6 +13,8 @@ export function TransitMap({
   focusPoint,
   showLabels = false,
   includeOvernight = false,
+  showStreetcar = true,
+  showSubway = true,
   resetKey = 0,
   savedStopIds = [],
   locationPoint,
@@ -66,6 +68,9 @@ export function TransitMap({
   const allowedRoutes = new Set(
     data.routes
       .filter((route) => includeOvernight || !route.overnight)
+      .filter((route) =>
+        /^(1|2|4|5|6)$/.test(route.number) ? showSubway : showStreetcar,
+      )
       .map((route) => route.id),
   );
   const isEndpoint = (feature: Feature) =>
@@ -179,7 +184,7 @@ export function TransitMap({
       ] as Point[])
     : [];
   return (
-    <section className="map-viewport" aria-label="Interactive streetcar map">
+    <section className="map-viewport" aria-label="Interactive TTC rail map">
       <svg
         ref={svg}
         id={mapId}
@@ -188,7 +193,7 @@ export function TransitMap({
         aria-label={
           driving
             ? 'Toronto streetcar game map. Drag or pinch to explore.'
-            : 'Toronto streetcar network. Arrow keys pan; plus and minus zoom; Home fits the map.'
+            : 'Toronto subway and streetcar network. Arrow keys pan; plus and minus zoom; Home fits the map.'
         }
         viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
         {...handlers}
@@ -206,6 +211,8 @@ export function TransitMap({
           data={data}
           selectedRoute={selectedRoute}
           includeOvernight={includeOvernight}
+          showStreetcar={showStreetcar}
+          showSubway={showSubway}
         />
         {visibleFeatures.map((feature) => (
           <g
@@ -272,15 +279,18 @@ export function TransitMap({
             <g
               key={car.vehicle.id}
               data-vehicle={car.vehicle.id}
+              data-mode={car.vehicle.mode ?? 'streetcar'}
               className={`live-car${car.match ? '' : ' off-track'}`}
               role="button"
               tabIndex={0}
-              aria-label={`Streetcar ${car.vehicle.label}${car.stale ? ', stale position' : ''}`}
+              aria-label={`${car.vehicle.mode === 'subway' ? 'Train' : 'Streetcar'} ${car.vehicle.label}${car.stale ? ', stale position' : ''}`}
               opacity={car.stale ? 0.45 : 1}
               onKeyDown={(event) => selectKey(event, () => onSelectVehicle(car))}
             >
               <title>
-                Car {car.vehicle.label}
+                {car.vehicle.mode === 'subway' ? 'Train' : 'Car'} {car.vehicle.label}
+                {car.vehicle.nextStopName &&
+                  ` · Next station: ${car.vehicle.nextStopName} (prediction)`}
                 {car.stale ? ' · Stale position' : ''}
               </title>
               {selectedVehicleId === car.vehicle.id && (
@@ -300,15 +310,23 @@ export function TransitMap({
                   .map((section, index) => (
                     <g
                       key={index}
-                      className={index === 4 ? 'streetcar-cab' : undefined}
+                      className={
+                        index === (car.vehicle.mode === 'subway' ? 5 : 4)
+                          ? 'streetcar-cab'
+                          : undefined
+                      }
                       transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}
                     >
-                      {index === 4 ? (
+                      {index === (car.vehicle.mode === 'subway' ? 5 : 4) ? (
                         <>
                           {/* The body is drawn tail-first; the larger, pointed cab faces +x. */}
                           <path
                             className="streetcar-halo"
-                            d="M-4 -5H3L7 0L3 5H-4Z"
+                            d={
+                              car.vehicle.mode === 'subway'
+                                ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
+                                : 'M-4 -5H3L7 0L3 5H-4Z'
+                            }
                             fill="#fffdf7"
                             stroke="#fffdf7"
                             strokeWidth={3.5}
@@ -316,7 +334,11 @@ export function TransitMap({
                           />
                           <path
                             className="streetcar-body"
-                            d="M-4 -5H3L7 0L3 5H-4Z"
+                            d={
+                              car.vehicle.mode === 'subway'
+                                ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
+                                : 'M-4 -5H3L7 0L3 5H-4Z'
+                            }
                             fill={
                               data.routes.find(
                                 (route) => route.id === car.vehicle.routeId,
@@ -339,22 +361,22 @@ export function TransitMap({
                         <>
                           <rect
                             className="streetcar-halo"
-                            x={-4}
+                            x={car.vehicle.mode === 'subway' ? -6 : -4}
                             y={-4}
-                            width={8}
+                            width={car.vehicle.mode === 'subway' ? 12 : 8}
                             height={8}
-                            rx={1.6}
+                            rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
                             fill="#fffdf7"
                             stroke="#fffdf7"
                             strokeWidth={3.5}
                           />
                           <rect
                             className="streetcar-body"
-                            x={-4}
+                            x={car.vehicle.mode === 'subway' ? -6 : -4}
                             y={-4}
-                            width={8}
+                            width={car.vehicle.mode === 'subway' ? 12 : 8}
                             height={8}
-                            rx={1.6}
+                            rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
                             fill="#fffdf7"
                             stroke="#25343c"
                             strokeWidth={1.2}
@@ -382,7 +404,11 @@ export function TransitMap({
                   <rect x={-7} y={-6} width={14} height={12} rx={3} fill="transparent" />
                   <path
                     className="streetcar-halo"
-                    d="M-4 -3H1L5 0L1 3H-4Z"
+                    d={
+                      car.vehicle.mode === 'subway'
+                        ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
+                        : 'M-4 -3H1L5 0L1 3H-4Z'
+                    }
                     fill="#fffdf7"
                     stroke="#fffdf7"
                     strokeWidth={2}
@@ -390,7 +416,11 @@ export function TransitMap({
                   />
                   <path
                     className="streetcar-body"
-                    d="M-4 -3H1L5 0L1 3H-4Z"
+                    d={
+                      car.vehicle.mode === 'subway'
+                        ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
+                        : 'M-4 -3H1L5 0L1 3H-4Z'
+                    }
                     fill={
                       data.routes.find((route) => route.id === car.vehicle.routeId)
                         ?.color ?? '#b4393f'
@@ -399,6 +429,30 @@ export function TransitMap({
                     strokeWidth={0.75}
                     strokeLinejoin="round"
                   />
+                </g>
+              )}
+              {(detailedCars || selectedVehicleId === car.vehicle.id) && (
+                <g
+                  transform={`translate(${car.point.join(' ')}) scale(${1 / scale})`}
+                  pointerEvents="none"
+                >
+                  <text
+                    className="vehicle-number"
+                    x={10}
+                    y={16}
+                    fontSize={10}
+                    fontWeight={700}
+                    fill="#25343c"
+                    stroke="#fffdf7"
+                    strokeWidth={3}
+                    paintOrder="stroke"
+                  >
+                    {data.routes.find((route) => route.id === car.vehicle.routeId)
+                      ?.number ??
+                      car.vehicle.routeId ??
+                      '—'}{' '}
+                    · {car.vehicle.label}
+                  </text>
                 </g>
               )}
             </g>

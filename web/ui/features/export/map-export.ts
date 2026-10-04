@@ -71,7 +71,7 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
       ' · Captured: ' +
       details.capturedAt,
     ...(details.includeCars && details.feed ? [details.feed] : []),
-    'Schematic map · Not a timetable or arrival prediction · Location marker and saved-stop stars omitted.',
+    'Schematic map · Train markers show predicted stations; streetcars show reported positions · Location marker and saved-stop stars omitted.',
     'TTC service & Toronto geography · Open Government Licence – Toronto · © OpenStreetMap contributors · ODbL.',
   ].flatMap(
     (line) => line.match(/.{1,145}(?:\s|$)|.{1,145}/g)?.map((part) => part.trim()) ?? [],
@@ -92,7 +92,7 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     element(
       'desc',
       { id: 'export-description' },
-      'Current view of the Toronto streetcar map. ' + lines.join(' '),
+      'Current view of the Toronto rail map. ' + lines.join(' '),
     ),
   );
   root.append(
@@ -114,7 +114,7 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     element(
       'text',
       { x: padding, y: 70, 'font-size': 13 },
-      'Your Toronto streetcar field map · Current view',
+      'Your Toronto rail field map · Current view',
     ),
   );
   root.append(

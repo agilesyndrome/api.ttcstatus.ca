@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,7 +10,7 @@ export async function createPreviewMiddleware() {
   const compiled = await build({
     stdin: {
       contents: `
-    export { DEFAULT_VEHICLE_FEED_URL } from './workers/api/src/realtime/realtime';
+    export { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from './workers/api/src/realtime/realtime';
     export { VehicleSnapshotCache } from './workers/api/src/realtime/vehicle-snapshot-cache';
     export { liveUpdateSeconds } from './shared/live/config';
     export { ifNoneMatchMatches } from './shared/http/etag';`,
@@ -27,6 +27,7 @@ export async function createPreviewMiddleware() {
   await writeFile('.wrangler/preview/react-realtime.mjs', compiled.outputFiles[0].text);
   const {
     VehicleSnapshotCache,
+    fetchRailSnapshot,
     DEFAULT_VEHICLE_FEED_URL,
     liveUpdateSeconds,
     ifNoneMatchMatches,
@@ -36,6 +37,7 @@ export async function createPreviewMiddleware() {
     DEFAULT_VEHICLE_FEED_URL,
     'Contains information licensed under the Open Government Licence - Toronto',
     updateSeconds,
+    fetchRailSnapshot,
   );
   let mapPromise;
   return async (request, response, next) => {
@@ -61,7 +63,11 @@ export async function createPreviewMiddleware() {
         mapPromise ??= (async () => {
           const dir = await mkdtemp(join(tmpdir(), 'ttc-react-preview-'));
           return previewMap(
-            'data/fixtures/streetcarmap.json',
+            process.env.MAP_INPUT ||
+              (await access('.wrangler/preview/rail-map.json').then(
+                () => '.wrangler/preview/rail-map.json',
+                () => 'data/fixtures/streetcarmap.json',
+              )),
             join(dir, 'map.json'),
             join(dir, 'map.svg'),
             join(dir, 'map.html'),

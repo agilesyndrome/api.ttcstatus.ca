@@ -2,6 +2,8 @@ export interface MapFilterValues {
   live: boolean;
   labels: boolean;
   overnight: boolean;
+  streetcar: boolean;
+  subway: boolean;
 }
 interface Props {
   value: MapFilterValues;
@@ -13,7 +15,7 @@ export function MapFilters({ value, onChange }: Props) {
       <h2>Map layers</h2>
       {(
         [
-          ['live', 'Show live streetcars'],
+          ['live', 'Show live vehicles'],
           ['labels', 'More stop labels'],
           ['overnight', 'Include overnight routes'],
         ] as const

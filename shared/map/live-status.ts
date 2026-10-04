@@ -1,4 +1,10 @@
-import { gpsToMap, matchGpsToTrack, pointAlongEdge, type TrackMatch } from './projection';
+import {
+  gpsToMap,
+  mapToGps,
+  matchGpsToTrack,
+  pointAlongEdge,
+  type TrackMatch,
+} from './projection';
 import { vehicleIsStale, type LiveVehicle, type VehicleSnapshot } from '../live/vehicles';
 import type { Edge, Point, ViewerData } from './model';
 
@@ -21,8 +27,77 @@ export function projectSnapshot(
   const previousById = new Map(
     previous.map((car) => [car.vehicle.id, car.match?.edgeId]),
   );
-  return snapshot.vehicles.map((vehicle) => {
-    const match = matchGpsToTrack(data.edges, vehicle.latitude, vehicle.longitude, {
+  const rapidIds = new Set(
+    data.routes.filter((r) => /^(1|2|4|5|6)$/.test(r.number)).map((r) => r.id),
+  );
+  const predicted: LiveVehicle[] = (snapshot.subwayPredictions ?? []).flatMap((train) => {
+    // Anchor to the first upcoming reported station. Never call this a GPS fix.
+    const reference = Date.parse(train.observedAt ?? snapshot.feedTimestamp ?? '');
+    const upcoming = train.stops.filter(
+      (stop) => Date.parse(stop.arrivalAt) >= reference,
+    );
+    const stop = upcoming[0];
+    const feature =
+      stop &&
+      data.features.find(
+        (f) => f.routeIds.includes(train.routeId) && f.stopIds?.includes(stop.stopId),
+      );
+    if (!feature) return [];
+    const next =
+      upcoming[1] && data.features.find((f) => f.stopIds?.includes(upcoming[1].stopId));
+    const pattern = data.patterns?.find(
+      (p) =>
+        p.routeId === train.routeId &&
+        p.stopIds.includes(stop.stopId) &&
+        (!upcoming[1] ||
+          p.stopIds.indexOf(upcoming[1].stopId) > p.stopIds.indexOf(stop.stopId)),
+    );
+    const index = pattern?.stopIds.indexOf(stop.stopId) ?? -1;
+    const previous =
+      index > 0
+        ? data.features.find((f) => f.stopIds?.includes(pattern!.stopIds[index - 1]))
+        : undefined;
+    const origin = next ? feature : previous;
+    const target = next ?? feature;
+    const gps = mapToGps(feature.point, data.geographicTransform);
+    let bearing: number | undefined;
+    if (origin && target && origin !== target) {
+      const a = mapToGps(origin.point, data.geographicTransform),
+        b = mapToGps(target.point, data.geographicTransform);
+      bearing =
+        ((Math.atan2(
+          (b.longitude - a.longitude) * Math.cos((a.latitude * Math.PI) / 180),
+          b.latitude - a.latitude,
+        ) *
+          180) /
+          Math.PI +
+          360) %
+        360;
+    }
+    return [
+      {
+        id: train.id,
+        label: train.label,
+        routeId: train.routeId,
+        tripId: train.tripId,
+        mode: 'subway' as const,
+        positionKind: 'next-station' as const,
+        nextStopName: feature.name,
+        arrivalAt: stop.arrivalAt,
+        observedAt: train.observedAt,
+        ...gps,
+        ...(bearing !== undefined ? { bearing } : {}),
+      },
+    ];
+  });
+  return [...snapshot.vehicles, ...predicted].map((vehicle) => {
+    const rapid = vehicle.mode === 'subway' || rapidIds.has(vehicle.routeId ?? '');
+    const candidates = data.edges.filter((edge) =>
+      rapid
+        ? edge.routeIds.includes(vehicle.routeId ?? '')
+        : !edge.routeIds.some((id) => rapidIds.has(id)),
+    );
+    const match = matchGpsToTrack(candidates, vehicle.latitude, vehicle.longitude, {
       routeId: vehicle.routeId,
       bearing: vehicle.bearing,
       previousEdgeId: previousById.get(vehicle.id),
@@ -59,12 +134,14 @@ export function streetcarBody(
   edges: Edge[],
   scale: number,
 ): { point: Point; angle: number }[] {
+  const count = car.vehicle.mode === 'subway' ? 6 : 5;
+  const spacing = car.vehicle.mode === 'subway' ? 9 : 6;
   if (!car.match) {
     const radians = (car.angle * Math.PI) / 180;
-    return Array.from({ length: 5 }, (_, i) => ({
+    return Array.from({ length: count }, (_, i) => ({
       point: [
-        car.point[0] - ((i * 6) / scale) * Math.cos(radians),
-        car.point[1] - ((i * 6) / scale) * Math.sin(radians),
+        car.point[0] - ((i * spacing) / scale) * Math.cos(radians),
+        car.point[1] - ((i * spacing) / scale) * Math.sin(radians),
       ] as Point,
       angle: car.angle,
     }));
@@ -73,7 +150,7 @@ export function streetcarBody(
     direction = car.match.direction,
     distance = car.match.distanceAlongMetres;
   const body: { point: Point; angle: number }[] = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < count; i++) {
     const sample = pointAlongEdge(edge, distance);
     body.push({
       point: sample.point,
@@ -84,7 +161,7 @@ export function streetcarBody(
     const pixelsPerMetre =
       Math.hypot(local.point[0] - fallback.point[0], local.point[1] - fallback.point[1]) /
       (Math.min(edge.lengthMetres, distance + 1) - Math.max(0, distance - 1) || 1);
-    let remaining = 6 / (scale * Math.max(0.001, pixelsPerMetre));
+    let remaining = spacing / (scale * Math.max(0.001, pixelsPerMetre));
     // A finite guard also handles loops and malformed zero-length edges.
     for (let steps = 0; remaining > 0 && steps < edges.length; steps++) {
       const available = direction === 1 ? distance : edge.lengthMetres - distance;

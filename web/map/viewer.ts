@@ -269,7 +269,7 @@ function draw() {
 
 function vehicleDescription(car: PlottedVehicle): string {
   const route = routes.get(car.vehicle.routeId ?? '');
-  return `${route ? `${route.number} ${route.name}` : car.vehicle.routeId ? `Route ${car.vehicle.routeId}` : 'No assigned trip'} · ${car.match ? 'On mapped track' : 'Off mapped track; GPS position'}${car.stale ? ' · Stale position' : ''}`;
+  return `${route ? `${route.number} ${route.name}` : car.vehicle.routeId ? `Route ${car.vehicle.routeId}` : 'No assigned trip'} · ${car.vehicle.positionKind === 'next-station' ? `Next station: ${car.vehicle.nextStopName} (prediction, not GPS)` : car.match ? 'On mapped track' : 'Off mapped track; GPS position'}${car.stale ? ' · Stale position' : ''}`;
 }
 
 function renderVehicles(scale: number) {
@@ -287,7 +287,7 @@ function renderVehicles(scale: number) {
     );
     const body = streetcarBody(car, data.edges, scale);
     Array.from(group.children).forEach((child, i) => {
-      const section = body[4 - i];
+      const section = body[body.length - 1 - i];
       child.setAttribute(
         'transform',
         `translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`,
@@ -303,12 +303,25 @@ function selectVehicle(car: PlottedVehicle) {
   hovered = undefined;
   tooltip.hidden = true;
   details.replaceChildren();
-  details.append(element('p', 'eyebrow', 'Flexity streetcar'));
+  details.append(
+    element(
+      'p',
+      'eyebrow',
+      car.vehicle.mode === 'subway' ? 'Subway / LRT train' : 'Flexity streetcar',
+    ),
+  );
   const heading = element('div', 'details-heading'),
     close = element('button', 'close-details', '×');
   close.setAttribute('aria-label', 'Close streetcar details');
   close.onclick = closeDetails;
-  heading.append(element('h1', '', `Car ${car.vehicle.label}`), close);
+  heading.append(
+    element(
+      'h1',
+      '',
+      `${car.vehicle.mode === 'subway' ? 'Train' : 'Car'} ${car.vehicle.label}`,
+    ),
+    close,
+  );
   details.append(heading);
   details.append(element('p', '', vehicleDescription(car)));
   const facts = element('dl', 'stop-facts');
@@ -329,7 +342,7 @@ function selectVehicle(car: PlottedVehicle) {
       element('dt', '', 'Reported speed'),
       element('dd', '', `${Math.round(car.vehicle.speedMetresPerSecond * 3.6)} km/h`),
     );
-  if (car.match)
+  if (car.match && car.vehicle.positionKind !== 'next-station')
     facts.append(
       element('dt', '', 'GPS distance from mapped track'),
       element('dd', '', `${Math.round(car.match.distanceFromTrackMetres)} m`),
@@ -394,7 +407,7 @@ function updateSnapshotAge() {
       .get(car.vehicle.id)
       ?.setAttribute(
         'aria-label',
-        `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
+        `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
       ),
   );
   const offTrack = cars.filter((car) => !car.match).length,
@@ -447,17 +460,19 @@ function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
         'data-vehicle': car.vehicle.id,
         role: 'button',
         tabindex: 0,
-        'aria-label': `Flexity car ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
+        'aria-label': `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
       });
       // Five articulated sections, drawn tail-first so the cab sits on top.
-      for (let i = 0; i < 5; i++) {
+      const train = car.vehicle.mode === 'subway';
+      const count = train ? 6 : 5;
+      for (let i = 0; i < count; i++) {
         const section = shape('g');
-        if (i === 4) {
+        if (i === count - 1) {
           section.setAttribute('class', 'streetcar-cab');
           section.append(
             shape('path', {
-              d: 'M-4 -5H3L7 0L3 5H-4Z',
-              fill: '#DA291C',
+              d: train ? 'M-6 -5H4L7 -2V2L4 5H-6Z' : 'M-4 -5H3L7 0L3 5H-4Z',
+              fill: routes.get(car.vehicle.routeId ?? '')?.color ?? '#DA291C',
               stroke: '#fffdf7',
               'stroke-width': 1.3,
               'stroke-linejoin': 'round',
@@ -476,12 +491,12 @@ function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
         } else {
           section.append(
             shape('rect', {
-              x: -3,
+              x: train ? -5 : -3,
               y: -3.5,
-              width: 6,
+              width: train ? 10 : 6,
               height: 7,
-              rx: 1.2,
-              fill: '#DA291C',
+              rx: train ? 0.5 : 1.2,
+              fill: routes.get(car.vehicle.routeId ?? '')?.color ?? '#DA291C',
               stroke: '#fffdf7',
               'stroke-width': 1.3,
             }),
@@ -857,7 +872,11 @@ function hoverAt(x: number, y: number) {
   if (car) {
     hovered = undefined;
     tooltip.replaceChildren(
-      element('strong', '', `Flexity car ${car.vehicle.label}`),
+      element(
+        'strong',
+        '',
+        `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}`,
+      ),
       element('small', '', vehicleDescription(car)),
       element('small', '', 'Select for streetcar details'),
     );

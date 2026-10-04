@@ -118,7 +118,13 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
               </button>
             }
             data={data}
-            cars={filters.live ? cars : []}
+            cars={
+              filters.live
+                ? cars.filter((car) =>
+                    car.vehicle.mode === 'subway' ? filters.subway : filters.streetcar,
+                  )
+                : []
+            }
             selectedRoute={selectedRoute}
             selectedFeature={feature}
             selectedVehicleId={car?.vehicle.id}
@@ -136,6 +142,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             savedStopIds={savedStops}
             showLabels={filters.labels}
             includeOvernight={filters.overnight}
+            showStreetcar={filters.streetcar}
+            showSubway={filters.subway}
             resetKey={resetKey}
             onSelectFeature={selectFeature}
             onSelectVehicle={(car) => selectVehicle(car)}

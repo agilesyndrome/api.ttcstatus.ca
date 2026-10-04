@@ -4,6 +4,7 @@ import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { FeedState } from '../map/LiveFeedStatus';
 import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { localToMap } from '../../../../shared/map/projection';
+import { buildSnakeMap, snakeCars } from './game-map';
 import { SnakeEngine, gameMissions, type Mode, type Turn } from './engine';
 
 interface Props {
@@ -58,9 +59,12 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
   );
 }
 
-export function SnakeGame({ data, cars, feed, onClose }: Props) {
+export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }: Props) {
+  const gameMap = useMemo(() => buildSnakeMap(sourceData), [sourceData]);
+  const data = gameMap.data;
+  const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
   const dialog = useRef<HTMLDialogElement>(null);
-  const engine = useMemo(() => new SnakeEngine(data), [data]);
+  const engine = useMemo(() => new SnakeEngine(data, { easySwitches: true }), [data]);
   const missions = useMemo(() => gameMissions(data), [data]);
   const [mode, setMode] = useState<Mode>('arcade');
   const [missionId, setMissionId] = useState('');
@@ -532,7 +536,7 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
           <strong id="snake-title">🐍 Streetcar Snake</strong>
           <small>
             {engine.status === 'ready'
-              ? 'Toronto, on the rails'
+              ? 'Toronto · Snake playground'
               : `${engine.mode === 'purist' ? 'Purist' : 'Arcade'} · ${engine.mission ? `${data.routes.find((route) => route.id === engine.mission?.routeId)?.number} · ${engine.destination}` : 'Free play'}`}
           </small>
         </div>
@@ -615,6 +619,12 @@ export function SnakeGame({ data, cars, feed, onClose }: Props) {
           <p>
             Route missions follow the signed path. Reach the terminal for a return trip
             and, in arcade, a bonus car. Manual switches let you divert.
+          </p>
+          <p>
+            A Toronto playground with simpler junctions and automatic terminal turns. Pick
+            your next switch early — it stays selected until you reach it.
+            {gameMap.transfers.length > 0 &&
+              ' Take a Subway transfer to snake between lines.'}
           </p>
           <p className="snake-instructions">
             ↑ / ↓ accelerate and brake · ← / → / Space (or Q / E / R) throw switches · P

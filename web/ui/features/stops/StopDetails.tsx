@@ -46,9 +46,13 @@ export function StopDetails({
   if (car)
     return (
       <section id="details" aria-live="polite">
-        <p className="eyebrow">Flexity streetcar</p>
+        <p className="eyebrow">
+          {car.vehicle.mode === 'subway' ? 'Subway / LRT train' : 'Flexity streetcar'}
+        </p>
         <div className="details-heading">
-          <h1>Car {car.vehicle.label}</h1>
+          <h1>
+            {car.vehicle.mode === 'subway' ? 'Train' : 'Car'} {car.vehicle.label}
+          </h1>
           <button
             className="close-details"
             aria-label="Close streetcar details"
@@ -58,16 +62,30 @@ export function StopDetails({
           </button>
         </div>
         <p>
+          {car.vehicle.routeId &&
+            `${data.routes.find((route) => route.id === car.vehicle.routeId)?.number ?? car.vehicle.routeId} · `}
           {data.routes.find((route) => route.id === car.vehicle.routeId)?.name ??
             'Route not supplied'}
           {car.stale && ' · Stale position'}
         </p>
         <p>
-          {car.match
-            ? 'Position matched to mapped track.'
-            : 'Off mapped track; showing GPS location.'}
+          {car.vehicle.positionKind === 'next-station'
+            ? `Next station: ${car.vehicle.nextStopName}. Marker shows the predicted station, not a GPS position.`
+            : car.match
+              ? 'Position matched to mapped track.'
+              : 'Off mapped track; showing GPS location.'}
         </p>
         <dl className="stop-facts">
+          {car.vehicle.arrivalAt && (
+            <>
+              <dt>Predicted arrival</dt>
+              <dd>
+                {new Date(car.vehicle.arrivalAt).toLocaleTimeString('en-CA', {
+                  timeZone: 'America/Toronto',
+                })}
+              </dd>
+            </>
+          )}
           <dt>Position reported</dt>
           <dd>
             {car.vehicle.observedAt
@@ -90,13 +108,17 @@ export function StopDetails({
               aria-pressed={Boolean(following)}
               onClick={onFollow}
             >
-              {following ? '◎ Following this car' : '◎ Follow this car'}
+              {following
+                ? `◎ Following this ${car.vehicle.mode === 'subway' ? 'train' : 'car'}`
+                : `◎ Follow this ${car.vehicle.mode === 'subway' ? 'train' : 'car'}`}
             </button>
             {following && (
               <p className="microcopy">
                 {car.stale
                   ? 'Waiting for a fresh position before moving the map.'
-                  : 'Following fresh GPS fixes. Pan or zoom to pause following.'}
+                  : car.vehicle.positionKind === 'next-station'
+                    ? 'Following predicted stations. Pan or zoom to pause.'
+                    : 'Following fresh GPS fixes. Pan or zoom to pause following.'}
               </p>
             )}
           </>
@@ -144,8 +166,8 @@ export function StopDetails({
           </div>
         </div>
         <p className="tip">
-          Select a stop or streetcar for details. Use the route legend to highlight a
-          route.
+          Select a stop, train or streetcar for details. Use the route legend to highlight
+          a route.
         </p>
       </section>
     );
@@ -153,7 +175,7 @@ export function StopDetails({
   return (
     <section id="details" aria-live="polite">
       <p className="eyebrow">
-        {feature.kind === 'terminal' ? 'Station / terminal' : 'Streetcar stop'}
+        {feature.kind === 'terminal' ? 'Station / terminal' : 'Transit stop'}
       </p>
       <div className="details-heading">
         <h1>{feature.name}</h1>

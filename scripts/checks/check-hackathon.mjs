@@ -200,8 +200,8 @@ try {
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await page.waitForTimeout(100);
   const camera = await page.locator('#map').getAttribute('viewBox');
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).uncheck();
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).check();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
   await page.waitForTimeout(150);
   assert.equal(
     await page.locator('#map').getAttribute('viewBox'),

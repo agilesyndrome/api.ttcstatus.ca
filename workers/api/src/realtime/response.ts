@@ -3,7 +3,7 @@ import { json } from '../http/responses';
 import type { ExecutionContextLike } from '../../../shared/cloudflare/bindings';
 import { ifNoneMatchMatches } from '../../../../shared/http/etag';
 
-import { DEFAULT_VEHICLE_FEED_URL } from './realtime';
+import { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from './realtime';
 import { VehicleSnapshotCache } from './vehicle-snapshot-cache';
 import { liveUpdateSeconds } from '../../../../shared/live/config';
 
@@ -18,7 +18,12 @@ export async function vehicleResponse(
   const source = env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL;
   const updateSeconds = liveUpdateSeconds(env.REALTIME_UPDATE_SECONDS);
   const cache = (caches as unknown as { default: Cache }).default;
-  const storeKey = JSON.stringify([source, env.SOURCE_ATTRIBUTION, updateSeconds]);
+  const storeKey = JSON.stringify([
+    source,
+    env.SOURCE_ATTRIBUTION,
+    updateSeconds,
+    env.REALTIME_SUBWAY_URL,
+  ]);
   const key = new Request(
     `https://ttcstatus-cache.invalid/api/v1/vehicles/streetcar?config=${encodeURIComponent(storeKey)}`,
   );
@@ -32,7 +37,13 @@ export async function vehicleResponse(
     if (vehicleStore?.key !== storeKey)
       vehicleStore = {
         key: storeKey,
-        cache: new VehicleSnapshotCache(source, env.SOURCE_ATTRIBUTION, updateSeconds),
+        cache: new VehicleSnapshotCache(
+          source,
+          env.SOURCE_ATTRIBUTION,
+          updateSeconds,
+          (url, attribution) =>
+            fetchRailSnapshot(url, attribution, env.REALTIME_SUBWAY_URL),
+        ),
       };
     const result = await vehicleStore.cache.get();
     const remainingSeconds = Math.max(

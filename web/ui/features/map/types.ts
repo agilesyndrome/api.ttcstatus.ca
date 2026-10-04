@@ -14,6 +14,8 @@ export interface TransitMapProps {
   focusPoint?: Point;
   showLabels?: boolean;
   includeOvernight?: boolean;
+  showStreetcar?: boolean;
+  showSubway?: boolean;
   resetKey?: number;
   savedStopIds?: string[];
   locationPoint?: Point;

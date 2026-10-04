@@ -21,9 +21,10 @@
   "vars": {
     "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca",
     // Live refresh and shared snapshot cache lifetime, in seconds (30–300).
+    "REALTIME_SUBWAY_URL": "https://gtfsrt.ttc.ca/trips/subway?format=binary",
     "REALTIME_UPDATE_SECONDS": "30",
     "REALTIME_VEHICLE_URL": "https://bustime.ttc.ca/gtfsrt/vehicles",
-    "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/bd4809dd-e289-4de8-bbde-c5c00dafbf4f/resource/28514055-d011-4ed7-8bb0-97961dfe2b66/download/SurfaceGTFS.zip",
+    "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/b811ead4-6eaf-4adb-8408-d389fb5a069c/resource/c920e221-7a1c-488b-8c5b-6d8cd4e85eaf/download/completegtfs.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
     "NO_VALIDATOR_REFETCH_DAYS": "7",
   },

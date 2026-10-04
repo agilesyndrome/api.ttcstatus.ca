@@ -150,7 +150,7 @@ try {
   await page.goto(origin + '/xplore');
   const launch = page.getByRole('button', { name: 'Play Streetcar Snake', exact: true });
   await launch.waitFor();
-  await page.getByRole('checkbox', { name: 'Show live streetcars' }).uncheck();
+  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
   await launch.click();
   const game = page.getByRole('dialog', { name: 'Streetcar Snake' });
   await game.waitFor();

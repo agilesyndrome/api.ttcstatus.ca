@@ -128,8 +128,22 @@ export async function ensureState(env: SyncEnv): Promise<SourceState> {
     .bind(SOURCE_KEY, env.STATIC_GTFS_URL)
     .run();
 
-  await env.DB.prepare(`UPDATE source_state SET source_url = ? WHERE source_key = ?`)
-    .bind(env.STATIC_GTFS_URL, SOURCE_KEY)
+  await env.DB.prepare(
+    `UPDATE source_state SET
+      source_etag = CASE WHEN source_url = ? THEN source_etag ELSE NULL END,
+      source_last_modified = CASE WHEN source_url = ? THEN source_last_modified ELSE NULL END,
+      source_content_length = CASE WHEN source_url = ? THEN source_content_length ELSE NULL END,
+      last_full_fetch_at = CASE WHEN source_url = ? THEN last_full_fetch_at ELSE NULL END,
+      source_url = ? WHERE source_key = ?`,
+  )
+    .bind(
+      env.STATIC_GTFS_URL,
+      env.STATIC_GTFS_URL,
+      env.STATIC_GTFS_URL,
+      env.STATIC_GTFS_URL,
+      env.STATIC_GTFS_URL,
+      SOURCE_KEY,
+    )
     .run();
 
   const state = await env.DB.prepare(
@@ -183,15 +197,15 @@ export async function findReusableCandidate(
   if (headers.etag) {
     candidate = await env.DB.prepare(
       `SELECT * FROM network_versions
-       WHERE source_key = ? AND source_etag = ? AND active = 0
+       WHERE source_key = ? AND source_etag = ? AND source_url = ? AND active = 0
        ORDER BY id DESC LIMIT 1`,
     )
-      .bind(SOURCE_KEY, headers.etag)
+      .bind(SOURCE_KEY, headers.etag, env.STATIC_GTFS_URL)
       .first<NetworkVersion>();
   } else if (headers.lastModified) {
     candidate = await env.DB.prepare(
       `SELECT * FROM network_versions
-       WHERE source_key = ? AND source_last_modified = ?
+       WHERE source_key = ? AND source_last_modified = ? AND source_url = ?
          AND (? IS NULL OR source_content_length = ?)
          AND active = 0
        ORDER BY id DESC LIMIT 1`,
@@ -199,6 +213,7 @@ export async function findReusableCandidate(
       .bind(
         SOURCE_KEY,
         headers.lastModified,
+        env.STATIC_GTFS_URL,
         headers.contentLength,
         headers.contentLength,
       )

@@ -20,6 +20,34 @@
   width: 16px;
   height: 16px;
 }
+.explore-layers {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 18px;
+}
+.layer-toggle {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.layer-toggle span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.layer-toggle.is-on {
+  border-color: #278f91;
+  color: #176f71;
+  background: #e7f5f3;
+}
 .live-status h2 {
   display: flex;
   align-items: center;

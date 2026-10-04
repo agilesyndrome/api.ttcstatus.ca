@@ -8,14 +8,23 @@ export const Tracks = memo(function Tracks({
   data,
   selectedRoute,
   includeOvernight,
-}: Pick<TransitMapProps, 'data' | 'selectedRoute' | 'includeOvernight'>) {
+  showStreetcar = true,
+  showSubway = true,
+}: Pick<
+  TransitMapProps,
+  'data' | 'selectedRoute' | 'includeOvernight' | 'showStreetcar' | 'showSubway'
+>) {
   return (
     <g aria-hidden="true">
       {data.edges.map((edge) => {
-        const activeRoutes = data.routes.filter(
-          (route) =>
-            (includeOvernight || !route.overnight) && edge.routeIds.includes(route.id),
-        );
+        const activeRoutes = data.routes
+          .filter(
+            (route) =>
+              (includeOvernight || !route.overnight) && edge.routeIds.includes(route.id),
+          )
+          .filter((route) =>
+            /^(1|2|4|5|6)$/.test(route.number) ? showSubway : showStreetcar,
+          );
         const route =
           activeRoutes.find(
             (route) => route.id === selectedRoute && edge.routeIds.includes(route.id),

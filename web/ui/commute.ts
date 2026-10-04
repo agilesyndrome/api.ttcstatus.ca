@@ -24,6 +24,8 @@ export const DEFAULT_FILTERS: MapFilterValues = {
   live: true,
   labels: false,
   overnight: false,
+  streetcar: true,
+  subway: true,
 };
 
 /** Measure geography, never distances on the compressed schematic. */
@@ -121,7 +123,7 @@ export function readMapLink(hash: string): MapLink {
     const id = params.get(param);
     if (id && id.length <= 200) tools[key] = id;
   }
-  for (const key of ['live', 'labels', 'overnight'] as const) {
+  for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const) {
     if (params.get(key) === '1' || params.get(key) === '0')
       filters[key] = params.get(key) === '1';
   }
@@ -152,7 +154,7 @@ export function mapLinkHash(
   if (tools?.panel && tools.panel !== 'explore') params.set('view', tools.panel);
   if (tools?.fromId) params.set('from', tools.fromId);
   if (tools?.toId) params.set('to', tools.toId);
-  for (const key of ['live', 'labels', 'overnight'] as const)
+  for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const)
     if (filters[key] !== DEFAULT_FILTERS[key]) params.set(key, filters[key] ? '1' : '0');
   return params.size ? `#${params}` : '';
 }
@@ -160,7 +162,7 @@ export function validFilters(value: unknown): value is MapFilterValues {
   return (
     typeof value === 'object' &&
     value !== null &&
-    ['live', 'labels', 'overnight'].every(
+    ['live', 'labels', 'overnight', 'streetcar', 'subway'].every(
       (key) => typeof (value as Record<string, unknown>)[key] === 'boolean',
     )
   );

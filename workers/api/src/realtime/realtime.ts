@@ -1,9 +1,14 @@
 import GtfsBindings from 'gtfs-realtime-bindings';
-import type { LiveVehicle, VehicleSnapshot } from '../../../../shared/live/vehicles';
+import type {
+  LiveVehicle,
+  VehicleSnapshot,
+  SubwayPrediction,
+} from '../../../../shared/live/vehicles';
 
 const { transit_realtime } = GtfsBindings;
 
 export const DEFAULT_VEHICLE_FEED_URL = 'https://bustime.ttc.ca/gtfsrt/vehicles';
+export const DEFAULT_SUBWAY_FEED_URL = 'https://gtfsrt.ttc.ca/trips/subway?format=binary';
 const MAX_FEED_BYTES = 5_000_000;
 
 function isoTimestamp(
@@ -100,6 +105,10 @@ export async function fetchVehicleSnapshot(
   source: string,
   attribution: string,
 ): Promise<VehicleSnapshot> {
+  return decodeVehicleSnapshot(await fetchFeedBytes(source), source, attribution);
+}
+
+async function fetchFeedBytes(source: string): Promise<Uint8Array> {
   const response = await fetch(source, {
     signal: AbortSignal.timeout(10_000),
     headers: { accept: 'application/x-protobuf' },
@@ -131,5 +140,89 @@ export async function fetchVehicleSnapshot(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return decodeVehicleSnapshot(bytes, source, attribution);
+  return bytes;
+}
+
+/** Subway trip updates contain station predictions, not GPS observations. */
+export function decodeSubwayPredictions(bytes: Uint8Array): SubwayPrediction[] {
+  const feed = transit_realtime.FeedMessage.decode(bytes);
+  if (
+    feed.header.incrementality === transit_realtime.FeedHeader.Incrementality.DIFFERENTIAL
+  )
+    throw new Error('A differential feed cannot be used as a complete snapshot');
+  const predictions = new Map<string, SubwayPrediction>();
+  for (const entity of feed.entity) {
+    const update = entity.tripUpdate;
+    if (entity.isDeleted || !update || !/^(1|2|4|5|6)$/.test(update.trip.routeId ?? ''))
+      continue;
+    if (
+      update.trip.scheduleRelationship ===
+        transit_realtime.TripDescriptor.ScheduleRelationship.CANCELED ||
+      update.trip.scheduleRelationship ===
+        transit_realtime.TripDescriptor.ScheduleRelationship.DELETED
+    )
+      continue;
+    const stops = (update.stopTimeUpdate ?? [])
+      .flatMap((stop) => {
+        if (
+          stop.scheduleRelationship ===
+            transit_realtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED ||
+          stop.scheduleRelationship ===
+            transit_realtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.NO_DATA
+        )
+          return [];
+        const arrivalAt = isoTimestamp(stop.arrival?.time ?? stop.departure?.time);
+        return stop.stopId && arrivalAt
+          ? [{ stopId: stop.stopId, sequence: stop.stopSequence ?? 0, arrivalAt }]
+          : [];
+      })
+      .sort((a, b) => a.sequence - b.sequence);
+    if (!stops.length) continue;
+    const routeId = update.trip.routeId!;
+    const number = update.vehicle?.label || update.vehicle?.id;
+    const id = `subway:${routeId}:${update.vehicle?.id || update.trip.tripId || entity.id}`;
+    const prediction: SubwayPrediction = {
+      id,
+      label: number || `Trip ${update.trip.tripId || entity.id}`,
+      routeId,
+      tripId: update.trip.tripId || entity.id,
+      observedAt: isoTimestamp(update.timestamp) ?? isoTimestamp(feed.header.timestamp),
+      stops,
+    };
+    if (
+      !predictions.has(id) ||
+      (prediction.observedAt ?? '') > (predictions.get(id)!.observedAt ?? '')
+    )
+      predictions.set(id, prediction);
+  }
+  return [...predictions.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export async function fetchRailSnapshot(
+  source: string,
+  attribution: string,
+  subwaySource = DEFAULT_SUBWAY_FEED_URL,
+): Promise<VehicleSnapshot> {
+  const [surface, subway] = await Promise.allSettled([
+    fetchVehicleSnapshot(source, attribution),
+    fetchFeedBytes(subwaySource).then(decodeSubwayPredictions),
+  ]);
+  if (surface.status === 'rejected' && subway.status === 'rejected') throw surface.reason;
+  return {
+    ...(surface.status === 'fulfilled'
+      ? surface.value
+      : {
+          schemaVersion: 1 as const,
+          vehicles: [],
+          invalidPositions: 0,
+          fetchedAt: new Date().toISOString(),
+          feedTimestamp: null,
+          source,
+          attribution,
+        }),
+    surfaceStatus: surface.status === 'fulfilled' ? 'available' : 'unavailable',
+    subwaySource,
+    subwayPredictions: subway.status === 'fulfilled' ? subway.value : [],
+    subwayStatus: subway.status === 'fulfilled' ? 'available' : 'unavailable',
+  };
 }

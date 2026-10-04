@@ -9,7 +9,7 @@ import type {
 } from './models';
 import type { R2ZipArchive } from './zip';
 
-const STREETCAR_ROUTE_TYPE = 0;
+const RAPID_LINES = new Set(['1', '2', '4', '5', '6']);
 
 function number(value: string, fallback = 0): number {
   const parsed = Number(value);
@@ -48,7 +48,9 @@ export async function parseStreetcarGtfs(
 
   for await (const row of csvRows(await archive.stream('routes.txt'))) {
     const routeType = number(row.route_type, -1);
-    if (routeType !== STREETCAR_ROUTE_TYPE) continue;
+    if (row.route_short_name === '3') continue;
+    if (routeType !== 0 && !(routeType === 1 && RAPID_LINES.has(row.route_short_name)))
+      continue;
     const record: RouteRecord = {
       routeId: row.route_id,
       shortName: row.route_short_name,

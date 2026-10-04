@@ -113,6 +113,22 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             tools={{ panel, fromId, toId }}
           />
         </div>
+        <div className="explore-layers" aria-label="Explore rail layers">
+          <button
+            className={`layer-toggle ${filters.streetcar ? 'is-on' : ''}`}
+            aria-pressed={filters.streetcar}
+            onClick={() => setFilters({ ...filters, streetcar: !filters.streetcar })}
+          >
+            <span aria-hidden="true" /> Streetcar · {filters.streetcar ? 'On' : 'Off'}
+          </button>
+          <button
+            className={`layer-toggle ${filters.subway ? 'is-on' : ''}`}
+            aria-pressed={filters.subway}
+            onClick={() => setFilters({ ...filters, subway: !filters.subway })}
+          >
+            <span aria-hidden="true" /> Subway · {filters.subway ? 'On' : 'Off'}
+          </button>
+        </div>
         {notice && (
           <p role="status" className="tip">
             {notice}
@@ -143,7 +159,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             liveEnabled={filters.live}
             feedLoaded={Boolean(feed.snapshot)}
             feedFailed={feed.failed}
-            onJournal={car ? collectCar : undefined}
+            onJournal={car && car.vehicle.mode !== 'subway' ? collectCar : undefined}
             journalSaved={Boolean(
               car && journal.some((entry) => entry.vehicleId === car.vehicle.id),
             )}

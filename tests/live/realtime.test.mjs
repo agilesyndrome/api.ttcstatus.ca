@@ -325,7 +325,7 @@ test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     assert.equal((await first.json()).vehicles[0].id, '4400');
     await Promise.all(tasks);
     assert.equal((await apiWorker.fetch(request, env, ctx)).status, 200);
-    assert.equal(upstreamCalls, 1);
+    assert.equal(upstreamCalls, 2);
     const unchanged = await apiWorker.fetch(
       new Request(request.url, {
         headers: { 'if-none-match': first.headers.get('etag') },
@@ -336,7 +336,7 @@ test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     assert.equal(unchanged.status, 304);
     assert.equal(await unchanged.text(), '');
     assert.equal(unchanged.headers.get('x-live-update-seconds'), '30');
-    assert.equal(upstreamCalls, 1);
+    assert.equal(upstreamCalls, 2);
     const etag = first.headers.get('etag');
     // Compression can change the browser's validator to W/"...". Exercise
     // both edge-cache hits and misses that reuse the isolate's snapshot.
@@ -366,7 +366,7 @@ test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     );
     assert.equal(different.status, 200);
     assert.equal((await different.json()).vehicles[0].id, '4400');
-    assert.equal(upstreamCalls, 1);
+    assert.equal(upstreamCalls, 2);
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.caches = originalCaches;
@@ -434,7 +434,7 @@ test('runtime interval changes invalidate old cache entries and advertise the fi
       { ...env, REALTIME_UPDATE_SECONDS: '300' },
       ctx,
     );
-    assert.equal(calls, 2);
+    assert.equal(calls, 4);
     assert.equal(second.status, 304);
     assert.equal(second.headers.get('x-live-update-seconds'), '300');
     assert.match(second.headers.get('cache-control'), /^public, max-age=(299|300)$/);

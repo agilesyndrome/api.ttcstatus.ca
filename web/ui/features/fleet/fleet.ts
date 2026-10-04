@@ -24,7 +24,7 @@ export function filterFleet(
   const needle = filters.query
     .trim()
     .toLowerCase()
-    .replace(/^(?:car|streetcar)\s*#?\s*|^#\s*/, '');
+    .replace(/^(?:car|streetcar|train)\s*#?\s*|^#\s*/, '');
   const routesById = new Map(routes.map((route) => [route.id, route]));
   const results = cars
     .filter((car) => {
@@ -78,7 +78,7 @@ export function fleetCsv(
   cars: PlottedVehicle[],
   routes: Route[],
   snapshot: Pick<VehicleSnapshot, 'fetchedAt' | 'feedTimestamp'> &
-    Partial<Pick<VehicleSnapshot, 'source' | 'attribution'>>,
+    Partial<Pick<VehicleSnapshot, 'source' | 'attribution' | 'subwaySource'>>,
 ): string {
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const rows: unknown[][] = [
@@ -98,6 +98,9 @@ export function fleetCsv(
       'feed_timestamp',
       'source',
       'attribution',
+      'position_kind',
+      'next_station',
+      'predicted_arrival',
     ],
   ];
   for (const car of cars) {
@@ -119,8 +122,11 @@ export function fleetCsv(
         : Math.round(vehicle.speedMetresPerSecond * 36) / 10,
       snapshot.fetchedAt,
       snapshot.feedTimestamp,
-      snapshot.source,
+      vehicle.mode === 'subway' ? snapshot.subwaySource : snapshot.source,
       snapshot.attribution,
+      vehicle.positionKind ?? 'gps',
+      vehicle.nextStopName,
+      vehicle.arrivalAt,
     ]);
   }
   return rows.map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
