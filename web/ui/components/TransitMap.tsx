@@ -4,7 +4,7 @@ import { boundsOf, type Bounds, type Feature, type Point, type ViewerData } from
 import { streetcarBody, type PlottedVehicle } from '../../map/live-status';
 
 interface Props {
-  data: ViewerData; cars?: PlottedVehicle[]; selectedRoute?: string; selectedFeature?: Feature;
+  data: ViewerData; cars?: PlottedVehicle[]; selectedRoute?: string; selectedFeature?: Feature; focusPoint?: Point;
   showLabels?: boolean; includeOvernight?: boolean; resetKey?: number;
   onSelectFeature(feature: Feature): void; onSelectVehicle(car: PlottedVehicle): void;
 }
@@ -17,7 +17,7 @@ const Tracks = memo(function Tracks({ data, selectedRoute, includeOvernight }: P
   })}</g>;
 });
 
-export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, showLabels = false, includeOvernight = false, resetKey = 0, onSelectFeature, onSelectVehicle }: Props) {
+export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, focusPoint, showLabels = false, includeOvernight = false, resetKey = 0, onSelectFeature, onSelectVehicle }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
   const initial = fitCamera(data.bounds, size.width / size.height);
@@ -73,6 +73,12 @@ export function TransitMap({ data, cars = [], selectedRoute, selectedFeature, sh
     const fitted = initialRef.current, width = fitted.width / 5, height = fitted.height / 5;
     move({ x: selectedFeature.point[0] - width / 2, y: selectedFeature.point[1] - height / 2, width, height });
   }, [selectedFeature]);
+
+  useEffect(() => {
+    if (!focusPoint) return;
+    const fitted = initialRef.current, width = fitted.width / 5, height = fitted.height / 5;
+    move({ x: focusPoint[0] - width / 2, y: focusPoint[1] - height / 2, width, height });
+  }, [focusPoint]);
 
   const selectKey = (event: React.KeyboardEvent, action: () => void) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); action(); } };
   const allowedRoutes = new Set(data.routes.filter(route => includeOvernight || !route.overnight).map(route => route.id));

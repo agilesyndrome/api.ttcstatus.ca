@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildViewerData, type Feature, type ViewerData, type ViewerSource } from '../../map/model';
+import { buildViewerData, type Feature, type ViewerData, type ViewerSource, type Point } from '../../map/model';
 import { projectSnapshot, type PlottedVehicle } from '../../map/live-status';
 import { useVehicleFeed } from '../hooks/useVehicleFeed';
 import { PageHeader } from '../components/PageHeader';
@@ -18,6 +18,7 @@ export function HomePage() {
   const [selectedRoute, setSelectedRoute] = useState<string>();
   const [feature, setFeature] = useState<Feature>();
   const [vehicleId, setVehicleId] = useState<string>();
+  const [vehicleFocus, setVehicleFocus] = useState<Point>();
   const [resetKey, setResetKey] = useState(0);
   const feed = useVehicleFeed(filters.live && Boolean(data));
   const previous = useRef<PlottedVehicle[]>([]);
@@ -35,10 +36,18 @@ export function HomePage() {
     }
     void load(); return () => controller.abort();
   }, [attempt]);
-  function reset() { setFeature(undefined); setVehicleId(undefined); setSelectedRoute(undefined); setResetKey(key => key + 1); }
-  function selectFeature(next: Feature) { setFeature(next); setVehicleId(undefined); if (selectedRoute && !next.routeIds.includes(selectedRoute)) setSelectedRoute(undefined); }
-  return <><PageHeader data={data} onSelect={selectFeature} onReset={reset} />
-    {data ? <main className="workspace"><TransitMap data={data} cars={filters.live ? cars : []} selectedRoute={selectedRoute} selectedFeature={feature} showLabels={filters.labels} includeOvernight={filters.overnight} resetKey={resetKey} onSelectFeature={selectFeature} onSelectVehicle={car => { setVehicleId(car.vehicle.id); setFeature(undefined); }} />
+  function reset() { setFeature(undefined); setVehicleId(undefined); setSelectedRoute(undefined); setVehicleFocus(undefined); setResetKey(key => key + 1); }
+  function selectFeature(next: Feature) { setVehicleFocus(undefined); setFeature(next); setVehicleId(undefined); if (selectedRoute && !next.routeIds.includes(selectedRoute)) setSelectedRoute(undefined); }
+  function selectVehicle(car: PlottedVehicle, focus = false) {
+    setVehicleId(car.vehicle.id); setFeature(undefined);
+    if (focus) {
+      setSelectedRoute(undefined);
+      setFilters(current => ({ ...current, live: true, overnight: current.overnight || Boolean(data?.routes.find(route => route.id === car.vehicle.routeId)?.overnight) }));
+      setVehicleFocus([...car.point]); // A search focuses once; later GPS updates do not reset the camera.
+    }
+  }
+  return <><PageHeader data={data} cars={cars} onSelect={selectFeature} onSelectVehicle={car => selectVehicle(car, true)} onReset={reset} />
+    {data ? <main className="workspace"><TransitMap data={data} cars={filters.live ? cars : []} selectedRoute={selectedRoute} selectedFeature={feature} focusPoint={vehicleFocus} showLabels={filters.labels} includeOvernight={filters.overnight} resetKey={resetKey} onSelectFeature={selectFeature} onSelectVehicle={car => selectVehicle(car)} />
       <aside className="sidebar" aria-label="Stop and route details"><MapFilters value={filters} onChange={next => { setFilters(next); if (!next.live) setVehicleId(undefined); if (!next.overnight && data.routes.find(route => route.id === selectedRoute)?.overnight) setSelectedRoute(undefined); }} /><LiveFeedStatus {...feed} /><StopDetails data={data} feature={feature} car={cars.find(car => car.vehicle.id === vehicleId)} onClose={() => { setFeature(undefined); setVehicleId(undefined); }} /><RouteLegend routes={data.routes.filter(route => filters.overnight || !route.overnight)} selectedRoute={selectedRoute} onSelect={id => { setSelectedRoute(id); setFeature(undefined); setVehicleId(undefined); }} /><PageFooter /></aside>
     </main> : <main className="loading-page"><h1>TTC status map</h1><p role={error ? 'alert' : 'status'}>{error ?? 'Loading the streetcar network…'}</p>{error && <button onClick={() => setAttempt(value => value + 1)}>Try again</button>}<PageFooter /></main>}
   </>;

@@ -349,7 +349,10 @@ npm run deploy:api
 The homepage is a React/TypeScript app in `web/ui/`. `pages/HomePage.tsx` owns
 selection, filters and one shared feed subscription. `components/` contains the
 header, footer, SVG map, layer filters, route legend, feed status and stop/vehicle
-details. The map reuses `web/map/` camera, model and GPS projection helpers.
+details. Search accepts stops, routes and reported streetcar numbers (for example,
+`4400`, `#4400` or `car 440`). Selecting a streetcar opens its details and centers
+the map on its latest position, enabling its layer when needed. Typing a search uses the
+shared loaded fleet without additional vehicle requests. The map reuses `web/map/` camera, model and GPS projection helpers.
 
 ```bash
 npm run dev:viewer       # React homepage + credential-free local API, port 4173
