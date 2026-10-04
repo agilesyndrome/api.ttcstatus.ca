@@ -9,6 +9,7 @@
     "build:map": "npm run typecheck",
     "typecheck": "tsc --noEmit",
     "map:preview": "node scripts/preview/preview-map.mjs",
+    "map:depot": "node scripts/preview/depot-board.mjs",
     "build:viewer": "node scripts/build/build-viewer.mjs",
     "test": "node --test --test-isolation=none tests/*/*.test.mjs",
     "dev:api": "npm run build:ui && npm run build:viewer && wrangler dev -c workers/api/wrangler.jsonc",

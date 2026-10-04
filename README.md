@@ -654,6 +654,12 @@ streetcars and do not depend on TTC feed availability.
 
 ## Maintaining the code
 
+For a little offline transit spotting, run `npm run map:depot`. It prints an ASCII
+streetcar and a route board with stop-cluster and pattern counts from the bundled
+map fixture. Use `npm run map:depot -- path/to/map.json` to inspect another local
+map. This is a snapshot summary, not live service or departure information;
+it requires no credentials or network access and writes no files.
+
 See [CODEMAP.md](CODEMAP.md) for module ownership and dependency boundaries.
 Application code lives under `workers/` and `web/`; `shared/` contains pure
 contracts and calculations used by both. Components and their stories are grouped
