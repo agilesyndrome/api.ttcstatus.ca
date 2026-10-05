@@ -1,9 +1,28 @@
 MAP_INPUT ?= $(if $(wildcard dist/streetcarmap.json),dist/streetcarmap.json,data/fixtures/streetcarmap.json)
 
-.PHONY: dev admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
+.PHONY: dev dev/new admin/sync admin/sync/status map/streetcar map/streetcar/svg map/debug
 
 dev:
-	@npm run dev:viewer
+	@set -eu; \
+		map_pid=; \
+		cleanup() { \
+			if [ -n "$$map_pid" ]; then \
+				kill "$$map_pid" 2>/dev/null || true; \
+				wait "$$map_pid" 2>/dev/null || true; \
+			fi; \
+		}; \
+		trap cleanup EXIT HUP INT TERM; \
+		npm run dev:map & map_pid=$$!; \
+		op run --env-file=.env.local -- npm run dev:api
+
+# Recreate local D1, fetch a fresh TTC GTFS ZIP, and generate the local map.
+# This does not read production D1 or import production map artifacts.
+dev/new:
+	@npx wrangler d1 execute ttcstatus --local --file scripts/dev/drop-local.sql \
+		-c workers/api/wrangler.jsonc --yes
+	@npm run db:migrate:local
+	@node scripts/dev/bootstrap-local.mjs
+
 
 admin/sync:
 	op run --env-file=.env -- ./bin/api POST /api/v1/admin/sync
