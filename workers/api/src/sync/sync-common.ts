@@ -14,6 +14,8 @@ export interface SyncEnv {
   STATIC_GTFS_URL: string;
   SOURCE_ATTRIBUTION: string;
   NO_VALIDATOR_REFETCH_DAYS?: string;
+  /** Shared only between the API and map-generator service binding. */
+  SYNC_TOKEN?: string;
 }
 
 interface SourceState {

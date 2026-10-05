@@ -64,6 +64,13 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
 
 export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }: Props) {
   useLanguage();
+  useEffect(() => {
+    try {
+      localStorage.setItem('ttc:snake:v2:played', '1');
+    } catch {
+      /* Optional achievement storage. */
+    }
+  }, []);
   const gameMap = useMemo(() => buildSnakeMap(sourceData), [sourceData]);
   const data = gameMap.data;
   const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);

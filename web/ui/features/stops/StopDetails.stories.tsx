@@ -37,7 +37,7 @@ export const LivePaused: Story = {
   },
 };
 export const ComparisonActions: Story = {
-  args: { feature: demoData.features[0], onCompare: fn() },
+  args: { feature: demoData.features[0] },
 };
 export const FollowingStreetcar: Story = {
   args: {

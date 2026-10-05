@@ -198,6 +198,54 @@ test('real Clerk session verification accepts signed tokens and rejects tamperin
   try {
     assert.equal(await authenticateAccount(authenticated(token()), env), 'user_signed');
     assert.equal((await api.fetch(authenticated(token()), env, {})).status, 200);
+    const privateEntry = { entries: [entry], revision: 0 };
+    assert.equal(
+      (
+        await api.fetch(
+          new Request('https://ttcstatus.ca/api/v1/me/journal', {
+            method: 'PUT',
+            headers: {
+              authorization: `Bearer ${token()}`,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify(privateEntry),
+          }),
+          env,
+          {},
+        )
+      ).status,
+      200,
+    );
+    const otherUserJournal = await api.fetch(
+      authenticated(token({ sub: 'user_other', sid: 'sess_other' })),
+      env,
+      {},
+    );
+    assert.deepEqual(await otherUserJournal.json(), { entries: [], revision: 0 });
+    assert.equal(
+      (
+        await api.fetch(
+          new Request('https://ttcstatus.ca/api/v1/me/journal', {
+            method: 'PUT',
+            headers: {
+              authorization: `Bearer ${token({ sub: 'user_other', sid: 'sess_other' })}`,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              entries: [{ ...entry, vehicleId: '4401' }],
+              revision: 0,
+            }),
+          }),
+          env,
+          {},
+        )
+      ).status,
+      200,
+    );
+    assert.deepEqual(await (await api.fetch(authenticated(token()), env, {})).json(), {
+      entries: [entry],
+      revision: 1,
+    });
     for (const invalid of [
       token({ exp: 1 }),
       token({ azp: 'https://evil.test' }),

@@ -1,46 +1,29 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t, getLocale } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
-import { downloadFile } from '../export/download';
-import {
-  JOURNAL_LIMIT,
-  journalBackup,
-  journalBadges,
-  mergeJournal,
-  readJournalBackup,
-  type JournalEntry,
-} from '../../../../shared/accounts/journal';
+import { JOURNAL_LIMIT, type JournalEntry } from '../../../../shared/accounts/journal';
 interface Props {
   entries: JournalEntry[];
-  persistent: boolean;
-  accountSaved?: boolean;
   cars: PlottedVehicle[];
   active: boolean;
   loaded?: boolean;
   failed?: boolean;
   onChange(update: (entries: JournalEntry[]) => JournalEntry[]): void | Promise<boolean>;
   onSelect(car: PlottedVehicle): void;
-  onFleet(): void;
 }
 export function StreetcarJournal({
   entries,
-  persistent,
-  accountSaved = false,
   cars,
   active,
   loaded = true,
   failed = false,
   onChange,
   onSelect,
-  onFleet,
 }: Props) {
   useLanguage();
   const id = useId();
-  const latest = useRef(entries);
-  latest.current = entries;
-  const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<string>();
@@ -51,7 +34,6 @@ export function StreetcarJournal({
   const [newStatus, setNewStatus] = useState<'seen' | 'ridden'>('seen');
   const [removing, setRemoving] = useState<string>();
   const [page, setPage] = useState(0);
-  const badges = journalBadges(entries);
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return entries
@@ -68,24 +50,6 @@ export function StreetcarJournal({
       );
   }, [entries, query]);
   const currentPage = Math.min(page, Math.max(0, Math.ceil(results.length / 10) - 1));
-  async function restore(file?: File) {
-    if (!file) return;
-    try {
-      if (file.size > 2_000_000)
-        throw new Error(english('journal.thisFileIsTooLargeChooseAJournalBackupUnder'));
-      const incoming = readJournalBackup(await file.text());
-      const result = mergeJournal(latest.current, incoming);
-      if ((await onChange(() => result.entries)) === false) return;
-      setMessage(t('journal.restored', { count: result.added }));
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : english('journal.unableToReadThisJournalBackup'),
-      );
-    }
-    if (input.current) input.current.value = '';
-  }
   return (
     <section className="streetcar-journal">
       <p className="eyebrow">{t('journal.yourRollingCollection')}</p>
@@ -164,81 +128,12 @@ export function StreetcarJournal({
             : t('journal.uniqueStreetcars')}{' '}
           {t('journal.collected')}
         </span>
-        <small>
-          {badges.filter((badge) => badge.earned).length} / {badges.length}{' '}
-          {t('journal.badgesUnlocked')}
-        </small>
       </div>
-      <details className="journal-achievements">
-        <summary>{t('journal.exploreYourCollectionBadges')}</summary>
-        <div className="journal-badges" aria-label={t('journal.collectionBadges')}>
-          {badges.map((badge) => (
-            <div
-              key={badge.name}
-              className={'journal-badge' + (badge.earned ? ' earned' : '')}
-            >
-              <span aria-hidden="true">{badge.icon}</span>
-              <div>
-                <strong>{t(badge.name)}</strong>
-                <small>{t(badge.description)}</small>
-                <small>
-                  {badge.earned
-                    ? t('journal.unlocked')
-                    : badge.progress + ' / ' + badge.target}
-                </small>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="microcopy">
-          {t(
-            'journal.badgesReflectYourManuallySavedCollectionAnOvernightAssignmentEarns',
-          )}
-        </p>
-      </details>
-      <button className="action-button export-fleet" onClick={onFleet}>
-        {t('journal.findAStreetcarInFleet')}
-      </button>
-      {!persistent && (
-        <p className="tip" role="status">
-          {t('journal.browserStorageIsUnavailableYourJournalLastsForThisTab')}
-        </p>
-      )}
       <p className="microcopy">
-        {accountSaved
-          ? t('journal.savedPrivatelyToYourAccount')
-          : t('journal.savedOnlyInThisBrowser')}
+        {t('journal.savedPrivatelyToYourAccount')}
         {t('journal.upTo')} {JOURNAL_LIMIT}{' '}
         {t('journal.differentCarsNoGpsCoordinatesAreRecordedNotesAndDates')}
       </p>
-      <div className="comparison-actions journal-backups">
-        <button
-          className="action-button"
-          disabled={!entries.length}
-          onClick={() =>
-            downloadFile(
-              journalBackup(entries),
-              'ttc-streetcar-journal.json',
-              'application/json',
-            )
-          }
-        >
-          {t('journal.backUpJournal')}
-        </button>
-        <button className="action-button" onClick={() => input.current?.click()}>
-          {t('journal.restoreBackup')}
-        </button>
-        <input
-          ref={input}
-          type="file"
-          accept=".json,application/json"
-          aria-label={t('journal.journalBackupFile')}
-          className="sr-only"
-          onChange={(event) => {
-            void restore(event.target.files?.[0]);
-          }}
-        />
-      </div>
       {message && (
         <p className="tip" role="status">
           {t(message)}

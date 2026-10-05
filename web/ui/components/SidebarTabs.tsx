@@ -2,7 +2,8 @@ import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useId } from 'react';
 import type { SidebarPanel } from '../commute';
-const panels = ['explore', 'fleet', 'compare', 'stops', 'journal'] as const;
+import { useAccount } from '../features/accounts/auth';
+const panels = ['explore', 'journal', 'badges'] as const;
 export function SidebarTabs({
   value,
   onChange,
@@ -11,6 +12,8 @@ export function SidebarTabs({
   onChange(value: SidebarPanel): void;
 }) {
   useLanguage();
+  const account = useAccount();
+  const availablePanels = account.userId ? panels : (['explore'] as const);
   const id = useId();
   return (
     <nav className="sidebar-tabs" aria-label={t('navigation.mapTools')}>
@@ -18,20 +21,20 @@ export function SidebarTabs({
         role="tablist"
         aria-label={t('navigation.mapTools')}
         onKeyDown={(event) => {
-          const focused = panels.findIndex(
+          const focused = availablePanels.findIndex(
             (panel) =>
               event.target instanceof HTMLElement && event.target.id === `${id}-${panel}`,
           );
-          const index = focused < 0 ? panels.indexOf(value) : focused;
+          const index = focused < 0 ? availablePanels.indexOf(value as never) : focused;
           const next =
             event.key === 'ArrowRight'
-              ? (index + 1) % panels.length
+              ? (index + 1) % availablePanels.length
               : event.key === 'ArrowLeft'
-                ? (index + panels.length - 1) % panels.length
+                ? (index + availablePanels.length - 1) % availablePanels.length
                 : event.key === 'Home'
                   ? 0
                   : event.key === 'End'
-                    ? panels.length - 1
+                    ? availablePanels.length - 1
                     : undefined;
           if (next !== undefined) {
             event.preventDefault();
@@ -40,7 +43,7 @@ export function SidebarTabs({
           }
         }}
       >
-        {panels.map((panel) => (
+        {availablePanels.map((panel) => (
           <button
             key={panel}
             id={`${id}-${panel}`}
@@ -52,13 +55,9 @@ export function SidebarTabs({
           >
             {panel === 'explore'
               ? t('navigation.explore')
-              : panel === 'fleet'
-                ? t('navigation.fleet')
-                : panel === 'compare'
-                  ? t('navigation.compare')
-                  : panel === 'stops'
-                    ? t('navigation.stops')
-                    : t('navigation.journal')}
+              : panel === 'journal'
+                ? t('navigation.journal')
+                : t('navigation.badges')}
           </button>
         ))}
       </div>

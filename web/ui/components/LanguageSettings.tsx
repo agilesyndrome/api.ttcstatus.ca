@@ -8,10 +8,12 @@ import {
   t,
 } from '../i18n';
 import { useLanguage } from '../i18n/react';
+import { useAccount } from '../features/accounts/auth';
 
 export function LanguageSettings() {
   useLanguage();
   const id = useId();
+  const account = useAccount();
   return (
     <section className="language-settings" aria-labelledby={`${id}-title`}>
       <h1 id={`${id}-title`}>{t('language.browserProfile')}</h1>
@@ -20,8 +22,11 @@ export function LanguageSettings() {
         id={id}
         value={getLanguagePreference()}
         onChange={(event) => {
-          if (isLanguagePreference(event.target.value))
+          if (isLanguagePreference(event.target.value)) {
             setLanguagePreference(event.target.value);
+            if (account.userId)
+              void account.saveLanguage(event.target.value);
+          }
         }}
       >
         <option value="browser">{t('language.browserDefault')}</option>
@@ -32,7 +37,9 @@ export function LanguageSettings() {
         ))}
       </select>
       <p className="helper">
-        {t('language.yourLanguagePreferenceIsSavedInThisBrowserNoAccount')}
+        {account.userId
+          ? t('language.yourLanguagePreferenceIsSavedInYourClerkProfile')
+          : t('language.yourLanguagePreferenceIsSavedInThisBrowserNoAccount')}
       </p>
       {!isLanguagePersistent() && (
         <p role="status">

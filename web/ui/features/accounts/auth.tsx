@@ -1,9 +1,9 @@
 import { english } from '../../../../shared/i18n/messages';
 import { accountLocales } from '../../i18n/clerk';
-import { t, getLocale } from '../../i18n';
+import { t, getLocale, setLanguagePreference, isLanguagePreference } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { ClerkProvider, UserButton, useAuth, useClerk } from '@clerk/react';
+import { ClerkProvider, UserButton, useAuth, useClerk, useUser } from '@clerk/react';
 
 interface Account {
   enabled: boolean;
@@ -14,6 +14,7 @@ interface Account {
   signIn(): void;
   signUp(): void;
   request(path: string, init?: RequestInit): Promise<Response>;
+  saveLanguage(language: string): Promise<void>;
 }
 const unavailable = async (): Promise<Response> => {
   throw new Error(english('account.signInToContinue'));
@@ -27,6 +28,7 @@ const defaults: Account = {
   signIn() {},
   signUp() {},
   request: unavailable,
+  saveLanguage: async () => {},
 };
 const AccountContext = createContext<Account>(defaults);
 export const useAccount = () => useContext(AccountContext);
@@ -34,7 +36,13 @@ export const useAccount = () => useContext(AccountContext);
 function ClerkAccount({ children }: { children: ReactNode }) {
   useLanguage();
   const { isLoaded, userId, getToken } = useAuth();
+  const { user } = useUser();
   const clerk = useClerk();
+  useEffect(() => {
+    const language = user?.unsafeMetadata?.language;
+    if (typeof language === 'string' && isLanguagePreference(language))
+      setLanguagePreference(language);
+  }, [user]);
   return (
     <AccountContext.Provider
       value={{
@@ -60,6 +68,12 @@ function ClerkAccount({ children }: { children: ReactNode }) {
             cache: 'no-store',
             credentials: 'omit',
           });
+        },
+        saveLanguage: async (language) => {
+          if (user)
+            await user.update({
+              unsafeMetadata: { ...user.unsafeMetadata, language },
+            });
         },
       }}
     >
@@ -152,7 +166,7 @@ export function AuthControls() {
     <nav className="auth-controls" aria-label={t('account.yourAccount')}>
       {account.userId ? (
         <>
-          <a className="account-link" href="/profile">
+          <a className="theme-toggle profile-toggle" href="/profile">
             {t('account.profile')}
           </a>
           <UserButton />

@@ -1,7 +1,7 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t } from '../../i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { boundsOf, type Feature, type Point } from '../../../../shared/map/model';
+import { type Feature, type Point } from '../../../../shared/map/model';
 import { gpsToMap } from '../../../../shared/map/projection';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
 import { useVehicleFeed } from './useVehicleFeed';
@@ -21,11 +21,9 @@ import {
   type Selection,
   type SidebarPanel,
 } from '../../commute';
-import type { PickingStop } from '../comparison/StopComparison';
 import {
   JOURNAL_LIMIT,
   journalEntry,
-  mergeJournal,
   validJournal,
 } from '../../../../shared/accounts/journal';
 import { useAccount } from '../accounts/auth';
@@ -64,9 +62,6 @@ export function useHomeWorkspace() {
       initialLink.selection || (initialLink.panel && initialLink.panel !== 'explore'),
     ),
   );
-  const [fromId, setFromId] = useState(initialLink.fromId);
-  const [toId, setToId] = useState(initialLink.toId);
-  const [picking, setPicking] = useState<PickingStop>();
   const [following, setFollowing] = useState(false);
   const [snakeOpen, setSnakeOpen] = useState(false);
   const [shortcutHelp, setShortcutHelp] = useState(false);
@@ -110,20 +105,6 @@ export function useHomeWorkspace() {
         : undefined,
     [data, location],
   );
-  const comparisonStops = useMemo(
-    () => ({
-      from: data?.features.find((stop) => stop.id === fromId),
-      to: data?.features.find((stop) => stop.id === toId),
-    }),
-    [data, fromId, toId],
-  );
-  const comparisonBounds = useMemo(
-    () =>
-      panel === 'compare' && comparisonStops.from && comparisonStops.to
-        ? boundsOf([comparisonStops.from.point, comparisonStops.to.point], 70)
-        : undefined,
-    [panel, comparisonStops],
-  );
   const shownRoutes =
     data?.routes
       .filter((route) => filters.overnight || !route.overnight)
@@ -131,7 +112,7 @@ export function useHomeWorkspace() {
         /^(1|2|4|5|6)$/.test(route.number) ? filters.subway : filters.streetcar,
       ) ?? [];
   const { exportImage, exportCars, previewMap, changeExportCars, closeExport } =
-    useMapExport({ data, shownRoutes, feed, panel, comparisonStops });
+    useMapExport({ data, shownRoutes, feed });
   useEffect(() => {
     previous.current = cars;
   }, [cars]);
@@ -144,12 +125,14 @@ export function useHomeWorkspace() {
   useEffect(() => {
     if (panel !== 'explore') setMobilePanelOpen(true);
     sidebar.current?.scrollTo({ top: 0 });
-    if (panel !== 'compare') setPicking(undefined);
     if (panel !== 'explore') {
       setFollowing(false);
       pendingCar.current = undefined;
     }
   }, [panel]);
+  useEffect(() => {
+    if (account.loaded && !account.userId && panel !== 'explore') setPanel('explore');
+  }, [account.loaded, account.userId, panel]);
 
   useEffect(() => {
     const restore = () => {
@@ -162,9 +145,6 @@ export function useHomeWorkspace() {
         link.selection?.kind === 'route' ? link.selection.id : link.contextRoute,
       );
       setPanel(link.panel ?? 'explore');
-      setFromId(link.fromId);
-      setToId(link.toId);
-      setPicking(undefined);
       setFollowing(false);
       pendingCar.current = link.selection?.kind === 'car' ? link.selection.id : undefined;
       setFilters({
@@ -181,9 +161,9 @@ export function useHomeWorkspace() {
   useEffect(() => {
     if (!data) return;
     const url = new URL(window.location.href);
-    url.hash = mapLinkHash(selection, filters, selectedRoute, { panel, fromId, toId });
+    url.hash = mapLinkHash(selection, filters, selectedRoute, { panel });
     window.history.replaceState(null, '', url);
-  }, [data, selection, filters, selectedRoute, panel, fromId, toId]);
+  }, [data, selection, filters, selectedRoute, panel]);
 
   useEffect(() => {
     if (!data || !selection) return;
@@ -226,23 +206,6 @@ export function useHomeWorkspace() {
     setFocusPointLevel(undefined);
   }, [car, data, selectedRoute, setFilters]);
   useEffect(() => {
-    if (!data) return;
-    if (
-      fromId &&
-      !data.features.some((stop) => stop.id === fromId && stop.boardingPoints > 0)
-    ) {
-      setFromId(undefined);
-      setNotice(english('workspace.aSharedComparisonStopIsNoLongerAvailableChooseA'));
-    }
-    if (
-      toId &&
-      !data.features.some((stop) => stop.id === toId && stop.boardingPoints > 0)
-    ) {
-      setToId(undefined);
-      setNotice(english('workspace.aSharedComparisonStopIsNoLongerAvailableChooseA'));
-    }
-  }, [data, fromId, toId]);
-  useEffect(() => {
     if (following && car && !car.stale) setFocusPoint([...car.point]);
   }, [following, car?.vehicle.id, car?.point[0], car?.point[1], car?.stale]);
 
@@ -255,9 +218,6 @@ export function useHomeWorkspace() {
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
     setPanel('explore');
-    setFromId(undefined);
-    setToId(undefined);
-    setPicking(undefined);
     setFollowing(false);
     setResetKey((key) => key + 1);
   }
@@ -269,16 +229,6 @@ export function useHomeWorkspace() {
     setFocusPointLevel(undefined);
     setNotice('');
     setFollowing(false);
-    if (panel === 'compare' && picking) {
-      if (!next.boardingPoints) {
-        setNotice(english('workspace.chooseABoardingStopForThisComparison'));
-        return;
-      }
-      if (picking === 'from') setFromId(next.id);
-      else setToId(next.id);
-      setPicking(undefined);
-      return;
-    }
     setPanel('explore');
     setSelection({ kind: 'stop', id: next.id });
     if (selectedRoute && !next.routeIds.includes(selectedRoute))
@@ -352,33 +302,6 @@ export function useHomeWorkspace() {
           : current,
     );
   }
-  function changeComparison(from?: string, to?: string) {
-    if (data)
-      setFilters((current) =>
-        revealRoutes(
-          current,
-          data.routes,
-          data.features
-            .filter((feature) => feature.id === from || feature.id === to)
-            .flatMap((feature) => feature.routeIds),
-        ),
-      );
-    setFromId(from);
-    setToId(to);
-    setPicking(undefined);
-    setFocusPoint(undefined);
-    setFocusPointLevel(undefined);
-    setSelectedRoute(undefined);
-    setNotice('');
-    if (selection?.kind === 'route') setSelection(undefined);
-  }
-  function pickStop(end?: PickingStop) {
-    if (end) setMobilePanelOpen(false);
-    setPicking(end);
-    setSelectedRoute(undefined);
-    setNotice('');
-    if (selection?.kind === 'route') setSelection(undefined);
-  }
   function collectCar() {
     if (!account.userId) {
       setPanel('journal');
@@ -410,36 +333,9 @@ export function useHomeWorkspace() {
       english('journal.car') + car.vehicle.label + english('journal.addedToYourJournal'),
     );
   }
-  function importEarlierJournal() {
-    try {
-      const earlier: unknown = JSON.parse(
-        localStorage.getItem('ttc:journal:v1') ?? 'null',
-      );
-      if (!validJournal(earlier)) {
-        setNotice(english('workspace.noValidEarlierJournalWasFoundInThisBrowserYou'));
-        return;
-      }
-      const merged = mergeJournal(journal, earlier);
-      setJournal(() => merged.entries);
-      setNotice(
-        t('workspace.valueEarlierCarsAddedExistingNotesWereKept', {
-          value1: merged.added,
-        }),
-      );
-    } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : english('workspace.unableToImportThisBrowserSEarlierJournal'),
-      );
-    }
-  }
   useShortcuts(shortcutsEnabled && !snakeOpen, {
     '/': () => document.querySelector<HTMLInputElement>('.search input')?.focus(),
     e: () => setPanel('explore'),
-    f: () => setPanel('fleet'),
-    c: () => setPanel('compare'),
-    d: () => setPanel('stops'),
     j: () => setPanel('journal'),
     p: previewMap,
     s: toggleSave,
@@ -462,10 +358,8 @@ export function useHomeWorkspace() {
                 })
               : t('workspace.exploreTorontoRail')))
       : {
-          fleet: t('workspace.streetcarFleet'),
-          compare: t('stopComparison.compareStops'),
-          stops: t('workspace.stopDirectory'),
           journal: t('workspace.streetcarJournal'),
+          badges: t('navigation.badges'),
         }[panel];
 
   return {
@@ -491,12 +385,6 @@ export function useHomeWorkspace() {
     setPanel,
     mobilePanelOpen,
     setMobilePanelOpen,
-    fromId,
-    setFromId,
-    toId,
-    setToId,
-    picking,
-    setPicking,
     following,
     setFollowing,
     snakeOpen,
@@ -521,18 +409,13 @@ export function useHomeWorkspace() {
     feature,
     car,
     locationPoint,
-    comparisonStops,
-    comparisonBounds,
     selectFeature,
     selectVehicle,
     selectRoute,
     surprise,
     locate,
     toggleSave,
-    changeComparison,
-    pickStop,
     collectCar,
-    importEarlierJournal,
     previewMap,
     changeExportCars,
     closeExport,

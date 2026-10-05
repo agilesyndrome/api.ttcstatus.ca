@@ -58,6 +58,9 @@ export default {
     if (request.method !== 'POST' || url.pathname !== '/api/internal/generate') {
       return json({ error: 'not-found' }, 404);
     }
+    if (!env.SYNC_TOKEN) return json({ error: 'generation-disabled' }, 404);
+    if (!(await authorizedSync(request, env)))
+      return json({ error: 'unauthorized' }, 401);
 
     let versionId: number | undefined;
     try {

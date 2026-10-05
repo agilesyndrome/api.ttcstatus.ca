@@ -3,8 +3,6 @@ import { useLanguage } from '../../i18n/react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { formatDistance, nearbyCars } from '../../commute';
-import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
-import { StationArrivals } from './StationArrivals';
 interface Props {
   data: ViewerData;
   feature?: Feature;
@@ -12,18 +10,15 @@ interface Props {
   cars?: PlottedVehicle[];
   saved?: boolean;
   saveLimit?: boolean;
-  liveEnabled?: boolean;
   feedLoaded?: boolean;
+  liveEnabled?: boolean;
   feedFailed?: boolean;
-  snapshot?: VehicleSnapshot;
-  now?: number;
   journalSaved?: boolean;
   journalFull?: boolean;
   onJournal?(): void;
   onOpenJournal?(): void;
   following?: boolean;
   onFollow?(): void;
-  onCompare?(end: 'from' | 'to'): void;
   onToggleSave?(): void;
   onSelectVehicle?(car: PlottedVehicle): void;
   onClose(): void;
@@ -35,18 +30,15 @@ export function StopDetails({
   cars = [],
   saved,
   saveLimit,
-  liveEnabled,
   feedLoaded,
+  liveEnabled,
   feedFailed,
-  snapshot,
-  now = Date.now(),
   following,
   onFollow,
   journalSaved,
   journalFull,
   onJournal,
   onOpenJournal,
-  onCompare,
   onToggleSave,
   onSelectVehicle,
   onClose,
@@ -90,16 +82,6 @@ export function StopDetails({
               : t('stopDetails.offMappedTrackShowingGpsLocation')}
         </p>
         <dl className="stop-facts">
-          {car.vehicle.arrivalAt && (
-            <>
-              <dt>{t('stopDetails.predictedArrival')}</dt>
-              <dd>
-                {new Date(car.vehicle.arrivalAt).toLocaleTimeString(getLocale(), {
-                  timeZone: 'America/Toronto',
-                })}
-              </dd>
-            </>
-          )}
           <dt>{t('viewer.positionReported')}</dt>
           <dd>
             {car.vehicle.observedAt
@@ -255,27 +237,6 @@ export function StopDetails({
             : t('viewer.notConfirmedInThisSnapshot')}
         </dd>
       </dl>
-      {onCompare && feature.boardingPoints > 0 && (
-        <div className="comparison-actions">
-          <button className="action-button" onClick={() => onCompare('from')}>
-            {t('stopDetails.compareFromHere')}
-          </button>
-          <button className="action-button" onClick={() => onCompare('to')}>
-            {t('stopDetails.compareToHere')}
-          </button>
-        </div>
-      )}
-      {feature.boardingPoints > 0 &&
-        feature.routeIds.some((id) => rapidRoutes.has(id)) && (
-          <StationArrivals
-            data={data}
-            feature={feature}
-            snapshot={snapshot}
-            now={now}
-            enabled={liveEnabled}
-            failed={feedFailed}
-          />
-        )}
       {onSelectVehicle &&
         feature.boardingPoints > 0 &&
         feature.routeIds.some((id) => !rapidRoutes.has(id)) && (

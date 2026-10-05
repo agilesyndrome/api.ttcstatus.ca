@@ -18,11 +18,9 @@ const meta = {
   args: {
     entries,
     cars,
-    persistent: true,
     active: true,
     onChange: fn(),
     onSelect: fn(),
-    onFleet: fn(),
   },
   render: (args) => <InteractiveJournal {...args} />,
   tags: ['autodocs'],
@@ -39,7 +37,6 @@ export const WithNotes: Story = {
     })),
   },
 };
-export const StorageUnavailable: Story = { args: { persistent: false } };
 export const Paused: Story = { args: { active: false } };
 export const Milestones: Story = {
   args: {

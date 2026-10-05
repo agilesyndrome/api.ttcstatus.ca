@@ -4,8 +4,6 @@ export function PageFooter() {
   useLanguage();
   return (
     <footer>
-      {t('footer.livePositionsRefreshWhileThisTabIsVisible')}
-      <br />
       {t('footer.mapIsSchematicReplacementBusPathsAreExcludedNoLive')}
       <details>
         <summary>{t('footer.mapSources')}</summary>

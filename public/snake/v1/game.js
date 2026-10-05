@@ -2991,6 +2991,7 @@ subscribeLanguage(translateViewerPage);
   });
 
   startBtn.addEventListener("click", () => {
+    try { localStorage.setItem("ttc:snake:v1:played", "1"); } catch (_) {}
     restoreStartCard();
     clearResumeCheckpointr();
     resetGame();

@@ -10,11 +10,9 @@ export interface Location {
   accuracy?: number;
 }
 export type Selection = { kind: 'stop' | 'route' | 'car'; id: string };
-export type SidebarPanel = 'explore' | 'fleet' | 'compare' | 'stops' | 'journal';
+export type SidebarPanel = 'explore' | 'journal' | 'badges';
 export interface MapTools {
   panel?: SidebarPanel;
-  fromId?: string;
-  toId?: string;
 }
 export interface MapLink extends MapTools {
   selection?: Selection;
@@ -142,20 +140,8 @@ export function readMapLink(hash: string): MapLink {
   const filters: Partial<MapFilterValues> = {};
   const tools: MapTools = {};
   const panel = params.get('view');
-  if (
-    panel === 'fleet' ||
-    panel === 'compare' ||
-    panel === 'stops' ||
-    panel === 'journal'
-  )
+  if (panel === 'journal' || panel === 'badges')
     tools.panel = panel;
-  for (const [param, key] of [
-    ['from', 'fromId'],
-    ['to', 'toId'],
-  ] as const) {
-    const id = params.get(param);
-    if (id && id.length <= 200) tools[key] = id;
-  }
   for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const) {
     if (params.get(key) === '1' || params.get(key) === '0')
       filters[key] = params.get(key) === '1';
@@ -185,8 +171,6 @@ export function mapLinkHash(
   if (selection) params.set(selection.kind, selection.id);
   if (contextRoute && selection?.kind !== 'route') params.set('route', contextRoute);
   if (tools?.panel && tools.panel !== 'explore') params.set('view', tools.panel);
-  if (tools?.fromId) params.set('from', tools.fromId);
-  if (tools?.toId) params.set('to', tools.toId);
   for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const)
     if (filters[key] !== DEFAULT_FILTERS[key]) params.set(key, filters[key] ? '1' : '0');
   return params.size ? `#${params}` : '';

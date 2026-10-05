@@ -30,9 +30,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     exportImage,
     exportCars,
     selectedRoute,
-    panel,
     mobilePanelOpen,
-    picking,
     setFollowing,
     snakeOpen,
     setSnakeOpen,
@@ -49,8 +47,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     feature,
     car,
     locationPoint,
-    comparisonStops,
-    comparisonBounds,
     selectFeature,
     selectVehicle,
     previewMap,
@@ -144,19 +140,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             selectedVehicleId={car?.vehicle.id}
             focusPoint={focusPoint}
             focusPointLevel={focusPointLevel}
-            focusBounds={comparisonBounds}
+            focusBounds={undefined}
             locationPoint={locationPoint}
-            comparisonStops={panel === 'compare' ? comparisonStops : undefined}
-            pickingLabel={
-              picking
-                ? t('workspace.chooseAValueBoardingStop', {
-                    value1:
-                      picking === 'from'
-                        ? t('stopComparison.start')
-                        : t('stopComparison.destination'),
-                  })
-                : undefined
-            }
+            comparisonStops={undefined}
+            pickingLabel={undefined}
             onInteract={() => setFollowing(false)}
             onExport={previewMap}
             savedStopIds={savedStops}

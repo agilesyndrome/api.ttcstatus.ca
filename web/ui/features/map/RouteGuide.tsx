@@ -9,7 +9,6 @@ interface Props {
   route: Route;
   savedIds: string[];
   onSelect(feature: Feature): void;
-  onCompare(fromId: string, toId: string): void;
   onClose(): void;
 }
 
@@ -18,7 +17,6 @@ export function RouteGuide({
   route,
   savedIds,
   onSelect,
-  onCompare,
   onClose,
 }: Props) {
   useLanguage();
@@ -97,14 +95,6 @@ export function RouteGuide({
           </p>
           {itinerary.unmapped > 0 && (
             <p className="tip">{plural('counts.unmappedBoarding', itinerary.unmapped)}</p>
-          )}
-          {first && last && first.id !== last.id && (
-            <button
-              className="action-button"
-              onClick={() => onCompare(first.id, last.id)}
-            >
-              {t('routeGuide.compareFirstAndLastMappedStops')}
-            </button>
           )}
           <p className="fleet-count" role="status">
             {stops.length} {t('fleetExplorer.of')} {itinerary.stops.length}{' '}

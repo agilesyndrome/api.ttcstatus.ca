@@ -92,30 +92,6 @@ try {
   await page
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();
-  await page.evaluate(() =>
-    localStorage.setItem(
-      'ttc:journal:v1',
-      JSON.stringify([
-        {
-          vehicleId: '4400',
-          label: '4400',
-          recordedAt: '2026-10-03T12:00:00.000Z',
-          note: 'Private earlier note',
-        },
-      ]),
-    ),
-  );
-  assert.equal(
-    await page.locator('.journal-entry').count(),
-    0,
-    'earlier journal is not imported automatically',
-  );
-  await page.getByRole('button', { name: 'Import earlier browser journal' }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
-  assert.equal(await page.locator('.journal-entry').count(), 1);
-  assert.equal(journals.get('user_a').entries[0].note, 'Private earlier note');
   await page.getByLabel('Streetcar number', { exact: true }).fill('4500');
   await page.getByLabel('Private note (optional)').fill('Spotted on King');
   await page.getByRole('button', { name: 'Add car to journal', exact: true }).click();

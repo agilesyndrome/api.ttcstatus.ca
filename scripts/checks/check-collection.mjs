@@ -156,68 +156,7 @@ try {
     !page.url().includes('Queen') && !page.url().includes('4400'),
     'sharing the journal tab does not share its contents',
   );
-  const backupDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Back up journal', exact: true }).click();
-  const backup = await backupDownload;
-  assert.equal(backup.suggestedFilename(), 'ttc-streetcar-journal.json');
-  const contents = await readFile(await backup.path(), 'utf8');
-  const payload = JSON.parse(contents);
-  assert.equal(payload.entries.length, 3);
-  assert.ok(
-    !contents.includes('latitude') &&
-      !contents.includes('longitude') &&
-      !contents.includes('observedAt'),
-  );
-  const imported = structuredClone(payload);
-  imported.entries[0].note = 'Do not overwrite my saved note';
-  imported.entries.push({
-    vehicleId: '9900',
-    label: '9900',
-    recordedAt: '2026-10-03T12:00:00.000Z',
-    note: 'Restored car',
-  });
-  await page.getByLabel('Journal backup file').setInputFiles({
-    name: 'backup.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(imported)),
-  });
-  await page.getByText('1 new car restored.', { exact: false }).waitFor();
-  assert.equal(await page.locator('.journal-entry').count(), 4);
-  assert.equal(
-    await page
-      .getByRole('article', { name: 'Collected car 4400', exact: true })
-      .locator('.journal-note')
-      .innerText(),
-    note,
-  );
-  await page.getByLabel('Journal backup file').setInputFiles({
-    name: 'invalid.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from('{'),
-  });
-  await page
-    .getByText('This is not a valid JSON journal backup.', { exact: true })
-    .waitFor();
-  assert.equal(await page.locator('.journal-entry').count(), 4);
-  await page
-    .getByRole('searchbox', { name: 'Search your journal', exact: true })
-    .fill('Restored car');
-  assert.equal(await page.locator('.journal-entry').count(), 1);
-  await page
-    .getByRole('article', { name: 'Collected car 9900' })
-    .getByRole('button', { name: 'Remove', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Keep car', exact: true }).click();
-  assert.equal(await page.locator('.journal-entry').count(), 1);
-  await page
-    .getByRole('article', { name: 'Collected car 9900' })
-    .getByRole('button', { name: 'Remove', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Confirm removal', exact: true }).click();
-  assert.equal(await page.locator('.journal-entry').count(), 0);
-  await page
-    .getByRole('searchbox', { name: 'Search your journal', exact: true })
-    .fill('');
+  assert.equal(await page.locator('.journal-entry').count(), 3);
   await page.screenshot({ path: '/tmp/ttc-hackathon-journal.png' });
 
   // Capture a map containing location and bookmark markers, then verify neither is exported.
@@ -366,19 +305,6 @@ try {
       .isDisabled(),
   );
 
-  const corrupt = await context.newPage();
-  await corrupt.addInitScript(() => {
-    window.__testUser = 'user_corrupt';
-  });
-  await corrupt.addInitScript(() => {
-    localStorage.setItem(
-      'ttc:journal:v1',
-      JSON.stringify([{ vehicleId: 'bad', latitude: 43.6 }]),
-    );
-  });
-  await corrupt.goto(origin + '/#view=journal');
-  await corrupt.getByText('Your first catch is waiting.', { exact: false }).waitFor();
-  await corrupt.close();
   const full = await context.newPage();
   accounts.journals.set('user_full', {
     entries: Array.from({ length: 500 }, (_, index) => ({
@@ -406,26 +332,6 @@ try {
       'Page 1 of 50',
     ),
   );
-  const overflow = {
-    format: 'ttc-streetcar-journal',
-    version: 1,
-    entries: [
-      {
-        vehicleId: 'extra',
-        label: 'Extra',
-        recordedAt: '2026-10-03T12:00:00.000Z',
-        note: '',
-      },
-    ],
-  };
-  await full.getByLabel('Journal backup file').setInputFiles({
-    name: 'overflow.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(overflow)),
-  });
-  await full
-    .getByText('This import would exceed the 500-car journal limit.', { exact: false })
-    .waitFor();
   await full.close();
   const privateTab = await context.newPage();
   await privateTab.addInitScript(() => {
@@ -447,17 +353,10 @@ try {
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();
   assert.equal(await privateTab.locator('.journal-entry').count(), 1);
-  const privateDownload = privateTab.waitForEvent('download');
-  await privateTab.getByRole('button', { name: 'Back up journal', exact: true }).click();
-  assert.equal(
-    JSON.parse(await readFile(await (await privateDownload).path(), 'utf8')).entries
-      .length,
-    1,
-  );
   await privateTab.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Collection UI passed: stop directory/filter/paging/GPS sorting, manual journal/notes/badges/persistence/backup/merge/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and five-tab keyboard navigation; no browser errors.',
+    'Collection UI passed: stop directory/filter/paging/GPS sorting, server journal/notes/badges/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and five-tab keyboard navigation; no browser errors.',
   );
   await context.close();
 } finally {

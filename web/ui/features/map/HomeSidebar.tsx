@@ -11,13 +11,9 @@ import { MyStops } from '../stops/MyStops';
 import { NearbyStops } from '../stops/NearbyStops';
 import { RoutePulse } from '../map/RoutePulse';
 import { ShareMap } from '../export/ShareMap';
-import { FleetExplorer } from '../fleet/FleetExplorer';
-import { StopComparison } from '../comparison/StopComparison';
-import { SavedComparisons } from '../comparison/SavedComparisons';
 import { SidebarTabs } from '../../components/SidebarTabs';
-
-import { StopBrowser } from '../stops/StopBrowser';
 import { StreetcarJournal } from '../journal/StreetcarJournal';
+import { Badges } from '../journal/Badges';
 import { JOURNAL_LIMIT } from '../../../../shared/accounts/journal';
 
 import { AccountRequired } from '../accounts/auth';
@@ -44,12 +40,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     setPanel,
     mobilePanelOpen,
     setMobilePanelOpen,
-    fromId,
-    setFromId,
-    toId,
-    setToId,
-    picking,
-    setPicking,
     following,
     setFollowing,
     setFocusPoint,
@@ -68,10 +58,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     surprise,
     locate,
     toggleSave,
-    changeComparison,
-    pickStop,
     collectCar,
-    importEarlierJournal,
     shownRoutes,
     panelTitle,
   } = workspace;
@@ -112,17 +99,19 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
         }}
       />
       <div ref={sidebar} id="sidebar-content" className="sidebar-content">
-        <div className="explore-tools">
-          <button className="action-button surprise-button" onClick={surprise}>
-            {t('workspace.surpriseMe')}
-          </button>
-          <ShareMap
-            selection={selection}
-            filters={filters}
-            contextRoute={selectedRoute}
-            tools={{ panel, fromId, toId }}
-          />
-        </div>
+        {panel === 'explore' && (
+          <div className="explore-tools">
+            <button className="action-button surprise-button" onClick={surprise}>
+              {t('workspace.surpriseMe')}
+            </button>
+            <ShareMap
+              selection={selection}
+              filters={filters}
+              contextRoute={selectedRoute}
+              tools={{ panel }}
+            />
+          </div>
+        )}
         <div className="explore-layers" aria-label={t('workspace.exploreRailLayers')}>
           <button
             className={`layer-toggle ${filters.streetcar ? 'is-on' : ''}`}
@@ -174,10 +163,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 savedIds={savedStops}
                 onSelect={selectFeature}
                 onClose={() => selectRoute(undefined)}
-                onCompare={(from, to) => {
-                  changeComparison(from, to);
-                  setPanel('compare');
-                }}
               />
             </div>
           )}
@@ -201,8 +186,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 liveEnabled={filters.live}
                 feedLoaded={Boolean(feed.snapshot)}
                 feedFailed={feed.failed}
-                snapshot={feed.snapshot}
-                now={feed.now}
                 onJournal={car && car.vehicle.mode !== 'subway' ? collectCar : undefined}
                 journalSaved={Boolean(
                   car && journal.some((entry) => entry.vehicleId === car.vehicle.id),
@@ -212,17 +195,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 onToggleSave={feature ? toggleSave : undefined}
                 following={following}
                 onFollow={car ? () => setFollowing((current) => !current) : undefined}
-                onCompare={
-                  feature
-                    ? (end) => {
-                        if (end === 'from') setFromId(feature.id);
-                        else setToId(feature.id);
-                        setPanel('compare');
-                        setPicking(undefined);
-                        setFocusPoint(undefined);
-                      }
-                    : undefined
-                }
                 onSelectVehicle={(car) => selectVehicle(car, true)}
                 onClose={() => {
                   pendingCar.current = undefined;
@@ -298,74 +270,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
           />
         </div>
         <div
-          id="panel-fleet"
-          role="tabpanel"
-          aria-label={t('workspace.fleetTools')}
-          hidden={panel !== 'fleet'}
-        >
-          <FleetExplorer
-            data={data}
-            cars={cars}
-            snapshot={feed.snapshot}
-            active={feed.active}
-            failed={feed.failed}
-            location={location}
-            onSelect={(car) => selectVehicle(car, true)}
-            onEnableLive={() => setFilters((current) => ({ ...current, live: true }))}
-          />
-        </div>
-        <div
-          id="panel-compare"
-          role="tabpanel"
-          aria-label={t('workspace.compareTools')}
-          hidden={panel !== 'compare'}
-        >
-          <StopComparison
-            data={data}
-            fromId={fromId}
-            toId={toId}
-            picking={picking}
-            includeOvernight={filters.overnight}
-            onChange={changeComparison}
-            onPick={pickStop}
-            onOvernight={(overnight) => {
-              setFilters((current) => ({ ...current, overnight }));
-              if (
-                !overnight &&
-                data.routes.find((route) => route.id === selectedRoute)?.overnight
-              ) {
-                setSelectedRoute(undefined);
-                if (selection?.kind === 'route') setSelection(undefined);
-              }
-            }}
-            onRoute={selectRoute}
-          />
-          <SavedComparisons
-            data={data}
-            fromId={fromId}
-            toId={toId}
-            overnight={filters.overnight}
-            onChoose={(entry) => {
-              changeComparison(entry.fromId, entry.toId);
-              setFilters((current) => ({ ...current, overnight: entry.overnight }));
-              sidebar.current?.scrollTo({ top: 0 });
-            }}
-          />
-        </div>
-        <div
-          id="panel-stops"
-          role="tabpanel"
-          aria-label={t('workspace.stopDirectory')}
-          hidden={panel !== 'stops'}
-        >
-          <StopBrowser
-            data={data}
-            savedIds={savedStops}
-            location={location}
-            onSelect={selectFeature}
-          />
-        </div>
-        <div
           id="panel-journal"
           role="tabpanel"
           aria-label={t('workspace.streetcarJournal')}
@@ -374,45 +278,45 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
           <AccountRequired>
             {accountJournal.error && (
               <div className="tip" role="alert">
-                {t(accountJournal.error)}{' '}
-                <button className="action-button" onClick={accountJournal.reload}>
-                  {t('workspace.reloadJournal')}
-                </button>
+                {t(accountJournal.error)}
               </div>
             )}
             <p className="microcopy" role="status">
               {accountJournal.saving
                 ? t('workspace.savingYourJournal')
-                : accountJournal.error
-                  ? t('workspace.yourLastChangeHasNotBeenSaved')
-                  : accountJournal.ready
-                    ? t('workspace.yourJournalIsSavedToYourAccount')
-                    : t('workspace.loadingYourJournal')}
+                : accountJournal.error === 'journal.unavailable'
+                  ? ''
+                  : accountJournal.error
+                    ? t('workspace.yourLastChangeHasNotBeenSaved')
+                    : accountJournal.ready
+                      ? t('workspace.yourJournalIsSavedToYourAccount')
+                      : t('workspace.loadingYourJournal')}
             </p>
             <fieldset className="journal-fieldset" disabled={!accountJournal.ready}>
               <StreetcarJournal
                 key={accountJournal.userId}
                 entries={journal}
-                persistent
-                accountSaved
                 cars={cars}
                 active={feed.active}
                 loaded={Boolean(feed.snapshot)}
                 failed={feed.failed}
                 onChange={setJournal}
                 onSelect={(car) => selectVehicle(car, true)}
-                onFleet={() => setPanel('fleet')}
               />
-              <button className="action-button" onClick={importEarlierJournal}>
-                {t('workspace.importEarlierBrowserJournal')}
-              </button>
-              <p className="microcopy">
-                {t('workspace.onlyImportOnYourOwnDeviceThisCopiesTheEarlier')}
-              </p>
             </fieldset>
             <a className="account-link" href="/profile">
               {t('workspace.profileAndBadgePrivacySettings')}
             </a>
+          </AccountRequired>
+        </div>
+        <div
+          id="panel-badges"
+          role="tabpanel"
+          aria-label={t('navigation.badges')}
+          hidden={panel !== 'badges'}
+        >
+          <AccountRequired>
+            <Badges entries={journal} />
           </AccountRequired>
         </div>
         <PageFooter />

@@ -30,8 +30,6 @@ export function ShareMap({
     filters,
     contextRoute,
     tools?.panel,
-    tools?.fromId,
-    tools?.toId,
   ]);
   useEffect(
     () => () => {

@@ -4,10 +4,12 @@ import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { AccountRequired, AuthControls, useAccount } from '../features/accounts/auth';
+import { UserProfile } from '@clerk/react';
 
 export function ProfilePage() {
   useLanguage();
   const account = useAccount();
+  const [showClerkSettings, setShowClerkSettings] = useState(false);
   return (
     <>
       <header className="account-header">
@@ -17,9 +19,24 @@ export function ProfilePage() {
         <AuthControls />
       </header>
       <main className="profile-page">
-        <LanguageSettings />
         <AccountRequired>
+          <LanguageSettings />
           <ProfileSettings key={account.userId} />
+          {!showClerkSettings && (
+            <button
+              className="action-button"
+              type="button"
+              onClick={() => setShowClerkSettings(true)}
+            >
+              {t('profile.usernameAndPassword')}
+            </button>
+          )}
+          {showClerkSettings && (
+            <section className="profile-clerk-settings">
+              <h2>{t('profile.accountSettings')}</h2>
+              <UserProfile routing="hash" />
+            </section>
+          )}
         </AccountRequired>
       </main>
     </>
@@ -35,7 +52,6 @@ function ProfileSettings() {
   const [saved, setSaved] = useState<{ username: string; publicBadges: boolean }>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [retry, setRetry] = useState(0);
   useEffect(() => {
     let cancelled = false;
     setSaved(undefined);
@@ -45,8 +61,7 @@ function ProfileSettings() {
     void request
       .current('/api/v1/me/profile')
       .then(async (response) => {
-        if (!response.ok)
-          throw new Error(english('profile.unableToLoadYourProfileTryAgain'));
+        if (!response.ok) throw new Error('profile.unavailable');
         const profile = (await response.json()) as {
           username: string;
           publicBadges: boolean;
@@ -63,7 +78,7 @@ function ProfileSettings() {
     return () => {
       cancelled = true;
     };
-  }, [account.userId, retry]);
+  }, [account.userId]);
   async function save(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -110,17 +125,9 @@ function ProfileSettings() {
         </p>
       )}
       {!saved ? (
-        <>
+        message ? null : (
           <p>{t('profile.loadingProfile')}</p>
-          {message && (
-            <button
-              className="action-button"
-              onClick={() => setRetry((value) => value + 1)}
-            >
-              {t('common.retry')}
-            </button>
-          )}
-        </>
+        )
       ) : (
         <form className="tool-form" onSubmit={save}>
           <fieldset disabled={busy}>

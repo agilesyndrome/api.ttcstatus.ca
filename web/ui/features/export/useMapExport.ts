@@ -1,7 +1,6 @@
 import { t } from '../../i18n';
 import { useRef, useState } from 'react';
-import type { Feature, Route, ViewerData } from '../../../../shared/map/model';
-import type { SidebarPanel } from '../../commute';
+import type { Route, ViewerData } from '../../../../shared/map/model';
 import type { useVehicleFeed } from '../map/useVehicleFeed';
 import { exportMap } from './map-export';
 
@@ -9,16 +8,12 @@ interface Options {
   data?: ViewerData;
   shownRoutes: Route[];
   feed: ReturnType<typeof useVehicleFeed>;
-  panel: SidebarPanel;
-  comparisonStops: { from?: Feature; to?: Feature };
 }
 
 export function useMapExport({
   data,
   shownRoutes,
   feed,
-  panel,
-  comparisonStops,
 }: Options) {
   const [exportImage, setExportImage] = useState<string>();
   const [exportCars, setExportCars] = useState(true);
@@ -49,13 +44,7 @@ export function useMapExport({
               ? t('useMapExport.liveFeedPaused')
               : '')
         : t('useMapExport.noVehicleSnapshotLoaded'),
-      endpoints:
-        panel === 'compare'
-          ? [
-              comparisonStops.from ? 'A: ' + comparisonStops.from.name : '',
-              comparisonStops.to ? 'B: ' + comparisonStops.to.name : '',
-            ].filter(Boolean)
-          : [],
+      endpoints: [],
     };
     setExportImage(exportMap(capturedMap.current, exportDetails.current));
   }

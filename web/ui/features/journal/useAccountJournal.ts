@@ -11,7 +11,6 @@ export function useAccountJournal() {
   identity.current = account.userId;
   const generation = useRef(0);
   const busy = useRef(false);
-  const [retry, setRetry] = useState(0);
   const [state, setState] = useState<{
     userId: string | null;
     entries: JournalEntry[];
@@ -37,11 +36,10 @@ export function useAccountJournal() {
       void request
         .current('/api/v1/me/journal')
         .then(async (response) => {
-          if (!response.ok)
-            throw new Error(english('journal.unableToLoadYourJournalTryAgain'));
+          if (!response.ok) throw new Error('journal.unavailable');
           const value = (await response.json()) as { entries: unknown; revision: number };
           if (!validJournal(value.entries) || !Number.isSafeInteger(value.revision))
-            throw new Error(english('journal.unableToReadYourJournal'));
+            throw new Error('journal.unavailable');
           if (!cancelled)
             setState({
               userId,
@@ -58,7 +56,7 @@ export function useAccountJournal() {
     return () => {
       cancelled = true;
     };
-  }, [account.userId, retry]);
+  }, [account.userId]);
   const current =
     state.userId === account.userId ? state : { ...state, entries: [], loaded: false };
   async function change(update: (entries: JournalEntry[]) => JournalEntry[]) {
@@ -108,6 +106,5 @@ export function useAccountJournal() {
     ready: current.loaded && !current.saving && !busy.current,
     saving: current.saving,
     error: current.error,
-    reload: () => setRetry((value) => value + 1),
   };
 }

@@ -98,9 +98,8 @@ authorized origins to match if it selects another port. Never commit keys.
   bearer tokens. The Worker derives ownership from the token's user ID.
 - Journals persist in D1 per Clerk user ID, with a revision check preventing
   silent overwrites across tabs/devices. GPS coordinates are not stored.
-- The pre-auth browser journal stays untouched. Signed-in users can explicitly
-  import it using **Import earlier browser journal**, or restore a JSON backup.
-  It is never automatically assigned to an account on a shared device.
+- The journal is server-backed only. Signed-in users read and update the journal
+  belonging to their Clerk user ID; no browser journal is used or imported.
 - `/profile` lets a user reserve a lowercase username and enable public badges.
   Usernames belong to TTCstatus application data, independently of Clerk's login
   identifiers. Clerk continues to manage email, passwords and other account data

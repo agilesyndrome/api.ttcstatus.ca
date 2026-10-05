@@ -86,9 +86,11 @@ test('protected routes keep authorization and service calls use the migrated pat
   const id = await requestMapGeneration(
     {
       DB: db,
+      SYNC_TOKEN: 'test',
       MAP_GENERATOR: {
-        fetch: async (url) => {
+        fetch: async (url, init) => {
           requested = url;
+          assert.equal(init.headers.authorization, 'Bearer test');
           return Response.json({ artifactId: 42 });
         },
       },
@@ -117,9 +119,10 @@ test('protected routes keep authorization and service calls use the migrated pat
       await generator.fetch(
         new Request('https://example.test/api/internal/generate', {
           method: 'POST',
+          headers: { authorization: 'Bearer test' },
           body: '{}',
         }),
-        {},
+        { SYNC_TOKEN: 'test' },
         ctx,
       )
     ).status,

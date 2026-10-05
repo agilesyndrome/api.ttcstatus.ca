@@ -16,9 +16,6 @@ const {
   validJournal,
   journalEntry,
   journalBadges,
-  journalBackup,
-  readJournalBackup,
-  mergeJournal,
   filterStops,
   DEFAULT_STOP_FILTERS,
   demoData,
@@ -126,36 +123,6 @@ test('collection badges count distinct saved identities and supplied route assig
     ).find((badge) => badge.name === 'Route rover').earned,
     false,
   );
-});
-
-test('journal backup round-trips multiline Unicode notes and rejects unsupported, malformed and oversized files', () => {
-  const entries = [
-    entry('4400', { note: '<script>東京</script>\nMy favourite car =1+1' }),
-  ];
-  assert.deepEqual(readJournalBackup(journalBackup(entries)), entries);
-  for (const contents of [
-    'null',
-    '[{}]',
-    '{',
-    JSON.stringify({ format: 'ttc-streetcar-journal', version: 2, entries }),
-    journalBackup([entry('a', { longitude: -79.4 })]),
-    ' '.repeat(2_000_001),
-  ])
-    assert.throws(() => readJournalBackup(contents));
-});
-
-test('restoring keeps existing notes, ignores duplicate cars and rejects over-capacity imports atomically', () => {
-  const current = [entry('4400', { note: 'Keep this' })];
-  const incoming = [entry('4400', { note: 'Do not overwrite' }), entry('4401')];
-  assert.deepEqual(mergeJournal(current, incoming), {
-    entries: [current[0], incoming[1]],
-    added: 1,
-  });
-  assert.equal(current.length, 1);
-  assert.equal(mergeJournal(current, current).added, 0);
-  const full = Array.from({ length: JOURNAL_LIMIT }, (_, index) => entry(String(index)));
-  assert.throws(() => mergeJournal(full, [entry('new')]));
-  assert.equal(full.length, JOURNAL_LIMIT);
 });
 
 test('stop directory searches routes and combines boarding, terminal, accessible and saved filters', () => {

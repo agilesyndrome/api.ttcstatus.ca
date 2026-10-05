@@ -17,7 +17,10 @@ export async function requestMapGeneration(
     'https://map-generator.internal/api/internal/generate',
     {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        authorization: env.SYNC_TOKEN ? `Bearer ${env.SYNC_TOKEN}` : '',
+        'content-type': 'application/json',
+      },
       body: JSON.stringify({ versionId, mode: 'streetcar', style: 'snake-v1' }),
     },
   );
