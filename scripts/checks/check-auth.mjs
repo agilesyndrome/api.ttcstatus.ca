@@ -47,6 +47,14 @@ try {
     await context.route('**/api/v1/auth/config', configFailure);
     await page.goto(origin);
     await page.locator('#map').waitFor();
+    if (failure === 'disabled') {
+      await page
+        .getByRole('complementary', { name: 'Independent site notice' })
+        .waitFor();
+      await page.getByRole('button', { name: 'Got it', exact: true }).click();
+    } else {
+      assert.equal(await page.locator('.affiliation-notice').count(), 0);
+    }
     await page.getByText('Accounts unavailable', { exact: true }).waitFor();
     if (failure === 'disabled') {
       for (const width of [320, 390, 900, 1440]) {
@@ -108,6 +116,47 @@ try {
     .waitFor();
   assert.equal(await page.locator('.journal-entry').count(), 1);
   assert.equal(journals.get('user_a').entries[0].note, 'Private earlier note');
+  await page.getByLabel('Streetcar number', { exact: true }).fill('4500');
+  await page.getByLabel('Private note (optional)').fill('Spotted on King');
+  await page.getByRole('button', { name: 'Add car to journal', exact: true }).click();
+  const added = page.getByRole('article', { name: 'Collected car 4500', exact: true });
+  await added.getByText('Spotted on King', { exact: true }).waitFor();
+  await added.getByRole('button', { name: 'Mark ridden' }).click();
+  await page
+    .getByText('Your journal is saved to your account.', { exact: true })
+    .waitFor();
+  assert.equal(
+    journals.get('user_a').entries.find((e) => e.vehicleId === '4500').status,
+    'ridden',
+  );
+  await added.getByRole('button', { name: 'Edit note' }).click();
+  await added.getByLabel('Note for car 4500').fill('A quiet ride');
+  await context.route('**/api/v1/me/journal', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    return route.fulfill({ status: 500, json: { error: 'test-failure' } });
+  });
+  await added.getByRole('button', { name: 'Save note' }).click();
+  await page.getByText('Your last change has not been saved.', { exact: true }).waitFor();
+  assert.equal(await added.getByLabel('Note for car 4500').inputValue(), 'A quiet ride');
+  assert.equal(
+    journals.get('user_a').entries.find((e) => e.vehicleId === '4500').note,
+    'Spotted on King',
+  );
+  await context.unroute('**/api/v1/me/journal');
+  await added.getByRole('button', { name: 'Save note' }).click();
+  await page
+    .getByText('Your journal is saved to your account.', { exact: true })
+    .waitFor();
+  await page.reload();
+  await page.getByRole('tab', { name: 'Journal', exact: true }).click();
+  await added.getByText('A quiet ride', { exact: true }).waitFor();
+  assert.ok((await added.innerText()).includes('Ridden'));
+  await added.getByRole('button', { name: 'Remove', exact: true }).click();
+  await added.getByRole('button', { name: 'Confirm removal' }).click();
+  await page
+    .getByText('Your journal is saved to your account.', { exact: true })
+    .waitFor();
+  assert.equal(journals.get('user_a').entries.length, 1);
   await page.evaluate(() => {
     window.__testUser = 'user_b';
     window.dispatchEvent(new Event('fixture-account'));

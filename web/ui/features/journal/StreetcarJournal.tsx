@@ -17,7 +17,7 @@ interface Props {
   active: boolean;
   loaded?: boolean;
   failed?: boolean;
-  onChange(update: (entries: JournalEntry[]) => JournalEntry[]): void;
+  onChange(update: (entries: JournalEntry[]) => JournalEntry[]): void | Promise<boolean>;
   onSelect(car: PlottedVehicle): void;
   onFleet(): void;
 }
@@ -41,6 +41,10 @@ export function StreetcarJournal({
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<string>();
   const [note, setNote] = useState('');
+  const [status, setStatus] = useState<'seen' | 'ridden'>('seen');
+  const [newCar, setNewCar] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [newStatus, setNewStatus] = useState<'seen' | 'ridden'>('seen');
   const [removing, setRemoving] = useState<string>();
   const [page, setPage] = useState(0);
   const badges = journalBadges(entries);
@@ -67,7 +71,7 @@ export function StreetcarJournal({
         throw new Error('This file is too large. Choose a journal backup under 2 MB.');
       const incoming = readJournalBackup(await file.text());
       const result = mergeJournal(latest.current, incoming);
-      onChange(() => result.entries);
+      if ((await onChange(() => result.entries)) === false) return;
       setMessage(
         result.added +
           (result.added === 1 ? ' new car restored.' : ' new cars restored.') +
@@ -85,9 +89,74 @@ export function StreetcarJournal({
       <p className="eyebrow">Your rolling collection</p>
       <h1>Streetcar journal.</h1>
       <p className="helper">
-        Collect streetcar numbers, keep ride notes and earn badges. Add a car from the map
-        or Fleet.
+        Mark cars seen or ridden and keep private notes. Add a car here, from the map or
+        Fleet. You can update a seen car to ridden whenever you take a ride.
       </p>
+      <form
+        className="tool-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const vehicleId = newCar.trim();
+          if (!vehicleId) return;
+          if (entries.some((entry) => entry.vehicleId === vehicleId)) {
+            setMessage('This car is already in your journal. Edit its entry below.');
+            setQuery(vehicleId);
+            return;
+          }
+          if (entries.length >= JOURNAL_LIMIT) {
+            setMessage('Your journal is full. Remove a car before adding another.');
+            return;
+          }
+          const entry: JournalEntry = {
+            vehicleId,
+            label: vehicleId,
+            recordedAt: new Date().toISOString(),
+            status: newStatus,
+            note: newNote,
+          };
+          if ((await onChange((current) => [...current, entry])) === false) return;
+          setNewCar('');
+          setNewNote('');
+          setQuery('');
+          setMessage('Car ' + vehicleId + ' added to your journal.');
+        }}
+      >
+        <div className="form-control">
+          <label htmlFor={id + '-car'}>Streetcar number</label>
+          <input
+            id={id + '-car'}
+            required
+            maxLength={200}
+            value={newCar}
+            onChange={(event) => setNewCar(event.target.value)}
+            placeholder="e.g. 4400"
+          />
+        </div>
+        <div className="form-control">
+          <label htmlFor={id + '-new-status'}>Your experience</label>
+          <select
+            id={id + '-new-status'}
+            value={newStatus}
+            onChange={(event) => setNewStatus(event.target.value as 'seen' | 'ridden')}
+          >
+            <option value="seen">Seen</option>
+            <option value="ridden">Ridden</option>
+          </select>
+        </div>
+        <div className="form-control">
+          <label htmlFor={id + '-new-note'}>Private note (optional)</label>
+          <textarea
+            id={id + '-new-note'}
+            maxLength={1000}
+            rows={2}
+            value={newNote}
+            onChange={(event) => setNewNote(event.target.value)}
+          />
+        </div>
+        <button className="action-button" type="submit">
+          Add car to journal
+        </button>
+      </form>
       <div className="journal-summary">
         <strong>{entries.length}</strong>
         <span>
@@ -227,7 +296,7 @@ export function StreetcarJournal({
                 {entry.routeNumber
                   ? entry.routeNumber + ' ' + entry.routeName
                   : 'Route not supplied'}{' '}
-                · Saved{' '}
+                · {entry.status === 'ridden' ? 'Ridden' : 'Seen'} · Saved{' '}
                 {new Date(entry.recordedAt).toLocaleDateString('en-CA', {
                   timeZone: 'America/Toronto',
                 })}
@@ -235,16 +304,31 @@ export function StreetcarJournal({
               {editing === entry.vehicleId ? (
                 <form
                   className="tool-form"
-                  onSubmit={(event) => {
+                  onSubmit={async (event) => {
                     event.preventDefault();
-                    onChange((current) =>
+                    const saved = await onChange((current) =>
                       current.map((item) =>
-                        item.vehicleId === entry.vehicleId ? { ...item, note } : item,
+                        item.vehicleId === entry.vehicleId
+                          ? { ...item, note, status }
+                          : item,
                       ),
                     );
-                    setEditing(undefined);
+                    if (saved !== false) setEditing(undefined);
                   }}
                 >
+                  <div className="form-control">
+                    <label htmlFor={id + '-status'}>Your experience</label>
+                    <select
+                      id={id + '-status'}
+                      value={status}
+                      onChange={(event) =>
+                        setStatus(event.target.value as 'seen' | 'ridden')
+                      }
+                    >
+                      <option value="seen">Seen</option>
+                      <option value="ridden">Ridden</option>
+                    </select>
+                  </div>
                   <div className="form-control">
                     <label htmlFor={id + '-note'}>Note for car {entry.label}</label>
                     <textarea
@@ -273,11 +357,28 @@ export function StreetcarJournal({
                 <>
                   {entry.note && <p className="journal-note">{entry.note}</p>}
                   <div className="comparison-actions">
+                    {entry.status !== 'ridden' && (
+                      <button
+                        className="action-button"
+                        onClick={() =>
+                          onChange((current) =>
+                            current.map((item) =>
+                              item.vehicleId === entry.vehicleId
+                                ? { ...item, status: 'ridden' }
+                                : item,
+                            ),
+                          )
+                        }
+                      >
+                        Mark ridden
+                      </button>
+                    )}
                     <button
                       className="action-button"
                       onClick={() => {
                         setEditing(entry.vehicleId);
                         setNote(entry.note);
+                        setStatus(entry.status ?? 'seen');
                         setRemoving(undefined);
                       }}
                     >

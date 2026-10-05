@@ -370,12 +370,15 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             <p className="microcopy" role="status">
               {accountJournal.saving
                 ? 'Saving your journal…'
-                : accountJournal.ready
-                  ? 'Your journal is saved to your account.'
-                  : 'Loading your journal…'}
+                : accountJournal.error
+                  ? 'Your last change has not been saved.'
+                  : accountJournal.ready
+                    ? 'Your journal is saved to your account.'
+                    : 'Loading your journal…'}
             </p>
             <fieldset className="journal-fieldset" disabled={!accountJournal.ready}>
               <StreetcarJournal
+                key={accountJournal.userId}
                 entries={journal}
                 persistent
                 accountSaved

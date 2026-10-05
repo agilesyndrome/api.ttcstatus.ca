@@ -59,17 +59,17 @@ export function useAccountJournal() {
   }, [account.userId, retry]);
   const current =
     state.userId === account.userId ? state : { ...state, entries: [], loaded: false };
-  function change(update: (entries: JournalEntry[]) => JournalEntry[]) {
-    if (!account.userId || !current.loaded || busy.current) return;
+  async function change(update: (entries: JournalEntry[]) => JournalEntry[]) {
+    if (!account.userId || !current.loaded || busy.current) return false;
     const entries = update(current.entries);
-    if (!validJournal(entries)) return;
+    if (!validJournal(entries)) return false;
     const userId = account.userId;
     busy.current = true;
     const saveGeneration = generation.current;
     const isCurrent = () =>
       identity.current === userId && generation.current === saveGeneration;
     setState({ ...current, entries, saving: true, error: '' });
-    void request
+    return request
       .current('/api/v1/me/journal', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
@@ -89,15 +89,18 @@ export function useAccountJournal() {
             revision: result.revision,
             saving: false,
           }));
+        return isCurrent();
       })
       .catch((error) => {
         if (isCurrent()) setState({ ...current, saving: false, error: error.message });
+        return false;
       })
       .finally(() => {
         if (isCurrent()) busy.current = false;
       });
   }
   return {
+    userId: account.userId,
     entries: current.entries,
     change,
     ready: current.loaded && !current.saving && !busy.current,

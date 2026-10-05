@@ -3,6 +3,7 @@ import { HomePage } from './pages/HomePage';
 import './styles/main.css';
 import { AccountProvider } from './features/accounts/auth';
 import { ProfilePage, PublicProfilePage } from './pages/ProfilePage';
+import { AffiliationNotice } from './components/AffiliationNotice';
 
 const path = window.location.pathname.replace(/\/$/, '') || '/';
 const publicProfile = /^\/u\/([^/]+)$/.exec(path);
@@ -15,5 +16,8 @@ const page =
     <HomePage />
   );
 createRoot(document.getElementById('root')!).render(
-  <AccountProvider>{page}</AccountProvider>,
+  <>
+    <AccountProvider>{page}</AccountProvider>
+    <AffiliationNotice />
+  </>,
 );

@@ -7,6 +7,8 @@ export interface JournalEntry {
   label: string;
   recordedAt: string;
   note: string;
+  /** Older entries without a status are treated as seen. */
+  status?: 'seen' | 'ridden';
   routeId?: string;
   routeNumber?: string;
   routeName?: string;
@@ -29,6 +31,7 @@ export function validJournal(value: unknown): value is JournalEntry[] {
             'label',
             'recordedAt',
             'note',
+            'status',
             'routeId',
             'routeNumber',
             'routeName',
@@ -57,6 +60,8 @@ export function validJournal(value: unknown): value is JournalEntry[] {
       if (entry[key] !== undefined && !text(entry[key], 200)) return false;
     if (entry.overnight !== undefined && typeof entry.overnight !== 'boolean')
       return false;
+    if (entry.status !== undefined && !['seen', 'ridden'].includes(entry.status))
+      return false;
     ids.add(entry.vehicleId);
     return true;
   });
@@ -72,6 +77,7 @@ export function journalEntry(
     label: car.vehicle.label,
     recordedAt: now.toISOString(),
     note: '',
+    status: 'seen',
     ...(car.vehicle.routeId ? { routeId: car.vehicle.routeId } : {}),
     ...(route
       ? { routeNumber: route.number, routeName: route.name, overnight: route.overnight }

@@ -1,4 +1,38 @@
 @import '../../map/viewer.css';
+.affiliation-notice {
+  position: fixed;
+  inset: auto 16px max(16px, env(safe-area-inset-bottom));
+  z-index: 1000;
+  margin-inline: auto;
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 24px #0003;
+  font-size: 14px;
+}
+.affiliation-notice p {
+  margin: 6px 0 0;
+}
+.affiliation-notice button {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .affiliation-notice {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media print {
+  .affiliation-notice {
+    display: none;
+  }
+}
 .map-filters {
   padding-bottom: 18px;
 }

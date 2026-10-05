@@ -88,6 +88,7 @@ test('manually collecting a car saves identity, assignment and recording time, n
   };
   const saved = journalEntry(car, demoData.routes, new Date('2026-10-03T12:00:00Z'));
   assert.equal(saved.recordedAt, '2026-10-03T12:00:00.000Z');
+  assert.equal(saved.status, 'seen');
   assert.equal(saved.routeNumber, '501');
   assert.ok(validJournal([saved]));
   for (const field of [
@@ -104,7 +105,7 @@ test('manually collecting a car saves identity, assignment and recording time, n
       demoData.routes,
       new Date('2026-10-03T12:00:00Z'),
     ),
-    entry('other', { label: 'Other' }),
+    entry('other', { label: 'Other', status: 'seen' }),
   );
 });
 

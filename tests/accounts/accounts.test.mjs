@@ -222,3 +222,24 @@ test('real Clerk session verification accepts signed tokens and rejects tamperin
     else process.env.NODE_ENV = originalEnvironment;
   }
 });
+
+test('seen cars can be upgraded, edited and deleted privately with validated statuses', async () => {
+  const env = { DB: database() };
+  const call = (value, user = 'owner') =>
+    ownedAccountResponse(request('journal', value), env, user);
+  const seen = { ...entry, status: 'seen' };
+  assert.equal((await call({ entries: [seen], revision: 0 })).status, 200);
+  for (const status of ['invalid', null, 1, {}, 'Ridden']) {
+    assert.equal(
+      (await call({ entries: [{ ...seen, status }], revision: 1 })).status,
+      400,
+    );
+  }
+  const ridden = { ...seen, status: 'ridden', note: 'Rode this car today' };
+  assert.equal((await call({ entries: [ridden], revision: 1 })).status, 200);
+  assert.deepEqual((await (await call()).json()).entries, [ridden]);
+  assert.equal((await call({ entries: [], revision: 2 }, 'another-user')).status, 409);
+  assert.deepEqual((await (await call(undefined, 'another-user')).json()).entries, []);
+  assert.equal((await call({ entries: [], revision: 2 })).status, 200);
+  assert.deepEqual((await (await call()).json()).entries, []);
+});

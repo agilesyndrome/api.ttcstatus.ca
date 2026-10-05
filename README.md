@@ -456,7 +456,10 @@ The React homepage now includes:
   and pages through results. Sort geographically after using Near me. The
   directory includes overnight service independently of map layers.
 - **Streetcar journal**: sign in and explicitly add a selected car to an account
-  collection of up to 500 unique vehicle IDs. Write notes, search the collection,
+  collection of up to 500 unique vehicle IDs, or enter a car number directly. Mark
+  cars Seen or Ridden, upgrade a sighting after a ride, edit private notes and remove
+  entries. Older entries default to Seen. Changes are saved to the signed-in
+  account on the server; entries, statuses and notes are never public. Search the collection,
   see whether a car is in the current live feed, and earn five collection badges.
   Recording does not save GPS fixes or observation history. Download a JSON
   backup and restore it by merging new cars; existing notes are preserved.
