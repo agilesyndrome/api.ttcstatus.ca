@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { downloadFile } from './download';
 interface Props {
@@ -7,6 +9,7 @@ interface Props {
   onClose(): void;
 }
 export function MapExport({ image, includeCars, onCars, onClose }: Props) {
+  useLanguage();
   const dialog = useRef<HTMLDialogElement>(null);
   const [url, setUrl] = useState<string>();
   const [ready, setReady] = useState(false);
@@ -46,15 +49,13 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
         }}
       >
         <div className="details-heading export-options">
-          <h2 id="map-export-title">Take this map with you.</h2>
-          <button aria-label="Close map export" onClick={onClose}>
+          <h2 id="map-export-title">{t('mapExport.takeThisMapWithYou')}</h2>
+          <button aria-label={t('mapExport.closeMapExport')} onClick={onClose}>
             ×
           </button>
         </div>
         <p className="helper export-options">
-          A frozen copy of your current view with a route key and sources. Pan, zoom or
-          fit the map before opening this preview. Your location marker and saved-stop
-          stars are left out.
+          {t('mapExport.aFrozenCopyOfYourCurrentViewWithARoute')}
         </p>
         <label className="accessible-filter export-options">
           <input
@@ -62,13 +63,13 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
             checked={includeCars}
             onChange={(event) => onCars(event.target.checked)}
           />{' '}
-          Include visible streetcar positions
+          {t('mapExport.includeVisibleStreetcarPositions')}
         </label>
         {url && (
           <img
             className="map-print-sheet"
             src={url}
-            alt="Printable Toronto streetcar map with route key, snapshot date and sources"
+            alt={t('mapExport.printableTorontoStreetcarMapWithRouteKeySnapshotDateAnd')}
             onLoad={() => setReady(true)}
             onError={() => setReady(false)}
           />
@@ -79,7 +80,7 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
             disabled={!ready}
             onClick={() => window.print()}
           >
-            Print / save PDF
+            {t('mapExport.printSavePdf')}
           </button>
           <button
             className="action-button"
@@ -88,12 +89,11 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
               image && downloadFile(image, 'toronto-streetcar-map.svg', 'image/svg+xml')
             }
           >
-            Download map (.svg)
+            {t('mapExport.downloadMapSvg')}
           </button>
         </div>
         <p className="microcopy export-options">
-          SVG works offline in a browser and scales for printing. Streetcars are position
-          reports at capture time, including any dimmed stale reports.
+          {t('mapExport.svgWorksOfflineInABrowserAndScalesForPrinting')}
         </p>
       </dialog>
       <section className="map-print-output" aria-hidden="true">

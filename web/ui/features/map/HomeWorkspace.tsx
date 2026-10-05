@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { HomeSidebar } from './HomeSidebar';
 import { lazy, Suspense } from 'react';
 
@@ -18,6 +20,7 @@ const SnakeGame = lazy(() =>
 );
 
 export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) {
+  useLanguage();
   const {
     data,
     error,
@@ -57,19 +60,29 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   } = workspace;
   const headerActions = (
     <div className="header-actions">
+      <a
+        className="account-link language-link"
+        href="/profile"
+        aria-label={t('language.settings')}
+        title={t('language.settings')}
+      >
+        🌐
+      </a>
       <button
         className="shortcut-toggle"
-        aria-label="Keyboard shortcuts"
+        aria-label={t('keyboard.title')}
         onClick={() => setShortcutHelp(true)}
       >
         ?
       </button>
       <button
         className="theme-toggle"
-        aria-label={theme.dark ? 'Switch to day theme' : 'Switch to night theme'}
+        aria-label={
+          theme.dark ? t('workspace.switchToDayTheme') : t('workspace.switchToNightTheme')
+        }
         onClick={theme.toggle}
       >
-        {theme.dark ? '☀ Day' : '☾ Night'}
+        {theme.dark ? t('workspace.day') : t('workspace.night')}
       </button>
       <AuthControls />
     </div>
@@ -80,7 +93,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         <Suspense
           fallback={
             <div className="snake-loading" role="status">
-              Loading Streetcar Snake…
+              {t('workspace.loadingStreetcarSnake')}
             </div>
           }
         >
@@ -111,8 +124,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             mapTools={
               <button
                 className="snake-launch"
-                aria-label="Play Streetcar Snake"
-                title="Play Streetcar Snake"
+                aria-label={t('workspace.playStreetcarSnake')}
+                title={t('workspace.playStreetcarSnake')}
                 onClick={() => setSnakeOpen(true)}
               >
                 🐍
@@ -136,7 +149,12 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             comparisonStops={panel === 'compare' ? comparisonStops : undefined}
             pickingLabel={
               picking
-                ? `Choose a ${picking === 'from' ? 'start' : 'destination'} boarding stop`
+                ? t('workspace.chooseAValueBoardingStop', {
+                    value1:
+                      picking === 'from'
+                        ? t('stopComparison.start')
+                        : t('stopComparison.destination'),
+                  })
                 : undefined
             }
             onInteract={() => setFollowing(false)}
@@ -154,11 +172,11 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         </main>
       ) : (
         <main className="loading-page">
-          <h1>TTC status map</h1>
+          <h1>{t('header.ttcStatusMap')}</h1>
           <p role={error ? 'alert' : 'status'}>
-            {error ?? 'Loading the streetcar network…'}
+            {error ? t(error) : t('workspace.loadingTheStreetcarNetwork')}
           </p>
-          {error && <button onClick={() => retryMap()}>Try again</button>}
+          {error && <button onClick={() => retryMap()}>{t('common.retry')}</button>}
           <PageFooter />
         </main>
       )}

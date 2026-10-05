@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -9,13 +9,18 @@
     <meta name="theme-color" content="#f7f5ed" />
     <meta
       name="description"
-      content="Explore Toronto's streetcar network and live TTC vehicle positions."
+      content="{{i18n:app.exploreTorontoSStreetcarNetworkAndLiveTtcVehiclePositions}}"
+      data-i18n-content="app.exploreTorontoSStreetcarNetworkAndLiveTtcVehiclePositions"
     />
-    <title>TTC status · Toronto streetcars</title>
+    <title data-i18n="app.title">{{i18n:app.title}}</title>
   </head>
   <body>
     <div id="root"></div>
-    <noscript>Enable JavaScript to explore the TTC status map.</noscript>
+    <noscript
+      ><span data-i18n="app.enableJavascriptToExploreTheTtcStatusMap"
+        >{{i18n:app.enableJavascriptToExploreTheTtcStatusMap}}</span
+      ></noscript
+    >
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>

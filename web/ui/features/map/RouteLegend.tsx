@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import type { CSSProperties } from 'react';
 import type { Route } from '../../../../shared/map/model';
 interface Props {
@@ -6,13 +8,14 @@ interface Props {
   onSelect(id?: string): void;
 }
 export function RouteLegend({ routes, selectedRoute, onSelect }: Props) {
+  useLanguage();
   return (
     <section className="route-section">
       <div className="section-heading">
-        <h2>Explore a route</h2>
+        <h2>{t('routeLegend.exploreARoute')}</h2>
         {selectedRoute && (
           <button className="text-button" onClick={() => onSelect(undefined)}>
-            Show all
+            {t('routeLegend.showAll')}
           </button>
         )}
       </div>
@@ -26,7 +29,7 @@ export function RouteLegend({ routes, selectedRoute, onSelect }: Props) {
             disabled={!route.scheduled}
             title={
               !route.scheduled
-                ? 'No scheduled streetcar service in this snapshot'
+                ? t('routeLegend.noScheduledStreetcarServiceInThisSnapshot')
                 : undefined
             }
             onClick={() => onSelect(selectedRoute === route.id ? undefined : route.id)}
@@ -35,7 +38,7 @@ export function RouteLegend({ routes, selectedRoute, onSelect }: Props) {
             <span className="route-name">{route.name}</span>
             {(route.overnight || !route.scheduled) && (
               <small className="route-state">
-                {route.overnight ? 'OVERNIGHT' : 'RAIL ONLY'}
+                {route.overnight ? t('viewer.overnight') : t('viewer.railOnly')}
               </small>
             )}
           </button>
@@ -43,7 +46,7 @@ export function RouteLegend({ routes, selectedRoute, onSelect }: Props) {
       </div>
       <p className="legend-note">
         <span className="dashed-swatch" />
-        Physical track without scheduled streetcar service
+        {t('routeLegend.physicalTrackWithoutScheduledStreetcarService')}
       </p>
     </section>
   );

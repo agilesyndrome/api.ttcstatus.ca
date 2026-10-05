@@ -1,3 +1,5 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { boundsOf, type Feature, type Point } from '../../../../shared/map/model';
 import { gpsToMap } from '../../../../shared/map/projection';
@@ -190,9 +192,7 @@ export function useHomeWorkspace() {
       (selection.kind === 'route' &&
         !data.routes.some((route) => route.id === selection.id && route.scheduled))
     ) {
-      setNotice(
-        'That shared stop or route is no longer in this map. Choose another below.',
-      );
+      setNotice(english('workspace.thatSharedStopOrRouteIsNoLongerInThis'));
       setSelection(undefined);
       setSelectedRoute(undefined);
     } else if (feature)
@@ -232,18 +232,14 @@ export function useHomeWorkspace() {
       !data.features.some((stop) => stop.id === fromId && stop.boardingPoints > 0)
     ) {
       setFromId(undefined);
-      setNotice(
-        'A shared comparison stop is no longer available. Choose a current boarding stop.',
-      );
+      setNotice(english('workspace.aSharedComparisonStopIsNoLongerAvailableChooseA'));
     }
     if (
       toId &&
       !data.features.some((stop) => stop.id === toId && stop.boardingPoints > 0)
     ) {
       setToId(undefined);
-      setNotice(
-        'A shared comparison stop is no longer available. Choose a current boarding stop.',
-      );
+      setNotice(english('workspace.aSharedComparisonStopIsNoLongerAvailableChooseA'));
     }
   }, [data, fromId, toId]);
   useEffect(() => {
@@ -275,7 +271,7 @@ export function useHomeWorkspace() {
     setFollowing(false);
     if (panel === 'compare' && picking) {
       if (!next.boardingPoints) {
-        setNotice('Choose a boarding stop for this comparison.');
+        setNotice(english('workspace.chooseABoardingStopForThisComparison'));
         return;
       }
       if (picking === 'from') setFromId(next.id);
@@ -345,7 +341,7 @@ export function useHomeWorkspace() {
   function toggleSave() {
     if (!feature) return;
     if (!savedStops.includes(feature.id) && savedStops.length >= 100) {
-      setNotice('Your 100 saved stops are full. Remove a stop to save another.');
+      setNotice(english('workspace.your100SavedStopsAreFullRemoveAStopTo'));
       return;
     }
     setSavedStops((current) =>
@@ -390,7 +386,7 @@ export function useHomeWorkspace() {
       return;
     }
     if (!accountJournal.ready) {
-      setNotice('Wait for your journal to load or finish saving, then try again.');
+      setNotice(english('workspace.waitForYourJournalToLoadOrFinishSavingThen'));
       return;
     }
     if (
@@ -401,7 +397,7 @@ export function useHomeWorkspace() {
       return;
     const entry = journalEntry(car, data?.routes ?? []);
     if (!validJournal([entry])) {
-      setNotice('This car’s supplied identifier cannot be saved in the journal.');
+      setNotice(english('workspace.thisCarSSuppliedIdentifierCannotBeSavedInThe'));
       return;
     }
     setJournal((current) =>
@@ -410,7 +406,9 @@ export function useHomeWorkspace() {
         ? current
         : [...current, entry],
     );
-    setNotice('Car ' + car.vehicle.label + ' added to your journal.');
+    setNotice(
+      english('journal.car') + car.vehicle.label + english('journal.addedToYourJournal'),
+    );
   }
   function importEarlierJournal() {
     try {
@@ -418,19 +416,21 @@ export function useHomeWorkspace() {
         localStorage.getItem('ttc:journal:v1') ?? 'null',
       );
       if (!validJournal(earlier)) {
-        setNotice(
-          'No valid earlier journal was found in this browser. You can restore a backup instead.',
-        );
+        setNotice(english('workspace.noValidEarlierJournalWasFoundInThisBrowserYou'));
         return;
       }
       const merged = mergeJournal(journal, earlier);
       setJournal(() => merged.entries);
-      setNotice(`${merged.added} earlier cars added. Existing notes were kept.`);
+      setNotice(
+        t('workspace.valueEarlierCarsAddedExistingNotesWereKept', {
+          value1: merged.added,
+        }),
+      );
     } catch (error) {
       setNotice(
         error instanceof Error
           ? error.message
-          : 'Unable to import this browser’s earlier journal.',
+          : english('workspace.unableToImportThisBrowserSEarlierJournal'),
       );
     }
   }
@@ -451,18 +451,21 @@ export function useHomeWorkspace() {
   const panelTitle =
     panel === 'explore'
       ? car
-        ? `${car.vehicle.mode === 'subway' ? 'Train' : 'Car'} ${car.vehicle.label}`
+        ? `${car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')} ${car.vehicle.label}`
         : (feature?.name ??
           (selection?.kind === 'car'
-            ? `Car ${selection.id}`
+            ? t('workspace.carValue', { value1: selection.id })
             : selection?.kind === 'route'
-              ? `${data?.routes.find((route) => route.id === selection.id)?.number ?? ''} route stops`
-              : 'Explore Toronto rail'))
+              ? t('workspace.valueRouteStops', {
+                  value1:
+                    data?.routes.find((route) => route.id === selection.id)?.number ?? '',
+                })
+              : t('workspace.exploreTorontoRail')))
       : {
-          fleet: 'Streetcar fleet',
-          compare: 'Compare stops',
-          stops: 'Stop directory',
-          journal: 'Streetcar journal',
+          fleet: t('workspace.streetcarFleet'),
+          compare: t('stopComparison.compareStops'),
+          stops: t('workspace.stopDirectory'),
+          journal: t('workspace.streetcarJournal'),
         }[panel];
 
   return {

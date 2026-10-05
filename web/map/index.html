@@ -1,14 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f7f5ed" />
     <meta
       name="description"
-      content="Explore Toronto's streetcar network. Pan, zoom, search and select stops to see routes and boarding details."
+      content="{{i18n:viewer.exploreTorontoSStreetcarNetworkPanZoomSearchAndSelect}}"
+      data-i18n-content="viewer.exploreTorontoSStreetcarNetworkPanZoomSearchAndSelect"
     />
-    <title>Toronto streetcars · Explore the map</title>
+    <title data-i18n="viewer.torontoStreetcarsExploreTheMap">
+      {{i18n:viewer.torontoStreetcarsExploreTheMap}}
+    </title>
     <style>
       /* VIEWER_CSS */
     </style>
@@ -17,15 +20,27 @@
     <header class="topbar">
       <a class="brand" href="#" id="brand"
         ><span class="brand-symbol" aria-hidden="true">↔</span
-        ><span><strong>Toronto streetcars</strong><small>A city on rails</small></span></a
+        ><span
+          ><strong
+            ><span data-i18n="common.torontoStreetcars"
+              >{{i18n:common.torontoStreetcars}}</span
+            ></strong
+          ><small
+            ><span data-i18n="header.tagline">{{i18n:header.tagline}}</span></small
+          ></span
+        ></a
       >
       <div class="search">
-        <label class="sr-only" for="search">Search stops, stations or routes</label
+        <label class="sr-only" for="search"
+          ><span data-i18n="common.searchStopsStationsOrRoutes"
+            >{{i18n:common.searchStopsStationsOrRoutes}}</span
+          ></label
         ><span aria-hidden="true">⌕</span
         ><input
           id="search"
           type="search"
-          placeholder="Find a stop, station or route…"
+          placeholder="{{i18n:common.findAStopStationOrRoute}}"
+          data-i18n-placeholder="common.findAStopStationOrRoute"
           autocomplete="off"
           aria-controls="search-results"
           aria-expanded="false"
@@ -35,72 +50,142 @@
       <span class="snapshot" id="snapshot"></span>
     </header>
     <main class="workspace">
-      <section class="map-viewport" id="viewport" aria-label="Interactive streetcar map">
+      <section
+        class="map-viewport"
+        id="viewport"
+        aria-label="{{i18n:common.interactiveStreetcarMap}}"
+        data-i18n-aria-label="common.interactiveStreetcarMap"
+      >
         <svg
           id="map"
           xmlns="http://www.w3.org/2000/svg"
           role="group"
-          aria-label="Toronto streetcar network. Use arrow keys to pan, plus or minus to zoom."
+          aria-label="{{i18n:common.torontoStreetcarNetworkUseArrowKeysToPanPlusOr}}"
           tabindex="0"
+          data-i18n-aria-label="common.torontoStreetcarNetworkUseArrowKeysToPanPlusOr"
         ></svg>
         <div class="map-hint">
-          Drag to explore <span>·</span> Scroll or pinch to zoom <span>·</span> Select a
-          stop
+          <span data-i18n="common.dragToExplore">{{i18n:common.dragToExplore}}</span>
+          <span>·</span>
+          <span data-i18n="common.scrollOrPinchToZoom"
+            >{{i18n:common.scrollOrPinchToZoom}}</span
+          >
+          <span>·</span>
+          <span data-i18n="common.selectAStop">{{i18n:common.selectAStop}}</span>
         </div>
         <div class="north" aria-hidden="true">
-          <span>N</span
-          ><svg viewBox="0 0 36 36">
+          <span><span data-i18n="keyboard.n">{{i18n:keyboard.n}}</span></span
+          ><svg viewbox="0 0 36 36">
             <path id="north-arrow" d="M7 18H29M21 13L29 18L21 23" />
           </svg>
         </div>
-        <nav class="map-controls" aria-label="Map controls">
-          <button id="zoom-in" aria-label="Zoom in">+</button
+        <nav
+          class="map-controls"
+          aria-label="{{i18n:transitMap.mapControls}}"
+          data-i18n-aria-label="transitMap.mapControls"
+        >
+          <button
+            id="zoom-in"
+            aria-label="{{i18n:transitMap.zoomIn}}"
+            data-i18n-aria-label="transitMap.zoomIn"
+          >
+            +</button
           ><output id="zoom-level" aria-live="off">100%</output
-          ><button id="zoom-out" aria-label="Zoom out">−</button><span></span
-          ><button id="fit" title="Fit the whole network (Home)">Fit map</button
-          ><button id="labels" aria-pressed="false" title="Show more stop labels">
-            More labels
+          ><button
+            id="zoom-out"
+            aria-label="{{i18n:transitMap.zoomOut}}"
+            data-i18n-aria-label="transitMap.zoomOut"
+          >
+            −</button
+          ><span></span
+          ><button
+            id="fit"
+            title="{{i18n:common.fitTheWholeNetworkHome}}"
+            data-i18n-title="common.fitTheWholeNetworkHome"
+          >
+            <span data-i18n="transitMap.fitMap">{{i18n:transitMap.fitMap}}</span></button
+          ><button
+            id="labels"
+            aria-pressed="false"
+            title="{{i18n:common.showMoreStopLabels}}"
+            data-i18n-title="common.showMoreStopLabels"
+          >
+            <span data-i18n="common.moreLabels">{{i18n:common.moreLabels}}</span>
           </button>
         </nav>
         <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
       </section>
-      <aside class="sidebar" aria-label="Stop and route details">
-        <section class="live-status" aria-label="Live streetcars">
+      <aside
+        class="sidebar"
+        aria-label="{{i18n:workspace.stopAndRouteDetails}}"
+        data-i18n-aria-label="workspace.stopAndRouteDetails"
+      >
+        <section
+          class="live-status"
+          aria-label="{{i18n:common.liveStreetcars}}"
+          data-i18n-aria-label="common.liveStreetcars"
+        >
           <label
-            ><input id="show-live" type="checkbox" /> Show live status
+            ><input id="show-live" type="checkbox" />
+            <span data-i18n="common.showLiveStatus">{{i18n:common.showLiveStatus}}</span>
             <span class="live-dot" aria-hidden="true"></span
           ></label>
-          <p id="live-summary" role="status">Loading streetcar snapshot…</p>
+          <p id="live-summary" role="status">
+            <span data-i18n="common.loadingStreetcarSnapshot"
+              >{{i18n:common.loadingStreetcarSnapshot}}</span
+            >
+          </p>
           <p id="live-timestamp"></p>
         </section>
         <div id="details" aria-live="polite"></div>
         <section class="route-section">
           <div class="section-heading">
-            <h2>Explore a route</h2>
-            <button id="clear-route" class="text-button" hidden>Show all</button>
+            <h2>
+              <span data-i18n="routeLegend.exploreARoute"
+                >{{i18n:routeLegend.exploreARoute}}</span
+              >
+            </h2>
+            <button id="clear-route" class="text-button" hidden>
+              <span data-i18n="routeLegend.showAll">{{i18n:routeLegend.showAll}}</span>
+            </button>
           </div>
           <div id="route-list" class="route-list"></div>
           <p class="legend-note">
-            <span class="dashed-swatch"></span>Physical track without scheduled streetcar
-            service
+            <span class="dashed-swatch"></span
+            ><span data-i18n="routeLegend.physicalTrackWithoutScheduledStreetcarService"
+              >{{i18n:routeLegend.physicalTrackWithoutScheduledStreetcarService}}</span
+            >
           </p>
         </section>
         <footer>
-          Positions refresh while live status is on.<br />Updates pause in hidden tabs. No
-          live arrivals.<br />Map is schematic. Replacement-bus paths are excluded.
+          <span data-i18n="common.positionsRefreshWhileLiveStatusIsOn"
+            >{{i18n:common.positionsRefreshWhileLiveStatusIsOn}}</span
+          ><br /><span data-i18n="common.updatesPauseInHiddenTabsNoLiveArrivals"
+            >{{i18n:common.updatesPauseInHiddenTabsNoLiveArrivals}}</span
+          ><br /><span data-i18n="common.mapIsSchematicReplacementBusPathsAreExcluded"
+            >{{i18n:common.mapIsSchematicReplacementBusPathsAreExcluded}}</span
+          >
           <details>
-            <summary>Map sources</summary>
+            <summary>
+              <span data-i18n="footer.mapSources">{{i18n:footer.mapSources}}</span>
+            </summary>
             <p>
               <a href="https://open.toronto.ca/" target="_blank" rel="noopener"
-                >TTC service &amp; Toronto geography</a
+                ><span data-i18n="footer.ttcServiceTorontoGeography"
+                  >{{i18n:footer.ttcServiceTorontoGeography}}</span
+                ></a
               >
-              · Open Government Licence – Toronto.<br /><a
+              <span data-i18n="footer.openGovernmentLicenceToronto"
+                >{{i18n:footer.openGovernmentLicenceToronto}}</span
+              ><br /><a
                 href="https://www.openstreetmap.org/copyright"
                 target="_blank"
                 rel="noopener"
-                >© OpenStreetMap contributors</a
+                ><span data-i18n="footer.openstreetmapContributors"
+                  >{{i18n:footer.openstreetmapContributors}}</span
+                ></a
               >
-              · ODbL.
+              <span data-i18n="footer.odbl">{{i18n:footer.odbl}}</span>
             </p>
           </details>
         </footer>
@@ -108,8 +193,9 @@
     </main>
     <noscript
       ><p class="noscript">
-        Enable JavaScript to explore the map. The static SVG preview is also available
-        from this project.
+        <span data-i18n="common.enableJavascriptToExploreTheMapTheStaticSvgPreview"
+          >{{i18n:common.enableJavascriptToExploreTheMapTheStaticSvgPreview}}</span
+        >
       </p></noscript
     >
     <script id="map-data" type="application/json">

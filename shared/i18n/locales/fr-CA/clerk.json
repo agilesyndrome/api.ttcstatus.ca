@@ -1,0 +1,2478 @@
+{
+  "locale": "fr-CA",
+  "actionBlocked": {
+    "subtitle": "For your security, this request could not be completed.",
+    "title": "We couldn't complete this request",
+    "traceIdLabel": "Reference"
+  },
+  "apiKeys": {
+    "action__add": "Ajouter une nouvelle clé",
+    "action__search": "Rechercher des clés",
+    "copySecret": {
+      "formButtonPrimary__copyAndClose": "Copier et fermer",
+      "formHint": "Pour des raisons de sécurité, nous ne vous permettrons pas de la consulter à nouveau plus tard.",
+      "formTitle": "Copiez votre clé API \"{{name}}\" maintenant"
+    },
+    "createdAndExpirationStatus__expiresOn": "Créée le {{ createdDate | shortDate('fr-FR') }} • Expire le {{ expiresDate | longDate('fr-FR') }}",
+    "createdAndExpirationStatus__never": "Créée le {{ createdDate | shortDate('fr-FR') }} • N’expire jamais",
+    "detailsTitle__emptyRow": "Aucune clé API trouvée",
+    "formButtonPrimary__add": "Créer une clé",
+    "formFieldCaption__expiration__expiresOn": "Expire le {{ date }}",
+    "formFieldCaption__expiration__never": "Cette clé n’expirera jamais",
+    "formFieldOption__expiration__180d": "180 jours",
+    "formFieldOption__expiration__1d": "1 jour",
+    "formFieldOption__expiration__1y": "1 an",
+    "formFieldOption__expiration__30d": "30 jours",
+    "formFieldOption__expiration__60d": "60 jours",
+    "formFieldOption__expiration__7d": "7 jours",
+    "formFieldOption__expiration__90d": "90 jours",
+    "formFieldOption__expiration__never": "Jamais",
+    "formHint": "Indiquez un nom pour générer une nouvelle clé. Vous pourrez la révoquer à tout moment.",
+    "formTitle": "Ajouter une nouvelle clé API",
+    "lastUsed__days": "il y a {{days}} j",
+    "lastUsed__hours": "il y a {{hours}} h",
+    "lastUsed__minutes": "il y a {{minutes}} min",
+    "lastUsed__months": "il y a {{months}} mois",
+    "lastUsed__seconds": "il y a {{seconds}} s",
+    "lastUsed__years": "il y a {{years}} an(s)",
+    "menuAction__revoke": "Révoquer la clé",
+    "revokeConfirmation": {
+      "confirmationText": "Révoquer",
+      "formButtonPrimary__revoke": "Révoquer la clé",
+      "formHint": "Êtes-vous sûr de vouloir supprimer cette clé secrète ?",
+      "formTitle": "Révoquer la clé secrète « {{apiKeyName}} » ?",
+      "inputLabel": "Type \"Revoke\" to confirm"
+    },
+    "tableHeader__actions": "Actions",
+    "tableHeader__lastUsed": "Last used",
+    "tableHeader__name": "Name"
+  },
+  "backButton": "Retour",
+  "badge__activePlan": "Actif",
+  "badge__banned": "Banned",
+  "badge__canceledEndsAt": "Annulé • Termine le {{ date | shortDate('fr-FR') }}",
+  "badge__currentPlan": "Plan actuel",
+  "badge__default": "Défaut",
+  "badge__deprovisioned": "Deprovisioned",
+  "badge__endsAt": "Termine le {{ date | shortDate('fr-FR') }}",
+  "badge__expired": "Expiré",
+  "badge__freeTrial": "Essai gratuit",
+  "badge__otherImpersonatorDevice": "Autre dispositif d'imitation",
+  "badge__pastDueAt": "En retard depuis le {{ date | shortDate('fr-FR') }}",
+  "badge__pastDuePlan": "Paiement en retard",
+  "badge__primary": "Principal",
+  "badge__renewsAt": "Renouvelle le {{ date | shortDate('fr-FR') }}",
+  "badge__requiresAction": "Nécessite une action",
+  "badge__startsAt": "Débute le {{ date | shortDate('fr-FR') }}",
+  "badge__thisDevice": "Cet appareil",
+  "badge__trialEndsAt": "L’essai se termine le {{ date | shortDate('fr-FR') }}",
+  "badge__unverified": "Non vérifié",
+  "badge__upcomingPlan": "À venir",
+  "badge__userDevice": "Appareil utilisateur",
+  "badge__you": "Vous",
+  "billing": {
+    "accountCredit": "Account credit",
+    "addPaymentMethod__label": "Ajouter une méthode de paiement",
+    "alwaysFree": "Toujours gratuit",
+    "annually": "Annuel",
+    "availableFeatures": "Fonctionnalités disponibles",
+    "billedAnnually": "Facturé annuellement",
+    "billedAnnuallyOnly": "Only billed annually",
+    "billedMonthly": "Billed monthly",
+    "billedMonthlyOnly": "Seulement facturé mensuellement",
+    "cancelFreeTrial": "Annuler l’essai gratuit",
+    "cancelFreeTrialAccessUntil": "Votre essai restera actif jusqu’au {{ date | longDate('fr-FR') }}. Après cette date, vous perdrez l’accès aux fonctionnalités d’essai. Aucun frais ne vous sera facturé.",
+    "cancelFreeTrialTitle": "Annuler l’essai gratuit du plan {{plan}} ?",
+    "cancelSubscription": "Annuler la souscription",
+    "cancelSubscriptionAccessUntil": "Souscription annulée. Vous pouvez continuer à utiliser les fonctionnalités de '{{plan}}' jusqu'au {{ date | longDate('fr-FR') }}, après quoi vous n'aurez plus accès.",
+    "cancelSubscriptionNoCharge": "Pas de charge",
+    "cancelSubscriptionPastDue": "Votre abonnement prendra fin immédiatement et vous perdrez l’accès à toutes les fonctionnalités du plan. Le montant dû sera demandé lors de votre prochaine souscription.",
+    "cancelSubscriptionTitle": "Annuler la souscription",
+    "cannotSubscribeMonthly": "Ne peut pas souscrire mensuellement. Pour souscrire à ce plan, il faut payer annuellement.",
+    "cannotSubscribeUnrecoverable": "Vous ne pouvez pas souscrire à ce plan. Votre abonnement actuel est plus cher que celui-ci.",
+    "checkout": {
+      "addPromoCode": "Add promo code",
+      "applyPromoCode": "Apply",
+      "description__paymentSuccessful": "Votre paiement a été effectué avec succès.",
+      "description__subscriptionSuccessful": "Votre nouvel abonnement est prêt.",
+      "discount": "Discount",
+      "downgradeNotice": "Vous conserverez votre abonnement actuel et ses fonctionnalités jusqu'à la fin du cycle de facturation, puis vous passerez à cet abonnement.",
+      "emailForm": {
+        "subtitle": "Avant de pouvoir finaliser votre achat, vous devez ajouter une adresse e-mail où les reçus seront envoyés.",
+        "title": "Ajouter une adresse e-mail"
+      },
+      "lineItems": {
+        "title__freeTrialEndsAt": "L’essai se termine le",
+        "title__paymentMethod": "Méthode de paiement",
+        "title__statementId": "Identifiant du relevé",
+        "title__subscriptionBegins": "L'abonnement commence",
+        "title__totalPaid": "Total payé"
+      },
+      "pastDueNotice": "Votre abonnement précédent était en retard de paiement.",
+      "perMonth": "par mois",
+      "promoCodePlaceholder": "Enter promo code",
+      "removePromoCode": "Remove promo code",
+      "title": "Paiement",
+      "title__paymentSuccessful": "Le paiement a réussi !",
+      "title__subscriptionSuccessful": "Succès !",
+      "title__trialSuccess": "Essai démarré avec succès !",
+      "totalDueAfterTrial": "Total dû après la fin de l’essai dans {{days}} jours",
+      "totalDuePerPeriod": "Total Due per period"
+    },
+    "credit": "Crédit",
+    "creditRemainder": "Crédit restant",
+    "defaultFreePlanActive": "Vous êtes actuellement sur le plan gratuit",
+    "discountAmount": "{{amount}} off",
+    "discountCyclesRemaining": "{{cycles}} {{period}} remaining",
+    "discountDuration": "{{amount}} off first {{cycles}} {{period}}",
+    "free": "Gratuit",
+    "getStarted": "Commencer",
+    "highlightedPlanBadge": "Populaire",
+    "keepFreeTrial": "Conserver l’essai gratuit",
+    "keepSubscription": "Conserver l'abonnement",
+    "manage": "Gérer",
+    "manageSubscription": "Gérer l'abonnement",
+    "month": "Mois",
+    "monthAbbreviation": "mo",
+    "monthPerUnit": "Month per {{unitName}}",
+    "monthly": "Mensuel",
+    "months": "Months",
+    "pastDue": "En retard",
+    "pay": "Payer {{amount}}",
+    "payerCreditRemainder": "Credit from account balance.",
+    "paymentMethod": {
+      "applePayDescription": {
+        "annual": "Paiement annuel",
+        "monthly": "Paiement mensuel"
+      },
+      "dev": {
+        "anyNumbers": "N’importe quels chiffres",
+        "cardNumber": "Numéro de carte",
+        "cvcZip": "CVC, ZIP",
+        "developmentMode": "Mode de développement",
+        "expirationDate": "Date d'expiration",
+        "testCardInfo": "Informations de carte de test"
+      }
+    },
+    "paymentMethods__label": "Méthodes de paiement",
+    "pricingTable": {
+      "billingCycle": "Cycle de facturation",
+      "included": "Inclus",
+      "seatCost": {
+        "additionalSeats": "({{additionalTierFeePerBlockAmount}}/{{periodAbbreviation}} for additional)",
+        "freeUpToSeats": "Free up to {{endsAfterBlock}} seats",
+        "includedSeats": "{{includedSeats}} seats included",
+        "perSeat": "{{feePerBlockAmount}}/{{periodAbbreviation}} per seat",
+        "tooltip": {
+          "additionalSeatsEach": "Additional seats are {{feePerBlockAmount}}/{{period}} each.",
+          "firstSeatsIncludedInPlan": "First {{endsAfterBlock}} seats are included in the plan.",
+          "freeForUpToSeats": "Free for up to {{endsAfterBlock}} seats."
+        },
+        "unlimitedSeats": "Unlimited seats",
+        "upToSeats": "Up to {{endsAfterBlock}} seats"
+      }
+    },
+    "proratedDiscount": "Prorated discount",
+    "prorationCredit": "Prorated credit",
+    "reSubscribe": "Se réabonner",
+    "seatBreakdownIncludedPlural": "{{chargeable}} seats at {{rate}}/mo ({{totalSeats}} total - {{included}} included)",
+    "seatBreakdownIncludedSingular": "1 seat at {{rate}}/mo ({{totalSeats}} total - {{included}} included)",
+    "seatBreakdownPlural": "{{chargeable}} seats at {{rate}}/mo",
+    "seatBreakdownSingular": "1 seat at {{rate}}/mo",
+    "seats": "Seats",
+    "seatsWithLimit": "Seats (up to {{limit}})",
+    "seeAllFeatures": "Voir toutes les fonctionnalités",
+    "startFreeTrial": "Commencer l’essai gratuit",
+    "startFreeTrial__days": "Commencer l’essai gratuit de {{days}} jours",
+    "subscribe": "S'abonner",
+    "subscriptionDetails": {
+      "beginsOn": "Commence le",
+      "currentBillingCycle": "Cycle de facturation en cours",
+      "endsOn": "Se termine le",
+      "firstPaymentAmount": "Montant du premier paiement",
+      "firstPaymentOn": "Premier paiement le",
+      "nextPaymentAmount": "Montant du prochain paiement",
+      "nextPaymentOn": "Prochain paiement le",
+      "pastDueAt": "En retard le",
+      "renewsAt": "Renouvelé le",
+      "subscribedOn": "Souscrit le",
+      "title": "Abonnement",
+      "trialEndsOn": "L’essai se termine le",
+      "trialStartedOn": "Essai commencé le"
+    },
+    "subtotal": "Total",
+    "subtotalRenewal": "Subtotal per period",
+    "switchPlan": "Changer de plan",
+    "switchToAnnual": "Passer à l'annuel",
+    "switchToAnnualWithAnnualPrice": "Passer à l’annuel {{price}} / an",
+    "switchToMonthly": "Passer au mensuel",
+    "switchToMonthlyWithPrice": "Passer au mensuel {{price}} / mois",
+    "totalDue": "Total dû",
+    "totalDuePerPeriod": "Total per period",
+    "totalDueToday": "Total dû aujourd'hui",
+    "viewFeatures": "Voir les fonctionnalités",
+    "viewPayment": "Voir le paiement",
+    "year": "An",
+    "yearAbbreviation": "yr",
+    "yearPerUnit": "Year per {{unitName}}",
+    "years": "Years"
+  },
+  "configureDirectorySync": {
+    "attributeMappingStep": {
+      "columns": {
+        "clerkAttribute": "User attributes",
+        "directoryAttribute": "Directory attributes"
+      },
+      "subtitle": "Standard directory attributes are pre-configured. Attributes not listed here are ignored.",
+      "title": "Attribute review"
+    },
+    "configureStep": {
+      "actionLabel__generateToken": "Generate new token",
+      "actionLabel__replaceKey": "Replace JSON key",
+      "actionLabel__retry": "Try again",
+      "actionLabel__uploadKey": "Upload JSON key",
+      "badge__credentialsConfigured": "Configured",
+      "badge__credentialsMissing": "Not configured",
+      "domainsLabel": "Domains:",
+      "error__invalidKeyFile": "That file is not valid JSON. Upload the key file downloaded from Google.",
+      "error__ssoRequired": {
+        "subtitle": "Directory Sync requires an SSO connection. Configure and verify your SSO connection first, then return here to set up provisioning.",
+        "title": "Single Sign-On is not configured yet"
+      },
+      "formFieldHint__subjectEmail": "The directory is read as this admin. They must be an active Workspace admin.",
+      "formFieldInputPlaceholder__subjectEmail": "admin@yourcompany.com",
+      "formFieldInputPlaceholder__token": "Generate a new token to reveal it",
+      "formFieldLabel__endpointUrl": "SCIM endpoint URL",
+      "formFieldLabel__serviceAccountKey": "Service account key",
+      "formFieldLabel__subjectEmail": "Google Workspace admin email",
+      "formFieldLabel__token": "Bearer token",
+      "instructions": {
+        "actionLabel__toggle": "View instructions",
+        "custom": {
+          "step1": "Create a SCIM 2.0 provisioning integration in your identity provider.",
+          "step2": "Paste the SCIM endpoint URL as the base URL for the integration.",
+          "step3": "Configure the integration to authenticate with the bearer token below.",
+          "step4": "Enable provisioning for user create, update, and deactivate events."
+        },
+        "entra": {
+          "step1": "In the Microsoft Entra admin center, open Enterprise applications and select the application used for your SSO connection.",
+          "step2": "Under Connectivity, paste the SCIM endpoint URL as the Tenant URL and the bearer token as the Secret Token, then select Test Connection.",
+          "step3": "Select Provisioning and set the provisioning mode to Automatic.",
+          "step4": "Assign the users and groups to provision, then turn provisioning On."
+        },
+        "google": {
+          "step1": "In the Google Cloud console, create a project and a service account, then create a JSON key for it and download the file.",
+          "step2": "Enable the Admin SDK API for that project.",
+          "step3": "In the Google Admin console, open Security, then API controls, then Domain-wide delegation, and add the service account using its client ID.",
+          "step4": "Grant it the read-only directory scopes: https://www.googleapis.com/auth/admin.directory.user.readonly and https://www.googleapis.com/auth/admin.directory.group.readonly.",
+          "step5": "Upload the JSON key below and enter the email of a Google Workspace admin to read the directory as."
+        },
+        "okta": {
+          "step1": "In the Okta Admin Console, open the application used for your SSO connection.",
+          "step2": "Open the Provisioning tab and select the Integration setting.",
+          "step3": "Paste the SCIM endpoint URL and bearer token found below.",
+          "step4": "For provisioning actions, enable pushing of New Users, Profile Updates, and Groups."
+        }
+      },
+      "notice__tokenShownOnce": "This token is only shown once. Generate a new token if you lose it.",
+      "subtitle": "Add these credentials to your identity provider to configure Directory Sync",
+      "title": "Configure",
+      "warning__ssoInactive": "This SSO connection is configured but not yet active. You can provision members, but they won't be able to sign in until it's active."
+    },
+    "navbar": {
+      "title": "Configure Directory Sync"
+    },
+    "providers": {
+      "custom": "Custom SCIM provider",
+      "entra": "Microsoft Entra ID",
+      "google": "Google Workspace",
+      "okta": "Okta Workforce"
+    },
+    "stepper": {
+      "attributes": "Attributes",
+      "configure": "Configure",
+      "test": "Test"
+    },
+    "testStep": {
+      "actionLabel__complete": "Complete",
+      "actionLabel__syncNow": "Sync now",
+      "badge__active": "Active",
+      "badge__deprovisioned": "Deprovisioned",
+      "description": "Users appear here as your identity provider provisions them, most recent activity first.",
+      "description__pull": "Your directory is read on a schedule. Start a sync to pull users now, most recent activity first.",
+      "empty__noUsersProvisioned": "No users have been provisioned yet.",
+      "empty__waitingForFirstSync": "Waiting for the first sync to finish…",
+      "empty__waitingForFirstUser": "Waiting for the first provisioned user…",
+      "error__lastSyncFailed": "The last sync failed",
+      "error__loadUsers": "Could not load provisioned users",
+      "error__syncFailed": "Could not start the sync. Check your connection and try again.",
+      "note": "only users with an email address from a configured domain will be processed.",
+      "noteLabel": "Note:",
+      "subtitle": "Assign or push a test user from {{provider}} to verify provisioning.",
+      "syncRow": {
+        "neverSynced": "Not synced yet",
+        "title": "Directory sync"
+      },
+      "syncStatus__cancelled": "Cancelled",
+      "syncStatus__failed": "Failed",
+      "syncStatus__running": "Running",
+      "syncStatus__succeeded": "Succeeded",
+      "title": "Test provisioning"
+    }
+  },
+  "configureSSO": {
+    "activate": {
+      "activateButton": "Activate SSO",
+      "activeSubtitle": "Anyone signing in with {{domain}} must use your identity provider.",
+      "activeTitle": "SSO connection is active",
+      "doneButton": "Done",
+      "skipButton": "Skip for now",
+      "subtitle": "Your SSO connection is ready. Once activated, anyone signing in with {{domain}} must use your identity provider.",
+      "title": "SSO connection configured"
+    },
+    "changeProviderDialog": {
+      "cancelButton": "Cancel",
+      "confirmButton": "Change provider",
+      "subtitle": "Switching to {{provider}} will remove the {{currentProvider}} connection \"{{name}}\" and require a new setup.",
+      "title": "Change provider to {{provider}}"
+    },
+    "configureStep": {
+      "activeConnectionWarning": {
+        "dismiss": "Dismiss",
+        "title": "This connection is active. Saving changes applies immediately and may disrupt sign-in for current members."
+      },
+      "attributeMappingTable": {
+        "badges": {
+          "optional": "Optional",
+          "required": "Required"
+        }
+      },
+      "oidcCustom": {
+        "credentialsStep": {
+          "clientId": {
+            "label": "Client ID",
+            "placeholder": "Paste client ID here..."
+          },
+          "clientSecret": {
+            "label": "Client secret",
+            "placeholder": "Paste client secret here..."
+          },
+          "headerSubtitle": "Add your application credentials",
+          "paragraph": "In your identity provider’s OIDC application, retrieve these values."
+        },
+        "endpointsStep": {
+          "discoveryUrl": {
+            "description": "In your identity provider’s OIDC application, retrieve the discovery endpoint. Paste it below.",
+            "label": "Discovery endpoint",
+            "placeholder": "Paste URL here..."
+          },
+          "headerSubtitle": "Add your identity provider’s endpoints",
+          "manual": {
+            "authUrl": {
+              "label": "Authorization URL",
+              "placeholder": "Paste URL here..."
+            },
+            "description": "In your identity provider’s OIDC application, retrieve these values.",
+            "tokenUrl": {
+              "label": "Token URL",
+              "placeholder": "Paste URL here..."
+            },
+            "userInfoUrl": {
+              "label": "User Info URL",
+              "placeholder": "Paste URL here..."
+            }
+          },
+          "modes": {
+            "ariaLabel": "OIDC endpoint configuration method",
+            "discoveryUrl": "Add via discovery endpoint",
+            "manual": "Configure manually"
+          }
+        },
+        "mainHeaderTitle": "Configure your identity provider",
+        "redirectUriStep": {
+          "claims": {
+            "description": "Ensure your ID token includes the following claims:",
+            "table": {
+              "columns": {
+                "attribute": "Clerk attribute",
+                "claim": "ID token claim"
+              },
+              "rows": {
+                "email": {
+                  "attribute": "Primary email"
+                },
+                "firstName": {
+                  "attribute": "First name"
+                },
+                "lastName": {
+                  "attribute": "Last name"
+                },
+                "subject": {
+                  "attribute": "External user ID"
+                }
+              }
+            }
+          },
+          "headerSubtitle": "Create a new OIDC application in your identity provider’s dashboard",
+          "paragraph": "In your identity provider’s dashboard, create a new OIDC application that supports the authorization code grant type, and use the following redirect URI:",
+          "redirectUri": {
+            "label": "Authorized redirect URI"
+          }
+        }
+      },
+      "samlCustom": {
+        "assignUsersStep": {
+          "headerSubtitle": "Assign users or groups to your SAML application",
+          "paragraph": "Assign users or groups to your app before they can sign in with SSO."
+        },
+        "attributeMappingStep": {
+          "attributeMappingTable": {
+            "columns": {
+              "attributeName": "Attribute Name",
+              "userAttribute": "User Attribute"
+            },
+            "rows": {
+              "email": {
+                "attributeName": "Primary email",
+                "userAttribute": "mail"
+              },
+              "firstName": {
+                "attributeName": "First name",
+                "userAttribute": "firstName"
+              },
+              "lastName": {
+                "attributeName": "Last name",
+                "userAttribute": "lastName"
+              }
+            }
+          },
+          "headerSubtitle": "Map user attributes from your identity provider to your application.",
+          "paragraph": "Your SAML response must include the following attributes:"
+        },
+        "createAppStep": {
+          "createAppInstructions": {
+            "paragraph": "In your identity provider’s dashboard, create a new SAML 2.0 application and use the following service provider details:"
+          },
+          "headerSubtitle": "Create a new SAML application in your identity provider’s dashboard",
+          "serviceProviderFields": {
+            "acsUrl": {
+              "label": "Assertion consumer service (ACS) URL"
+            },
+            "spEntityId": {
+              "label": "Entity ID"
+            }
+          }
+        },
+        "identityProviderMetadataStep": {
+          "headerSubtitle": "Configure identity provider metadata",
+          "manual": {
+            "description": "In your identity provider SAML application, retrieve these values.",
+            "issuer": {
+              "label": "Issuer",
+              "placeholder": "Paste URL here..."
+            },
+            "signOnUrl": {
+              "label": "Sign on URL",
+              "placeholder": "Paste URL here..."
+            },
+            "signingCertificate": {
+              "fileUploaded": "File uploaded",
+              "label": "Signing certificate",
+              "removeFile": "Remove file",
+              "replaceFile": "Replace file",
+              "uploadFile": "Upload file"
+            }
+          },
+          "metadataUrl": {
+            "description": "In your identity provider SAML application, retrieve the metadata URL. Paste it below.",
+            "label": "Metadata URL",
+            "placeholder": "Paste URL here..."
+          },
+          "modes": {
+            "ariaLabel": "Configuration ",
+            "manual": "Configure manually",
+            "metadataUrl": "Add via metadata"
+          }
+        },
+        "mainHeaderTitle": "Configure your identity provider"
+      },
+      "samlGoogle": {
+        "attributeMappingStep": {
+          "attributeMappingTable": {
+            "columns": {
+              "appAttribute": "App attribute",
+              "googleAttribute": "Google attribute"
+            },
+            "rows": {
+              "email": {
+                "appAttribute": "email",
+                "googleAttribute": "Primary email"
+              },
+              "firstName": {
+                "appAttribute": "firstName",
+                "googleAttribute": "First name"
+              },
+              "lastName": {
+                "appAttribute": "lastName",
+                "googleAttribute": "Last name"
+              }
+            }
+          },
+          "headerSubtitle": "Map user attributes from Google Workspace to your application",
+          "paragraph": "We expect your SAML response to return the user’s email, first name and last name.",
+          "step1": "In the <bold>Google Admin Console</bold>, find the <bold>Attributes</bold> section.",
+          "step2": "Select <bold>Add mapping</bold> for each attribute, and enter the following Google and app attribute:"
+        },
+        "configureUserAccess": {
+          "assignUsersInstructions": {
+            "paragraph1": "Once the configuration is complete in Google, you'll be redirected to the app's overview page.",
+            "paragraph2": "Google may take up to 24 hours to propagate these changes. The connection will remain inactive until they take effect.",
+            "step1": "Open the <bold>User access</bold> section.",
+            "step2": "Select <bold>ON for everyone.</bold>",
+            "step3": "Select <bold>Save</bold>."
+          },
+          "headerSubtitle": "Enable your Google Workspace SAML application"
+        },
+        "createAppStep": {
+          "createAppInstructions": {
+            "step1": "In the side navigation, under <bold>Apps</bold>, select <bold>Web and mobile apps.</bold>",
+            "step2": "Select <bold>Add app</bold>, then <bold>Add custom SAML app.</bold>",
+            "step3": "Enter an <bold>App name.</bold>",
+            "step4": "Select <bold>Continue</bold>.",
+            "title": "In Google Workspace, create a new SAML application:"
+          },
+          "headerSubtitle": "Create a new SAML application in Google Workspace"
+        },
+        "identityProviderMetadataStep": {
+          "headerSubtitle": "Add your Google Workspace application metadata",
+          "manual": {
+            "description": "In your Google Workspace app, retrieve these values.",
+            "issuer": {
+              "label": "Entity ID",
+              "placeholder": "Paste URL here..."
+            },
+            "signOnUrl": {
+              "label": "SSO URL",
+              "placeholder": "Paste URL here..."
+            },
+            "signingCertificate": {
+              "fileUploaded": "File uploaded",
+              "label": "Signing certificate",
+              "removeFile": "Remove file",
+              "replaceFile": "Replace file",
+              "uploadFile": "Upload file"
+            }
+          },
+          "metadataFile": {
+            "description": "In your Google Workspace app, download the IdP metadata and upload it below.",
+            "fileUploaded": "File uploaded",
+            "label": "IdP metadata",
+            "removeFile": "Remove file",
+            "replaceFile": "Replace file",
+            "uploadFile": "Upload file"
+          },
+          "modes": {
+            "ariaLabel": "Configuration",
+            "manual": "Configure manually",
+            "metadataFile": "Add via metadata"
+          }
+        },
+        "mainHeaderTitle": "Configure Google Workspace",
+        "serviceProviderStep": {
+          "headerSubtitle": "Configure service provider",
+          "nameIdInstructions": {
+            "step1": "Under the <bold>Name ID</bold> section, select the <bold>Name ID</bold> format dropdown and select <bold>Email</bold>.",
+            "step2": "Select <bold>Continue</bold>"
+          },
+          "paragraph": "To configure your service provider, you must add these two fields to your Google Workspace SAML application:",
+          "serviceProviderFields": {
+            "acsUrl": {
+              "label": "ACS URL"
+            },
+            "spEntityId": {
+              "label": "Entity ID"
+            }
+          },
+          "title": "Configure service provider"
+        }
+      },
+      "samlMicrosoft": {
+        "attributeMappingStep": {
+          "attributeMappingTable": {
+            "columns": {
+              "attribute": "Attribute",
+              "claimName": "Claim name",
+              "value": "Value"
+            },
+            "copyClaimName": "Copy claim name",
+            "copyClaimNameCopied": "Copied",
+            "rows": {
+              "email": {
+                "attribute": "Email address",
+                "claimName": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+                "value": "user.mail"
+              },
+              "firstName": {
+                "attribute": "First name",
+                "claimName": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+                "value": "user.givenname"
+              },
+              "lastName": {
+                "attribute": "Last name",
+                "claimName": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+                "value": "user.surname"
+              }
+            }
+          },
+          "headerSubtitle": "Set the attributes Microsoft Entra includes in your SAML response",
+          "step1": "On the <bold>SAML-based Sign-on</bold> page, find the <bold>Attributes & Claims</bold> section.",
+          "step2": "Select <bold>Edit.</bold>",
+          "title": "Your SAML response must include the following attributes:"
+        },
+        "createAppStep": {
+          "assignUsersInstructions": {
+            "step1": "In the <bold>Getting Started</bold> section, select the <bold>Assign users and groups.</bold>",
+            "step2": "Select <bold>Add user/group.</bold> You'll be redirected to the <bold>Add Assignment page.</bold>",
+            "step3": "Select the <bold>None Selected link.</bold>",
+            "step4": "Select <bold>Select</bold> at the bottom of the page. You'll be redirected to the <bold>Add Assignment</bold> page.",
+            "step5": "Select <bold>Assign</bold>",
+            "title": "Assign your users or groups in Microsoft"
+          },
+          "createAppInstructions": {
+            "step1": "Sign in to Microsoft Azure Portal and go to <bold>Enterprise applications.</bold>",
+            "step2": "Click <bold>New application.</bold> You'll be redirected to the <bold>Browse Microsoft Entra Gallery</bold> page.",
+            "step3": "Select <bold>Create your own application.</bold>",
+            "step4": {
+              "label": "In the modal that opens:",
+              "subSteps": {
+                "appName": "Fill out your application name.",
+                "create": "Select <bold>Create</bold>.",
+                "nonGallery": "Select <bold>Integrate any other application you don't find in the gallery (Non-gallery)</bold>."
+              }
+            },
+            "title": "Create a new enterprise application"
+          },
+          "headerSubtitle": "Create a new enterprise application in your Azure Portal"
+        },
+        "identityProviderMetadataStep": {
+          "headerSubtitle": "Add your Microsoft Entra application metadata",
+          "manual": {
+            "description": "On the <bold>SAML-based Sign-on</bold> page, find the <bold>SAML Certificates</bold> section. Retrieve these values and add them below.",
+            "issuer": {
+              "label": "Issuer",
+              "placeholder": "Paste URL here..."
+            },
+            "signOnUrl": {
+              "label": "Sign on URL",
+              "placeholder": "Paste URL here..."
+            },
+            "signingCertificate": {
+              "fileUploaded": "File uploaded",
+              "label": "Signing certificate",
+              "removeFile": "Remove file",
+              "replaceFile": "Replace file",
+              "uploadFile": "Upload file"
+            }
+          },
+          "metadataUrl": {
+            "description": "On the <bold>SAML-based Sign-on</bold> page, find the <bold>SAML Certificates</bold> section and copy the <bold>App Federation Metadata Url</bold>. Paste below.",
+            "label": "Metadata URL",
+            "placeholder": "Paste URL here..."
+          },
+          "modes": {
+            "ariaLabel": "Configuration ",
+            "manual": "Configure manually",
+            "metadataUrl": "Add via metadata"
+          }
+        },
+        "mainHeaderTitle": "Configure Microsoft Entra",
+        "serviceProviderStep": {
+          "headerSubtitle": "Add service provider configuration to Microsoft Entra",
+          "serviceProviderFields": {
+            "acsUrl": {
+              "label": "Reply URL (Assertion Consumer Service URL)"
+            },
+            "spEntityId": {
+              "label": "Identifier (Entity ID)"
+            }
+          },
+          "step1": "In the side navigation, open the <bold>Manage</bold> dropdown and select Single sign-on.",
+          "step2": "In the <bold>Select a single sign-on method</bold> section, select <bold>SAML</bold>.",
+          "step3": "Find the <bold>Basic SAML Configuration</bold> section.",
+          "step4": "Select <bold>Edit</bold>. The <bold>Basic SAML Configuration</bold> panel will open.",
+          "step5": "Copy the following values into <bold>Identifier (Entity ID)</bold> and <bold>Reply URL (ACS URL)</bold>:",
+          "step6": "Select <bold>Save</bold> at the top of the panel. Close the panel.",
+          "title": "Add service provider details"
+        }
+      },
+      "samlOkta": {
+        "assignUsersStep": {
+          "assignUsersInstructions": {
+            "paragraph": "Assign users or groups to your Okta application before they can sign in with SSO",
+            "step1": "In the Okta dashboard, select the <bold>Assignments</bold> tab.",
+            "step2": "Open the <bold>Assign</bold> dropdown and select <bold>Assign to people</bold> or <bold>Assign to groups</bold>.",
+            "step3": "Search for the user or group to assign.",
+            "step4": "Click <bold>Assign</bold> next to the user or group.",
+            "step5": "Click <bold>Done.</bold>"
+          },
+          "headerSubtitle": "Assign users to your Okta application"
+        },
+        "attributeMappingStep": {
+          "attributeMappingTable": {
+            "columns": {
+              "expression": "Expression",
+              "name": "Attribute name"
+            },
+            "rows": {
+              "email": {
+                "expression": "user.profile.email",
+                "name": "mail"
+              },
+              "firstName": {
+                "expression": "user.profile.firstName",
+                "name": "firstName"
+              },
+              "lastName": {
+                "expression": "user.profile.lastName",
+                "name": "lastName"
+              }
+            }
+          },
+          "headerSubtitle": "Set the attributes Okta includes in your SAML response",
+          "paragraph": "Your SAML response must include the following attributes:",
+          "step1": "In the Okta dashboard, find the <bold>Attribute Statements</bold> section.",
+          "step2": "Select <bold>Add Expression</bold> for each attribute, and enter the following name and expression pairs:"
+        },
+        "createAppStep": {
+          "completeSamlIntegrationInstructions": {
+            "step1": "From the <bold>Feedback</bold>, select <bold>This is an internal app that we have created.</bold>",
+            "step2": "Click <bold>Finish</bold> to complete the integration.",
+            "title": "Complete the SAML integration"
+          },
+          "createAppInstructions": {
+            "step1": "Sign in to Okta and go to <bold>Admin → Applications.</bold>",
+            "step2": "Click <bold>Create App Integration.</bold> and select <bold>SAML 2.0.</bold>",
+            "step3": "Fill in the General Settings. The app name is required.",
+            "step4": "Click <bold>Next</bold> to finish creating the application.",
+            "title": "Create a new SAML application in Okta"
+          },
+          "headerSubtitle": "Create and configure a SAML application in your Okta Dashboard",
+          "serviceProviderInstructions": {
+            "paragraph1": "After completing <bold>General Settings</bold>, you'll see the <bold>Configure SAML</bold> page.",
+            "paragraph2": "Add these two fields to your Okta application to configure your service provider.",
+            "serviceProviderFields": {
+              "acsUrl": {
+                "label": "Single sign-on URL"
+              },
+              "spEntityId": {
+                "label": "Audience URI (SP Entity ID)"
+              }
+            },
+            "title": "Configure service provider"
+          }
+        },
+        "identityProviderMetadataStep": {
+          "headerSubtitle": "Add your Okta application metadata",
+          "manual": {
+            "description": "In your Okta SAML application, go to the <bold>Sign On</bold> tab and retrieve these values.",
+            "issuer": {
+              "label": "Issuer",
+              "placeholder": "Paste URL here..."
+            },
+            "signOnUrl": {
+              "label": "Sign on URL",
+              "placeholder": "Paste URL here..."
+            },
+            "signingCertificate": {
+              "fileUploaded": "File uploaded",
+              "label": "Signing certificate",
+              "removeFile": "Remove file",
+              "replaceFile": "Replace file",
+              "uploadFile": "Upload file"
+            }
+          },
+          "metadataUrl": {
+            "description": "In your Okta SAML application, go to the <bold>Sign On</bold> tab and retrieve the metadata URL. Paste it below.",
+            "label": "Metadata URL",
+            "placeholder": "Paste URL here..."
+          },
+          "modes": {
+            "ariaLabel": "Configuration",
+            "manual": "Configure manually",
+            "metadataUrl": "Add via metadata"
+          }
+        },
+        "mainHeaderTitle": "Configure Okta Workforce"
+      },
+      "unsupportedProvider": {
+        "description": "This identity provider isn’t supported in this version of Clerk. Update to the latest version to finish setting it up.",
+        "title": "Unsupported provider"
+      }
+    },
+    "connectionScopeBanner": {
+      "subtitle__adding": "This organization already has {{count}} SSO connections.",
+      "subtitle__editing": "This organization has {{count}} SSO connections. Changes here apply only to this connection.",
+      "title__adding": "Adding a new SSO connection",
+      "title__editing": "Editing \"{{name}}\""
+    },
+    "missingManageEnterpriseConnectionsPermission": {
+      "subtitle": "Contactez l'administrateur de votre organisation pour étendre vos permissions.",
+      "title": "Vous n'avez pas la permission de gérer l'authentification unique (SSO)"
+    },
+    "navbar": {
+      "title": "Configurer l'authentification unique (SSO)"
+    },
+    "organizationDomainsStep": {
+      "domainCard": {
+        "badge__claimed": "Used by another connection",
+        "badge__expired": "Expired",
+        "badge__unverified": "Non vérifié",
+        "badge__verified": "Vérifié",
+        "checkboxLabel": "Use {{domain}} for this connection",
+        "expiredAtLabel": "Domain verification expired on {{ date | shortDate('en-US') }}. Verify again to generate a new DNS record.",
+        "expiredLabel": "Domain verification expired. Verify again to generate a new DNS record.",
+        "removeButtonTooltip__lastVerifiedDomain": "At least one verified domain is required to set up SSO.",
+        "removeButtonTooltip__lastVerifiedDomainActive": "At least one verified domain is required to keep SSO enabled.",
+        "txtRecord": {
+          "hostLabel": "Hôte / Nom",
+          "instructions": "Ajoutez cet enregistrement TXT à votre fournisseur DNS. Nous le vérifierons automatiquement une fois l’enregistrement actif.",
+          "typeLabel": "Type",
+          "valueLabel": "Valeur"
+        },
+        "verifiedAtLabel": "Vérifié le {{ date | shortDate('fr-FR') }}",
+        "verifyAgainButton": "Verify again"
+      },
+      "domainSuggestion": {
+        "formButtonPrimary__add": "Ajouter {{domain}}",
+        "messageLabel": "Votre e-mail utilise {{domain}}. Voulez-vous l’ajouter ?"
+      },
+      "formButtonPrimary__add": "Ajouter",
+      "formFieldInputPlaceholder__domain": "Ajouter un domaine",
+      "formFieldLabel__domain": "Domaine",
+      "removeDomainDialog": {
+        "cancelButton": "Cancel",
+        "removeButton": "Remove domain",
+        "subtitle__active": "You're about to remove {{domain}} from this enterprise connection. Users won't be able to sign-in with {{domain}} anymore.",
+        "subtitle__inactive": "You're about to remove {{domain}} from this enterprise connection.",
+        "title": "Removing domain"
+      },
+      "subtitle": "Ajoutez et vérifiez la propriété des domaines que votre organisation utilise pour se connecter.",
+      "title": "Ajouter des domaines SSO"
+    },
+    "resetConnectionDialog": {
+      "cancelButton": "Cancel",
+      "confirmationFieldLabel": "Type \"{{name}}\" below to continue",
+      "confirmationFieldPlaceholder": "{{name}}",
+      "resetButton": "Reset connection",
+      "subtitle": "Are you sure you want to reset the connection \"{{name}}\"? This action is irreversible and you will have to configure all steps again",
+      "title": "Reset connection"
+    },
+    "selectProviderStep": {
+      "oidc": {
+        "groupLabel": "OpenID Connect (OIDC)",
+        "oidcProvider": "OIDC Provider"
+      },
+      "saml": {
+        "customSaml": "Fournisseur SAML personnalisé",
+        "google": "Google Workspace",
+        "groupLabel": "SAML",
+        "microsoft": "Microsoft Entra (formerly AD)",
+        "okta": "Okta Workforce"
+      },
+      "subtitle": "Sélectionnez le fournisseur pour lequel vous allez configurer le SSO.",
+      "title": "Sélectionner un fournisseur",
+      "warning": "Une fois un fournisseur sélectionné, vous ne pourrez plus en changer jusqu'à la fin de la configuration"
+    },
+    "testConfigurationStep": {
+      "error__noSuccessfulTestRun": "You need at least one successful test run before you can continue. Generate a test URL and complete the sign-in flow.",
+      "subtitle": "Sign in through the test URL to verify your SSO connection is configured correctly",
+      "testResults": {
+        "actionLabel__refresh": "Refresh logs",
+        "empty": {
+          "subtitle": "Select <bold>Open test URL</bold> to run your first test",
+          "title": "No test results"
+        },
+        "polling": "Waiting for the test run to complete…",
+        "status__failed": "Failed",
+        "status__pending": "Pending",
+        "status__success": "Success",
+        "title": "Your test results"
+      },
+      "testRunDetails": {
+        "howToFix": {
+          "actionLabel__viewDocumentation": "View documentation",
+          "oauth_access_denied": {
+            "description": "This error occurs when the user clicked Cancel or Deny on the OAuth provider's authorization screen, or the provider rejected the authorization request. Verify that the OAuth application credentials (Client ID and Client Secret) are correctly configured."
+          },
+          "oauth_fetch_user_error": {
+            "intro": "To fix this error, follow these steps:",
+            "step1": "Verify that the OAuth scopes configured in your connection settings include the necessary permissions to read user profile information.",
+            "step2": "Ensure that the user info endpoint URL is correctly configured."
+          },
+          "oauth_token_exchange_error": {
+            "description": "Verify that your OAuth application's Client ID and Client Secret are correctly configured and match the credentials from your OAuth provider's dashboard."
+          },
+          "saml_email_address_domain_mismatch": {
+            "description": "Verify that the user is signing in with an email address that matches one of the allowed domains for this connection. If you need to add additional domains, update the allowed domains in your connection settings."
+          },
+          "saml_response_relaystate_missing": {
+            "description": "Check that your identity provider is correctly returning the RelayState parameter that was sent in the original request."
+          },
+          "saml_user_attribute_missing": {
+            "intro": "To fix this error, follow these steps:",
+            "step1": "Access your identity provider's configuration dashboard.",
+            "step2": "Navigate to your application's SAML settings or attribute mapping configuration.",
+            "step3": "Ensure that the 'mail' attribute is properly mapped to the user's email address field."
+          },
+          "sectionTitle": "How to fix"
+        },
+        "parsedUserInfo": {
+          "email": "Email",
+          "firstName": "First name",
+          "sectionTitle": "Parsed user info"
+        },
+        "runDetails": {
+          "actionLabel__copied": "Copied",
+          "actionLabel__copy": "Copy message",
+          "errorCode": "Error code",
+          "fullMessage": "Full message",
+          "sectionTitle": "Run details",
+          "status": "Status",
+          "timestamp": "Timestamp"
+        },
+        "title": "Test run"
+      },
+      "testUrl": {
+        "actionLabel__open": "Open test URL"
+      },
+      "title": "Test your SSO connection"
+    }
+  },
+  "createOrganization": {
+    "formButtonSubmit": "Créer l’organisation",
+    "invitePage": {
+      "formButtonReset": "Passer"
+    },
+    "title": "Créer une organisation"
+  },
+  "dates": {
+    "lastDay": "Hier à {{ date | timeString('fr-FR') }}",
+    "next6Days": "{{ date | weekday('fr-FR','long') }} à {{ date | timeString('fr-FR') }}",
+    "nextDay": "Demain à {{ date | timeString('fr-FR') }}",
+    "numeric": "{{ date | numeric('fr-FR') }}",
+    "previous6Days": "{{ date | weekday('fr-FR','long') }} dernier à {{ date | timeString('fr-FR') }}",
+    "sameDay": "Aujourd'hui à {{ date | timeString('fr-FR') }}"
+  },
+  "dividerText": "ou",
+  "footerActionLink__alternativePhoneCodeProvider": "Envoyer le code par SMS à la place",
+  "footerActionLink__useAnotherMethod": "Utiliser une autre méthode",
+  "footerPageLink__help": "Aide",
+  "footerPageLink__privacy": "Vie privée",
+  "footerPageLink__terms": "Conditions",
+  "formButtonPrimary": "Continuer",
+  "formButtonPrimary__verify": "Vérifier",
+  "formFieldAction__forgotPassword": "Mot de passe oublié ?",
+  "formFieldAction__hidePassword": "Masquer le mot de passe",
+  "formFieldAction__showPassword": "Afficher le mot de passe",
+  "formFieldError__matchingPasswords": "Les mots de passe correspondent.",
+  "formFieldError__notMatchingPasswords": "Les mots de passe ne correspondent pas.",
+  "formFieldError__verificationLinkExpired": "Le lien de vérification a expiré. Merci de demander un nouveau lien.",
+  "formFieldHintText__optional": "Optionnel",
+  "formFieldHintText__slug": "Un slug est un identifiant lisible qui doit être unique. Il est souvent utilisé dans les URL.",
+  "formFieldInputPlaceholder__apiKeyDescription": "Expliquez pourquoi vous générez cette clé",
+  "formFieldInputPlaceholder__apiKeyExpirationDate": "Sélectionner une date",
+  "formFieldInputPlaceholder__apiKeyName": "Entrez le nom de votre clé secrète",
+  "formFieldInputPlaceholder__backupCode": "Code de sauvegarde",
+  "formFieldInputPlaceholder__confirmDeletionUserAccount": "Supprimer le compte",
+  "formFieldInputPlaceholder__emailAddress": "Adresse e-mail",
+  "formFieldInputPlaceholder__emailAddress_username": "Nom d'utilisateur ou adresse e-mail",
+  "formFieldInputPlaceholder__emailAddresses": "exemple@email.com, exemple2@email.com",
+  "formFieldInputPlaceholder__firstName": "Prénom",
+  "formFieldInputPlaceholder__lastName": "Nom",
+  "formFieldInputPlaceholder__organizationDomain": "Domaine de l'organisation",
+  "formFieldInputPlaceholder__organizationDomainEmailAddress": "Adresse e-mail de l'organisation",
+  "formFieldInputPlaceholder__organizationName": "Nom de l'organisation",
+  "formFieldInputPlaceholder__organizationSlug": "Identifiant de l'organisation",
+  "formFieldInputPlaceholder__password": "Mot de passe",
+  "formFieldInputPlaceholder__phoneNumber": "Numéro de téléphone",
+  "formFieldInputPlaceholder__signUpPassword": "Create a password",
+  "formFieldInputPlaceholder__username": "Nom d'utilisateur",
+  "formFieldInput__emailAddress_format": "Example format: name@example.com",
+  "formFieldLabel__apiKey": "Clé API",
+  "formFieldLabel__apiKeyDescription": "Description",
+  "formFieldLabel__apiKeyExpiration": "Expiration",
+  "formFieldLabel__apiKeyName": "Nom de la clé secrète",
+  "formFieldLabel__automaticInvitations": "Activer les invitations automatiques pour ce domaine",
+  "formFieldLabel__backupCode": "Code de récupération",
+  "formFieldLabel__confirmDeletion": "Confirmation",
+  "formFieldLabel__confirmPassword": "Confirmer le mot de passe",
+  "formFieldLabel__currentPassword": "Mot de passe actuel",
+  "formFieldLabel__emailAddress": "Adresse e-mail",
+  "formFieldLabel__emailAddress_username": "Adresse e-mail ou nom d'utilisateur",
+  "formFieldLabel__emailAddresses": "Adresses e-mail",
+  "formFieldLabel__firstName": "Prénom",
+  "formFieldLabel__lastName": "Nom",
+  "formFieldLabel__newPassword": "Nouveau mot de passe",
+  "formFieldLabel__organizationDomain": "Domaine",
+  "formFieldLabel__organizationDomainDeletePending": "Supprimer les invitations et suggestions en attente",
+  "formFieldLabel__organizationDomainEmailAddress": "E-mail de vérification",
+  "formFieldLabel__organizationDomainEmailAddressDescription": "Entrer une adresse e-mail appartenant à ce domaine pour recevoir un code et vérifier ce domaine.",
+  "formFieldLabel__organizationName": "Nom de l'organisation",
+  "formFieldLabel__organizationSlug": "Slug URL",
+  "formFieldLabel__passkeyName": "Nom de la clé de sécurité",
+  "formFieldLabel__password": "Mot de passe",
+  "formFieldLabel__phoneNumber": "Numéro de téléphone",
+  "formFieldLabel__role": "Rôle",
+  "formFieldLabel__signOutOfOtherSessions": "Se déconnecter de tous les autres appareils",
+  "formFieldLabel__username": "Nom d'utilisateur",
+  "identityPreviewEditButton__emailAddress": "Edit email address",
+  "identityPreviewEditButton__identifier": "Edit identifier",
+  "identityPreviewEditButton__phoneNumber": "Edit phone number",
+  "impersonationFab": {
+    "action__signOut": "Déconnexion",
+    "title": "Connecté en tant que {{identifier}}"
+  },
+  "lastAuthenticationStrategy": "Utilisé la dernière fois",
+  "maintenanceMode": "Nous effectuons des travaux de maintenance, mais ne vous en inquiétez pas, cela ne devrait pas prendre plus de quelques minutes.",
+  "membershipRole__admin": "Administrateur",
+  "membershipRole__basicMember": "Membre",
+  "membershipRole__guestMember": "Invité",
+  "oauthConsent": {
+    "action__allow": "Allow",
+    "action__deny": "Deny",
+    "offlineAccessNotice": " You'll stay signed in until you sign out or revoke access.",
+    "redirectNotice": "If you allow access, this app will redirect you to {{domainAction}}.",
+    "redirectUriModal": {
+      "subtitle": "Make sure you trust {{applicationName}} and that this URL belongs to {{applicationName}}.",
+      "title": "Redirect URL"
+    },
+    "scopeList": {
+      "privateMetadata": "Your private metadata set by {{applicationName}}, which may include sensitive information",
+      "title": "This will allow {{applicationName}} access to:"
+    },
+    "subtitle": "wants to access {{applicationName}} on behalf of {{identifier}}",
+    "viewFullUrl": "View full URL",
+    "warning": "Make sure that you trust {{applicationName}} ({{domainAction}}). You may be sharing sensitive data with this site or app."
+  },
+  "oauthDeviceVerification": {
+    "action__tryAnotherCode": "Enter another code",
+    "confirmation": {
+      "action__approve": "Approve",
+      "action__deny": "Deny",
+      "scopeListTitle": "This will allow {{applicationName}} access to:",
+      "subtitle": "Confirm this request for {{identifier}}",
+      "title": "Allow {{applicationName}} to access your account?",
+      "warning": "Only approve this request if you started it on your other device."
+    },
+    "error": {
+      "expiredSubtitle": "Start over on your device.",
+      "expiredTitle": "This code expired",
+      "genericSubtitle": "Check your connection and try again.",
+      "genericTitle": "We could not verify this code",
+      "invalidCode": "Enter a valid 8-character code.",
+      "rateLimitedSubtitle": "Wait before trying another code.",
+      "rateLimitedTitle": "Too many attempts",
+      "unknownCode": "We couldn't find that code. Check it and try again."
+    },
+    "start": {
+      "action__continue": "Continue",
+      "subtitle": "Enter the code shown on the device or app you want to authorize.",
+      "title": "Verify a device",
+      "userCodeLabel": "Device code"
+    },
+    "status": {
+      "alreadyApprovedSubtitle": "Return to your device to continue.",
+      "alreadyApprovedTitle": "You've approved this",
+      "alreadyDecidedSubtitle": "It was decided elsewhere. Return to your device.",
+      "alreadyDecidedTitle": "This request was already completed",
+      "alreadyDeniedSubtitle": "Start over on your device if you want to try again.",
+      "alreadyDeniedTitle": "This request was denied",
+      "approvedSubtitle": "You approved this request. Return to your device to continue.",
+      "approvedTitle": "Device approved",
+      "consumedSubtitle": "Your device is authorized. You can close this window.",
+      "consumedTitle": "This code has already been used",
+      "deniedSubtitle": "You denied this request. Return to your device.",
+      "deniedTitle": "Access denied"
+    }
+  },
+  "organizationList": {
+    "action__createOrganization": "Créer une organisation",
+    "action__invitationAccept": "Rejoindre",
+    "action__suggestionsAccept": "Demande d'adhésion",
+    "createOrganization": "Créer une Organisation",
+    "invitationAcceptedLabel": "Acceptée",
+    "subtitle": "pour continuer vers {{applicationName}}",
+    "suggestionsAcceptedLabel": "En attente d’approbation",
+    "title": "Choisissez un compte",
+    "titleWithoutPersonal": "Choisissez une organisation"
+  },
+  "organizationProfile": {
+    "apiKeysPage": {
+      "title": "Clés API"
+    },
+    "badge__automaticInvitation": "Invitations automatiques",
+    "badge__automaticSuggestion": "Suggestions automatiques",
+    "badge__enterpriseSso": "Enterprise SSO",
+    "badge__manualInvitation": "Pas d'inscription automatique",
+    "badge__unverified": "Non vérifié",
+    "billingPage": {
+      "accountCreditsSection": {
+        "title": "Account credits",
+        "viewHistory": "View credit history"
+      },
+      "creditHistoryPage": {
+        "tableHeader__amount": "Amount",
+        "tableHeader__date": "Date",
+        "title": "Account credit history"
+      },
+      "paymentHistorySection": {
+        "empty": "Aucun historique de paiement",
+        "notFound": "Tentative de paiement introuvable",
+        "tableHeader__amount": "Montant",
+        "tableHeader__date": "Date",
+        "tableHeader__status": "Statut"
+      },
+      "paymentMethodsSection": {
+        "actionLabel__default": "Rendre par défaut",
+        "actionLabel__remove": "Supprimer",
+        "add": "Ajouter une nouvelle méthode de paiement",
+        "addSubtitle": "Ajoutez une nouvelle méthode de paiement à votre compte.",
+        "cancelButton": "Annuler",
+        "formButtonPrimary__add": "Ajouter une méthode de paiement",
+        "formButtonPrimary__pay": "Payer {{amount}}",
+        "payWithTestCardButton": "Payer avec une carte de test",
+        "removeMethod": {
+          "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+          "messageLine2": "Vous ne pourrez plus utiliser cette méthode de paiement et tous les abonnements récurrents qui en dépendent ne fonctionneront plus.",
+          "successMessage": "{{paymentMethod}} a été supprimé de votre compte.",
+          "title": "Supprimer une méthode de paiement"
+        },
+        "title": "Méthodes de paiement"
+      },
+      "start": {
+        "headerTitle__payments": "Paiements",
+        "headerTitle__plans": "Plans",
+        "headerTitle__statements": "Relevés",
+        "headerTitle__subscriptions": "Abonnements"
+      },
+      "statementsSection": {
+        "empty": "Aucun relevé à afficher",
+        "itemCaption__paidForPlan": "Payé pour le plan {{plan}} {{period}}",
+        "itemCaption__payerCredit": "Credit from account balance",
+        "itemCaption__proratedCredit": "Crédit au prorata pour l’utilisation partielle de l’abonnement précédent",
+        "itemCaption__subscribedAndPaidForPlan": "Souscrit et payé pour le plan {{plan}} {{period}}",
+        "notFound": "Relevé introuvable",
+        "tableHeader__amount": "Montant",
+        "tableHeader__date": "Date",
+        "title": "Relevés",
+        "totalPaid": "Total payé"
+      },
+      "subscriptionsListSection": {
+        "actionLabel__manageSubscription": "Gérer",
+        "actionLabel__newSubscription": "S'abonner à un plan",
+        "actionLabel__switchPlan": "Changer de plan",
+        "includedSeatsUsage": "{{includedSeats}} seats included",
+        "overview": "Overview",
+        "paidSeatsUsage": "{{seatsQuantity}} seats x {{amount}}",
+        "seatLimit": "Up to {{seatLimit}} seats",
+        "seatLimitAndIncludedSeats": "Up to {{seatLimit}} seats ({{includedSeats}} included)",
+        "tableHeader__edit": "Modifier",
+        "tableHeader__plan": "Plan",
+        "tableHeader__startDate": "Date de début",
+        "title": "Abonnement"
+      },
+      "subscriptionsSection": {
+        "actionLabel__default": "Gérer"
+      },
+      "switchPlansSection": {
+        "title": "Changer de plan"
+      },
+      "title": "Abonnements"
+    },
+    "createDomainPage": {
+      "subtitle": "Ajoutez le domaine pour le vérifier. Les utilisateurs possédant une adresse e-mail sur ce domaine peuvent rejoindre l'organisation automatiquement ou demander à y adhérer.",
+      "title": "Ajouter un domaine"
+    },
+    "invitePage": {
+      "detailsTitle__inviteFailed": "Les invitations suivantes n’ont pas pu être envoyées. Veuillez régler ce problème et réessayer:",
+      "formButtonPrimary__continue": "Envoyer des invitations",
+      "formButtonPrimary__purchaseSeats": "Purchase additional seats",
+      "selectDropdown__role": "Sélectionner un rôle",
+      "subtitle": "Inviter des membres à rejoindre l’organisation",
+      "successMessage": "Les invitations ont été envoyées.",
+      "title": "Inviter des membres"
+    },
+    "membersPage": {
+      "action__invite": "Inviter",
+      "action__search": "Rechercher",
+      "activeMembersTab": {
+        "menuAction__remove": "Supprimer",
+        "tableHeader__actions": "Actions",
+        "tableHeader__joined": "Rejoint le",
+        "tableHeader__role": "Rôle",
+        "tableHeader__user": "Utilisateur"
+      },
+      "alerts": {
+        "roleSetMigrationInProgress": {
+          "subtitle": "Nous mettons à jour les rôles disponibles. Une fois terminé, vous pourrez de nouveau modifier les rôles.",
+          "title": "Les rôles sont temporairement verrouillés"
+        }
+      },
+      "detailsTitle__emptyRow": "Aucun membre",
+      "invitationsTab": {
+        "autoInvitations": {
+          "headerSubtitle": "Invitez des utilisateurs en connectant un domaine de messagerie à votre organisation. Toute personne s'inscrivant avec une adresse e-mail de ce domaine pourra rejoindre l'organisation.",
+          "headerTitle": "Invitations automatiques",
+          "primaryButton": "Gérer les domaines validés"
+        },
+        "table__emptyRow": "Pas d'invitations à afficher"
+      },
+      "invitedMembersTab": {
+        "menuAction__revoke": "Révoquer l'invitation",
+        "tableHeader__invited": "Invité"
+      },
+      "requestsTab": {
+        "autoSuggestions": {
+          "headerSubtitle": "Les utilisateurs qui s'inscrivent avec un domaine de messagerie identique verront une suggestion pour demander à rejoindre votre organisation.",
+          "headerTitle": "Suggestions automatiques",
+          "primaryButton": "Gérer les domaines validés"
+        },
+        "menuAction__approve": "Approuver",
+        "menuAction__reject": "Rejeter",
+        "tableHeader__requested": "Accès demandé",
+        "table__emptyRow": "Pas de demandes à afficher"
+      },
+      "start": {
+        "headerTitle__invitations": "Invitations",
+        "headerTitle__members": "Membres",
+        "headerTitle__requests": "Demandes"
+      }
+    },
+    "navbar": {
+      "apiKeys": "Clés API",
+      "billing": "Facturation",
+      "description": "Gérer votre organisation.",
+      "general": "Général",
+      "members": "Membres",
+      "security": "Security",
+      "title": "Organisation"
+    },
+    "plansPage": {
+      "alerts": {
+        "noPermissionsToManageBilling": "Vous n'avez pas les permissions pour gérer la facturation de cette organisation.",
+        "planMembershipLimitExceeded": "Your organization has {{count}} members (including pending invitations). This plan only allows {{limit}} members."
+      },
+      "title": "Plans"
+    },
+    "profilePage": {
+      "dangerSection": {
+        "deleteOrganization": {
+          "actionDescription": "Saisissez {{organizationName}} ci-dessous pour continuer.",
+          "messageLine1": "Êtes-vous sûr(e) de vouloir supprimer cette organisation ?",
+          "messageLine2": "Cette action est définitive et irréversible.",
+          "successMessage": "Vous avez supprimé l'organisation.",
+          "title": "Supprimer l'organisation"
+        },
+        "leaveOrganization": {
+          "actionDescription": "Saisissez {{organizationName}} ci-dessous pour continuer.",
+          "messageLine1": "Êtes-vous sûr de vouloir quitter cette organisation ? Vous perdrez l'accès à cette organisation et à ses applications.",
+          "messageLine2": "Cette action est permanente et irréversible.",
+          "successMessage": "Vous avez quitté l'organisation.",
+          "title": "Quitter l'organisation"
+        },
+        "title": "Danger"
+      },
+      "domainSection": {
+        "menuAction__manage": "Gérer",
+        "menuAction__remove": "Supprimer",
+        "menuAction__verify": "Valider",
+        "primaryButton": "Ajouter un domaine",
+        "subtitle": "Permettre aux utilisateurs de rejoindre l'organisation automatiquement ou de faire une demande d'adhésion si leur domaine de messagerie est vérifié.",
+        "title": "Domaines vérifiés"
+      },
+      "successMessage": "L'organisation a été mise à jour.",
+      "title": "Profil de l’organisation"
+    },
+    "removeDomainPage": {
+      "messageLine1": "Le domaine de messagerie {{domain}} sera supprimé.",
+      "messageLine2": "Les utilisateurs ne pourront plus rejoindre l'organisation automatiquement après cela.",
+      "successMessage": "{{domain}} a été supprimé.",
+      "title": "Supprimer un domaine"
+    },
+    "securityPage": {
+      "connectionPage": {
+        "actions": {
+          "activate": "Activate",
+          "continueSetup": "Continue setup"
+        },
+        "dangerZone": {
+          "deactivateButton": "Deactivate connection",
+          "removeButton": "Remove connection",
+          "title": "Danger zone"
+        },
+        "domains": {
+          "title": "Domains"
+        },
+        "identityProvider": {
+          "certificateExpires": "Certificate expires",
+          "clientSecret": {
+            "placeholder": "Leave empty to keep the current secret"
+          },
+          "editButton": "Edit",
+          "form": {
+            "title": "Edit identity provider"
+          },
+          "title": "Identity provider"
+        },
+        "name": {
+          "editButton": "Edit",
+          "form": {
+            "title": "Rename connection"
+          },
+          "title": "Name"
+        },
+        "serviceProvider": {
+          "acsUrl": "Assertion consumer service (ACS) URL",
+          "entityId": "Entity ID",
+          "metadataUrl": "Metadata URL",
+          "redirectUri": "Redirect URI",
+          "title": "Service provider"
+        },
+        "settings": {
+          "allowAdditionalIdentifiers": {
+            "description": "Members may keep other sign-in methods.",
+            "label": "Allow additional identifiers"
+          },
+          "allowIdpInitiated": {
+            "description": "Sign-in may start from the identity provider.",
+            "label": "Allow IdP-initiated flow"
+          },
+          "allowSubdomains": {
+            "description": "Also match subdomains of the connection's domains.",
+            "label": "Allow subdomains"
+          },
+          "forceAuthn": {
+            "description": "Re-authenticate at the identity provider on every sign-in.",
+            "label": "Force re-authentication"
+          },
+          "syncUserAttributes": {
+            "description": "Refresh name and email from the identity provider on each sign-in.",
+            "label": "Sync user attributes"
+          },
+          "title": "Settings"
+        }
+      },
+      "directorySyncSection": {
+        "badge__active": "Active",
+        "badge__inactive": "Inactive",
+        "badge__ssoRequired": "SSO required",
+        "description": "Keep organization members synced with your identity provider. Requires an SSO connection.",
+        "error__load": "Could not load Directory Sync",
+        "menuAction__activate": "Activate",
+        "menuAction__deactivate": "Deactivate",
+        "menuAction__edit": "Edit",
+        "menuAction__remove": "Remove",
+        "primaryButton__configure": "Configure",
+        "removeDialog": {
+          "confirmButton": "Remove Directory Sync",
+          "subtitle": "Are you sure you want to remove Directory Sync? This action is irreversible: the directory and its bearer token are deleted and your identity provider will no longer be able to provision members. Existing members keep their memberships.",
+          "title": "Remove Directory Sync"
+        },
+        "title": "Directory Sync"
+      },
+      "removeDialog": {
+        "confirmButton": "Remove connection",
+        "subtitle": "Are you sure you want to remove the connection \"{{name}}\"? This action is irreversible and deletes the connection and all of its configuration.",
+        "title": "Remove SSO connection"
+      },
+      "ssoBypassPage": {
+        "action__add": "Add",
+        "action__search": "Search users",
+        "addForm": {
+          "emailPlaceholder": "Enter the member's email address",
+          "error__allAlreadyAdded": "Everyone with that role is already on the allow list.",
+          "error__alreadyAdded": "This member is already on the allow list.",
+          "error__memberNotFound": "No member of this organization has that email address.",
+          "modeLabel": "Add by",
+          "mode__email": "Email",
+          "mode__role": "Role",
+          "roleOption": "{{role}} ({{count}})",
+          "roleWarning": "This list does not sync, members are managed manually.",
+          "submitButton": "Add members",
+          "subtitle": "Members on this list can sign in with an email code when SSO is unavailable.",
+          "title": "Add members"
+        },
+        "bulkResult": {
+          "added": "Added {{count}} members",
+          "addedMember": "Added member successfully",
+          "added__one": "Added 1 member",
+          "domainNotServed": "{{count}} members could not be added because their email address is not served by a connection.",
+          "domainNotServed__one": "1 member could not be added because their email address is not served by a connection.",
+          "notMember": "{{count}} members could not be added because they are no longer in the organization.",
+          "notMember__one": "1 member could not be added because they are no longer in the organization.",
+          "unknown": "{{count}} members could not be added.",
+          "unknown__one": "1 member could not be added."
+        },
+        "table": {
+          "emptyState": "No members on the allow list",
+          "emptyState__search": "No members match your search",
+          "header__actions": "Actions",
+          "header__user": "User",
+          "menuAction__remove": "Remove"
+        },
+        "title": "SSO bypass"
+      },
+      "ssoBypassSection": {
+        "allowlistCount": "{{count}} members",
+        "allowlistCount__one": "1 member",
+        "allowlistLabel": "Allow list:",
+        "description": "Members on this list can sign in with an email code when SSO is unavailable.",
+        "error__load": "Could not load the SSO allow list",
+        "menuAction__manage": "Manage",
+        "title": "SSO bypass"
+      },
+      "ssoSection": {
+        "badge__active": "Active",
+        "badge__inProgress": "In Progress",
+        "badge__inactive": "Inactive",
+        "badge__unconfigured": "Unconfigured",
+        "descriptionLine1": "Require members with a matching email domain to sign in through your identity provider.",
+        "domainLabel": "Domains:",
+        "menuAction__activate": "Activate",
+        "menuAction__continue": "Continue configuration",
+        "menuAction__deactivate": "Deactivate",
+        "menuAction__edit": "Edit",
+        "menuAction__remove": "Remove",
+        "primaryButton__addConnection": "Add connection",
+        "primaryButton__configure": "Configure",
+        "primaryButton__continueConfiguration": "Continue configuration",
+        "primaryButton__startConfiguration": "Start configuration",
+        "title": "SSO",
+        "tooltip": "Members without a matching domain can still sign in using existing auth methods. New members will be assigned to {{role}} in this organization.",
+        "tooltipLabel": "More information",
+        "tooltip__noRole": "Members without a matching domain can still sign in using existing auth methods."
+      },
+      "title": "Security"
+    },
+    "start": {
+      "headerTitle__general": "Général",
+      "headerTitle__members": "Membres",
+      "membershipSeatUsageLabel": "{{count}} of {{limit}} seats used",
+      "profileSection": {
+        "primaryButton": "Mettre à jour le profil",
+        "title": "Profil de l'organisation",
+        "uploadAction__title": "Logo"
+      }
+    },
+    "verifiedDomainPage": {
+      "dangerTab": {
+        "calloutInfoLabel": "Supprimer ce domaine affectera les utilisateurs invités.",
+        "removeDomainActionLabel__remove": "Supprimer ce domaine",
+        "removeDomainSubtitle": "Supprimer ce domaine de vos domaines vérifiés",
+        "removeDomainTitle": "Supprimer un domaine"
+      },
+      "enrollmentTab": {
+        "automaticInvitationOption__description": "Les utilisateurs sont automatiquement invités à rejoindre l'organisation lors de leur inscription et peuvent la rejoindre à tout moment.",
+        "automaticInvitationOption__label": "Invitations automatiques",
+        "automaticSuggestionOption__description": "Les utilisateurs reçoivent une suggestion d'adhésion à l'organisation, mais doivent être approuvés par un administrateur avant de pouvoir y adhérer.",
+        "automaticSuggestionOption__label": "Suggestions automatiques",
+        "calloutInfoLabel": "Changer le mode d'inscription n'affectera que les nouveaux utilisateurs.",
+        "calloutInvitationCountLabel": "Invitations en attente envoyées aux utilisateurs : {{count}}",
+        "calloutSuggestionCountLabel": "Suggestions en attente envoyées aux utilisateurs : {{count}}",
+        "manualInvitationOption__description": "Les utilisateurs peuvent uniquement être invités à l'organisation manuellement.",
+        "manualInvitationOption__label": "Pas d'inscription automatique",
+        "subtitle": "Choisissez comment les utilisateurs de ce domaine peuvent rejoindre l'organisation."
+      },
+      "start": {
+        "headerTitle__danger": "Danger",
+        "headerTitle__enrollment": "Option d'inscription"
+      },
+      "subtitle": "Le domaine {{domain}} est maintenant vérifié. Poursuivez en sélectionnant le mode d'inscription.",
+      "title": "Mettre à jour {{domain}}"
+    },
+    "verifyDomainPage": {
+      "formSubtitle": "Saisissez le code de vérification envoyé à votre adresse e-mail",
+      "formTitle": "Code de vérification",
+      "resendButton": "Vous n'avez pas reçu de code ? Renvoyer",
+      "subtitle": "Le domaine {{domainName}} doit être vérifié par e-mail.",
+      "subtitleVerificationCodeScreen": "Un code de vérification a été envoyé à {{emailAddress}}. Saisissez le code pour continuer.",
+      "title": "Vérifier un domaine"
+    }
+  },
+  "organizationSwitcher": {
+    "action__closeOrganizationSwitcher": "Close organization switcher",
+    "action__createOrganization": "Créer une organisation",
+    "action__invitationAccept": "Rejoindre",
+    "action__manageOrganization": "Gérer l'organisation",
+    "action__openOrganizationSwitcher": "Open organization switcher",
+    "action__suggestionsAccept": "Demander à rejoindre",
+    "notSelected": "Aucune organisation sélectionnée",
+    "personalWorkspace": "Espace de travail personnel",
+    "suggestionsAcceptedLabel": "En attente d'acceptation"
+  },
+  "paginationButton__next": "Suivant",
+  "paginationButton__previous": "Précédent",
+  "paginationRowText__displaying": "Affichage",
+  "paginationRowText__of": "de",
+  "reverification": {
+    "alternativeMethods": {
+      "actionLink": "Utiliser une autre méthode",
+      "actionText": "Vous ne pouvez pas accéder à votre compte ?",
+      "blockButton__backupCode": "Utiliser un code de récupération",
+      "blockButton__emailCode": "Recevoir un code par e-mail",
+      "blockButton__passkey": "Utiliser une clé de sécurité",
+      "blockButton__password": "Utiliser le mot de passe",
+      "blockButton__phoneCode": "Recevoir un code par téléphone",
+      "blockButton__totp": "Utiliser un code d’application d’authentification",
+      "getHelp": {
+        "blockButton__emailSupport": "Contacter le support par e-mail",
+        "content": "Si vous ne pouvez pas accéder à votre compte, contactez notre équipe de support pour obtenir de l'aide.",
+        "title": "Obtenir de l'aide"
+      },
+      "subtitle": "Choisissez une méthode alternative pour vérifier votre identité.",
+      "title": "Vérification alternative"
+    },
+    "backupCodeMfa": {
+      "subtitle": "Entrez l'un de vos codes de récupération pour vérifier votre compte.",
+      "title": "Vérification par code de récupération"
+    },
+    "emailCode": {
+      "formTitle": "Entrez le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "Un code a été envoyé à votre adresse e-mail.",
+      "title": "Vérification par e-mail"
+    },
+    "noAvailableMethods": {
+      "message": "Aucune méthode de vérification n'est disponible.",
+      "subtitle": "Impossible de procéder à la vérification.",
+      "title": "Aucune méthode disponible"
+    },
+    "passkey": {
+      "blockButton__passkey": "Utiliser votre clé de sécurité",
+      "subtitle": "L'utilisation de votre clé de sécurité confirme votre identité. Votre appareil peut vous demander votre empreinte digitale, votre visage ou votre code de sécurité.",
+      "title": "Utiliser votre clé de sécurité"
+    },
+    "password": {
+      "actionLink": "Réinitialiser le mot de passe",
+      "subtitle": "Entrez votre mot de passe pour continuer.",
+      "title": "Vérification par mot de passe"
+    },
+    "phoneCode": {
+      "formTitle": "Entrez le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "Un code a été envoyé à votre téléphone.",
+      "title": "Vérification par téléphone"
+    },
+    "phoneCodeMfa": {
+      "formTitle": "Entrez le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "Un code a été envoyé à votre téléphone pour vérification.",
+      "title": "Vérification par téléphone"
+    },
+    "totpMfa": {
+      "formTitle": "Entrez le code de vérification",
+      "subtitle": "Entrez le code généré par votre application d'authentification.",
+      "title": "Vérification par application d’authentification"
+    }
+  },
+  "searchInput": {
+    "action__clear": "Clear search"
+  },
+  "signIn": {
+    "accountSwitcher": {
+      "action__addAccount": "Ajouter un compte",
+      "action__signOutAll": "Se déconnecter de tous les comptes",
+      "subtitle": "Sélectionnez le compte avec lequel vous souhaitez continuer.",
+      "title": "Choisissez un compte"
+    },
+    "alternativeMethods": {
+      "actionLink": "Obtenir de l'aide",
+      "actionText": "Aucune de ces méthodes ne fonctionne ?",
+      "blockButton__backupCode": "Utiliser un code de récupération",
+      "blockButton__emailCode": "Envoyer le code à {{identifier}}",
+      "blockButton__emailLink": "Envoyer le lien à {{identifier}}",
+      "blockButton__passkey": "Utiliser une clé de sécurité",
+      "blockButton__password": "Connectez-vous avec votre mot de passe",
+      "blockButton__phoneCode": "Envoyer le code à {{identifier}}",
+      "blockButton__totp": "Utilisez votre application d'authentification",
+      "getHelp": {
+        "blockButton__emailSupport": "Assistance par e-mail",
+        "content": "Si vous rencontrez des difficultés pour vous connecter à votre compte, envoyez-nous un e-mail et nous travaillerons avec vous pour rétablir l'accès dès que possible.",
+        "title": "Obtenir de l'aide"
+      },
+      "subtitle": "Vous rencontrez des problèmes ? Vous pouvez utiliser l'une de ces méthodes pour vous connecter.",
+      "title": "Utiliser une autre méthode"
+    },
+    "alternativePhoneCodeProvider": {
+      "formTitle": "Code de vérification",
+      "resendButton": "Vous n’avez pas reçu de code ? Renvoyer",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre {{provider}}"
+    },
+    "backupCodeMfa": {
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Entrez un code de récupération"
+    },
+    "emailCode": {
+      "formTitle": "Le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre messagerie"
+    },
+    "emailCodeMfa": {
+      "formTitle": "Vérifiez votre messagerie",
+      "resendButton": "Vous n'avez pas reçu de code ? Renvoyer",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre messagerie"
+    },
+    "emailLink": {
+      "clientMismatch": {
+        "subtitle": "Ce lien ne correspond pas à la demande en cours.",
+        "title": "Erreur de correspondance du client"
+      },
+      "expired": {
+        "subtitle": "Retournez à l'onglet d'origine pour continuer",
+        "title": "Ce lien de vérification a expiré"
+      },
+      "failed": {
+        "subtitle": "Retourner à l'onglet original pour continuer",
+        "title": "Ce lien de vérification n'est pas valide"
+      },
+      "formSubtitle": "Utilisez le lien de vérification envoyé par e-mail",
+      "formTitle": "lien de vérification",
+      "loading": {
+        "subtitle": "Vous allez bientôt être redirigé",
+        "title": "Connexion en cours..."
+      },
+      "resendButton": "Renvoyer le lien",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre messagerie",
+      "unusedTab": {
+        "title": "Vous pouvez fermer cet onglet"
+      },
+      "verified": {
+        "subtitle": "Vous serez bientôt redirigé",
+        "title": "Connexion réussie"
+      },
+      "verifiedSwitchTab": {
+        "subtitle": "Revenir à l'onglet d'origine pour continuer",
+        "subtitleNewTab": "Revenez à l'onglet nouvellement ouvert pour continuer",
+        "titleNewTab": "Connecté sur un autre onglet"
+      },
+      "verifiedTransferable": {
+        "subtitle": "Return to original tab to continue",
+        "title": "Email verified"
+      }
+    },
+    "emailLinkMfa": {
+      "formSubtitle": "Utilisez le lien de vérification envoyé par e-mail",
+      "resendButton": "Vous n'avez pas reçu de lien ? Renvoyer",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre messagerie"
+    },
+    "enterpriseConnections": {
+      "subtitle": "Select an enterprise account to continue.",
+      "title": "Choose an account"
+    },
+    "enterpriseSSO": {
+      "formButtonPrimary": "Continue with SSO"
+    },
+    "forgotPassword": {
+      "formTitle": "Code de réinitialisation du mot de passe",
+      "resendButton": "Vous n'avez pas reçu de code ? Renvoyer",
+      "subtitle": "pour réinitialiser votre mot de passe",
+      "subtitle_email": "Tout d'abord, saisissez le code envoyé à votre adresse e-mail.",
+      "subtitle_phone": "Tout d'abord, saisissez le code envoyé à votre téléphone.",
+      "title": "Réinitialiser le mot de passe"
+    },
+    "forgotPasswordAlternativeMethods": {
+      "blockButton__resetPassword": "Réinitialiser votre mot de passe",
+      "label__alternativeMethods": "Ou connectez-vous avec une autre méthode.",
+      "title": "Mot de passe oublié ?"
+    },
+    "newDeviceVerificationNotice": "Vous vous connectez depuis un nouvel appareil. Nous demandons une vérification pour sécuriser votre compte.",
+    "noAvailableMethods": {
+      "message": "Impossible de poursuivre la connexion. Aucun facteur d'authentification n'est disponible.",
+      "subtitle": "Une erreur s'est produite",
+      "title": "Impossible de se connecter"
+    },
+    "passkey": {
+      "subtitle": "Utilisez une clé de sécurité pour continuer.",
+      "title": "Clé de sécurité"
+    },
+    "password": {
+      "actionLink": "Utiliser une autre méthode",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Entrez votre mot de passe"
+    },
+    "passwordCompromised": {
+      "title": "Password compromised"
+    },
+    "passwordPwned": {
+      "title": "Mot de passe compromis"
+    },
+    "passwordUntrusted": {
+      "title": "Password untrusted"
+    },
+    "phoneCode": {
+      "formTitle": "Code de vérification",
+      "resendButton": "Vous n'avez pas reçu de code ? Renvoyer",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre téléphone"
+    },
+    "phoneCodeMfa": {
+      "formTitle": "Code de vérification",
+      "resendButton": "Vous n'avez pas reçu de code ? Renvoyer",
+      "subtitle": "Entrez le code envoyé à votre téléphone pour continuer.",
+      "title": "Vérifiez votre téléphone"
+    },
+    "protectCheck": {
+      "loading": "Loading…",
+      "retryButton": "Try again",
+      "subtitle": "Please wait while we verify your request.",
+      "title": "Verifying your request"
+    },
+    "resetPassword": {
+      "formButtonPrimary": "Réinitialiser",
+      "requiredMessage": "Pour des raisons de sécurité, il est nécessaire de réinitialiser votre mot de passe.",
+      "successMessage": "Votre mot de passe a été modifié avec succès. Nous vous reconnectons, veuillez patienter un instant.",
+      "title": "Réinitialiser le mot de passe"
+    },
+    "resetPasswordMfa": {
+      "detailsLabel": "Nous devons vérifier votre identité avant de réinitialiser votre mot de passe."
+    },
+    "ssoBypass": {
+      "actionLink": "Can't use SSO?",
+      "code": {
+        "resendButton": "Didn't receive a code? Resend",
+        "subtitle": "to continue to {{applicationName}}",
+        "title": "Check your email"
+      },
+      "notice": "Your organization requires single sign-on. Continuing without it is recorded."
+    },
+    "start": {
+      "actionLink": "S'inscrire",
+      "actionLink__join_waitlist": "Rejoindre la liste d'attente",
+      "actionLink__use_email": "Utiliser e-mail",
+      "actionLink__use_email_username": "Utiliser l'e-mail ou le nom d'utilisateur",
+      "actionLink__use_passkey": "Utiliser une clé de sécurité",
+      "actionLink__use_phone": "Utiliser téléphone",
+      "actionLink__use_username": "Utiliser le nom d'utilisateur",
+      "actionText": "Vous n'avez pas encore de compte ?",
+      "actionText__join_waitlist": "Inscrivez-vous sur la liste d'attente",
+      "alternativePhoneCodeProvider": {
+        "actionLink": "Utiliser une autre méthode",
+        "label": "Numéro de téléphone {{provider}}",
+        "subtitle": "Entrez votre numéro de téléphone pour recevoir un code de vérification sur {{provider}}.",
+        "title": "Se connecter à {{applicationName}} avec {{provider}}"
+      },
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Se connecter",
+      "titleCombined": "Continuer vers {{applicationName}}"
+    },
+    "totpMfa": {
+      "formTitle": "Le code de vérification",
+      "subtitle": "Entrez le code de l'application d'authentification.",
+      "title": "Vérification en deux étapes"
+    },
+    "web3Solana": {
+      "subtitle": "Sélectionnez un portefeuille ci-dessous pour vous connecter",
+      "title": "Se connecter avec Solana"
+    }
+  },
+  "signInEnterPasswordTitle": "Entrez votre mot de passe",
+  "signUp": {
+    "alternativePhoneCodeProvider": {
+      "resendButton": "Vous n’avez pas reçu de code ? Renvoyer",
+      "subtitle": "Entrez le code de vérification envoyé à votre {{provider}}",
+      "title": "Vérifiez votre {{provider}}"
+    },
+    "continue": {
+      "actionLink": "Se connecter",
+      "actionText": "Vous avez déjà un compte ?",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Remplir les champs manquants"
+    },
+    "emailCode": {
+      "formSubtitle": "Entrez le code de vérification envoyé à votre adresse e-mail",
+      "formTitle": "Le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre e-mail"
+    },
+    "emailLink": {
+      "clientMismatch": {
+        "subtitle": "Pour continuer, ouvrir le lien de vérification sur l'appareil et le navigateur depuis lequel vous avez initié l'inscription",
+        "title": "Erreur de correspondance du client"
+      },
+      "formSubtitle": "Utilisez le lien de vérification envoyé à votre adresse e-mail",
+      "formTitle": "lien de vérification",
+      "loading": {
+        "title": "Création de votre compte..."
+      },
+      "resendButton": "Renvoyer le lien",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre e-mail",
+      "verified": {
+        "title": "Compte créé"
+      },
+      "verifiedSwitchTab": {
+        "subtitle": "Revenez à l'onglet nouvellement ouvert pour continuer",
+        "subtitleNewTab": "Revenir à l'onglet précédent pour continuer",
+        "title": "E-mail vérifié avec succès"
+      }
+    },
+    "enterpriseConnections": {
+      "subtitle": "Select an enterprise account to continue.",
+      "title": "Choose an account"
+    },
+    "legalConsent": {
+      "checkbox": {
+        "label__onlyPrivacyPolicy": "J'accepte la Politique de confidentialité.",
+        "label__onlyTermsOfService": "J'accepte les Conditions d'utilisation.",
+        "label__termsOfServiceAndPrivacyPolicy": "J'accepte les {{ termsOfServiceLink || link(\"Conditions d'utilisation\") }} et la {{ privacyPolicyLink || link(\"Politique de confidentialité\") }}."
+      },
+      "continue": {
+        "subtitle": "Lisez et acceptez les conditions pour continuer.",
+        "title": "Consentement légal"
+      }
+    },
+    "phoneCode": {
+      "formSubtitle": "Entrez le code de vérification envoyé à votre numéro de téléphone",
+      "formTitle": "Le code de vérification",
+      "resendButton": "Renvoyer le code",
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "title": "Vérifiez votre téléphone"
+    },
+    "protectCheck": {
+      "loading": "Loading…",
+      "retryButton": "Try again",
+      "subtitle": "Please wait while we verify your request.",
+      "title": "Verifying your request"
+    },
+    "restrictedAccess": {
+      "actionLink": "Contacter le support",
+      "actionText": "Accès restreint.",
+      "blockButton__emailSupport": "Contacter le support par e-mail",
+      "blockButton__joinWaitlist": "Rejoindre la liste d'attente",
+      "subtitle": "Vous n'avez pas la permission d'accéder à cette page.",
+      "subtitleWaitlist": "Inscrivez-vous pour demander l'accès.",
+      "title": "Accès restreint"
+    },
+    "start": {
+      "actionLink": "Se connecter",
+      "actionLink__use_email": "Utiliser votre adresse e-mail",
+      "actionLink__use_phone": "Utiliser votre téléphone",
+      "actionText": "Vous avez déjà un compte ?",
+      "alternativePhoneCodeProvider": {
+        "actionLink": "Utiliser une autre méthode",
+        "label": "Numéro de téléphone {{provider}}",
+        "subtitle": "Entrez votre numéro de téléphone pour recevoir un code de vérification sur {{provider}}.",
+        "title": "S’inscrire à {{applicationName}} avec {{provider}}"
+      },
+      "subtitle": "pour continuer vers {{applicationName}}",
+      "subtitleCombined": "pour continuer vers {{applicationName}}",
+      "title": "Créez votre compte",
+      "titleCombined": "Créez votre compte"
+    },
+    "web3Solana": {
+      "subtitle": "Sélectionnez un portefeuille ci-dessous pour vous inscrire",
+      "title": "S'inscrire avec Solana"
+    }
+  },
+  "socialButtonsBlockButton": "Continuer avec {{provider|titleize}}",
+  "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+  "taskChooseOrganization": {
+    "alerts": {
+      "organizationAlreadyExists": "An organization already exists for the detected company name ({{organizationName}}) and {{organizationDomain}}. Join by invitation."
+    },
+    "chooseOrganization": {
+      "action__createOrganization": "Créer une nouvelle organisation",
+      "action__invitationAccept": "Rejoindre",
+      "action__suggestionsAccept": "Demander à rejoindre",
+      "subtitle": "Rejoignez une organisation existante ou créez-en une nouvelle",
+      "subtitle__createOrganizationDisabled": "Rejoignez une organisation existante",
+      "suggestionsAcceptedLabel": "En attente d’approbation",
+      "title": "Choisir une organisation"
+    },
+    "createOrganization": {
+      "formButtonReset": "Annuler",
+      "formButtonSubmit": "Continuer",
+      "formFieldInputPlaceholder__name": "Mon organisation",
+      "formFieldInputPlaceholder__slug": "mon-organisation",
+      "formFieldLabel__name": "Nom",
+      "formFieldLabel__slug": "Identifiant (slug)",
+      "subtitle": "Entrez les détails de votre organisation pour continuer",
+      "title": "Configurer votre organisation"
+    },
+    "organizationCreationDisabled": {
+      "subtitle": "Contactez l'administrateur de votre organisation pour obtenir une invitation.",
+      "title": "Vous devez appartenir à une organisation"
+    },
+    "signOut": {
+      "actionLink": "Se déconnecter",
+      "actionText": "Connecté en tant que {{identifier}}"
+    }
+  },
+  "taskResetPassword": {
+    "formButtonPrimary": "Reset Password",
+    "signOut": {
+      "actionLink": "Sign out",
+      "actionText": "Signed in as {{identifier}}"
+    },
+    "subtitle": "Your account requires a new password before you can continue",
+    "title": "Reset your password"
+  },
+  "taskSetupMfa": {
+    "badge": "Two-step verification setup",
+    "signOut": {
+      "actionLink": "Sign out",
+      "actionText": "Signed in as {{identifier}}"
+    },
+    "smsCode": {
+      "addPhone": {
+        "formButtonPrimary": "Continue",
+        "infoText": "A text message containing a verification code will be sent to this phone number. Message and data rates may apply."
+      },
+      "addPhoneNumber": "Add phone number",
+      "cancel": "Cancel",
+      "subtitle": "Choose phone number you want to use for SMS code two-step verification",
+      "success": {
+        "finishButton": "Continue",
+        "message1": "Two-step verification is now enabled. When signing in, you will need to enter a verification code sent to this phone number as an additional step.",
+        "message2": "Save these backup codes and store them somewhere safe. If you lose access to your authentication device, you can use backup codes to sign in.",
+        "title": "SMS code verification enabled"
+      },
+      "title": "Add SMS code verification",
+      "verifyPhone": {
+        "formButtonPrimary": "Continue",
+        "formTitle": "Verification code",
+        "resendButton": "Didn't receive a code? Resend",
+        "subtitle": "Enter the verification code sent to",
+        "title": "Verify your phone number"
+      }
+    },
+    "start": {
+      "methodSelection": {
+        "phoneCode": "SMS code",
+        "totp": "Authenticator application"
+      },
+      "subtitle": "Choose which method you prefer to protect your account with an extra layer of security",
+      "title": "Set up two-step verification"
+    },
+    "totpCode": {
+      "addAuthenticatorApp": {
+        "buttonAbleToScan__nonPrimary": "Scan QR code instead",
+        "buttonUnableToScan__nonPrimary": "Can't scan QR code?",
+        "formButtonPrimary": "Continue",
+        "formButtonReset": "Cancel",
+        "infoText__ableToScan": "Set up a new sign-in method in your authenticator app and scan the following QR code to link it to your account.",
+        "infoText__unableToScan": "Set up a new sign-in method in your authenticator and enter the Key provided below.",
+        "inputLabel__unableToScan1": "Make sure Time-based or One-time passwords is enabled, then finish linking your account."
+      },
+      "success": {
+        "finishButton": "Continue",
+        "message1": "Two-step verification is now enabled. When signing in, you will need to enter a verification code from this authenticator as an additional step.",
+        "message2": "Save these backup codes and store them somewhere safe. If you lose access to your authentication device, you can use backup codes to sign in.",
+        "title": "Authenticator application verification enabled"
+      },
+      "title": "Add authenticator application",
+      "verifyTotp": {
+        "formButtonPrimary": "Continue",
+        "formButtonReset": "Cancel",
+        "formTitle": "Verification code",
+        "subtitle": "Enter verification code generated by your authenticator",
+        "title": "Add authenticator application"
+      }
+    }
+  },
+  "unstable__errors": {
+    "action_blocked": "This action couldn't be completed. Please try again later or contact support if this persists.",
+    "already_a_member_in_organization": "Vous êtes déjà membre de cette organisation.",
+    "api_key_name_already_exists": "API Key name already exists.",
+    "api_key_usage_exceeded": "You have reached your usage limit. You can remove the limit by upgrading to a paid plan.",
+    "avatar_file_size_exceeded": "La taille du fichier dépasse la limite maximale de 10 Mo. Veuillez choisir un fichier plus petit.",
+    "avatar_file_type_invalid": "Type de fichier non pris en charge. Veuillez télécharger une image JPG, PNG, GIF ou WEBP.",
+    "captcha_invalid": "Inscription échouée en raison de validations de sécurité incorrectes. Veuillez rafraîchir la page pour réessayer ou contacter le support pour obtenir de l'aide.",
+    "captcha_unavailable": "Inscription échouée en raison d'une validation de captcha non réussie. Veuillez actualiser la page pour réessayer ou contacter le support pour obtenir de l'aide.",
+    "form_code_incorrect": "Code incorrect",
+    "form_email_address_blocked": "Les services de messagerie temporaire ne sont pas pris en charge. Veuillez utiliser votre adresse e-mail habituelle pour créer un compte.",
+    "form_identifier_exists__email_address": "Cette adresse e-mail existe déjà.",
+    "form_identifier_exists__phone_number": "Ce numéro de téléphone existe déjà.",
+    "form_identifier_exists__username": "Ce nom d'utilisateur existe déjà.",
+    "form_identifier_not_found": "Nous n'avons pas trouvé de compte avec ces détails.",
+    "form_new_password_matches_current": "New password cannot be the same as the current password.",
+    "form_param_format_invalid": "Le format est invalide",
+    "form_param_format_invalid__email_address": "L'adresse e-mail doit être une adresse e-mail valide.",
+    "form_param_format_invalid__phone_number": "Le numéro de téléphone doit être au format international.",
+    "form_param_max_length_exceeded__first_name": "Le prénom ne doit pas dépasser 256 caractères.",
+    "form_param_max_length_exceeded__last_name": "Le nom ne doit pas dépasser 256 caractères.",
+    "form_param_max_length_exceeded__name": "Le nom ne doit pas dépasser 256 caractères.",
+    "form_param_nil": "Ce champ est requis.",
+    "form_param_value_invalid": "La valeur fournie est invalide.",
+    "form_password_incorrect": "Mot de passe incorrect",
+    "form_password_length_too_short": "Votre mot de passe est trop court.",
+    "form_password_matches_identifier": "Password cannot match your email address, phone number or username. For account safety, please use a different password.",
+    "form_password_not_strong_enough": "Votre mot de passe n'est pas assez fort.",
+    "form_password_or_identifier_incorrect": "Le mot de passe ou l'adresse e-mail est incorrect. Réessayez ou utilisez une autre méthode.",
+    "form_password_pwned": "Ce mot de passe a été compromis et ne peut pas être utilisé. Veuillez essayer un autre mot de passe à la place.",
+    "form_password_pwned__sign_in": "Mot de passe compromis. Veuillez le réinitialiser.",
+    "form_password_size_in_bytes_exceeded": "Votre mot de passe a dépassé le nombre maximum d'octets autorisés. Veuillez le raccourcir ou supprimer certains caractères spéciaux.",
+    "form_password_untrusted__sign_in": "Your password may be compromised. To protect your account, please continue with an alternative sign-in method. You will be required to reset your password after signing in.",
+    "form_password_validation_failed": "Mot de passe incorrect",
+    "form_username_invalid_character": "L'identifiant contient des caractères invalides.",
+    "form_username_invalid_length": "Le nombre de caractères de l'identifiant est invalide.",
+    "form_username_needs_non_number_char": "Votre nom d'utilisateur doit contenir au moins un caractère non numérique.",
+    "identification_deletion_failed": "Vous ne pouvez pas supprimer votre dernière identification.",
+    "insufficient_seats_change_plan": "Your organization does not have enough seats to invite the desired number of members. Please change to a plan that supports the number of members you are attempting to invite.",
+    "insufficient_seats_contact_support": "Your organization does not have enough seats to invite the desired number of members. Please contact support.",
+    "not_allowed_access": "L'adresse e-mail ou le numéro de téléphone n'est pas autorisée à s'inscrire. Cela peut être dû à l'utilisation de '+', '=', '#' ou '.' dans votre adresse e-mail, l'utilisation d'un domaine connecté à un service de messagerie temporaire ou l'exclusion explicite. Si vous pensez que c'est une erreur, veuillez contacter le support.",
+    "oauth_access_denied": "You did not grant access to your account.",
+    "organization_domain_blocked": "Ce domaine d'organisation est bloqué.",
+    "organization_domain_common": "Ce domaine est trop courant pour une organisation.",
+    "organization_membership_quota_exceeded": "Le quota de membres de l'organisation a été dépassé.",
+    "organization_minimum_permissions_needed": "Permissions minimales nécessaires pour accéder à cette organisation.",
+    "organization_not_found_or_unauthorized": "Vous n’êtes plus membre de cette organisation. Veuillez en choisir ou en créer une autre.",
+    "organization_not_found_or_unauthorized_with_create_organization_disabled": "Vous n’êtes plus membre de cette organisation. Veuillez en choisir une autre.",
+    "passkey_already_exists": "Cette clé de sécurité existe déjà.",
+    "passkey_not_supported": "Les clés de sécurité ne sont pas prises en charge sur cet appareil.",
+    "passkey_pa_not_supported": "Les clés de sécurité ne sont pas prises en charge dans cet environnement.",
+    "passkey_registration_cancelled": "Enregistrement de la clé de sécurité annulé.",
+    "passkey_retrieval_cancelled": "Récupération de la clé de sécurité annulée.",
+    "passwordComplexity": {
+      "maximumLength": "moins de {{length}} caractères",
+      "minimumLength": "au moins {{length}} caractères",
+      "requireLowercase": "une lettre minuscule",
+      "requireNumbers": "un chiffre",
+      "requireSpecialCharacter": "un caractère spécial",
+      "requireUppercase": "une lettre majuscule",
+      "sentencePrefix": "Votre mot de passe doit contenir"
+    },
+    "phone_number_exists": "Ce numéro de téléphone est déjà utilisé. Veuillez essayer un autre.",
+    "protect_check_execution_failed": "Verification didn't complete. Please try again.",
+    "protect_check_invalid_script": "Couldn't load verification. Please contact support if this persists.",
+    "protect_check_invalid_sdk_url": "Verification couldn't start. Please contact support.",
+    "protect_check_required": "This sign-in needs an extra verification step that can't be shown here. Please try again or use a different sign-in method.",
+    "protect_check_script_load_failed": "Couldn't load verification. This may be caused by a network issue or a Content Security Policy that blocks the verification script. Please try again or contact support.",
+    "protect_check_timed_out": "Verification didn't complete in time. Please try again.",
+    "protect_check_unsupported_environment": "Verification isn't supported in this environment. Please continue in a standard browser or contact support.",
+    "session_exists": "Vous êtes déjà connecté.",
+    "sso_bypass_domain_not_served": "This member could not be added because their email address is not served by a connection.",
+    "ticket_expired_code": "This link has expired. Please start again or request a new link.",
+    "ticket_invalid_code": "This link is no longer valid or has already been used. Please start again or request a new link.",
+    "too_many_unverified_identifications": "Too many verifications are pending on this account. Remove an unverified email address, phone number, or wallet you no longer need, or wait a few minutes for an incomplete passkey setup to expire, then try again.",
+    "web3_missing_identifier": "Aucune extension de portefeuille Web3 trouvée. Veuillez en installer une pour continuer.",
+    "web3_signature_request_rejected": "Vous avez refusé la demande de signature. Veuillez réessayer pour continuer.",
+    "web3_solana_signature_generation_failed": "Une erreur s'est produite lors de la génération de la signature. Veuillez réessayer pour continuer.",
+    "zxcvbn": {
+      "couldBeStronger": "Votre mot de passe fonctionne mais pourrait être plus sûr. Essayez d'ajouter des caractères.",
+      "goodPassword": "Bien joué. C'est un excellent mot de passe.",
+      "notEnough": "Votre mot de passe n'est pas assez fort.",
+      "suggestions": {
+        "allUppercase": "Mettez quelques lettres en majuscules, mais pas toutes.",
+        "anotherWord": "Ajoutez des mots moins courants.",
+        "associatedYears": "Évitez les années qui vous sont associées. (ex: date de naissance)",
+        "capitalization": "Capitalisez mais pas seulement la première lettre.",
+        "dates": "Évitez les dates et les années qui vous sont associées. (ex: date ou année de naissance)",
+        "l33t": "Évitez les substitutions de lettres prévisibles comme '@' pour 'a'.",
+        "longerKeyboardPattern": "Utilisez des motifs de clavier plus longs et changez de sens de frappe plusieurs fois.",
+        "noNeed": "Vous pouvez créer des mots de passe forts sans utiliser de symboles, de chiffres ou de lettres majuscules.",
+        "pwned": "Si vous utilisez ce mot de passe ailleurs, vous devriez le modifier.",
+        "recentYears": "Évitez les dernières années.",
+        "repeated": "Évitez les mots et les caractères répétés.",
+        "reverseWords": "Évitez les orthographes inversées des mots courants",
+        "sequences": "Évitez les séquences de caractères courantes.",
+        "useWords": "Utilisez plusieurs mots, mais évitez les phrases courantes."
+      },
+      "warnings": {
+        "common": "Ce mot de passe est couramment utilisé.",
+        "commonNames": "Les noms communs et les noms de famille sont faciles à deviner.",
+        "dates": "Les dates sont faciles à deviner.",
+        "extendedRepeat": "Les caractères répétés comme 'abcabcabc' sont faciles à deviner.",
+        "keyPattern": "Des motifs de clavier courts sont faciles à deviner.",
+        "namesByThemselves": "Des noms ou des prénoms simples sont faciles à deviner.",
+        "pwned": "Votre mot de passe a été divulgué suite à une violation de données sur Internet.",
+        "recentYears": "Les années récentes sont faciles à deviner.",
+        "sequences": "Des séquences de caractères communs comme 'abc' sont faciles à deviner.",
+        "similarToCommon": "Ce mot de passe est similaire à un mot de passe couramment utilisé.",
+        "simpleRepeat": "Les caractères répétés comme 'aaa' sont faciles à deviner.",
+        "straightRow": "Les lignes droites de touches de votre clavier sont faciles à deviner.",
+        "topHundred": "Ce mot de passe est fréquemment utilisé.",
+        "topTen": "Ce mot de passe est très utilisé.",
+        "userInputs": "Le mot de passe ne doit pas comporter de données personnelles ou liées au site.",
+        "wordByItself": "Les mots simples sont faciles à deviner."
+      }
+    }
+  },
+  "userButton": {
+    "action__addAccount": "Ajouter un compte",
+    "action__closeUserMenu": "Fermer le menu utilisateur",
+    "action__manageAccount": "Gérer mon compte",
+    "action__openUserMenu": "Ouvrir le menu utilisateur",
+    "action__signOut": "Déconnexion",
+    "action__signOutAll": "Se déconnecter de tous les comptes",
+    "label__accountActions": "Actions du compte",
+    "label__activeSessions": "Sessions actives",
+    "label__userButtonPopover": "Panneau du compte"
+  },
+  "userProfile": {
+    "apiKeysPage": {
+      "title": "Clés API"
+    },
+    "backupCodePage": {
+      "actionLabel__copied": "Copié !",
+      "actionLabel__copy": "Copier tous les codes",
+      "actionLabel__download": "Télécharger en .txt",
+      "actionLabel__print": "Imprimer",
+      "infoText1": "Les codes de récupération seront activés pour ce compte.",
+      "infoText2": "Gardez les codes de récupération secrets et stockez-les en toute sécurité. Vous pouvez régénérer les codes de récupération si vous pensez qu'ils ont été compromis.",
+      "subtitle__codelist": "Conservez-les en toute sécurité et gardez-les secrets.",
+      "successMessage": "Les codes de récupération sont maintenant activés. Vous pouvez utiliser l'un d'entre eux pour vous connecter à votre compte, si vous perdez l'accès à votre dispositif d'authentification. Chaque code ne peut être utilisé qu'une seule fois.",
+      "successSubtitle": "Vous pouvez utiliser l'un d'entre eux pour vous connecter à votre compte, si vous perdez l'accès à votre dispositif d'authentification.",
+      "title": "Ajouter la vérification du code de récupération",
+      "title__codelist": "Codes de récupération"
+    },
+    "billingPage": {
+      "accountCreditsSection": {
+        "title": "Account credits",
+        "viewHistory": "View credit history"
+      },
+      "creditHistoryPage": {
+        "tableHeader__amount": "Amount",
+        "tableHeader__date": "Date",
+        "title": "Account credit history"
+      },
+      "paymentHistorySection": {
+        "empty": "Aucun historique de paiement",
+        "notFound": "Tentative de paiement introuvable",
+        "tableHeader__amount": "Montant",
+        "tableHeader__date": "Date",
+        "tableHeader__status": "Statut"
+      },
+      "paymentMethodsSection": {
+        "actionLabel__default": "Rendre par défaut",
+        "actionLabel__remove": "Supprimer",
+        "add": "Ajouter une nouvelle méthode de paiement",
+        "addSubtitle": "Ajoutez une nouvelle méthode de paiement à votre compte.",
+        "cancelButton": "Annuler",
+        "formButtonPrimary__add": "Ajouter une méthode de paiement",
+        "formButtonPrimary__pay": "Payer {{amount}}",
+        "payWithTestCardButton": "Payer avec une carte de test",
+        "removeMethod": {
+          "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+          "messageLine2": "Vous ne pourrez plus utiliser cette méthode de paiement et tous les abonnements récurrents qui en dépendent ne fonctionneront plus.",
+          "successMessage": "{{paymentMethod}} a été supprimé de votre compte.",
+          "title": "Supprimer une méthode de paiement"
+        },
+        "title": "Méthodes de paiement"
+      },
+      "start": {
+        "headerTitle__payments": "Paiements",
+        "headerTitle__plans": "Plans",
+        "headerTitle__statements": "Relevés",
+        "headerTitle__subscriptions": "Abonnement"
+      },
+      "statementsSection": {
+        "empty": "Aucun relevé à afficher",
+        "itemCaption__paidForPlan": "Payé pour le plan {{plan}} {{period}}",
+        "itemCaption__payerCredit": "Credit from account balance",
+        "itemCaption__proratedCredit": "Crédit au prorata pour l’utilisation partielle de l’abonnement précédent",
+        "itemCaption__subscribedAndPaidForPlan": "Souscrit et payé pour le plan {{plan}} {{period}}",
+        "notFound": "Relevé introuvable",
+        "tableHeader__amount": "Montant",
+        "tableHeader__date": "Date",
+        "title": "Relevés",
+        "totalPaid": "Total payé"
+      },
+      "subscriptionsListSection": {
+        "actionLabel__manageSubscription": "Gérer",
+        "actionLabel__newSubscription": "S'abonner à un plan",
+        "actionLabel__switchPlan": "Changer de plan",
+        "overview": "Overview",
+        "tableHeader__edit": "Modifier",
+        "tableHeader__plan": "Plan",
+        "tableHeader__startDate": "Date de début",
+        "title": "Abonnement"
+      },
+      "subscriptionsSection": {
+        "actionLabel__default": "Gérer"
+      },
+      "switchPlansSection": {
+        "title": "Changer de plan"
+      },
+      "title": "Facturation"
+    },
+    "connectedAccountPage": {
+      "formHint": "Sélectionnez un fournisseur pour connecter votre compte.",
+      "formHint__noAccounts": "Aucun fournisseur de compte externe n'est disponible.",
+      "removeResource": {
+        "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+        "messageLine2": "Vous ne pourrez plus utiliser ce compte connecté et toutes les fonctionnalités dépendantes ne fonctionneront plus.",
+        "successMessage": "{{connectedAccount}} a été supprimé de votre compte.",
+        "title": "Supprimer le compte connecté"
+      },
+      "socialButtonsBlockButton": "Connecter un compte {{provider|titleize}}",
+      "successMessage": "Le fournisseur a été ajouté à votre compte",
+      "title": "Ajouter un compte connecté"
+    },
+    "deletePage": {
+      "actionDescription": "Saisissez \"Supprimer le compte\" ci-dessous pour continuer.",
+      "confirm": "Supprimer le compte",
+      "messageLine1": "Êtes-vous sûr de vouloir supprimer votre compte ? Certaines données associées peuvent être conservées. Pour demander la suppression complète des données, veuillez contacter l'assistance.",
+      "messageLine2": "Cette action est définitive et irréversible.",
+      "title": "Supprimer le compte"
+    },
+    "emailAddressPage": {
+      "emailCode": {
+        "formHint": "Un e-mail contenant un code de vérification sera envoyé à cette adresse e-mail.",
+        "formSubtitle": "Saisissez le code de vérification envoyé à {{identifier}}",
+        "formTitle": "Le code de vérification",
+        "resendButton": "Renvoyer le lien",
+        "successMessage": "L'e-mail {{identifier}} a été vérifié et ajouté à votre compte."
+      },
+      "emailLink": {
+        "formHint": "Un e-mail contenant un lien de vérification sera envoyé à cette adresse e-mail.",
+        "formSubtitle": "Cliquez sur le lien de vérification dans l'e-mail envoyé à {{identifier}}",
+        "formTitle": "lien de vérification",
+        "resendButton": "Renvoyer le lien",
+        "successMessage": "L'e-mail {{identifier}} a été vérifié et ajouté à votre compte."
+      },
+      "enterpriseSSOLink": {
+        "formButton": "Cliquez pour vous connecter",
+        "formSubtitle": "Terminez la connexion avec {{identifier}}"
+      },
+      "formHint": "Vous devrez vérifier cette adresse e-mail avant qu’elle puisse être ajoutée à votre compte.",
+      "removeResource": {
+        "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+        "messageLine2": "Vous ne pourrez plus vous connecter avec cette adresse e-mail.",
+        "successMessage": "{{emailAddress}} a été supprimé de votre compte.",
+        "title": "Supprimer l'adresse e-mail"
+      },
+      "title": "Ajouter une adresse e-mail",
+      "verifyTitle": "Vérifier un e-mail"
+    },
+    "formButtonPrimary__add": "Ajouter",
+    "formButtonPrimary__continue": "Continuer",
+    "formButtonPrimary__finish": "Terminer",
+    "formButtonPrimary__remove": "Supprimer",
+    "formButtonPrimary__save": "Sauvegarder",
+    "formButtonReset": "Annuler",
+    "mfaPage": {
+      "formHint": "Sélectionnez une méthode à ajouter.",
+      "title": "Ajouter la vérification en deux étapes"
+    },
+    "mfaPhoneCodePage": {
+      "backButton": "Utiliser un numéro existant",
+      "primaryButton__addPhoneNumber": "Ajouter un numéro de téléphone",
+      "removeResource": {
+        "messageLine1": "{{identifier}} ne recevra plus de codes de validation lors de la connexion.",
+        "messageLine2": "Votre compte sera moins sécurisé. Souhaitez-vous continuer ?",
+        "successMessage": "La vérification en deux étapes du code SMS a été supprimée pour {{mfaPhoneCode}}",
+        "title": "Supprimer la vérification en deux étapes"
+      },
+      "subtitle__availablePhoneNumbers": "Sélectionnez un numéro de téléphone pour vous inscrire à la vérification en deux étapes du code SMS.",
+      "subtitle__unavailablePhoneNumbers": "Il n'y a pas de numéros de téléphone disponibles pour s'inscrire à la vérification en deux étapes du code SMS.",
+      "successMessage1": "Lors de la connexion, vous devrez entrer un code de vérification envoyé à ce numéro de téléphone comme étape supplémentaire.",
+      "successMessage2": "Enregistrez ces codes de récupérations et conservez-les en lieu sûr. Si vous perdez l'accès à votre appareil d'authentification, vous pourrez utiliser les codes de récupérations pour vous connecter.",
+      "successTitle": "Vérification par SMS activée",
+      "title": "Ajouter la vérification du code SMS"
+    },
+    "mfaTOTPPage": {
+      "authenticatorApp": {
+        "buttonAbleToScan__nonPrimary": "Scannez le QR code à la place",
+        "buttonUnableToScan__nonPrimary": "Vous ne pouvez pas scanner le QR code ?",
+        "infoText__ableToScan": "Configurez une nouvelle méthode de connexion dans votre application d'authentification et scannez le QR code suivant pour le lier à votre compte.",
+        "infoText__unableToScan": "Configurez une nouvelle méthode de connexion dans votre authentificateur et entrez la clé fournie ci-dessous.",
+        "inputLabel__unableToScan1": "Assurez-vous que les mots de passe basés sur le temps ou à usage unique sont activés, puis terminez la liaison de votre compte.",
+        "inputLabel__unableToScan2": "Alternativement, si votre authentificateur prend en charge les URI TOTP, vous pouvez également copier l'URI complet."
+      },
+      "removeResource": {
+        "messageLine1": "Les codes de vérification de cet authentificateur ne seront plus requis lors de la connexion.",
+        "messageLine2": "Votre compte sera moins sécurisé. Souhaitez-vous continuer ?",
+        "successMessage": "La vérification en deux étapes via l'application d'authentification a été supprimée.",
+        "title": "Supprimer la vérification en deux étapes"
+      },
+      "successMessage": "La vérification en deux étapes est maintenant activée. Lors de la connexion, vous devrez saisir un code de vérification de cet authentificateur comme étape supplémentaire.",
+      "title": "Ajouter une application d'authentification",
+      "verifySubtitle": "Entrez le code de vérification généré par votre application d'authentification",
+      "verifyTitle": "Le code de vérification"
+    },
+    "mobileButton__menu": "Menu",
+    "navbar": {
+      "account": "Compte",
+      "apiKeys": "Clés API",
+      "billing": "Facturation",
+      "description": "Gérer votre compte.",
+      "security": "Sécurité",
+      "title": "Profil"
+    },
+    "passkeyScreen": {
+      "removeResource": {
+        "messageLine1": "Êtes-vous sûr de vouloir supprimer cette clé de sécurité ?",
+        "title": "Supprimer la clé de sécurité"
+      },
+      "subtitle__rename": "Renommez votre clé de sécurité pour une identification facile.",
+      "title__rename": "Renommer la clé de sécurité"
+    },
+    "passwordPage": {
+      "checkboxInfoText__signOutOfOtherSessions": "Il est recommandé de se déconnecter de tous les autres appareils qui pourraient avoir utilisé votre ancien mot de passe.",
+      "readonly": "Votre mot de passe ne peut pas être modifié pour l'instant car vous ne pouvez vous connecter qu'à l'aide de la connexion entreprise.",
+      "successMessage__set": "Votre mot de passe a été mis à jour.",
+      "successMessage__signOutOfOtherSessions": "Tous les autres appareils ont été déconnectés.",
+      "successMessage__update": "Votre mot de passe a été mis à jour.",
+      "title__set": "Mettre à jour le mot de passe",
+      "title__update": "Changer le mot de passe"
+    },
+    "phoneNumberPage": {
+      "infoText": "Un SMS contenant un lien de vérification sera envoyé à ce numéro de téléphone.",
+      "removeResource": {
+        "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+        "messageLine2": "Vous ne pourrez plus vous connecter avec ce numéro de téléphone.",
+        "successMessage": "{{phoneNumber}} a été supprimé de votre compte.",
+        "title": "Supprimer le numéro de téléphone"
+      },
+      "successMessage": "{{identifier}} a été vérifié et ajouté à votre compte.",
+      "title": "Ajouter un numéro de téléphone",
+      "verifySubtitle": "Saisissez le code de vérification envoyé à {{identifier}}",
+      "verifyTitle": "Vérification du numéro de téléphone"
+    },
+    "plansPage": {
+      "title": "Plans"
+    },
+    "profilePage": {
+      "fileDropAreaHint": "Téléchargez une image JPG, PNG, GIF ou WEBP inférieure à 10 Mo",
+      "imageFormDestructiveActionSubtitle": "Supprimer l'image",
+      "imageFormSubtitle": "Télécharger une image",
+      "imageFormTitle": "Photo de profil",
+      "readonly": "Les informations de votre profil ont été fournies par la connexion d'entreprise et ne peuvent pas être modifiées.",
+      "successMessage": "Votre profil a été mis à jour.",
+      "title": "Mettre à jour le profil"
+    },
+    "start": {
+      "activeDevicesSection": {
+        "destructiveAction": "Se déconnecter de l'appareil",
+        "title": "Appareils actifs"
+      },
+      "connectedAccountsSection": {
+        "actionLabel__connectionFailed": "Réessayer",
+        "actionLabel__reauthorize": "Autoriser maintenant",
+        "destructiveActionTitle": "Retirer",
+        "primaryButton": "Connecter un compte",
+        "subtitle__disconnected": "Compte déconnecté. Connectez-vous à nouveau pour accéder aux fonctionnalités.",
+        "subtitle__reauthorize": "Les autorisations requises ont été mises à jour, ce qui peut entraîner des fonctionnalités limitées. Veuillez ré-autoriser cette application pour éviter tout problème.",
+        "title": "Comptes connectés"
+      },
+      "dangerSection": {
+        "deleteAccountButton": "Supprimer le compte",
+        "title": "Danger"
+      },
+      "emailAddressesSection": {
+        "destructiveAction": "Supprimer l'adresse e-mail",
+        "detailsAction__nonPrimary": "Définir comme principale",
+        "detailsAction__primary": "Compléter la vérification",
+        "detailsAction__unverified": "Compléter la vérification",
+        "primaryButton": "Ajouter une adresse e-mail",
+        "title": "Adresses e-mail"
+      },
+      "enterpriseAccountsSection": {
+        "primaryButton": "Connecter un compte",
+        "title": "Comptes entreprises"
+      },
+      "headerTitle__account": "Compte",
+      "headerTitle__security": "Sécurité",
+      "mfaSection": {
+        "backupCodes": {
+          "actionLabel__regenerate": "Régénérer les codes",
+          "headerTitle": "Codes de récupération",
+          "subtitle__regenerate": "Obtenez de nouveaux codes de récupération sécurisés. Les codes de récupération antérieurs seront supprimés et ne pourront pas être utilisés.",
+          "title__regenerate": "Régénérer les codes de récupération"
+        },
+        "phoneCode": {
+          "actionLabel__setDefault": "Définir par défaut",
+          "destructiveActionLabel": "Supprimer le numéro de téléphone"
+        },
+        "primaryButton": "Ajouter la vérification en deux étapes",
+        "title": "Vérification en deux étapes",
+        "totp": {
+          "destructiveActionTitle": "Désactiver",
+          "headerTitle": "Application d'authentification"
+        }
+      },
+      "passkeysSection": {
+        "menuAction__destructive": "Supprimer",
+        "menuAction__rename": "Renommer",
+        "primaryButton": "Ajouter une clé de sécurité",
+        "title": "Clés de sécurité"
+      },
+      "passwordSection": {
+        "primaryButton__setPassword": "Définir le mot de passe",
+        "primaryButton__updatePassword": "Changer le mot de passe",
+        "title": "Mot de passe"
+      },
+      "phoneNumbersSection": {
+        "destructiveAction": "Supprimer le numéro de téléphone",
+        "detailsAction__nonPrimary": "Définir comme principale",
+        "detailsAction__primary": "Compléter la vérification",
+        "detailsAction__unverified": "Compléter la vérification",
+        "primaryButton": "Ajouter un numéro de téléphone",
+        "title": "Numéros de téléphone"
+      },
+      "profileSection": {
+        "primaryButton": "Mettre à jour le profil",
+        "title": "Profil"
+      },
+      "usernameSection": {
+        "primaryButton__setUsername": "Définir le nom d'utilisateur",
+        "primaryButton__updateUsername": "Changer le nom d'utilisateur",
+        "title": "Nom d'utilisateur"
+      },
+      "web3WalletsSection": {
+        "destructiveAction": "Supprimer le portefeuille",
+        "detailsAction__nonPrimary": "Définir comme principal",
+        "primaryButton": "Portefeuilles Web3",
+        "title": "Portefeuilles Web3",
+        "web3SelectSolanaWalletScreen": {
+          "subtitle": "Sélectionnez un portefeuille Solana à connecter à votre compte.",
+          "title": "Ajouter un portefeuille Solana"
+        }
+      }
+    },
+    "usernamePage": {
+      "successMessage": "Votre nom d'utilisateur a été mis à jour.",
+      "title__set": "Mettre à jour le nom d'utilisateur",
+      "title__update": "Mettre à jour le nom d'utilisateur"
+    },
+    "web3WalletPage": {
+      "removeResource": {
+        "messageLine1": "{{identifier}} sera supprimé de ce compte.",
+        "messageLine2": "Vous ne pourrez plus vous connecter avec ce portefeuille web3.",
+        "successMessage": "{{web3Wallet}} a été supprimé de votre compte.",
+        "title": "Supprimer le portefeuille Web3"
+      },
+      "subtitle__availableWallets": "Sélectionnez un portefeuille Web3 pour vous connecter à votre compte.",
+      "subtitle__unavailableWallets": "Il n'y a pas de portefeuilles Web3 disponibles.",
+      "successMessage": "Le portefeuille a été ajouté à votre compte.",
+      "title": "Ajouter un portefeuille Web3",
+      "web3WalletButtonsBlockButton": "Utiliser un portefeuille Web3"
+    }
+  },
+  "waitlist": {
+    "start": {
+      "actionLink": "Rejoindre la liste d'attente",
+      "actionText": "Intéressé ? Rejoignez-nous !",
+      "formButton": "S'inscrire",
+      "subtitle": "Soyez parmi les premiers à découvrir notre nouveau service.",
+      "title": "Rejoindre la liste d'attente"
+    },
+    "success": {
+      "message": "Merci ! Vous avez été ajouté à la liste d'attente.",
+      "subtitle": "Nous vous contacterons bientôt avec plus de détails.",
+      "title": "Inscription réussie"
+    }
+  },
+  "web3SolanaWalletButtons": {
+    "connect": "Se connecter avec {{walletName}}",
+    "continue": "Continuer avec {{walletName}}",
+    "noneAvailable": "Aucun portefeuille Solana Web3 détecté. Veuillez installer une {{ solanaWalletsLink || link(\"wallet extension\") }} compatible Web3."
+  }
+}

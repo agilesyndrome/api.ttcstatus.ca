@@ -1,25 +1,28 @@
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 export function PageFooter() {
+  useLanguage();
   return (
     <footer>
-      Live positions refresh while this tab is visible.
+      {t('footer.livePositionsRefreshWhileThisTabIsVisible')}
       <br />
-      Map is schematic. Replacement-bus paths are excluded. No live arrivals.
+      {t('footer.mapIsSchematicReplacementBusPathsAreExcludedNoLive')}
       <details>
-        <summary>Map sources</summary>
+        <summary>{t('footer.mapSources')}</summary>
         <p>
           <a href="https://open.toronto.ca/" target="_blank" rel="noopener noreferrer">
-            TTC service &amp; Toronto geography
+            {t('footer.ttcServiceTorontoGeography')}
           </a>{' '}
-          · Open Government Licence – Toronto.
+          {t('footer.openGovernmentLicenceToronto')}
           <br />
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
             rel="noopener noreferrer"
           >
-            © OpenStreetMap contributors
+            {t('footer.openstreetmapContributors')}
           </a>{' '}
-          · ODbL.
+          {t('footer.odbl')}
         </p>
       </details>
     </footer>

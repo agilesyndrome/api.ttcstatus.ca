@@ -1,3 +1,5 @@
+import { t, getLocale } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { formatDistance, nearbyCars } from '../../commute';
@@ -49,19 +51,23 @@ export function StopDetails({
   onSelectVehicle,
   onClose,
 }: Props) {
+  useLanguage();
   if (car)
     return (
       <section id="details" aria-live="polite">
         <p className="eyebrow">
-          {car.vehicle.mode === 'subway' ? 'Subway / LRT train' : 'Flexity streetcar'}
+          {car.vehicle.mode === 'subway'
+            ? t('viewer.subwayLrtTrain')
+            : t('viewer.flexityStreetcar')}
         </p>
         <div className="details-heading">
           <h1>
-            {car.vehicle.mode === 'subway' ? 'Train' : 'Car'} {car.vehicle.label}
+            {car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')}{' '}
+            {car.vehicle.label}
           </h1>
           <button
             className="close-details"
-            aria-label="Close streetcar details"
+            aria-label={t('viewer.closeStreetcarDetails')}
             onClick={onClose}
           >
             ×
@@ -71,39 +77,43 @@ export function StopDetails({
           {car.vehicle.routeId &&
             `${data.routes.find((route) => route.id === car.vehicle.routeId)?.number ?? car.vehicle.routeId} · `}
           {data.routes.find((route) => route.id === car.vehicle.routeId)?.name ??
-            'Route not supplied'}
-          {car.stale && ' · Stale position'}
+            t('header.routeNotSupplied')}
+          {car.stale && t('viewer.stalePosition')}
         </p>
         <p>
           {car.vehicle.positionKind === 'next-station'
-            ? `Next station: ${car.vehicle.nextStopName}. Marker shows the predicted station, not a GPS position.`
+            ? t('stopDetails.nextStationValueMarkerShowsThePredictedStationNotA', {
+                value1: car.vehicle.nextStopName ?? t('viewer.notSupplied'),
+              })
             : car.match
-              ? 'Position matched to mapped track.'
-              : 'Off mapped track; showing GPS location.'}
+              ? t('stopDetails.positionMatchedToMappedTrack')
+              : t('stopDetails.offMappedTrackShowingGpsLocation')}
         </p>
         <dl className="stop-facts">
           {car.vehicle.arrivalAt && (
             <>
-              <dt>Predicted arrival</dt>
+              <dt>{t('stopDetails.predictedArrival')}</dt>
               <dd>
-                {new Date(car.vehicle.arrivalAt).toLocaleTimeString('en-CA', {
+                {new Date(car.vehicle.arrivalAt).toLocaleTimeString(getLocale(), {
                   timeZone: 'America/Toronto',
                 })}
               </dd>
             </>
           )}
-          <dt>Position reported</dt>
+          <dt>{t('viewer.positionReported')}</dt>
           <dd>
             {car.vehicle.observedAt
-              ? new Date(car.vehicle.observedAt).toLocaleString('en-CA', {
+              ? new Date(car.vehicle.observedAt).toLocaleString(getLocale(), {
                   timeZone: 'America/Toronto',
                 })
-              : 'Time not supplied'}
+              : t('viewer.timeNotSupplied')}
           </dd>
           {car.vehicle.speedMetresPerSecond !== undefined && (
             <>
-              <dt>Reported speed</dt>
-              <dd>{Math.round(car.vehicle.speedMetresPerSecond * 3.6)} km/h</dd>
+              <dt>{t('viewer.reportedSpeed')}</dt>
+              <dd>
+                {Math.round(car.vehicle.speedMetresPerSecond * 3.6)} {t('snake.kmH')}
+              </dd>
             </>
           )}
         </dl>
@@ -115,16 +125,26 @@ export function StopDetails({
               onClick={onFollow}
             >
               {following
-                ? `◎ Following this ${car.vehicle.mode === 'subway' ? 'train' : 'car'}`
-                : `◎ Follow this ${car.vehicle.mode === 'subway' ? 'train' : 'car'}`}
+                ? t('stopDetails.followingThisValue', {
+                    value1:
+                      car.vehicle.mode === 'subway'
+                        ? t('stopDetails.train')
+                        : t('commute.car'),
+                  })
+                : t('stopDetails.followThisValue', {
+                    value1:
+                      car.vehicle.mode === 'subway'
+                        ? t('stopDetails.train')
+                        : t('commute.car'),
+                  })}
             </button>
             {following && (
               <p className="microcopy">
                 {car.stale
-                  ? 'Waiting for a fresh position before moving the map.'
+                  ? t('stopDetails.waitingForAFreshPositionBeforeMovingTheMap')
                   : car.vehicle.positionKind === 'next-station'
-                    ? 'Following predicted stations. Pan or zoom to pause.'
-                    : 'Following fresh GPS fixes. Pan or zoom to pause following.'}
+                    ? t('stopDetails.followingPredictedStationsPanOrZoomToPause')
+                    : t('stopDetails.followingFreshGpsFixesPanOrZoomToPauseFollowing')}
               </p>
             )}
           </>
@@ -137,19 +157,18 @@ export function StopDetails({
               onClick={onJournal}
             >
               {journalSaved
-                ? '✓ In your journal'
+                ? t('stopDetails.inYourJournal')
                 : journalFull
-                  ? 'Journal full · 500 cars'
-                  : '✦ Add to journal'}
+                  ? t('stopDetails.journalFull500Cars')
+                  : t('stopDetails.addToJournal')}
             </button>
             {onOpenJournal && (
               <button className="text-button" onClick={onOpenJournal}>
-                Open journal →
+                {t('stopDetails.openJournal')}
               </button>
             )}
             <p className="microcopy">
-              Manually collect this car number. Saved in this browser, without GPS
-              coordinates.
+              {t('stopDetails.manuallyCollectThisCarNumberSavedInThisBrowserWithout')}
             </p>
           </div>
         )}
@@ -158,22 +177,21 @@ export function StopDetails({
   if (!feature)
     return (
       <section id="details">
-        <p className="eyebrow">Explore Toronto</p>
-        <h1>Follow the city’s tracks.</h1>
-        <p>From Long Branch to the Beaches, explore the network one stop at a time.</p>
+        <p className="eyebrow">{t('viewer.exploreToronto')}</p>
+        <h1>{t('viewer.followTheCitySTracks')}</h1>
+        <p>{t('viewer.fromLongBranchToTheBeachesExploreTheNetworkOne')}</p>
         <div className="stats">
           <div>
             <strong>{data.features.length}</strong>
-            <small>stops &amp; terminals</small>
+            <small>{t('viewer.stopsTerminals')}</small>
           </div>
           <div>
             <strong>{data.routes.filter((route) => !route.overnight).length}</strong>
-            <small>daytime routes</small>
+            <small>{t('viewer.daytimeRoutes')}</small>
           </div>
         </div>
         <p className="tip">
-          Select a stop, train or streetcar for details. Use the route legend to highlight
-          a route.
+          {t('stopDetails.selectAStopTrainOrStreetcarForDetailsUseThe')}
         </p>
       </section>
     );
@@ -186,13 +204,15 @@ export function StopDetails({
   return (
     <section id="details" aria-live="polite">
       <p className="eyebrow">
-        {feature.kind === 'terminal' ? 'Station / terminal' : 'Transit stop'}
+        {feature.kind === 'terminal'
+          ? t('viewer.stationTerminal')
+          : t('stopDetails.transitStop')}
       </p>
       <div className="details-heading">
         <h1>{feature.name}</h1>
         <button
           className="close-details"
-          aria-label="Close stop details"
+          aria-label={t('viewer.closeStopDetails')}
           onClick={onClose}
         >
           ×
@@ -206,7 +226,7 @@ export function StopDetails({
                 return route ? `${route.number} ${route.name}` : id;
               })
               .join(' · ')
-          : 'Physical terminal without scheduled streetcar boarding records.'}
+          : t('stopDetails.physicalTerminalWithoutScheduledStreetcarBoardingRecords')}
       </p>
       {onToggleSave && (
         <>
@@ -216,32 +236,32 @@ export function StopDetails({
             disabled={!saved && saveLimit}
             onClick={onToggleSave}
           >
-            {saved ? '★ Saved stop' : '☆ Save stop'}
+            {saved ? t('stopDetails.savedStop') : t('stopDetails.saveStop')}
           </button>
           {!saved && saveLimit && (
             <p className="microcopy">
-              Your 100 saved stops are full. Remove a stop to save another.
+              {t('workspace.your100SavedStopsAreFullRemoveAStopTo')}
             </p>
           )}
         </>
       )}
       <dl className="stop-facts">
-        <dt>Boarding points</dt>
+        <dt>{t('stopDetails.boardingPoints')}</dt>
         <dd>{feature.boardingPoints}</dd>
-        <dt>Accessible boarding</dt>
+        <dt>{t('viewer.accessibleBoarding')}</dt>
         <dd>
           {feature.accessible
-            ? 'Listed at one or more boarding points'
-            : 'Not confirmed in this snapshot'}
+            ? t('viewer.listedAtOneOrMoreBoardingPoints')
+            : t('viewer.notConfirmedInThisSnapshot')}
         </dd>
       </dl>
       {onCompare && feature.boardingPoints > 0 && (
         <div className="comparison-actions">
           <button className="action-button" onClick={() => onCompare('from')}>
-            Compare from here
+            {t('stopDetails.compareFromHere')}
           </button>
           <button className="action-button" onClick={() => onCompare('to')}>
-            Compare to here
+            {t('stopDetails.compareToHere')}
           </button>
         </div>
       )}
@@ -260,22 +280,23 @@ export function StopDetails({
         feature.boardingPoints > 0 &&
         feature.routeIds.some((id) => !rapidRoutes.has(id)) && (
           <div className="stop-cars">
-            <h2>Streetcars nearby</h2>
+            <h2>{t('stopDetails.streetcarsNearby')}</h2>
             <p className="microcopy">
-              Fresh reports on this stop’s routes within 2 km. Straight-line distance;
-              cars may be travelling either way. These are not arrival predictions.
+              {t('stopDetails.freshReportsOnThisStopSRoutesWithin2Km')}
             </p>
             {!liveEnabled ? (
-              <p>Enable live streetcars to see nearby cars.</p>
+              <p>{t('stopDetails.enableLiveStreetcarsToSeeNearbyCars')}</p>
             ) : !feedLoaded ? (
               <p>
                 {feedFailed
-                  ? 'Live positions unavailable.'
-                  : 'Waiting for vehicle positions…'}
+                  ? t('liveFeedStatus.livePositionsUnavailable')
+                  : t('stopDetails.waitingForVehiclePositions')}
               </p>
             ) : (
               <>
-                {feedFailed && <p>Refresh unavailable; showing the last snapshot.</p>}
+                {feedFailed && (
+                  <p>{t('stopDetails.refreshUnavailableShowingTheLastSnapshot')}</p>
+                )}
                 {nearby.length ? (
                   <ul className="compact-list">
                     {nearby.map(({ car, metres }) => (
@@ -285,7 +306,7 @@ export function StopDetails({
                           onClick={() => onSelectVehicle(car)}
                         >
                           <strong>
-                            Car {car.vehicle.label}
+                            {t('viewer.car')} {car.vehicle.label}
                             <span className="distance">{formatDistance(metres)}</span>
                           </strong>
                           <small>
@@ -294,14 +315,14 @@ export function StopDetails({
                                 (route) => route.id === car.vehicle.routeId,
                               )?.number
                             }{' '}
-                            · View on map
+                            {t('stopDetails.viewOnMap')}
                           </small>
                         </button>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p>No fresh cars reported nearby on these routes.</p>
+                  <p>{t('stopDetails.noFreshCarsReportedNearbyOnTheseRoutes')}</p>
                 )}
               </>
             )}
@@ -309,7 +330,7 @@ export function StopDetails({
         )}
       {Object.values(feature.destinations).flat().length > 0 && (
         <details>
-          <summary>Scheduled destinations</summary>
+          <summary>{t('viewer.scheduledDestinations')}</summary>
           <ul>
             {[...new Set(Object.values(feature.destinations).flat())].map((name) => (
               <li key={name}>{name}</li>

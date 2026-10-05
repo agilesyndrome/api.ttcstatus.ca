@@ -1,3 +1,4 @@
+import { english } from '../../../../shared/i18n/messages';
 export interface SavedComparison {
   name: string;
   fromId: string;
@@ -36,10 +37,12 @@ export function saveComparison(
   entry: SavedComparison,
 ): SavedComparison[] {
   if (!validSavedComparisons(current) || !validSavedComparisons([entry]))
-    throw new Error('Choose two different stops and a name of up to 60 characters.');
+    throw new Error(english('saved-comparisons.chooseTwoDifferentStopsAndANameOfUpTo'));
   if (current.some((item) => comparisonKey(item) === comparisonKey(entry)))
     return current;
   if (current.length >= SAVED_COMPARISON_LIMIT)
-    throw new Error('Your 20 saved comparisons are full. Remove one to save another.');
+    throw new Error(
+      english('saved-comparisons.your20SavedComparisonsAreFullRemoveOneToSave'),
+    );
   return [...current, entry];
 }

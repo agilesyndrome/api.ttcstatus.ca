@@ -602,3 +602,8 @@ p {
     padding: 6px;
   }
 }
+
+.map-hint > span[data-i18n] {
+  margin: 0;
+  color: inherit;
+}

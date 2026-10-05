@@ -15,8 +15,9 @@
     "dev:api": "npm run build:ui && npm run build:viewer && wrangler dev -c workers/api/wrangler.jsonc",
     "dev:viewer": "vite",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
-    "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc",
-    "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc",
+    "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc --keep-vars",
+    "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars",
+    "secrets:sync": "op run --env-file=.env.${ENV} -- node scripts/operations/sync-cloudflare-secrets.mjs",
     "db:migrate:local": "wrangler d1 migrations apply ttcstatus --local -c workers/api/wrangler.jsonc",
     "db:migrate:remote": "wrangler d1 migrations apply ttcstatus --remote -c workers/api/wrangler.jsonc",
     "build:ui": "vite build",
@@ -38,7 +39,8 @@
     "check:secrets": "node scripts/checks/check-secrets.mjs",
     "check:boundaries": "node scripts/checks/check-boundaries.mjs",
     "map:import": "node scripts/preview/import-rail-map.mjs",
-    "test:subway": "node scripts/checks/check-subway.mjs"
+    "test:subway": "node scripts/checks/check-subway.mjs",
+    "test:i18n": "node scripts/checks/check-i18n.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",
@@ -59,6 +61,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.22.0",
+    "@clerk/localizations": "^4.21.2",
     "@clerk/react": "^6.17.5",
     "gtfs-realtime-bindings": "^2.2.0",
     "react": "^19.3.0",

@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { PageFooter } from '../../components/PageFooter';
 import { MapFilters } from '../map/MapFilters';
 import { RouteLegend } from '../map/RouteLegend';
@@ -23,6 +25,7 @@ import { AccountRequired } from '../accounts/auth';
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
 export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
+  useLanguage();
   const {
     data,
     filters,
@@ -75,12 +78,16 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
   if (!data) return null;
   const guideRoute = data.routes.find((route) => route.id === selectedRoute);
   return (
-    <aside className="sidebar" aria-label="Stop and route details">
+    <aside className="sidebar" aria-label={t('workspace.stopAndRouteDetails')}>
       <button
         className="mobile-panel-toggle"
         aria-expanded={mobilePanelOpen}
         aria-controls="sidebar-content"
-        aria-label={mobilePanelOpen ? 'Collapse details' : 'Show details and map tools'}
+        aria-label={
+          mobilePanelOpen
+            ? t('workspace.collapseDetails')
+            : t('workspace.showDetailsAndMapTools')
+        }
         onClick={() => setMobilePanelOpen((open) => !open)}
       >
         <span className="panel-handle" aria-hidden="true" />
@@ -88,8 +95,8 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
           <strong>{panelTitle}</strong>
           <small>
             {mobilePanelOpen
-              ? 'Collapse to see more of the map'
-              : 'Tap a streetcar or stop, or open map tools'}
+              ? t('workspace.collapseToSeeMoreOfTheMap')
+              : t('workspace.tapAStreetcarOrStopOrOpenMapTools')}
           </small>
         </span>
         <span className="panel-chevron" aria-hidden="true">
@@ -107,7 +114,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
       <div ref={sidebar} id="sidebar-content" className="sidebar-content">
         <div className="explore-tools">
           <button className="action-button surprise-button" onClick={surprise}>
-            ✦ Surprise me
+            {t('workspace.surpriseMe')}
           </button>
           <ShareMap
             selection={selection}
@@ -116,40 +123,46 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             tools={{ panel, fromId, toId }}
           />
         </div>
-        <div className="explore-layers" aria-label="Explore rail layers">
+        <div className="explore-layers" aria-label={t('workspace.exploreRailLayers')}>
           <button
             className={`layer-toggle ${filters.streetcar ? 'is-on' : ''}`}
             aria-pressed={filters.streetcar}
             onClick={() => setFilters({ ...filters, streetcar: !filters.streetcar })}
           >
-            <span aria-hidden="true" /> Streetcar · {filters.streetcar ? 'On' : 'Off'}
+            <span aria-hidden="true" /> {t('workspace.streetcar')}{' '}
+            {filters.streetcar ? t('workspace.on') : t('workspace.off')}
           </button>
           <button
             className={`layer-toggle ${filters.subway ? 'is-on' : ''}`}
             aria-pressed={filters.subway}
             onClick={() => setFilters({ ...filters, subway: !filters.subway })}
           >
-            <span aria-hidden="true" /> Subway · {filters.subway ? 'On' : 'Off'}
+            <span aria-hidden="true" /> {t('workspace.subway')}{' '}
+            {filters.subway ? t('workspace.on') : t('workspace.off')}
           </button>
         </div>
         {notice && (
           <p role="status" className="tip">
-            {notice}
+            {t(notice)}
           </p>
         )}
         <div
           id="panel-explore"
           role="tabpanel"
-          aria-label="Explore tools"
+          aria-label={t('workspace.exploreTools')}
           hidden={panel !== 'explore'}
         >
           {selection?.kind === 'car' && !car && (
             <p role="status" className="tip">
               {feed.snapshot
-                ? `Car ${selection.id} is not in the latest vehicle feed. It may be out of service.`
+                ? t('workspace.carValueIsNotInTheLatestVehicleFeedIt', {
+                    value1: selection.id,
+                  })
                 : feed.failed
-                  ? 'Live positions unavailable. This streetcar will appear when the feed recovers.'
-                  : 'Waiting for this streetcar’s live position…'}
+                  ? t(
+                      'workspace.livePositionsUnavailableThisStreetcarWillAppearWhenTheFeed',
+                    )
+                  : t('workspace.waitingForThisStreetcarSLivePosition')}
             </p>
           )}
           {guideRoute && (
@@ -175,7 +188,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                   className="text-button back-to-route"
                   onClick={() => selectRoute(guideRoute.id)}
                 >
-                  ← Back to {guideRoute.number} stops
+                  {t('workspace.backToValueStops', { route: guideRoute.number })}
                 </button>
               )}
               <StopDetails
@@ -287,7 +300,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
         <div
           id="panel-fleet"
           role="tabpanel"
-          aria-label="Fleet tools"
+          aria-label={t('workspace.fleetTools')}
           hidden={panel !== 'fleet'}
         >
           <FleetExplorer
@@ -304,7 +317,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
         <div
           id="panel-compare"
           role="tabpanel"
-          aria-label="Compare tools"
+          aria-label={t('workspace.compareTools')}
           hidden={panel !== 'compare'}
         >
           <StopComparison
@@ -342,7 +355,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
         <div
           id="panel-stops"
           role="tabpanel"
-          aria-label="Stop directory"
+          aria-label={t('workspace.stopDirectory')}
           hidden={panel !== 'stops'}
         >
           <StopBrowser
@@ -355,26 +368,26 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
         <div
           id="panel-journal"
           role="tabpanel"
-          aria-label="Streetcar journal"
+          aria-label={t('workspace.streetcarJournal')}
           hidden={panel !== 'journal'}
         >
           <AccountRequired>
             {accountJournal.error && (
               <div className="tip" role="alert">
-                {accountJournal.error}{' '}
+                {t(accountJournal.error)}{' '}
                 <button className="action-button" onClick={accountJournal.reload}>
-                  Reload journal
+                  {t('workspace.reloadJournal')}
                 </button>
               </div>
             )}
             <p className="microcopy" role="status">
               {accountJournal.saving
-                ? 'Saving your journal…'
+                ? t('workspace.savingYourJournal')
                 : accountJournal.error
-                  ? 'Your last change has not been saved.'
+                  ? t('workspace.yourLastChangeHasNotBeenSaved')
                   : accountJournal.ready
-                    ? 'Your journal is saved to your account.'
-                    : 'Loading your journal…'}
+                    ? t('workspace.yourJournalIsSavedToYourAccount')
+                    : t('workspace.loadingYourJournal')}
             </p>
             <fieldset className="journal-fieldset" disabled={!accountJournal.ready}>
               <StreetcarJournal
@@ -391,15 +404,14 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 onFleet={() => setPanel('fleet')}
               />
               <button className="action-button" onClick={importEarlierJournal}>
-                Import earlier browser journal
+                {t('workspace.importEarlierBrowserJournal')}
               </button>
               <p className="microcopy">
-                Only import on your own device. This copies the earlier browser collection
-                into the account you are signed in to.
+                {t('workspace.onlyImportOnYourOwnDeviceThisCopiesTheEarlier')}
               </p>
             </fieldset>
             <a className="account-link" href="/profile">
-              Profile and badge privacy settings →
+              {t('workspace.profileAndBadgePrivacySettings')}
             </a>
           </AccountRequired>
         </div>

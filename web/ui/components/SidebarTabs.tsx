@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 import { useId } from 'react';
 import type { SidebarPanel } from '../commute';
 const panels = ['explore', 'fleet', 'compare', 'stops', 'journal'] as const;
@@ -8,12 +10,13 @@ export function SidebarTabs({
   value: SidebarPanel;
   onChange(value: SidebarPanel): void;
 }) {
+  useLanguage();
   const id = useId();
   return (
-    <nav className="sidebar-tabs" aria-label="Map tools">
+    <nav className="sidebar-tabs" aria-label={t('navigation.mapTools')}>
       <div
         role="tablist"
-        aria-label="Map tools"
+        aria-label={t('navigation.mapTools')}
         onKeyDown={(event) => {
           const focused = panels.findIndex(
             (panel) =>
@@ -48,14 +51,14 @@ export function SidebarTabs({
             onClick={() => onChange(panel)}
           >
             {panel === 'explore'
-              ? 'Explore'
+              ? t('navigation.explore')
               : panel === 'fleet'
-                ? 'Fleet'
+                ? t('navigation.fleet')
                 : panel === 'compare'
-                  ? 'Compare'
+                  ? t('navigation.compare')
                   : panel === 'stops'
-                    ? 'Stops'
-                    : 'Journal'}
+                    ? t('navigation.stops')
+                    : t('navigation.journal')}
           </button>
         ))}
       </div>

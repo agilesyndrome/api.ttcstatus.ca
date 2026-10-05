@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import type { Feature, Point } from '../../../../shared/map/model';
 import { streetcarBody } from '../../../../shared/map/live-status';
 import type { TransitMapProps } from './types';
@@ -33,6 +35,7 @@ export function TransitMap({
   onSelectFeature,
   onSelectVehicle,
 }: TransitMapProps) {
+  useLanguage();
   const {
     svg,
     camera,
@@ -186,7 +189,7 @@ export function TransitMap({
       ] as Point[])
     : [];
   return (
-    <section className="map-viewport" aria-label="Interactive TTC rail map">
+    <section className="map-viewport" aria-label={t('transitMap.interactiveTtcRailMap')}>
       <svg
         ref={svg}
         id={mapId}
@@ -194,8 +197,8 @@ export function TransitMap({
         tabIndex={0}
         aria-label={
           driving
-            ? 'Toronto streetcar game map. Drag or pinch to explore.'
-            : 'Toronto subway and streetcar network. Arrow keys pan; plus and minus zoom; Home fits the map.'
+            ? t('transitMap.torontoStreetcarGameMapDragOrPinchToExplore')
+            : t('transitMap.torontoSubwayAndStreetcarNetworkArrowKeysPanPlusAnd')
         }
         viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
         {...handlers}
@@ -285,15 +288,18 @@ export function TransitMap({
               className={`live-car${car.match ? '' : ' off-track'}`}
               role="button"
               tabIndex={0}
-              aria-label={`${car.vehicle.mode === 'subway' ? 'Train' : 'Streetcar'} ${car.vehicle.label}${car.stale ? ', stale position' : ''}`}
+              aria-label={`${car.vehicle.mode === 'subway' ? t('viewer.train') : t('header.streetcar')} ${car.vehicle.label}${car.stale ? t('transitMap.stalePosition') : ''}`}
               opacity={car.stale ? 0.45 : 1}
               onKeyDown={(event) => selectKey(event, () => onSelectVehicle(car))}
             >
               <title>
-                {car.vehicle.mode === 'subway' ? 'Train' : 'Car'} {car.vehicle.label}
+                {car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')}{' '}
+                {car.vehicle.label}
                 {car.vehicle.nextStopName &&
-                  ` · Next station: ${car.vehicle.nextStopName} (prediction)`}
-                {car.stale ? ' · Stale position' : ''}
+                  t('transitMap.nextStationValuePrediction', {
+                    value1: car.vehicle.nextStopName,
+                  })}
+                {car.stale ? t('viewer.stalePosition') : ''}
               </title>
               {selectedVehicleId === car.vehicle.id && (
                 <circle
@@ -464,7 +470,7 @@ export function TransitMap({
             className="location-marker"
             transform={`translate(${locationPoint.join(' ')}) scale(${1 / scale})`}
             role="img"
-            aria-label="Your approximate location"
+            aria-label={t('transitMap.yourApproximateLocation')}
           >
             <circle r={16} fill="#477cb125" />
             <circle r={6} fill="#477cb1" stroke="#fff" strokeWidth={2} />
@@ -484,7 +490,7 @@ export function TransitMap({
                 data-endpoint={letter}
                 transform={`translate(${stop.point.join(' ')}) scale(${1 / scale})`}
                 role="img"
-                aria-label={`${letter === 'A' ? 'Start' : 'Destination'}: ${stop.name}`}
+                aria-label={`${letter === 'A' ? t('transitMap.start') : t('transitMap.destination')}: ${stop.name}`}
               >
                 <path
                   d="M0 0L-10 -13A12 12 0 1 1 10 -13Z"
@@ -512,10 +518,10 @@ export function TransitMap({
         className={`map-hint${pickingLabel ? ' picking-hint' : ''}`}
         role={pickingLabel ? 'status' : undefined}
       >
-        {pickingLabel ?? 'Drag to explore · Scroll or pinch to zoom · Select a stop'}
+        {pickingLabel ?? t('transitMap.dragToExploreScrollOrPinchToZoomSelectA')}
       </div>
       <div className="north" aria-hidden="true">
-        <span>N</span>
+        <span>{t('keyboard.n')}</span>
         <svg viewBox="0 0 36 36">
           <path
             d="M7 18H29M21 13L29 18L21 23"
@@ -523,9 +529,9 @@ export function TransitMap({
           />
         </svg>
       </div>
-      <nav className="map-controls" aria-label="Map controls">
+      <nav className="map-controls" aria-label={t('transitMap.mapControls')}>
         <button
-          aria-label="Zoom in"
+          aria-label={t('transitMap.zoomIn')}
           onClick={() => {
             interact.current?.();
             zoom(0.7);
@@ -535,7 +541,7 @@ export function TransitMap({
         </button>
         <output>{Math.round(level * 100)}%</output>
         <button
-          aria-label="Zoom out"
+          aria-label={t('transitMap.zoomOut')}
           onClick={() => {
             interact.current?.();
             zoom(1 / 0.7);
@@ -549,11 +555,11 @@ export function TransitMap({
             move(initial);
           }}
         >
-          Fit map
+          {t('transitMap.fitMap')}
         </button>
         {onExport && (
-          <button aria-label="Print or download map" onClick={onExport}>
-            Save map
+          <button aria-label={t('transitMap.printOrDownloadMap')} onClick={onExport}>
+            {t('map.export')}
           </button>
         )}
       </nav>

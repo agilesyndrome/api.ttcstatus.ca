@@ -1,3 +1,6 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useState } from 'react';
 import type { ViewerData } from '../../../../shared/map/model';
 import { usePreference } from '../../hooks/usePreferences';
@@ -17,6 +20,7 @@ interface Props {
 }
 
 export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Props) {
+  useLanguage();
   const id = useId();
   const [entries, setEntries, persistent] = usePreference<SavedComparison[]>(
     'ttc:comparisons:v1',
@@ -44,21 +48,26 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
       };
       setEntries(saveComparison(entries, entry));
       setName('');
-      setMessage('Comparison saved. Open it below whenever you need it.');
+      setMessage(english('savedComparisons.comparisonSavedOpenItBelowWheneverYouNeedIt'));
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : 'Unable to save this comparison.',
+        error instanceof Error
+          ? error.message
+          : english('savedComparisons.unableToSaveThisComparison'),
       );
     }
   }
   return (
-    <section className="saved-comparisons" aria-label="Saved comparisons">
+    <section
+      className="saved-comparisons"
+      aria-label={t('savedComparisons.savedComparisons')}
+    >
       <div className="section-heading">
-        <h2>★ My comparisons</h2>
+        <h2>{t('savedComparisons.myComparisons')}</h2>
         <small>{entries.length}/20</small>
       </div>
       <p className="helper">
-        Keep a commute or favourite pair of stops ready for next time.
+        {t('savedComparisons.keepACommuteOrFavouritePairOfStopsReadyFor')}
       </p>
       <form
         className="tool-form"
@@ -68,13 +77,13 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
         }}
       >
         <div className="form-control">
-          <label htmlFor={id}>Comparison name (optional)</label>
+          <label htmlFor={id}>{t('savedComparisons.comparisonNameOptional')}</label>
           <input
             id={id}
             maxLength={60}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Morning commute"
+            placeholder={t('savedComparisons.eGMorningCommute')}
           />
         </div>
         <button
@@ -82,10 +91,10 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
           disabled={!from || !to || from.id === to.id || saved || entries.length >= 20}
         >
           {saved
-            ? 'Comparison already saved'
+            ? t('savedComparisons.comparisonAlreadySaved')
             : entries.length >= 20
-              ? '20 comparisons saved'
-              : 'Save this comparison'}
+              ? t('savedComparisons.20ComparisonsSaved')
+              : t('savedComparisons.saveThisComparison')}
         </button>
       </form>
       <ul className="compact-list">
@@ -105,20 +114,22 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
               >
                 <strong>{entry.name}</strong>
                 <small>
-                  {start?.name ?? 'Unavailable start'} →{' '}
-                  {end?.name ?? 'Unavailable destination'}
+                  {start?.name ?? t('savedComparisons.unavailableStart')} →{' '}
+                  {end?.name ?? t('savedComparisons.unavailableDestination')}
                 </small>
                 <small>
                   {!start || !end
-                    ? 'A stop is no longer in this map.'
+                    ? t('savedComparisons.aStopIsNoLongerInThisMap')
                     : entry.overnight
-                      ? 'Includes overnight connections'
-                      : 'Daytime connections'}
+                      ? t('savedComparisons.includesOvernightConnections')
+                      : t('savedComparisons.daytimeConnections')}
                 </small>
               </button>
               <button
                 className="remove-stop"
-                aria-label={`Remove comparison ${entry.name}`}
+                aria-label={t('savedComparisons.removeComparisonValue', {
+                  value1: entry.name,
+                })}
                 onClick={() => {
                   setEntries((current) =>
                     current.filter(
@@ -126,7 +137,7 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
                     ),
                   );
                   setRemoved(entry);
-                  setMessage(`Removed ${entry.name}.`);
+                  setMessage(t('savedComparisons.removedValue', { value1: entry.name }));
                 }}
               >
                 ×
@@ -137,7 +148,7 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
       </ul>
       {message && (
         <p className="helper" role="status">
-          {message}
+          {t(message)}
         </p>
       )}
       {removed && (
@@ -147,22 +158,24 @@ export function SavedComparisons({ data, fromId, toId, overnight, onChoose }: Pr
             try {
               setEntries(saveComparison(entries, removed));
               setRemoved(undefined);
-              setMessage('Comparison restored.');
+              setMessage(english('savedComparisons.comparisonRestored'));
             } catch (error) {
               setMessage(
-                error instanceof Error ? error.message : 'Unable to restore comparison.',
+                error instanceof Error
+                  ? error.message
+                  : english('savedComparisons.unableToRestoreComparison'),
               );
             }
           }}
         >
-          Undo removal
+          {t('savedComparisons.undoRemoval')}
         </button>
       )}
       <p className="microcopy">
         {persistent
-          ? 'Saved in this browser.'
-          : 'Browser storage unavailable; saved for this visit.'}{' '}
-        These are stop comparisons; service times and transfers are not included.
+          ? t('savedComparisons.savedInThisBrowser')
+          : t('savedComparisons.browserStorageUnavailableSavedForThisVisit')}{' '}
+        {t('savedComparisons.theseAreStopComparisonsServiceTimesAndTransfersAreNot')}
       </p>
     </section>
   );

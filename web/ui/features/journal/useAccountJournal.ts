@@ -1,3 +1,4 @@
+import { english } from '../../../../shared/i18n/messages';
 import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '../accounts/auth';
 import { validJournal, type JournalEntry } from '../../../../shared/accounts/journal';
@@ -36,10 +37,11 @@ export function useAccountJournal() {
       void request
         .current('/api/v1/me/journal')
         .then(async (response) => {
-          if (!response.ok) throw new Error('Unable to load your journal. Try again.');
+          if (!response.ok)
+            throw new Error(english('journal.unableToLoadYourJournalTryAgain'));
           const value = (await response.json()) as { entries: unknown; revision: number };
           if (!validJournal(value.entries) || !Number.isSafeInteger(value.revision))
-            throw new Error('Unable to read your journal.');
+            throw new Error(english('journal.unableToReadYourJournal'));
           if (!cancelled)
             setState({
               userId,
@@ -78,10 +80,10 @@ export function useAccountJournal() {
       .then(async (response) => {
         if (response.status === 409)
           throw new Error(
-            'Your journal changed in another tab. Reload it before editing again.',
+            english('journal.yourJournalChangedInAnotherTabReloadItBeforeEditing'),
           );
         if (!response.ok)
-          throw new Error('Your change could not be saved. Please try again.');
+          throw new Error(english('journal.yourChangeCouldNotBeSavedPleaseTryAgain'));
         const result = (await response.json()) as { revision: number };
         if (isCurrent())
           setState((previous) => ({

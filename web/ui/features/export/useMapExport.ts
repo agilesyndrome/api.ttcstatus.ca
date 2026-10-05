@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useRef, useState } from 'react';
 import type { Feature, Route, ViewerData } from '../../../../shared/map/model';
 import type { SidebarPanel } from '../../commute';
@@ -31,23 +32,23 @@ export function useMapExport({
     const box = svg.getBoundingClientRect();
     capturedMap.current.getBoundingClientRect = () => box;
     exportDetails.current = {
-      title: 'Toronto streetcar map',
+      title: t('useMapExport.torontoStreetcarMap'),
       snapshot: data.snapshot,
       capturedAt: new Date().toISOString(),
       northAngle: data.northAngle,
       routes: shownRoutes.filter((route) => route.scheduled),
       includeCars: exportCars,
       feed: feed.snapshot
-        ? 'Vehicle snapshot: ' +
+        ? t('useMapExport.vehicleSnapshot') +
           feed.snapshot.fetchedAt +
           ' · ' +
           feed.snapshot.attribution +
           (feed.failed
-            ? ' · Last refresh unavailable'
+            ? t('useMapExport.lastRefreshUnavailable')
             : !feed.active
-              ? ' · Live feed paused'
+              ? t('useMapExport.liveFeedPaused')
               : '')
-        : 'No vehicle snapshot loaded.',
+        : t('useMapExport.noVehicleSnapshotLoaded'),
       endpoints:
         panel === 'compare'
           ? [

@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import type { CSSProperties } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { Route } from '../../../../shared/map/model';
@@ -21,6 +23,7 @@ export function RoutePulse({
   selectedRoute,
   onSelect,
 }: Props) {
+  useLanguage();
   const entries = routes
     .filter((route) => route.scheduled)
     .map((route) => ({ route, ...routeActivity(route, cars) }));
@@ -28,22 +31,24 @@ export function RoutePulse({
   const fresh = cars.filter((car) => !car.stale).length;
   const peak = Math.max(1, ...entries.map((entry) => entry.fresh));
   return (
-    <section className="route-pulse" aria-label="Route activity">
-      <p className="eyebrow">The city in motion</p>
+    <section className="route-pulse" aria-label={t('routePulse.routeActivity')}>
+      <p className="eyebrow">{t('routePulse.theCityInMotion')}</p>
       <div className="section-heading">
-        <h2>Route pulse</h2>
+        <h2>{t('routePulse.routePulse')}</h2>
         <span className="pulse-total">
-          {loaded ? `${fresh} fresh reports` : 'Waiting for feed'}
+          {loaded
+            ? t('routePulse.valueFreshReports', { value1: fresh })
+            : t('routePulse.waitingForFeed')}
         </span>
       </div>
       <p className="helper">
         {!loaded
-          ? 'Turn on live vehicles to see route activity.'
+          ? t('routePulse.turnOnLiveVehiclesToSeeRouteActivity')
           : !active
-            ? 'Updates paused. Showing the last snapshot.'
+            ? t('routePulse.updatesPausedShowingTheLastSnapshot')
             : failed
-              ? 'Refresh unavailable. Showing the last snapshot.'
-              : 'Fresh vehicle reports by route.'}
+              ? t('routePulse.refreshUnavailableShowingTheLastSnapshot')
+              : t('routePulse.freshVehicleReportsByRoute')}
       </p>
       {loaded && (
         <div className="pulse-bars">
@@ -53,7 +58,12 @@ export function RoutePulse({
               className="pulse-row"
               style={{ '--route-color': entry.route.color } as CSSProperties}
               aria-pressed={selectedRoute === entry.route.id}
-              aria-label={`${entry.route.number} ${entry.route.name}: ${entry.fresh} fresh, ${entry.stale} stale vehicle reports`}
+              aria-label={t('routePulse.valueValueValueFreshValueStaleVehicleReports', {
+                value1: entry.route.number,
+                value2: entry.route.name,
+                value3: entry.fresh,
+                value4: entry.stale,
+              })}
               onClick={() => onSelect(entry.route.id)}
             >
               <span>{entry.route.number}</span>
@@ -71,17 +81,20 @@ export function RoutePulse({
             {selected.route.number} {selected.route.name}
           </strong>
           <p>
-            {selected.reported} reported · {selected.stale} stale
+            {selected.reported} {t('routePulse.reported')} {selected.stale}{' '}
+            {t('fleetExplorer.stale2')}
           </p>
           <p>
             {selected.medianSpeed === undefined
-              ? 'Speed not supplied for fresh reports.'
-              : `${Math.round(selected.medianSpeed)} km/h median reported speed`}
+              ? t('routePulse.speedNotSuppliedForFreshReports')
+              : t('routePulse.valueKmHMedianReportedSpeed', {
+                  value1: Math.round(selected.medianSpeed),
+                })}
           </p>
         </div>
       )}
       <p className="microcopy">
-        Vehicle counts describe this feed, not service frequency or delays.
+        {t('routePulse.vehicleCountsDescribeThisFeedNotServiceFrequencyOrDelays')}
       </p>
     </section>
   );

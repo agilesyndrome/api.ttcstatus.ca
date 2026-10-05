@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import {
   VEHICLE_STALE_AFTER_MS,
@@ -51,5 +52,5 @@ export function stationArrivals(
 
 export function arrivalCountdown(arrivalAt: string, now: number) {
   const remaining = Date.parse(arrivalAt) - now;
-  return remaining < 60_000 ? 'Due' : `${Math.ceil(remaining / 60_000)} min`;
+  return remaining < 60_000 ? t('arrivals.due') : `${Math.ceil(remaining / 60_000)} min`;
 }

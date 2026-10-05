@@ -1,3 +1,5 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
 import { useEffect, useState } from 'react';
 import {
   buildViewerData,
@@ -21,14 +23,16 @@ export function useStaticMap() {
         if (!response.ok)
           throw new Error(
             response.status === 503
-              ? 'The streetcar map is being prepared. Please try again shortly.'
-              : `Map request failed (${response.status}).`,
+              ? english('map.theStreetcarMapIsBeingPreparedPleaseTryAgainShortly')
+              : t('map.mapRequestFailedValue', { value1: response.status }),
           );
         setData(buildViewerData((await response.json()) as ViewerSource));
       } catch (error) {
         if (!controller.signal.aborted)
           setError(
-            error instanceof Error ? error.message : 'Unable to load the streetcar map.',
+            error instanceof Error
+              ? error.message
+              : english('map.unableToLoadTheStreetcarMap'),
           );
       }
     }

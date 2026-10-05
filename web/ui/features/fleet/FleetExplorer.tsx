@@ -1,3 +1,5 @@
+import { t, getLocale } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useState } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { ViewerData } from '../../../../shared/map/model';
@@ -26,6 +28,7 @@ export function FleetExplorer({
   onSelect,
   onEnableLive,
 }: Props) {
+  useLanguage();
   const id = useId();
   const [filters, setFilters] = useState<FleetFilters>(DEFAULT_FLEET_FILTERS);
   const [page, setPage] = useState(0);
@@ -60,61 +63,64 @@ export function FleetExplorer({
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage(`Downloaded ${results.length} vehicle reports.`);
+    setMessage(
+      t('fleetExplorer.downloadedValueVehicleReports', { value1: results.length }),
+    );
   }
   return (
-    <section className="fleet-explorer" aria-label="Fleet explorer">
-      <p className="eyebrow">Meet the fleet</p>
-      <h1>Train & streetcar spotting</h1>
+    <section className="fleet-explorer" aria-label={t('fleetExplorer.fleetExplorer')}>
+      <p className="eyebrow">{t('fleetExplorer.meetTheFleet')}</p>
+      <h1>{t('fleetExplorer.trainStreetcarSpotting')}</h1>
       <p className="helper">
-        Every car in the shared live snapshot, including overnight assignments. Choose a
-        car to see it on the map.
+        {t('fleetExplorer.everyCarInTheSharedLiveSnapshotIncludingOvernightAssignments')}
       </p>
       {!active && (
         <>
           <p className="tip">
-            Updates are paused.{' '}
+            {t('fleetExplorer.updatesArePaused')}{' '}
             {snapshot
-              ? 'Showing the last snapshot.'
-              : 'Enable live streetcars to load the fleet.'}
+              ? t('fleetExplorer.showingTheLastSnapshot')
+              : t('fleetExplorer.enableLiveStreetcarsToLoadTheFleet')}
           </p>
           <button className="action-button" onClick={onEnableLive}>
-            Enable live updates
+            {t('fleetExplorer.enableLiveUpdates')}
           </button>
         </>
       )}
       {failed && (
         <p role="status" className="helper">
           {snapshot
-            ? 'Refresh unavailable; keeping the last snapshot.'
-            : 'Live vehicle positions are unavailable. The feed will retry.'}
+            ? t('fleetExplorer.refreshUnavailableKeepingTheLastSnapshot')
+            : t('fleetExplorer.liveVehiclePositionsAreUnavailableTheFeedWillRetry')}
         </p>
       )}
       <div className="tool-form">
         <div className="form-control">
-          <label htmlFor={`${id}-query`}>Find in fleet</label>
+          <label htmlFor={`${id}-query`}>{t('fleetExplorer.findInFleet')}</label>
           <input
             id={`${id}-query`}
             type="search"
             value={filters.query}
-            placeholder="Car number or route name"
+            placeholder={t('fleetExplorer.carNumberOrRouteName')}
             onChange={(event) => update({ query: event.target.value })}
           />
         </div>
         <div className="form-control">
-          <label htmlFor={`${id}-route`}>Route assignment</label>
+          <label htmlFor={`${id}-route`}>{t('fleetExplorer.routeAssignment')}</label>
           <select
             id={`${id}-route`}
             value={filters.route}
             onChange={(event) => update({ route: event.target.value })}
           >
-            <option value="">All assignments</option>
-            <option value="unassigned">Route not supplied</option>
+            <option value="">{t('fleetExplorer.allAssignments')}</option>
+            <option value="unassigned">{t('header.routeNotSupplied')}</option>
             {assignments.map((id) => {
               const route = data.routes.find((route) => route.id === id);
               return (
                 <option key={id} value={`route:${id}`}>
-                  {route ? `${route.number} ${route.name}` : `Reported route ${id}`}
+                  {route
+                    ? `${route.number} ${route.name}`
+                    : t('fleetExplorer.reportedRouteValue', { value1: id })}
                 </option>
               );
             })}
@@ -122,7 +128,7 @@ export function FleetExplorer({
         </div>
         <div className="form-pair">
           <div className="form-control">
-            <label htmlFor={`${id}-status`}>Position status</label>
+            <label htmlFor={`${id}-status`}>{t('fleetExplorer.positionStatus')}</label>
             <select
               id={`${id}-status`}
               value={filters.status}
@@ -130,14 +136,14 @@ export function FleetExplorer({
                 update({ status: event.target.value as FleetFilters['status'] })
               }
             >
-              <option value="all">All reports</option>
-              <option value="fresh">Fresh only</option>
-              <option value="stale">Stale only</option>
-              <option value="off-track">Off mapped track</option>
+              <option value="all">{t('fleetExplorer.allReports')}</option>
+              <option value="fresh">{t('fleetExplorer.freshOnly')}</option>
+              <option value="stale">{t('fleetExplorer.staleOnly')}</option>
+              <option value="off-track">{t('fleetExplorer.offMappedTrack')}</option>
             </select>
           </div>
           <div className="form-control">
-            <label htmlFor={`${id}-sort`}>Sort cars</label>
+            <label htmlFor={`${id}-sort`}>{t('fleetExplorer.sortCars')}</label>
             <select
               id={`${id}-sort`}
               value={sort}
@@ -145,10 +151,10 @@ export function FleetExplorer({
                 update({ sort: event.target.value as FleetFilters['sort'] })
               }
             >
-              <option value="number">Car number</option>
-              <option value="speed">Reported speed</option>
+              <option value="number">{t('fleetExplorer.carNumber')}</option>
+              <option value="speed">{t('viewer.reportedSpeed')}</option>
               <option value="distance" disabled={!location}>
-                Distance from me
+                {t('fleetExplorer.distanceFromMe')}
               </option>
             </select>
           </div>
@@ -157,10 +163,13 @@ export function FleetExplorer({
       <div className="section-heading">
         <p role="status" className="fleet-count">
           {snapshot
-            ? `${results.length} of ${cars.length} reported cars`
+            ? t('fleetExplorer.valueOfValueReportedCars', {
+                value1: results.length,
+                value2: cars.length,
+              })
             : active && !failed
-              ? 'Loading the fleet…'
-              : 'No snapshot loaded'}
+              ? t('fleetExplorer.loadingTheFleet')
+              : t('fleetExplorer.noSnapshotLoaded')}
         </p>
         <button
           className="text-button"
@@ -170,7 +179,7 @@ export function FleetExplorer({
             setMessage('');
           }}
         >
-          Reset filters
+          {t('fleetExplorer.resetFilters')}
         </button>
       </div>
       <ul className="compact-list fleet-list">
@@ -182,24 +191,29 @@ export function FleetExplorer({
               <li key={car.vehicle.id}>
                 <button className="list-choice" onClick={() => onSelect(car)}>
                   <strong>
-                    Car {car.vehicle.label}
+                    {t('viewer.car')} {car.vehicle.label}
                     <span className={`report-tag ${car.stale ? 'stale' : ''}`}>
-                      {car.stale ? 'Stale' : 'Fresh'}
+                      {car.stale ? t('fleetExplorer.stale') : t('fleetExplorer.fresh')}
                     </span>
                   </strong>
                   <small>
                     {route
                       ? `${route.number} ${route.name}`
                       : car.vehicle.routeId
-                        ? `Reported route ${car.vehicle.routeId}`
-                        : 'Route not supplied'}
-                    {!car.match && ' · Off mapped track'}
+                        ? t('fleetExplorer.reportedRouteValue', {
+                            value1: car.vehicle.routeId,
+                          })
+                        : t('header.routeNotSupplied')}
+                    {!car.match && t('fleetExplorer.offMappedTrack2')}
                   </small>
                   <small>
                     {car.vehicle.speedMetresPerSecond !== undefined
-                      ? `${Math.round(car.vehicle.speedMetresPerSecond * 3.6)} km/h reported`
-                      : 'Speed not supplied'}
-                    {metres !== undefined && ` · ${formatDistance(metres)} from you`}
+                      ? t('fleetExplorer.valueKmHReported', {
+                          value1: Math.round(car.vehicle.speedMetresPerSecond * 3.6),
+                        })
+                      : t('fleetExplorer.speedNotSupplied')}
+                    {metres !== undefined &&
+                      t('fleetExplorer.valueFromYou', { value1: formatDistance(metres) })}
                   </small>
                 </button>
               </li>
@@ -208,22 +222,22 @@ export function FleetExplorer({
       </ul>
       {snapshot && !results.length && (
         <p className="tip">
-          No cars match these filters. Try another assignment or position status.
+          {t('fleetExplorer.noCarsMatchTheseFiltersTryAnotherAssignmentOrPosition')}
         </p>
       )}
       {pages > 1 && (
-        <nav className="fleet-pagination" aria-label="Fleet pages">
+        <nav className="fleet-pagination" aria-label={t('fleetExplorer.fleetPages')}>
           <button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>
-            Previous
+            {t('fleetExplorer.previous')}
           </button>
           <span>
-            Page {currentPage + 1} of {pages}
+            {t('fleetExplorer.page')} {currentPage + 1} {t('fleetExplorer.of')} {pages}
           </span>
           <button
             disabled={currentPage + 1 === pages}
             onClick={() => setPage(currentPage + 1)}
           >
-            Next
+            {t('fleetExplorer.next')}
           </button>
         </nav>
       )}
@@ -232,18 +246,18 @@ export function FleetExplorer({
         disabled={!snapshot || !results.length}
         onClick={download}
       >
-        ↓ Download filtered snapshot (.csv)
+        {t('fleetExplorer.downloadFilteredSnapshotCsv')}
       </button>
       <p role="status" className="microcopy">
-        {message}
+        {t(message)}
       </p>
       {snapshot && (
         <p className="microcopy">
-          Snapshot fetched{' '}
-          {new Date(snapshot.fetchedAt).toLocaleTimeString('en-CA', {
+          {t('fleetExplorer.snapshotFetched')}{' '}
+          {new Date(snapshot.fetchedAt).toLocaleTimeString(getLocale(), {
             timeZone: 'America/Toronto',
           })}
-          . CSV includes report times and freshness; it contains no personal location.
+          {t('fleetExplorer.csvIncludesReportTimesAndFreshnessItContainsNoPersonal')}
         </p>
       )}
     </section>

@@ -1,3 +1,4 @@
+import { buildClassicAssets } from '../build/build-classic.mjs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -24,7 +25,10 @@ export function legacySnakeMiddleware(request, response, next) {
     response.end();
     return;
   }
-  void readFile(resolve('public/snake/v1', filename))
+  const content = ['index.html', 'game.js', 'site.webmanifest'].includes(filename)
+    ? buildClassicAssets().then((assets) => assets[filename])
+    : readFile(resolve('public/snake/v1', filename));
+  void content
     .then((content) => {
       response.writeHead(200, {
         'content-type': files[filename],

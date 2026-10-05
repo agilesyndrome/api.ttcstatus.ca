@@ -1,3 +1,7 @@
+import { english } from '../../../../shared/i18n/messages';
+import { accountLocales } from '../../i18n/clerk';
+import { t, getLocale } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ClerkProvider, UserButton, useAuth, useClerk } from '@clerk/react';
 
@@ -12,7 +16,7 @@ interface Account {
   request(path: string, init?: RequestInit): Promise<Response>;
 }
 const unavailable = async (): Promise<Response> => {
-  throw new Error('Sign in to continue.');
+  throw new Error(english('account.signInToContinue'));
 };
 const defaults: Account = {
   enabled: false,
@@ -28,6 +32,7 @@ const AccountContext = createContext<Account>(defaults);
 export const useAccount = () => useContext(AccountContext);
 
 function ClerkAccount({ children }: { children: ReactNode }) {
+  useLanguage();
   const { isLoaded, userId, getToken } = useAuth();
   const clerk = useClerk();
   return (
@@ -46,7 +51,7 @@ function ClerkAccount({ children }: { children: ReactNode }) {
         },
         request: async (path, init) => {
           const token = await getToken();
-          if (!token) throw new Error('Your session has ended. Sign in again.');
+          if (!token) throw new Error(english('account.yourSessionHasEndedSignInAgain'));
           const headers = new Headers(init?.headers);
           headers.set('authorization', `Bearer ${token}`);
           return fetch(path, {
@@ -65,6 +70,7 @@ function ClerkAccount({ children }: { children: ReactNode }) {
 
 /** The public map renders while auth configuration and Clerk load. */
 export function AccountProvider({ children }: { children: ReactNode }) {
+  useLanguage();
   const [config, setConfig] = useState<{ enabled: boolean; publishableKey?: string }>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -94,14 +100,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           setError(
             value.enabled
               ? ''
-              : 'Accounts are temporarily unavailable. Try again in a moment.',
+              : english('account.accountsAreTemporarilyUnavailableTryAgainInAMoment'),
           );
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setConfig({ enabled: false });
-          setError('Unable to load accounts. Please try again.');
+          setError(english('account.unableToLoadAccountsPleaseTryAgain'));
         }
       });
     return () => controller.abort();
@@ -116,6 +122,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     );
   return (
     <ClerkProvider
+      localization={accountLocales[getLocale()]}
       publishableKey={config.publishableKey}
       signInFallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/"
@@ -126,35 +133,37 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthControls() {
+  useLanguage();
   const account = useAccount();
-  if (!account.loaded) return <span className="auth-status">Loading account…</span>;
+  if (!account.loaded)
+    return <span className="auth-status">{t('account.loadingAccount')}</span>;
   if (!account.enabled)
     return (
       <div className="auth-controls">
         <span className="auth-status" role="status">
-          Accounts unavailable
+          {t('account.accountsUnavailable')}
         </span>
         <button className="action-button" onClick={account.retry}>
-          Retry accounts
+          {t('account.retryAccounts')}
         </button>
       </div>
     );
   return (
-    <nav className="auth-controls" aria-label="Your account">
+    <nav className="auth-controls" aria-label={t('account.yourAccount')}>
       {account.userId ? (
         <>
           <a className="account-link" href="/profile">
-            Profile
+            {t('account.profile')}
           </a>
           <UserButton />
         </>
       ) : (
         <>
           <button className="action-button" onClick={account.signIn}>
-            Sign in
+            {t('account.signIn')}
           </button>
           <button className="action-button signup-button" onClick={account.signUp}>
-            Sign up
+            {t('account.signUp')}
           </button>
         </>
       )}
@@ -163,29 +172,31 @@ export function AuthControls() {
 }
 
 export function AccountRequired({ children }: { children: ReactNode }) {
+  useLanguage();
   const account = useAccount();
   if (account.loaded && account.userId) return children;
   return (
     <section className="account-required">
-      <p className="eyebrow">Your personal collection</p>
-      <h1>Make it your journal.</h1>
+      <p className="eyebrow">{t('account.yourPersonalCollection')}</p>
+      <h1>{t('account.makeItYourJournal')}</h1>
       <p className="helper">
-        Sign in to collect streetcars, keep ride notes and earn badges. The TTC status map
-        is always open to everyone.
+        {t('account.signInToCollectStreetcarsKeepRideNotesAndEarn')}
       </p>
       {!account.loaded ? (
-        <p role="status">Loading account…</p>
+        <p role="status">{t('account.loadingAccount')}</p>
       ) : account.enabled ? (
         <div className="comparison-actions">
           <button className="action-button" onClick={account.signIn}>
-            Sign in
+            {t('account.signIn')}
           </button>
           <button className="action-button" onClick={account.signUp}>
-            Create an account
+            {t('account.createAnAccount')}
           </button>
         </div>
       ) : (
-        <p role="status">{account.error} You can keep exploring the map.</p>
+        <p role="status">
+          {t(account.error)} {t('account.youCanKeepExploringTheMap')}
+        </p>
       )}
     </section>
   );
