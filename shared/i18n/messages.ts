@@ -9,10 +9,6 @@ export const languageMetadata = [enMetadata, frMetadata];
 export function english(key: MessageKey): string {
   return en[key];
 }
-/** Compatibility for API badge names and existing English error messages. */
-export const englishMessageKeys = new Map(
-  Object.entries(en).map(([key, value]) => [value, key]),
-);
 
 export const pluralMessageKeys: Record<string, string> = {
   vehicleReports: 'counts.vehicleReports',

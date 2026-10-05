@@ -40,24 +40,31 @@ test('stored preferences validate and tolerate inaccessible storage', () => {
 });
 
 test('translations preserve interpolation values without interpreting them', () => {
-  assert.equal(translate('Profile', {}, 'fr-CA'), 'Profil');
+  assert.equal(translate('stopComparison.compareStops', {}, 'en-CA'), 'Compare stops');
+  assert.equal(translate('stopComparison.swapStops', {}, 'en-CA'), '⇄ Swap stops');
+  assert.equal(
+    translate('stopComparison.includeOvernightConnections', {}, 'en-CA'),
+    'Include overnight connections',
+  );
+  assert.equal(translate('account.profile', {}, 'fr-CA'), 'Profil');
+  assert.equal(translate('Profile', {}, 'fr-CA'), 'Profile');
   assert.equal(translate('Unknown message', {}, 'fr-CA'), 'Unknown message');
   assert.equal(translate('__proto__', {}, 'fr-CA'), '__proto__');
   const french = locales.find((entry) => entry.code === 'fr-CA').messages;
   const saved = french['account.profile'];
   delete french['account.profile'];
   assert.equal(
-    translate('Profile', {}, 'fr-CA'),
+    translate('account.profile', {}, 'fr-CA'),
     'Profile',
     'missing entries use Canadian English',
   );
   french['account.profile'] = saved;
   assert.equal(
-    translate('Car {value1}', { value1: '{value2}<script>' }, 'fr-CA'),
-    'Véhicule {value2}<script>',
+    translate('journal.added', { car: '{value2}<script>' }, 'fr-CA'),
+    'Véhicule {value2}<script> ajouté à votre journal.',
   );
   assert.equal(
-    translate('Map request failed (500).', {}, 'fr-CA'),
+    translate('map.mapRequestFailedValue', { value1: 500 }, 'fr-CA'),
     'Échec de la demande de carte (500).',
   );
   assert.equal(plural('vehicleReports', 1, { stale: '' }, 'en-CA'), '1 car reported.');

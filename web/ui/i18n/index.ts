@@ -1,7 +1,6 @@
 import {
   catalogues,
   languageMetadata,
-  englishMessageKeys,
   pluralMessageKeys,
 } from '../../../shared/i18n/messages';
 
@@ -121,28 +120,6 @@ export function translate(
   values: Record<string, string | number> = {},
   language: Locale = locale,
 ): string {
-  let resolvedKey = englishMessageKeys.get(key) ?? key;
-  const inferred: Record<string, string> = {};
-  if (resolvedKey === key) {
-    for (const [candidate, englishValue] of Object.entries(en)) {
-      if (!englishValue.includes('{')) continue;
-      const names: string[] = [];
-      const pattern = englishValue
-        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        .replace(/\\\{(\w+)\\\}/g, (_, name: string) => {
-          names.push(name);
-          return '(.+?)';
-        });
-      const match = new RegExp(`^${pattern}$`).exec(key);
-      if (!match) continue;
-      resolvedKey = candidate;
-      names.forEach((name, index) => {
-        inferred[name] = match[index + 1];
-      });
-      break;
-    }
-  }
-  key = resolvedKey;
   const messages: Record<string, string> =
     locales.find((entry) => entry.code === language)?.messages ?? en;
   const fallback: Record<string, string> = en;
@@ -155,9 +132,7 @@ export function translate(
   return message.replace(/\{(\w+)\}/g, (token, name: string) =>
     Object.hasOwn(values, name)
       ? String(values[name])
-      : Object.hasOwn(inferred, name)
-        ? inferred[name]
-        : token,
+      : token,
   );
 }
 export const t = translate;
