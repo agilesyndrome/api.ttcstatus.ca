@@ -1,3 +1,5 @@
+import { t, plural } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useState, type CSSProperties } from 'react';
 import type { Feature, Route, ViewerData } from '../../../../shared/map/model';
 import { routeItineraries } from './route-guide';
@@ -19,6 +21,7 @@ export function RouteGuide({
   onCompare,
   onClose,
 }: Props) {
+  useLanguage();
   const id = useId();
   const itineraries = useMemo(() => routeItineraries(data, route.id), [data, route.id]);
   const [choice, setChoice] = useState('');
@@ -34,28 +37,30 @@ export function RouteGuide({
   return (
     <section
       className="route-guide"
-      aria-label="Route stop guide"
+      aria-label={t('routeGuide.routeStopGuide')}
       style={{ '--route-color': route.color } as CSSProperties}
     >
-      <p className="eyebrow">One route, stop by stop</p>
+      <p className="eyebrow">{t('routeGuide.oneRouteStopByStop')}</p>
       <div className="details-heading">
         <h1>
           <span className="guide-route-number">{route.number}</span> {route.name}
         </h1>
         <button
           className="close-details"
-          aria-label="Close route guide"
+          aria-label={t('routeGuide.closeRouteGuide')}
           onClick={onClose}
         >
           ×
         </button>
       </div>
-      {route.overnight && <p className="tip">Overnight route</p>}
+      {route.overnight && <p className="tip">{t('routeGuide.overnightRoute')}</p>}
       {itinerary ? (
         <>
           <div className="tool-form">
             <div className="form-control">
-              <label htmlFor={`${id}-pattern`}>Scheduled direction / variant</label>
+              <label htmlFor={`${id}-pattern`}>
+                {t('routeGuide.scheduledDirectionVariant')}
+              </label>
               <select
                 id={`${id}-pattern`}
                 value={itinerary.key}
@@ -66,65 +71,64 @@ export function RouteGuide({
               >
                 {itineraries.map((item, index) => (
                   <option key={item.key} value={item.key}>
-                    {index + 1}. {item.headsign || 'Destination not supplied'} ·{' '}
-                    {item.boardingPoints} boarding points
+                    {index + 1}. {item.headsign || t('routeGuide.destinationNotSupplied')}{' '}
+                    · {item.boardingPoints} {t('routeGuide.boardingPoints')}
                   </option>
                 ))}
               </select>
             </div>
             <div className="form-control">
-              <label htmlFor={`${id}-query`}>Find on this route</label>
+              <label htmlFor={`${id}-query`}>{t('routeGuide.findOnThisRoute')}</label>
               <input
                 id={`${id}-query`}
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Station or street name"
+                placeholder={t('routeGuide.stationOrStreetName')}
               />
             </div>
           </div>
           <p className="helper">
-            Mapped stops: {first?.name ?? 'None'} → {last?.name ?? 'None'}
+            {t('routeGuide.mappedStops')} {first?.name ?? t('routeGuide.none')} →{' '}
+            {last?.name ?? t('routeGuide.none')}
           </p>
           <p className="microcopy">
-            Scheduled stop order, not a live service guarantee. Variants may run at
-            different times; current diversions and departure times are not included.
+            {t('routeGuide.scheduledStopOrderNotALiveServiceGuaranteeVariantsMay')}
           </p>
           {itinerary.unmapped > 0 && (
-            <p className="tip">
-              {itinerary.unmapped} boarding{' '}
-              {itinerary.unmapped === 1 ? 'point is' : 'points are'} not shown on this
-              map. The list may have gaps.
-            </p>
+            <p className="tip">{plural('counts.unmappedBoarding', itinerary.unmapped)}</p>
           )}
           {first && last && first.id !== last.id && (
             <button
               className="action-button"
               onClick={() => onCompare(first.id, last.id)}
             >
-              Compare first and last mapped stops
+              {t('routeGuide.compareFirstAndLastMappedStops')}
             </button>
           )}
           <p className="fleet-count" role="status">
-            {stops.length} of {itinerary.stops.length} mapped stops
+            {stops.length} {t('fleetExplorer.of')} {itinerary.stops.length}{' '}
+            {t('routeGuide.mappedStops2')}
           </p>
           <ol className="route-stop-list">
             {stops.map(({ feature, sequence }) => (
               <li key={sequence}>
                 <span
                   className="guide-sequence"
-                  aria-label={`Boarding sequence ${sequence}`}
+                  aria-label={t('routeGuide.boardingSequenceValue', { value1: sequence })}
                 >
                   {sequence}
                 </span>
                 <button className="list-choice" onClick={() => onSelect(feature)}>
                   <strong>
-                    {savedIds.includes(feature.id) && <span aria-label="Saved">★ </span>}
+                    {savedIds.includes(feature.id) && (
+                      <span aria-label={t('routeGuide.saved')}>★ </span>
+                    )}
                     {feature.name}
                   </strong>
                   <small>
-                    {feature.accessible ? 'Accessible boarding listed · ' : ''}View stop
-                    details →
+                    {feature.accessible ? t('routeGuide.accessibleBoardingListed') : ''}
+                    {t('routeGuide.viewStopDetails')}
                   </small>
                 </button>
               </li>
@@ -133,14 +137,14 @@ export function RouteGuide({
           {!stops.length && (
             <p className="helper">
               {query
-                ? 'No stops match this search. Try another street or station.'
-                : 'No boarding points in this variant are mapped.'}
+                ? t('routeGuide.noStopsMatchThisSearchTryAnotherStreetOrStation')
+                : t('routeGuide.noBoardingPointsInThisVariantAreMapped')}
             </p>
           )}
         </>
       ) : (
         <p className="tip">
-          Ordered stop information is unavailable for this route in the current map.
+          {t('routeGuide.orderedStopInformationIsUnavailableForThisRouteInThe')}
         </p>
       )}
     </section>

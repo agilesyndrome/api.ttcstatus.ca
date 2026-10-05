@@ -1,3 +1,4 @@
+import { english } from '../i18n/messages';
 import type { PlottedVehicle } from '../map/live-status';
 import type { Route } from '../map/model';
 
@@ -90,44 +91,44 @@ export function journalBadges(entries: JournalEntry[]) {
   );
   return [
     {
-      name: 'First catch',
+      name: english('journal.firstCatch'),
       icon: '✦',
       earned: entries.length >= 1,
       progress: Math.min(entries.length, 1),
       target: 1,
-      description: 'Add your first streetcar.',
+      description: english('journal.addYourFirstStreetcar'),
     },
     {
-      name: 'High five',
+      name: english('journal.highFive'),
       icon: 'Ⅴ',
       earned: entries.length >= 5,
       progress: Math.min(entries.length, 5),
       target: 5,
-      description: 'Collect five different streetcars.',
+      description: english('journal.collectFiveDifferentStreetcars'),
     },
     {
-      name: 'Streetcar society',
+      name: english('journal.streetcarSociety'),
       icon: '✧',
       earned: entries.length >= 20,
       progress: Math.min(entries.length, 20),
       target: 20,
-      description: 'Collect twenty different streetcars.',
+      description: english('journal.collectTwentyDifferentStreetcars'),
     },
     {
-      name: 'Route rover',
+      name: english('journal.routeRover'),
       icon: '↗',
       earned: routes.size >= 3,
       progress: Math.min(routes.size, 3),
       target: 3,
-      description: 'Collect cars assigned to three different routes.',
+      description: english('journal.collectCarsAssignedToThreeDifferentRoutes'),
     },
     {
-      name: 'Blue Night collector',
+      name: english('journal.blueNightCollector'),
       icon: '☾',
       earned: entries.some((entry) => entry.overnight),
       progress: Number(entries.some((entry) => entry.overnight)),
       target: 1,
-      description: 'Collect a car assigned to an overnight route.',
+      description: english('journal.collectACarAssignedToAnOvernightRoute'),
     },
   ];
 }
@@ -139,12 +140,12 @@ export function journalBackup(entries: JournalEntry[]): string {
 }
 export function readJournalBackup(contents: string): JournalEntry[] {
   if (contents.length > 2_000_000)
-    throw new Error('This file is too large. Choose a journal backup under 2 MB.');
+    throw new Error(english('journal.thisFileIsTooLargeChooseAJournalBackupUnder'));
   let data: unknown;
   try {
     data = JSON.parse(contents);
   } catch {
-    throw new Error('This is not a valid JSON journal backup.');
+    throw new Error(english('journal.backupInvalidJson'));
   }
   const backup = data as {
     format?: unknown;
@@ -157,7 +158,7 @@ export function readJournalBackup(contents: string): JournalEntry[] {
     backup.version !== 1 ||
     !validJournal(backup.entries)
   )
-    throw new Error('Choose a valid version 1 TTC streetcar journal backup.');
+    throw new Error(english('journal.backupInvalidVersion'));
   return backup.entries;
 }
 /** Existing notes win; importing never overwrites or silently drops a car. */
@@ -165,8 +166,6 @@ export function mergeJournal(current: JournalEntry[], incoming: JournalEntry[]) 
   const ids = new Set(current.map((entry) => entry.vehicleId));
   const additions = incoming.filter((entry) => !ids.has(entry.vehicleId));
   if (current.length + additions.length > JOURNAL_LIMIT)
-    throw new Error(
-      'This import would exceed the 500-car journal limit. Remove some entries first.',
-    );
+    throw new Error(english('journal.backupLimit'));
   return { entries: [...current, ...additions], added: additions.length };
 }

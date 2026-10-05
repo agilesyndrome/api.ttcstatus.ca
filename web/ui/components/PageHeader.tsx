@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 import { useId, useState, type ReactNode } from 'react';
 import { searchFeatures, type Feature, type ViewerData } from '../../../shared/map/model';
 import type { PlottedVehicle } from '../../../shared/map/live-status';
@@ -18,6 +20,7 @@ export function PageHeader({
   onSelectVehicle,
   onReset,
 }: Props) {
+  useLanguage();
   const id = useId();
   const [query, setQuery] = useState('');
   const matches = data ? searchFeatures(data.features, data.routes, query) : [];
@@ -57,19 +60,19 @@ export function PageHeader({
           ↔
         </span>
         <span>
-          <strong>Toronto rail map</strong>
-          <small>A city on rails</small>
+          <strong>{t('header.title')}</strong>
+          <small>{t('header.tagline')}</small>
         </span>
       </a>
       <div className="search">
         <label className="sr-only" htmlFor={id}>
-          Search stops, stations, routes or vehicle numbers
+          {t('header.searchStopsStationsRoutesOrVehicleNumbers')}
         </label>
         <span aria-hidden="true">⌕</span>
         <input
           id={id}
           type="search"
-          placeholder="Find a stop, route or vehicle number…"
+          placeholder={t('header.findAStopRouteOrVehicleNumber')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           aria-controls={`${id}-results`}
@@ -124,11 +127,15 @@ export function PageHeader({
                     closeSearch(true);
                   }}
                 >
-                  {car.vehicle.mode === 'subway' ? 'Train' : 'Streetcar'}{' '}
+                  {car.vehicle.mode === 'subway'
+                    ? t('viewer.train')
+                    : t('header.streetcar')}{' '}
                   {car.vehicle.label}
                   <small>
-                    {route ? `${route.number} ${route.name}` : 'Route not supplied'}
-                    {car.stale && ' · Stale position'}
+                    {route
+                      ? `${route.number} ${route.name}`
+                      : t('header.routeNotSupplied')}
+                    {car.stale && t('viewer.stalePosition')}
                   </small>
                 </button>
               );
@@ -145,17 +152,17 @@ export function PageHeader({
                 <small>
                   {feature.routeIds
                     .map((id) => data?.routes.find((route) => route.id === id)?.number)
-                    .join(' · ') || 'Physical terminal'}
+                    .join(' · ') || t('header.physicalTerminal')}
                 </small>
               </button>
             ))}
             {!matches.length && !matchingCars.length && (
-              <p>No matching stops or vehicles. Try a stop, route or vehicle number.</p>
+              <p>{t('header.noMatchingStopsOrVehiclesTryAStopRouteOr')}</p>
             )}
           </div>
         )}
       </div>
-      {actions ?? <span className="snapshot">TTC status map</span>}
+      {actions ?? <span className="snapshot">{t('header.ttcStatusMap')}</span>}
     </header>
   );
 }

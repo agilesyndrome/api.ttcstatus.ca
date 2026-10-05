@@ -1,3 +1,5 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
 import { localToMap, mapToGps, pointAlongEdge } from '../../../../shared/map/projection';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type {
@@ -132,7 +134,7 @@ export class SnakeEngine {
   trail: TrailSample[] = [];
   collected = new Set<string>();
   queued?: Turn | string;
-  message = 'Choose a mode and depart.';
+  message = english('snake.chooseAModeAndDepart');
   mission?: Mission;
   missionRefs: EdgeRef[] = [];
   missionIndex = -1;
@@ -154,7 +156,7 @@ export class SnakeEngine {
         )
         .map((edge) => [edge.id, edge]),
     );
-    if (!this.edges.size) throw new Error('No playable tracks in this map.');
+    if (!this.edges.size) throw new Error(english('snake.noPlayableTracksInThisMap'));
     for (const edge of this.edges.values()) {
       for (const node of new Set([edge.a, edge.b]))
         this.adjacent.set(node, [...(this.adjacent.get(node) ?? []), edge]);
@@ -319,8 +321,8 @@ export class SnakeEngine {
     }
     this.status = 'running';
     this.message = mission
-      ? `Destination: ${mission.headsign}`
-      : 'Follow the rails. Throw switches to explore.';
+      ? t('snake.destinationValue', { value1: mission.headsign })
+      : t('snake.followTheRailsThrowSwitchesToExplore');
     this.record();
   }
 
@@ -402,7 +404,7 @@ export class SnakeEngine {
           direction,
           angle,
           turn,
-          label: `${turn === 'left' ? '← Left' : turn === 'right' ? 'Right →' : '↑ Straight'} · ${routes || name || 'Track'}`,
+          label: `${turn === 'left' ? t('snake.left') : turn === 'right' ? t('snake.right') : t('snake.straight')} · ${routes || name || t('snake.track')}`,
         };
       })
       .sort((a, b) => a.angle - b.angle);
@@ -801,7 +803,10 @@ export class SnakeEngine {
         .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
       this.missionIndex = -1;
       this.queued = undefined; // Transit Control signs the return departure.
-      this.message = `Terminal reached${this.mode === 'arcade' ? ' · Bonus car coupled' : ''} · Now towards ${this.destination}`;
+      this.message = t('snake.terminalReachedValueNowTowardsValue', {
+        value1: this.mode === 'arcade' ? t('snake.bonusCarCoupled') : '',
+        value2: this.destination,
+      });
     }
     const next = this.nextRef(choices) ?? {
       edgeId: this.position.edgeId,
@@ -985,12 +990,17 @@ export class SnakeEngine {
           continue;
         if (this.mode === 'purist') {
           this.status = 'over';
-          this.message = `Collision with streetcar ${other.car.vehicle.label}. Game over.`;
+          this.message = t('snake.collisionWithStreetcarValueGameOver', {
+            value1: other.car.vehicle.label,
+          });
           return;
         }
         this.collected.add(other.car.vehicle.id);
         this.count++;
-        this.message = `Coupled streetcar ${other.car.vehicle.label} · ${this.count} cars`;
+        this.message = t('snake.coupledStreetcarValueValueCars', {
+          value1: other.car.vehicle.label,
+          value2: this.count,
+        });
       }
       if (
         this.mode === 'arcade' &&
@@ -1014,7 +1024,7 @@ export class SnakeEngine {
             )
           ) {
             this.status = 'over';
-            this.message = 'You hit your own train. Game over.';
+            this.message = t('snake.youHitYourOwnTrainGameOver');
             return;
           }
         }

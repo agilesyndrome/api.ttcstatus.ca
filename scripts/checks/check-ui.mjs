@@ -63,7 +63,10 @@ try {
   await page.waitForTimeout(100);
   assert.notEqual(await page.locator('#map').getAttribute('viewBox'), before);
   await page.getByRole('button', { name: 'Fit map', exact: true }).click();
-  const search = page.getByRole('searchbox');
+  const search = page.getByRole('searchbox', {
+    name: 'Search stops, stations, routes or vehicle numbers',
+    exact: true,
+  });
   await search.fill('Queen');
   const first = page.locator('.search-results button').first();
   const name = (await first.innerText()).split('\n')[0];

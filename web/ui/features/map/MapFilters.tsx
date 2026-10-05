@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 export interface MapFilterValues {
   live: boolean;
   labels: boolean;
@@ -10,14 +12,15 @@ interface Props {
   onChange(value: MapFilterValues): void;
 }
 export function MapFilters({ value, onChange }: Props) {
+  useLanguage();
   return (
-    <section className="map-filters" aria-label="Map filters">
-      <h2>Map layers</h2>
+    <section className="map-filters" aria-label={t('mapFilters.mapFilters')}>
+      <h2>{t('mapFilters.mapLayers')}</h2>
       {(
         [
-          ['live', 'Show live vehicles'],
-          ['labels', 'More stop labels'],
-          ['overnight', 'Include overnight routes'],
+          ['live', t('mapFilters.showLiveVehicles')],
+          ['labels', t('mapFilters.moreStopLabels')],
+          ['overnight', t('mapFilters.includeOvernightRoutes')],
         ] as const
       ).map(([key, label]) => (
         <label key={key}>

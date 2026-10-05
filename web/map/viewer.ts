@@ -1,3 +1,5 @@
+import { t, getLocale, subscribeLanguage } from '../ui/i18n';
+import { translateViewerPage } from './rendering/translations';
 import { element, shape } from './rendering/dom';
 import { renderLabels } from './rendering/labels';
 import {
@@ -19,6 +21,8 @@ import {
 import { VehiclePoller, requestVehicleUpdate } from '../../shared/live/polling';
 import { DEFAULT_LIVE_UPDATE_SECONDS } from '../../shared/live/config';
 import { vehicleIsStale, type VehicleSnapshot } from '../../shared/live/vehicles';
+
+translateViewerPage();
 
 const data: ViewerData = JSON.parse(document.querySelector('#map-data')!.textContent!);
 const svg = document.querySelector<SVGSVGElement>('#map')!;
@@ -93,7 +97,11 @@ function routeButton(route: Route, action: () => void): HTMLButtonElement {
   );
   if (route.overnight || !route.scheduled)
     button.append(
-      element('small', 'route-state', route.overnight ? 'OVERNIGHT' : 'RAIL ONLY'),
+      element(
+        'small',
+        'route-state',
+        route.overnight ? t('viewer.overnight') : t('viewer.railOnly'),
+      ),
     );
   button.onclick = action;
   return button;
@@ -130,7 +138,7 @@ const lake = shape('text', {
   'font-size': 23,
   'letter-spacing': 5,
 });
-lake.textContent = 'LAKE ONTARIO';
+lake.textContent = t('viewer.lakeOntario');
 water.append(lake);
 svg.append(water);
 const tracksLayer = shape('g', { 'aria-hidden': 'true' });
@@ -155,7 +163,12 @@ for (const feature of data.features) {
     'data-feature': feature.id,
     role: 'button',
     tabindex: 0,
-    'aria-label': `${feature.name}. ${routeText(feature.routeIds) || 'Physical terminal without scheduled streetcar service'}. Press Enter for details.`,
+    'aria-label': t('viewer.valueValuePressEnterForDetails', {
+      value1: feature.name,
+      value2:
+        routeText(feature.routeIds) ||
+        t('viewer.physicalTerminalWithoutScheduledStreetcarService'),
+    }),
   });
   marker.append(
     shape('circle', { r: 10, fill: 'transparent' }),
@@ -269,7 +282,7 @@ function draw() {
 
 function vehicleDescription(car: PlottedVehicle): string {
   const route = routes.get(car.vehicle.routeId ?? '');
-  return `${route ? `${route.number} ${route.name}` : car.vehicle.routeId ? `Route ${car.vehicle.routeId}` : 'No assigned trip'} · ${car.vehicle.positionKind === 'next-station' ? `Next station: ${car.vehicle.nextStopName} (prediction, not GPS)` : car.match ? 'On mapped track' : 'Off mapped track; GPS position'}${car.stale ? ' · Stale position' : ''}`;
+  return `${route ? `${route.number} ${route.name}` : car.vehicle.routeId ? t('viewer.routeValue', { value1: car.vehicle.routeId }) : t('viewer.noAssignedTrip')} · ${car.vehicle.positionKind === 'next-station' ? t('viewer.nextStationValuePredictionNotGps', { value1: car.vehicle.nextStopName ?? t('viewer.notSupplied') }) : car.match ? t('viewer.onMappedTrack') : t('viewer.offMappedTrackGpsPosition')}${car.stale ? t('viewer.stalePosition') : ''}`;
 }
 
 function renderVehicles(scale: number) {
@@ -307,18 +320,20 @@ function selectVehicle(car: PlottedVehicle) {
     element(
       'p',
       'eyebrow',
-      car.vehicle.mode === 'subway' ? 'Subway / LRT train' : 'Flexity streetcar',
+      car.vehicle.mode === 'subway'
+        ? t('viewer.subwayLrtTrain')
+        : t('viewer.flexityStreetcar'),
     ),
   );
   const heading = element('div', 'details-heading'),
     close = element('button', 'close-details', '×');
-  close.setAttribute('aria-label', 'Close streetcar details');
+  close.setAttribute('aria-label', t('viewer.closeStreetcarDetails'));
   close.onclick = closeDetails;
   heading.append(
     element(
       'h1',
       '',
-      `${car.vehicle.mode === 'subway' ? 'Train' : 'Car'} ${car.vehicle.label}`,
+      `${car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')} ${car.vehicle.label}`,
     ),
     close,
   );
@@ -326,37 +341,31 @@ function selectVehicle(car: PlottedVehicle) {
   details.append(element('p', '', vehicleDescription(car)));
   const facts = element('dl', 'stop-facts');
   facts.append(
-    element('dt', '', 'Position reported'),
+    element('dt', '', t('viewer.positionReported')),
     element(
       'dd',
       '',
       car.vehicle.observedAt
-        ? new Date(car.vehicle.observedAt).toLocaleString('en-CA', {
+        ? new Date(car.vehicle.observedAt).toLocaleString(getLocale(), {
             timeZone: 'America/Toronto',
           })
-        : 'Time not supplied',
+        : t('viewer.timeNotSupplied'),
     ),
   );
   if (car.vehicle.speedMetresPerSecond !== undefined)
     facts.append(
-      element('dt', '', 'Reported speed'),
+      element('dt', '', t('viewer.reportedSpeed')),
       element('dd', '', `${Math.round(car.vehicle.speedMetresPerSecond * 3.6)} km/h`),
     );
   if (car.match && car.vehicle.positionKind !== 'next-station')
     facts.append(
-      element('dt', '', 'GPS distance from mapped track'),
+      element('dt', '', t('viewer.gpsDistanceFromMappedTrack')),
       element('dd', '', `${Math.round(car.match.distanceFromTrackMetres)} m`),
     );
   else
-    details.append(
-      element(
-        'p',
-        'tip',
-        'This car is beyond the mapped track or in a yard. Its GPS location uses the same geographic transform as the map.',
-      ),
-    );
+    details.append(element('p', 'tip', t('viewer.thisCarIsBeyondTheMappedTrackOrInA')));
   details.append(facts);
-  const focus = element('button', 'focus-button', 'Zoom to this streetcar');
+  const focus = element('button', 'focus-button', t('viewer.zoomToThisStreetcar'));
   focus.onclick = () => focusPoint(car.point, 6);
   details.append(focus);
   drawSoon();
@@ -388,47 +397,67 @@ function updateSnapshotAge() {
   const active = liveToggle.checked && !document.hidden && navigator.onLine;
   if (!liveSnapshot) {
     if (!navigator.onLine)
-      liveSummary.textContent = 'Offline. Live status will resume when connected.';
+      liveSummary.textContent = t('viewer.offlineLiveStatusWillResumeWhenConnected');
     else if (liveFailed)
       liveSummary.textContent = active
-        ? `Live status unavailable. Retry in ${liveRetrySeconds}s.`
-        : 'Live status unavailable. Enable live status to retry.';
+        ? t('viewer.liveStatusUnavailableRetryInValueS', { value1: liveRetrySeconds })
+        : t('viewer.liveStatusUnavailableEnableLiveStatusToRetry');
     else
       liveSummary.textContent = active
-        ? 'Loading streetcar positions…'
-        : 'Live updates paused. Loading the startup snapshot.';
+        ? t('viewer.loadingStreetcarPositions')
+        : t('viewer.liveUpdatesPausedLoadingTheStartupSnapshot');
     return;
   }
   cars.forEach((car) => {
     car.stale = vehicleIsStale(car.vehicle, liveSnapshot!);
   });
   cars.forEach((car) =>
-    carElements
-      .get(car.vehicle.id)
-      ?.setAttribute(
-        'aria-label',
-        `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
-      ),
+    carElements.get(car.vehicle.id)?.setAttribute(
+      'aria-label',
+      t('viewer.valueValueValuePressEnterForDetails', {
+        value1:
+          car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.flexityCar'),
+        value2: car.vehicle.label,
+        value3: vehicleDescription(car),
+      }),
+    ),
   );
   const offTrack = cars.filter((car) => !car.match).length,
     stale = cars.filter((car) => car.stale).length;
   liveSummary.textContent = cars.length
-    ? `${cars.length} cars reported${offTrack ? ` · ${offTrack} off mapped track` : ''}${stale ? ` · ${stale} stale` : ''}.`
-    : 'No Flexity positions reported.';
+    ? t('viewer.valueCarsReportedValueValue', {
+        value1: cars.length,
+        value2: offTrack ? t('viewer.valueOffMappedTrack', { value1: offTrack }) : '',
+        value3: stale ? t('viewer.valueStale', { value1: stale }) : '',
+      })
+    : t('viewer.noFlexityPositionsReported');
   if (liveSnapshot.invalidPositions)
-    liveSummary.textContent += ` ${liveSnapshot.invalidPositions} invalid GPS fixes omitted.`;
-  if (!navigator.onLine) liveSummary.textContent += ' Offline; keeping last positions.';
+    liveSummary.textContent += t('viewer.valueInvalidGpsFixesOmitted', {
+      value1: liveSnapshot.invalidPositions,
+    });
+  if (!navigator.onLine)
+    liveSummary.textContent += t('viewer.offlineKeepingLastPositions');
   else if (liveFailed)
     liveSummary.textContent += active
-      ? ` Refresh unavailable; keeping last positions. Retry in ${liveRetrySeconds}s.`
-      : ' Refresh unavailable; keeping last positions.';
-  if (!active) liveSummary.textContent += ' Updates paused.';
+      ? t('viewer.refreshUnavailableKeepingLastPositionsRetryInValueS', {
+          value1: liveRetrySeconds,
+        })
+      : t('viewer.refreshUnavailableKeepingLastPositions');
+  if (!active) liveSummary.textContent += t('viewer.updatesPaused');
   const timestamp = liveSnapshot.feedTimestamp ?? liveSnapshot.fetchedAt;
   const interval =
     liveUpdateSeconds % 60 === 0
       ? `${liveUpdateSeconds / 60} min`
       : `${liveUpdateSeconds}s`;
-  liveTimestamp.textContent = `Positions · ${new Date(timestamp).toLocaleTimeString('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit', second: '2-digit' })} · updates every ${interval}`;
+  liveTimestamp.textContent = t('viewer.positionsValueUpdatesEveryValue', {
+    value1: new Date(timestamp).toLocaleTimeString(getLocale(), {
+      timeZone: 'America/Toronto',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    value2: interval,
+  });
   drawSoon();
 }
 
@@ -460,7 +489,12 @@ function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
         'data-vehicle': car.vehicle.id,
         role: 'button',
         tabindex: 0,
-        'aria-label': `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}. ${vehicleDescription(car)}. Press Enter for details.`,
+        'aria-label': t('viewer.valueValueValuePressEnterForDetails', {
+          value1:
+            car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.flexityCar'),
+          value2: car.vehicle.label,
+          value3: vehicleDescription(car),
+        }),
       });
       // Five articulated sections, drawn tail-first so the cab sits on top.
       const train = car.vehicle.mode === 'subway';
@@ -624,21 +658,25 @@ function showOverview() {
   selectedVehicleId = undefined;
   details.replaceChildren();
   details.append(
-    element('p', 'eyebrow', selectedRoute ? 'Route highlighted' : 'Explore Toronto'),
+    element(
+      'p',
+      'eyebrow',
+      selectedRoute ? t('viewer.routeHighlighted') : t('viewer.exploreToronto'),
+    ),
   );
   const route = selectedRoute ? routes.get(selectedRoute) : undefined;
   details.append(
     element(
       'h1',
       '',
-      route ? `${route.number} ${route.name}` : 'Follow the city’s tracks.',
+      route ? `${route.number} ${route.name}` : t('viewer.followTheCitySTracks'),
     ),
     element(
       'p',
       '',
       route
-        ? 'Highlighted tracks carry this route in the service snapshot. Select a stop to see its boarding details.'
-        : 'From Long Branch to the Beaches, explore the network one stop at a time.',
+        ? t('viewer.highlightedTracksCarryThisRouteInTheServiceSnapshotSelect')
+        : t('viewer.fromLongBranchToTheBeachesExploreTheNetworkOne'),
     ),
   );
   const stats = element('div', 'stats');
@@ -646,8 +684,8 @@ function showOverview() {
     (f) => !selectedRoute || f.routeIds.includes(selectedRoute),
   ).length;
   for (const [number, label] of [
-    [String(count), 'stops & terminals'],
-    [String(data.routes.filter((r) => !r.overnight).length), 'daytime routes'],
+    [String(count), t('viewer.stopsTerminals')],
+    [String(data.routes.filter((r) => !r.overnight).length), t('viewer.daytimeRoutes')],
   ]) {
     const stat = element('div');
     stat.append(element('strong', '', number), element('small', '', label));
@@ -655,11 +693,7 @@ function showOverview() {
   }
   details.append(
     stats,
-    element(
-      'p',
-      'tip',
-      'Zoom in to reveal stop names and route numbers. Hover for a quick look; select a stop for the full details.',
-    ),
+    element('p', 'tip', t('viewer.zoomInToRevealStopNamesAndRouteNumbersHover')),
   );
 }
 function selectFeature(feature: Feature, focus = false) {
@@ -673,12 +707,14 @@ function selectFeature(feature: Feature, focus = false) {
     element(
       'p',
       'eyebrow',
-      feature.kind === 'terminal' ? 'Station / terminal' : 'Streetcar stop',
+      feature.kind === 'terminal'
+        ? t('viewer.stationTerminal')
+        : t('viewer.streetcarStop'),
     ),
   );
   const heading = element('div', 'details-heading'),
     close = element('button', 'close-details', '×');
-  close.setAttribute('aria-label', 'Close stop details');
+  close.setAttribute('aria-label', t('viewer.closeStopDetails'));
   close.onclick = closeDetails;
   heading.append(element('h1', '', feature.name), close);
   details.append(heading);
@@ -687,7 +723,7 @@ function selectFeature(feature: Feature, focus = false) {
       element(
         'p',
         'tip',
-        'This physical terminal has no scheduled streetcar boarding records in this snapshot. Its tracks remain part of the map.',
+        t('viewer.thisPhysicalTerminalHasNoScheduledStreetcarBoardingRecordsIn'),
       ),
     );
   else
@@ -695,7 +731,10 @@ function selectFeature(feature: Feature, focus = false) {
       element(
         'p',
         '',
-        `${feature.routeIds.length} scheduled ${feature.routeIds.length === 1 ? 'route' : 'routes'} serve the boarding points grouped here.`,
+        t('viewer.valueScheduledValueServeTheBoardingPointsGroupedHere', {
+          value1: feature.routeIds.length,
+          value2: feature.routeIds.length === 1 ? t('viewer.route') : t('viewer.routes'),
+        }),
       ),
     );
   const services = element('div', 'served-routes');
@@ -707,29 +746,31 @@ function selectFeature(feature: Feature, focus = false) {
       element(
         'p',
         '',
-        `${routeText(feature.replacementRouteIds)} has replacement-bus trips in this snapshot. Bus paths are not drawn.`,
+        t('viewer.valueHasReplacementBusTripsInThisSnapshotBusPaths', {
+          value1: routeText(feature.replacementRouteIds),
+        }),
       ),
     );
-  const focusButton = element('button', 'focus-button', 'Zoom to this stop');
+  const focusButton = element('button', 'focus-button', t('viewer.zoomToThisStop'));
   focusButton.onclick = () => focusPoint(feature.point, 5);
   details.append(focusButton);
   const facts = element('dl', 'stop-facts');
   if (feature.boardingPoints) {
     facts.append(
-      element('dt', '', 'Boarding points grouped here'),
+      element('dt', '', t('viewer.boardingPointsGroupedHere')),
       element('dd', '', String(feature.boardingPoints)),
-      element('dt', '', 'Accessible boarding'),
+      element('dt', '', t('viewer.accessibleBoarding')),
       element(
         'dd',
         '',
         feature.accessible
-          ? 'Listed at one or more boarding points'
-          : 'Not confirmed in this snapshot',
+          ? t('viewer.listedAtOneOrMoreBoardingPoints')
+          : t('viewer.notConfirmedInThisSnapshot'),
       ),
     );
   }
   const destinations = element('details'),
-    summary = element('summary', '', 'Scheduled destinations');
+    summary = element('summary', '', t('viewer.scheduledDestinations'));
   destinations.append(summary);
   const list = element('ul');
   for (const route of sortedRoutes(feature.routeIds))
@@ -741,7 +782,7 @@ function selectFeature(feature: Feature, focus = false) {
   }
   if (feature.platformNames.length > 1) {
     const platforms = element('details');
-    platforms.append(element('summary', '', 'Boarding point names'));
+    platforms.append(element('summary', '', t('viewer.boardingPointNames')));
     const names = element('ul');
     feature.platformNames.forEach((name) => names.append(element('li', '', name)));
     platforms.append(names);
@@ -757,8 +798,7 @@ for (const route of data.routes.filter((r) => !r.overnight)) {
   button.setAttribute('aria-pressed', 'false');
   if (!route.scheduled) {
     button.disabled = true;
-    button.title =
-      'No scheduled streetcar service in this snapshot; physical tracks are shown dashed.';
+    button.title = t('viewer.noScheduledStreetcarServiceInThisSnapshotPhysicalTracksAre');
   }
   routeButtons.set(route.id, button);
   document.querySelector('#route-list')!.append(button);
@@ -783,10 +823,20 @@ document.querySelector<HTMLAnchorElement>('#brand')!.onclick = (event) => {
   closeDetails();
   fit();
 };
-const date = new Date(data.snapshot);
-document.querySelector('#snapshot')!.textContent = Number.isFinite(date.getTime())
-  ? `Service snapshot · ${new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Toronto' }).format(date)}`
-  : 'Scheduled service snapshot';
+function renderSnapshotLabel() {
+  const date = new Date(data.snapshot);
+  document.querySelector('#snapshot')!.textContent = Number.isFinite(date.getTime())
+    ? t('viewer.serviceSnapshotValue', {
+        value1: new Intl.DateTimeFormat(getLocale(), {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'America/Toronto',
+        }).format(date),
+      })
+    : t('viewer.scheduledServiceSnapshot');
+}
+renderSnapshotLabel();
 
 function hideSearch() {
   results.hidden = true;
@@ -806,7 +856,7 @@ search.addEventListener('input', () => {
         'small',
         '',
         routeText(feature.routeIds) ||
-          'Physical terminal · no scheduled streetcar service',
+          t('viewer.physicalTerminalNoScheduledStreetcarService'),
       ),
     );
     button.onclick = () => {
@@ -818,7 +868,7 @@ search.addEventListener('input', () => {
   }
   if (!matches.length)
     results.append(
-      element('p', '', 'No matching stops. Try a street name or route number.'),
+      element('p', '', t('viewer.noMatchingStopsTryAStreetNameOrRouteNumber')),
     );
   results.hidden = false;
   search.setAttribute('aria-expanded', 'true');
@@ -875,10 +925,10 @@ function hoverAt(x: number, y: number) {
       element(
         'strong',
         '',
-        `${car.vehicle.mode === 'subway' ? 'Train' : 'Flexity car'} ${car.vehicle.label}`,
+        `${car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.flexityCar')} ${car.vehicle.label}`,
       ),
       element('small', '', vehicleDescription(car)),
-      element('small', '', 'Select for streetcar details'),
+      element('small', '', t('viewer.selectForStreetcarDetails')),
     );
     tooltip.hidden = false;
     tooltip.style.left = `${Math.max(8, Math.min(x - rect().left + 16, rect().width - tooltip.offsetWidth - 8))}px`;
@@ -916,13 +966,15 @@ function hoverAt(x: number, y: number) {
       'strong',
       '',
       feature?.name ??
-        (hitEdge!.routeIds.length ? 'Streetcar corridor' : 'Physical track'),
+        (hitEdge!.routeIds.length
+          ? t('viewer.streetcarCorridor')
+          : t('viewer.physicalTrack')),
     ),
     element(
       'small',
       '',
       feature
-        ? routeText(feature.routeIds) || 'No scheduled streetcar boarding point'
+        ? routeText(feature.routeIds) || t('viewer.noScheduledStreetcarBoardingPoint')
         : routeText(hitEdge!.routeIds) ||
             data.infrastructure
               .filter((i) => hitEdge!.infrastructureIds.includes(i.id))
@@ -930,7 +982,8 @@ function hoverAt(x: number, y: number) {
               .join(' · '),
     ),
   );
-  if (feature) tooltip.append(element('small', '', 'Select to see boarding details'));
+  if (feature)
+    tooltip.append(element('small', '', t('viewer.selectToSeeBoardingDetails')));
   tooltip.hidden = false;
   tooltip.style.left = `${Math.max(8, Math.min(x - rect().left + 16, rect().width - tooltip.offsetWidth - 8))}px`;
   tooltip.style.top = `${Math.max(8, Math.min(y - rect().top + 16, rect().height - tooltip.offsetHeight - 8))}px`;
@@ -1081,3 +1134,37 @@ draw();
 void livePoller.refreshOnce();
 // Age labels continue to update locally while network requests are paused.
 setInterval(updateSnapshotAge, 30_000);
+
+subscribeLanguage(() => {
+  translateViewerPage();
+  lake.textContent = t('viewer.lakeOntario');
+  renderSnapshotLabel();
+  tooltip.hidden = true;
+  for (const feature of data.features) {
+    markerElements.get(feature.id)?.setAttribute(
+      'aria-label',
+      t('viewer.valueValuePressEnterForDetails', {
+        value1: feature.name,
+        value2:
+          routeText(feature.routeIds) ||
+          t('viewer.physicalTerminalWithoutScheduledStreetcarService'),
+      }),
+    );
+  }
+  for (const route of data.routes.filter((entry) => !entry.overnight)) {
+    const button = routeButtons.get(route.id);
+    if (!button) continue;
+    button.replaceChildren(...Array.from(routeButton(route, () => {}).childNodes));
+    if (!route.scheduled)
+      button.title = t(
+        'viewer.noScheduledStreetcarServiceInThisSnapshotPhysicalTracksAre',
+      );
+  }
+  updateSnapshotAge();
+  if (selected) selectFeature(selected);
+  else if (selectedVehicleId && carsById.has(selectedVehicleId))
+    selectVehicle(carsById.get(selectedVehicleId)!);
+  else showOverview();
+  search.dispatchEvent(new Event('input'));
+  drawSoon();
+});

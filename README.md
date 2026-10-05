@@ -298,9 +298,9 @@ This repository contains two Workers, so configure two Cloudflare Workers Builds
 from the same repository:
 
 - API project: root directory `/`, build command `npm run build:api`, deploy command
-  `npx wrangler deploy -c workers/api/wrangler.jsonc`
+  `npx wrangler deploy -c workers/api/wrangler.jsonc --keep-vars`
 - Map project: root directory `/`, build command `npm run build:map`, deploy command
-  `npx wrangler deploy -c workers/map-generator/wrangler.jsonc`
+  `npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars`
 
 Deploy the map project before the API project because the API uses a Service Binding to it.
 Both projects must have the same D1 database bound to the `DB` binding. Replace
@@ -312,7 +312,7 @@ map project, use these literal values:
 
 ```text
 Build command: npm run build:map
-Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc
+Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars
 ```
 
 The static import is intentionally a background production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. Normal API reads remain lightweight because they never parse GTFS.
@@ -679,3 +679,11 @@ Build with `npm run build:api` before an API deployment: Wrangler serves `dist/`
 The public paths, payloads, generator version, map fixtures and archived game remain
 unchanged by the refactor. [Security and deployment notes](docs/security.md)
 cover credential replacement and input limits.
+
+## Interface languages
+
+The interface follows the browser’s preferred language and supports Canadian English
+and Canadian French. Use the globe link to open **Profile → Browser profile → Language**
+and save an override on this browser, without signing in. Unsupported languages fall
+back to Canadian English. See [the translation guide](shared/i18n/locales/README.md) for adding
+languages and running localization checks.

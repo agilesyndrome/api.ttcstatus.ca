@@ -19,6 +19,22 @@ npx wrangler secret put SYNC_TOKEN -c workers/api/wrangler.jsonc
 npx wrangler secret put SYNC_TOKEN -c workers/map-generator/wrangler.jsonc
 ```
 
+The laptop can synchronize all runtime secrets from 1Password in one command. The
+default environment is `prod`; use `ENV=local` or another environment name when
+that `.env.<name>` file is available:
+
+```sh
+ENV=prod npm run secrets:sync
+ENV=local npm run secrets:sync
+```
+
+Run this after deploying the Workers when Cloudflare has lost a runtime binding.
+The command restores `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` on the API
+Worker, and `SYNC_TOKEN` on both Workers. Cloudflare Build deployments cannot run
+this command because they do not have access to the laptop's 1Password session.
+The deploy commands use Wrangler's `--keep-vars` flag so dashboard-managed
+variables are retained during a deployment.
+
 Update your ignored local `.env` or secret manager with the replacement credential.
 Keep `.env.example` as placeholders. Verify the old credential returns 401, the new
 credential authorizes the intended admin operation, and a missing token leaves

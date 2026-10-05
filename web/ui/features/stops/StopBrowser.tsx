@@ -1,3 +1,5 @@
+import { t, plural } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useState } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import { formatDistance, type Location } from '../../commute';
@@ -9,6 +11,7 @@ interface Props {
   onSelect(stop: Feature): void;
 }
 export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
+  useLanguage();
   const id = useId();
   const [filters, setFilters] = useState(DEFAULT_STOP_FILTERS);
   const [page, setPage] = useState(0);
@@ -23,44 +26,43 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
   };
   return (
     <section className="stop-browser">
-      <p className="eyebrow">Every corner has a story</p>
-      <h1>Find your stop.</h1>
+      <p className="eyebrow">{t('stopBrowser.everyCornerHasAStory')}</p>
+      <h1>{t('stopBrowser.findYourStop')}</h1>
       <p className="helper">
-        Browse boarding stops, stations and physical terminals in the published map.
-        Overnight routes are included in this directory.
+        {t('stopBrowser.browseBoardingStopsStationsAndPhysicalTerminalsInThePublished')}
       </p>
       <div className="tool-form">
         <div className="form-control">
-          <label htmlFor={id + '-query'}>Search stops</label>
+          <label htmlFor={id + '-query'}>{t('stopBrowser.searchStops')}</label>
           <input
             id={id + '-query'}
             type="search"
             value={filters.query}
-            placeholder="Stop, street or route name"
+            placeholder={t('stopBrowser.stopStreetOrRouteName')}
             onChange={(event) => change({ query: event.target.value })}
           />
         </div>
         <div className="form-control">
-          <label htmlFor={id + '-route'}>Stop route</label>
+          <label htmlFor={id + '-route'}>{t('stopBrowser.stopRoute')}</label>
           <select
             id={id + '-route'}
             value={filters.route}
             onChange={(event) => change({ route: event.target.value })}
           >
-            <option value="">All routes</option>
+            <option value="">{t('stopBrowser.allRoutes')}</option>
             {data.routes
               .filter((route) => route.scheduled)
               .map((route) => (
                 <option key={route.id} value={route.id}>
                   {route.number} {route.name}
-                  {route.overnight ? ' · overnight' : ''}
+                  {route.overnight ? t('stopBrowser.overnightSuffix') : ''}
                 </option>
               ))}
           </select>
         </div>
         <div className="form-pair">
           <div className="form-control">
-            <label htmlFor={id + '-kind'}>Stop type</label>
+            <label htmlFor={id + '-kind'}>{t('stopBrowser.stopType')}</label>
             <select
               id={id + '-kind'}
               value={filters.kind}
@@ -68,13 +70,13 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
                 change({ kind: event.target.value as StopFilters['kind'] })
               }
             >
-              <option value="boarding">Boarding stops</option>
-              <option value="terminal">Stations / terminals</option>
-              <option value="all">All map places</option>
+              <option value="boarding">{t('stopBrowser.boardingStops')}</option>
+              <option value="terminal">{t('stopBrowser.stationsTerminals')}</option>
+              <option value="all">{t('stopBrowser.allMapPlaces')}</option>
             </select>
           </div>
           <div className="form-control">
-            <label htmlFor={id + '-sort'}>Sort stops</label>
+            <label htmlFor={id + '-sort'}>{t('stopBrowser.sortStops')}</label>
             <select
               id={id + '-sort'}
               value={filters.sort === 'distance' && !location ? 'name' : filters.sort}
@@ -82,9 +84,9 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
                 change({ sort: event.target.value as StopFilters['sort'] })
               }
             >
-              <option value="name">Name</option>
+              <option value="name">{t('stopBrowser.name')}</option>
               <option value="distance" disabled={!location}>
-                Distance from me
+                {t('fleetExplorer.distanceFromMe')}
               </option>
             </select>
           </div>
@@ -95,7 +97,7 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
             checked={filters.accessible}
             onChange={(event) => change({ accessible: event.target.checked })}
           />{' '}
-          Listed accessible boarding
+          {t('stopBrowser.listedAccessibleBoarding')}
         </label>
         <label className="accessible-filter">
           <input
@@ -103,11 +105,11 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
             checked={filters.saved}
             onChange={(event) => change({ saved: event.target.checked })}
           />{' '}
-          Saved stops only
+          {t('stopBrowser.savedStopsOnly')}
         </label>
       </div>
       <p className="fleet-count" role="status">
-        {matches.length} {matches.length === 1 ? 'place' : 'places'} found
+        {plural('counts.placesFound', matches.length)}
       </p>
       <ul className="compact-list">
         {matches
@@ -116,7 +118,9 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
             <li key={stop.id}>
               <button className="list-choice" onClick={() => onSelect(stop)}>
                 <strong>
-                  {savedIds.includes(stop.id) && <span aria-label="Saved">★ </span>}
+                  {savedIds.includes(stop.id) && (
+                    <span aria-label={t('routeGuide.saved')}>★ </span>
+                  )}
                   {stop.name}
                   {metres !== undefined && (
                     <span className="distance">{formatDistance(metres)}</span>
@@ -133,32 +137,35 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
                         .join(' · ') +
                       ' · ' +
                       stop.boardingPoints +
-                      ' boarding points'
-                    : 'Physical terminal · no scheduled boarding records'}
+                      t('stopBrowser.boardingPoints')
+                    : t('stopBrowser.physicalTerminalNoScheduledBoardingRecords')}
                 </small>
-                {stop.accessible === true && <small>Accessible boarding listed</small>}
+                {stop.accessible === true && (
+                  <small>{t('stopBrowser.accessibleBoardingListed')}</small>
+                )}
               </button>
             </li>
           ))}
       </ul>
       {!matches.length && (
         <p className="helper">
-          No places match these filters. Try another street or broaden your search.
+          {t('stopBrowser.noPlacesMatchTheseFiltersTryAnotherStreetOrBroaden')}
         </p>
       )}
       {matches.length > 20 && (
         <div className="fleet-pagination">
           <button disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>
-            Previous stops
+            {t('stopBrowser.previousStops')}
           </button>
           <span>
-            Page {currentPage + 1} of {Math.ceil(matches.length / 20)}
+            {t('fleetExplorer.page')} {currentPage + 1} {t('fleetExplorer.of')}{' '}
+            {Math.ceil(matches.length / 20)}
           </span>
           <button
             disabled={(currentPage + 1) * 20 >= matches.length}
             onClick={() => setPage(currentPage + 1)}
           >
-            Next stops
+            {t('stopBrowser.nextStops')}
           </button>
         </div>
       )}
@@ -169,12 +176,10 @@ export function StopBrowser({ data, savedIds, location, onSelect }: Props) {
           setPage(0);
         }}
       >
-        Reset stop filters
+        {t('stopBrowser.resetStopFilters')}
       </button>
       <p className="microcopy">
-        Accessibility comes from the static feed and may apply to only one boarding point.
-        Distance is straight-line GPS distance. Enable Near me in Explore to sort by
-        distance.
+        {t('stopBrowser.accessibilityComesFromTheStaticFeedAndMayApplyTo')}
       </p>
     </section>
   );

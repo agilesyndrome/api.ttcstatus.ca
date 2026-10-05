@@ -1,3 +1,4 @@
+import { getLocale } from './i18n';
 import { mapToGps } from '../../shared/map/projection';
 import type { PlottedVehicle } from '../../shared/map/live-status';
 import type { Feature, Route, ViewerData } from '../../shared/map/model';
@@ -67,7 +68,7 @@ export function distanceMetres(a: Location, b: Location): number {
 export function formatDistance(metres: number): string {
   return metres < 1000
     ? `${Math.round(metres / 10) * 10} m`
-    : `${(metres / 1000).toFixed(1)} km`;
+    : `${new Intl.NumberFormat(getLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(metres / 1000)} km`;
 }
 export function nearbyStops(
   data: ViewerData,

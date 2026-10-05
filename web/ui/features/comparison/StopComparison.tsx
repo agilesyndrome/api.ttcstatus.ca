@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useMemo } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import { formatDistance } from '../../commute';
@@ -17,8 +19,8 @@ interface Props {
 }
 const boarding = (feature?: Feature) =>
   feature?.accessible
-    ? 'Listed at one or more boarding points'
-    : 'Not confirmed in this map';
+    ? t('viewer.listedAtOneOrMoreBoardingPoints')
+    : t('stopComparison.notConfirmedInThisMap');
 export function StopComparison({
   data,
   fromId,
@@ -30,6 +32,7 @@ export function StopComparison({
   onOvernight,
   onRoute,
 }: Props) {
+  useLanguage();
   const id = useId();
   const stops = useMemo(
     () =>
@@ -49,22 +52,23 @@ export function StopComparison({
     onChange(nextFrom, nextTo);
   }
   return (
-    <section className="stop-comparison" aria-label="Stop comparison">
-      <p className="eyebrow">Two stops, one city</p>
-      <h1>Compare stops</h1>
+    <section className="stop-comparison" aria-label={t('stopComparison.stopComparison')}>
+      <p className="eyebrow">{t('stopComparison.twoStopsOneCity')}</p>
+      <h1>{t('stopComparison.compareStops')}</h1>
       <p className="helper">
-        Choose two boarding stops to compare distance, accessibility and scheduled route
-        connections.
+        {t(
+          'stopComparison.chooseTwoBoardingStopsToCompareDistanceAccessibilityAndScheduled',
+        )}
       </p>
       <div className="tool-form">
         <div className="form-control">
-          <label htmlFor={`${id}-start`}>Start stop</label>
+          <label htmlFor={`${id}-start`}>{t('stopComparison.startStop')}</label>
           <select
             id={`${id}-start`}
             value={from?.id ?? ''}
             onChange={(event) => change(event.target.value || undefined, toId)}
           >
-            <option value="">Choose a start…</option>
+            <option value="">{t('stopComparison.chooseAStart')}</option>
             {stops.map((stop) => (
               <option key={stop.id} value={stop.id}>
                 {stop.name}
@@ -77,16 +81,18 @@ export function StopComparison({
           aria-pressed={picking === 'from'}
           onClick={() => onPick(picking === 'from' ? undefined : 'from')}
         >
-          Pick start stop on map
+          {t('stopComparison.pickStartStopOnMap')}
         </button>
         <div className="form-control">
-          <label htmlFor={`${id}-destination`}>Destination stop</label>
+          <label htmlFor={`${id}-destination`}>
+            {t('stopComparison.destinationStop')}
+          </label>
           <select
             id={`${id}-destination`}
             value={to?.id ?? ''}
             onChange={(event) => change(fromId, event.target.value || undefined)}
           >
-            <option value="">Choose a destination…</option>
+            <option value="">{t('stopComparison.chooseADestination')}</option>
             {stops.map((stop) => (
               <option key={stop.id} value={stop.id}>
                 {stop.name}
@@ -99,7 +105,7 @@ export function StopComparison({
           aria-pressed={picking === 'to'}
           onClick={() => onPick(picking === 'to' ? undefined : 'to')}
         >
-          Pick destination stop on map
+          {t('stopComparison.pickDestinationStopOnMap')}
         </button>
         <div className="comparison-actions">
           <button
@@ -107,14 +113,14 @@ export function StopComparison({
             disabled={!from && !to}
             onClick={() => change(toId, fromId)}
           >
-            ⇄ Swap stops
+            {t('stopComparison.swapStops')}
           </button>
           <button
             className="text-button"
             disabled={!fromId && !toId && !picking}
             onClick={() => change()}
           >
-            Clear comparison
+            {t('stopComparison.clearComparison')}
           </button>
         </div>
         <label className="accessible-filter">
@@ -123,15 +129,19 @@ export function StopComparison({
             checked={includeOvernight}
             onChange={(event) => onOvernight(event.target.checked)}
           />{' '}
-          Include overnight connections
+          {t('stopComparison.includeOvernightConnections')}
         </label>
       </div>
       {picking && (
         <p role="status" className="tip">
-          Choose a {picking === 'from' ? 'start' : 'destination'} boarding stop on the
-          map, or use the search above.{' '}
+          {t('stopComparison.chooseAValueBoardingStopOnTheMapOrUse', {
+            end:
+              picking === 'from'
+                ? t('stopComparison.start')
+                : t('stopComparison.destination'),
+          })}{' '}
           <button className="text-button" onClick={() => onPick(undefined)}>
-            Cancel picking
+            {t('stopComparison.cancelPicking')}
           </button>
         </p>
       )}
@@ -139,24 +149,32 @@ export function StopComparison({
         <div className="comparison-result" aria-live="polite">
           <div className="comparison-summary">
             <strong>{formatDistance(comparison.metres)}</strong>
-            <small>Straight-line distance</small>
+            <small>{t('stopComparison.straightLineDistance')}</small>
           </div>
           <dl className="stop-facts">
-            <dt>A · {from.name}</dt>
-            <dd>Accessible boarding: {boarding(from)}</dd>
-            <dt>B · {to.name}</dt>
-            <dd>Accessible boarding: {boarding(to)}</dd>
+            <dt>
+              {t('stopComparison.a')} {from.name}
+            </dt>
+            <dd>
+              {t('stopComparison.accessibleBoarding')} {boarding(from)}
+            </dd>
+            <dt>
+              {t('stopComparison.b')} {to.name}
+            </dt>
+            <dd>
+              {t('stopComparison.accessibleBoarding')} {boarding(to)}
+            </dd>
           </dl>
-          <h2>Scheduled connections</h2>
+          <h2>{t('stopComparison.scheduledConnections')}</h2>
           {comparison.sameStop ? (
             <p className="tip">
-              You’ve chosen the same stop twice. Choose a different destination to
-              compare.
+              {t('stopComparison.youVeChosenTheSameStopTwiceChooseADifferent')}
             </p>
           ) : !comparison.available ? (
             <p className="tip">
-              Route connections are unavailable for this map. Distance and boarding
-              information are shown above.
+              {t(
+                'stopComparison.routeConnectionsAreUnavailableForThisMapDistanceAndBoarding',
+              )}
             </p>
           ) : comparison.connections.length ? (
             <div className="connection-list">
@@ -166,18 +184,22 @@ export function StopComparison({
                     className="action-button"
                     onClick={() => onRoute(connection.route.id)}
                   >
-                    Highlight {connection.route.number} {connection.route.name}
+                    {t('stopComparison.highlight')} {connection.route.number}{' '}
+                    {connection.route.name}
                   </button>
                   <p>
                     {connection.minimumStopsBetween === connection.maximumStopsBetween
                       ? connection.minimumStopsBetween
                       : `${connection.minimumStopsBetween}–${connection.maximumStopsBetween}`}{' '}
-                    {connection.maximumStopsBetween === 1 ? 'stop' : 'stops'} between
-                    these boarding points{connection.route.overnight && ' · Overnight'}
+                    {connection.maximumStopsBetween === 1
+                      ? t('commute.stop')
+                      : t('commute.stops')}{' '}
+                    {t('stopComparison.betweenTheseBoardingPoints')}
+                    {connection.route.overnight && t('stopComparison.overnight')}
                   </p>
                   {connection.headsigns.length > 0 && (
                     <details>
-                      <summary>Scheduled destinations</summary>
+                      <summary>{t('viewer.scheduledDestinations')}</summary>
                       <ul>
                         {connection.headsigns.map((headsign) => (
                           <li key={headsign}>{headsign}</li>
@@ -190,20 +212,18 @@ export function StopComparison({
             </div>
           ) : (
             <p className="tip">
-              No direct rail connection is listed in this direction
-              {includeOvernight ? '' : ' on daytime routes'}. Try swapping stops or
-              including overnight connections.
+              {t('stopComparison.noDirectRailConnectionIsListedInThisDirection')}
+              {includeOvernight ? '' : t('stopComparison.onDaytimeRoutes')}
+              {t('stopComparison.trySwappingStopsOrIncludingOvernightConnections')}
             </p>
           )}
           <p className="microcopy">
-            Connections use routes in this map that serve the start before the
-            destination. Service times, transfers and current diversions are not included.
+            {t('stopComparison.connectionsUseRoutesInThisMapThatServeTheStart')}
           </p>
         </div>
       ) : (
         <p className="tip">
-          Start and destination will appear as A and B on the map. Set both to see the
-          comparison.
+          {t('stopComparison.startAndDestinationWillAppearAsAAndBOn')}
         </p>
       )}
     </section>

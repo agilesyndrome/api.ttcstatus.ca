@@ -1,3 +1,5 @@
+import { t, getLocale } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { memo, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Point, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
@@ -37,12 +39,13 @@ const MiniTracks = memo(function MiniTracks({ data }: { data: ViewerData }) {
   );
 });
 function Minimap({ data, point }: { data: ViewerData; point: Point }) {
+  useLanguage();
   const { x, y, width, height } = data.bounds;
   return (
     <svg
       className="snake-minimap"
       role="img"
-      aria-label="Network minimap showing your streetcar"
+      aria-label={t('snake.networkMinimapShowingYourStreetcar')}
       viewBox={`${x} ${y} ${width} ${height}`}
     >
       <MiniTracks data={data} />
@@ -60,6 +63,7 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
 }
 
 export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }: Props) {
+  useLanguage();
   const gameMap = useMemo(() => buildSnakeMap(sourceData), [sourceData]);
   const data = gameMap.data;
   const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
@@ -287,12 +291,12 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
   const visibleCars = cars.filter((car) => !engine.collected.has(car.vehicle.id));
   const playing = engine.status === 'running' || engine.status === 'paused';
   const feedText = feed.failed
-    ? 'Live refresh unavailable · using fresh reports only'
+    ? t('snake.liveRefreshUnavailableUsingFreshReportsOnly')
     : !feed.active
-      ? 'Live feed paused · using fresh reports only'
+      ? t('snake.liveFeedPausedUsingFreshReportsOnly')
       : fresh.length
-        ? `${fresh.length} fresh streetcars on the map`
-        : 'Waiting for fresh streetcar positions';
+        ? t('snake.valueFreshStreetcarsOnTheMap', { value1: fresh.length })
+        : t('snake.waitingForFreshStreetcarPositions');
   const pedal = (value: number) => ({
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
@@ -533,82 +537,87 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
       </div>
       <header className="snake-top">
         <div>
-          <strong id="snake-title">🐍 Streetcar Snake</strong>
+          <strong id="snake-title">{t('snake.streetcarSnake')}</strong>
           <small>
             {engine.status === 'ready'
-              ? 'Toronto · Snake playground'
-              : `${engine.mode === 'purist' ? 'Purist' : 'Arcade'} · ${engine.mission ? `${data.routes.find((route) => route.id === engine.mission?.routeId)?.number} · ${engine.destination}` : 'Free play'}`}
+              ? t('snake.torontoSnakePlayground')
+              : `${engine.mode === 'purist' ? t('snake.purist') : t('snake.arcade')} · ${engine.mission ? `${data.routes.find((route) => route.id === engine.mission?.routeId)?.number} · ${engine.destination}` : t('snake.freePlay')}`}
           </small>
         </div>
-        <button aria-label="Close Streetcar Snake" onClick={onClose}>
+        <button aria-label={t('snake.closeStreetcarSnake')} onClick={onClose}>
           ✕
         </button>
       </header>
       {playing && <Minimap data={data} point={pose.point} />}
       <div className="snake-hud">
         <span>
-          <b data-snake-count>{engine.count}</b> {engine.count === 1 ? 'car' : 'cars'}
+          <b data-snake-count>{engine.count}</b>{' '}
+          {engine.count === 1 ? t('commute.car') : t('useMapCamera.cars')}
         </span>
         <span>
-          <b data-snake-speed>{Math.round(engine.speed)}</b> km/h
+          <b data-snake-speed>{Math.round(engine.speed)}</b> {t('snake.kmH')}
         </span>
         <span>
-          {engine.trips ? `${engine.trips} trips · ` : ''}Best {best}
+          {engine.trips ? t('snake.valueTrips', { value1: engine.trips }) : ''}
+          {t('snake.best')} {best}
         </span>
       </div>
       {playing && (
         <div className="snake-status">
-          <p role="status">{engine.message}</p>
+          <p role="status">{t(engine.message)}</p>
           {nextStop && (
             <p>
-              Next stop: {nextStop.name} · {Math.round(nextStop.metres)} m
+              {t('snake.nextStop')} {nextStop.name} · {Math.round(nextStop.metres)}{' '}
+              {t('snake.m')}
             </p>
           )}
           <small>{feedText}</small>
           {feed.snapshot && (
             <small>
-              Positions:{' '}
+              {t('snake.positions')}{' '}
               {new Date(
                 feed.snapshot.feedTimestamp ?? feed.snapshot.fetchedAt,
-              ).toLocaleTimeString()}{' '}
+              ).toLocaleTimeString(getLocale(), { timeZone: 'America/Toronto' })}{' '}
               · {feed.snapshot.attribution}
             </small>
           )}
         </div>
       )}
       {!playing ? (
-        <section className="snake-menu" aria-label="Game setup">
+        <section className="snake-menu" aria-label={t('snake.gameSetup')}>
           <p className="eyebrow">
             {engine.status === 'over'
-              ? 'End of the line'
-              : 'Your streetcar. Your switches.'}
+              ? t('snake.endOfTheLine')
+              : t('snake.yourStreetcarYourSwitches')}
           </p>
-          <h1>{engine.status === 'over' ? 'Game over' : 'Take the controls'}</h1>
-          {engine.status === 'over' && <p role="status">{engine.message}</p>}
+          <h1>
+            {engine.status === 'over' ? t('snake.gameOver') : t('snake.takeTheControls')}
+          </h1>
+          {engine.status === 'over' && <p role="status">{t(engine.message)}</p>}
           <label>
-            Driving mode
+            {t('snake.drivingMode')}
             <select
-              aria-label="Driving mode"
+              aria-label={t('snake.drivingMode')}
               value={mode}
               onChange={(event) => setMode(event.target.value as Mode)}
             >
-              <option value="arcade">Arcade — collect and grow</option>
-              <option value="purist">Purist — drive one streetcar</option>
+              <option value="arcade">{t('snake.arcadeCollectAndGrow')}</option>
+              <option value="purist">{t('snake.puristDriveOneStreetcar')}</option>
             </select>
           </label>
           <p>
             {mode === 'arcade'
-              ? 'Couple live streetcars into an ever longer train. Avoid your own tail. Start at 180 km/h, with arcade overdrive up to 2000.'
-              : 'Drive one streetcar at up to 50 km/h. Touch another streetcar and the run ends.'}
+              ? t('snake.coupleLiveStreetcarsIntoAnEverLongerTrainAvoidYour')
+              : t('snake.driveOneStreetcarAtUpTo50KmHTouch')}
           </p>
           <label>
-            Route
+            {t('snake.route')}
             <select
-              aria-label="Route"
+              aria-label={t('snake.route')}
               value={missionId}
               onChange={(event) => setMissionId(event.target.value)}
             >
-              <option value="">Free play — all tracks</option>
+              <option value="">{t('snake.freePlayAllTracks')}</option>
               {missions.map((mission) => (
                 <option key={mission.id} value={mission.id}>
                   {mission.label}
@@ -616,23 +625,18 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
               ))}
             </select>
           </label>
+          <p>{t('snake.routeMissionsFollowTheSignedPathReachTheTerminalFor')}</p>
           <p>
-            Route missions follow the signed path. Reach the terminal for a return trip
-            and, in arcade, a bonus car. Manual switches let you divert.
-          </p>
-          <p>
-            A Toronto playground with simpler junctions and automatic terminal turns. Pick
-            your next switch early — it stays selected until you reach it.
+            {t('snake.aTorontoPlaygroundWithSimplerJunctionsAndAutomaticTerminalTurns')}
             {gameMap.transfers.length > 0 &&
-              ' Take a Subway transfer to snake between lines.'}
+              t('snake.takeASubwayTransferToSnakeBetweenLines')}
           </p>
           <p className="snake-instructions">
-            ↑ / ↓ accelerate and brake · ← / → / Space (or Q / E / R) throw switches · P
-            pauses. On mobile, hold the pedals and tap a switch or swipe. Pinch to zoom.
+            {t('snake.accelerateAndBrakeSpaceOrQERThrowSwitches')}
           </p>
           <p className="snake-feed-note">
-            {feedText}. Only fresh, on-track reports count. Positions update with the
-            map’s live feed.
+            {feedText}
+            {t('snake.onlyFreshOnTrackReportsCountPositionsUpdateWithThe')}
           </p>
           <label className="snake-mute">
             <input
@@ -650,30 +654,38 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
                 }
               }}
             />
-            Mute sounds
+            {t('snake.muteSounds')}
           </label>
           <button className="primary-action" onClick={depart}>
-            {engine.status === 'over' ? 'Play again' : 'Depart'}
+            {engine.status === 'over' ? t('snake.playAgain') : t('snake.depart')}
           </button>
-          <a href="/snake/v1/">Play the classic original ↗</a>
+          <a href="/snake/v1/">{t('snake.playTheClassicOriginal')}</a>
         </section>
       ) : (
         <>
           {engine.status === 'paused' && (
             <div className="snake-paused">
-              <strong>Paused</strong>
-              <button onClick={pause}>Resume driving</button>
+              <strong>{t('snake.paused')}</strong>
+              <button onClick={pause}>{t('snake.resumeDriving')}</button>
             </div>
           )}
-          <div className="snake-switches" aria-label="Switch controls">
+          <div className="snake-switches" aria-label={t('snake.switchControls')}>
             <small>
               {engine.turningAround
-                ? `Turning around · ${Math.round(engine.turnbackRemaining)} m`
+                ? t('snake.turningAroundValueM', {
+                    value1: Math.round(engine.turnbackRemaining),
+                  })
                 : upcoming
-                  ? `${upcoming.manual ? 'Selected' : 'Auto'}: ${upcoming.selected.label} · ${Math.round(upcoming.distance)} m`
+                  ? t('snake.switchSummary', {
+                      mode: upcoming.manual ? t('snake.selected') : t('snake.auto'),
+                      direction: upcoming.selected.label,
+                      distance: Math.round(upcoming.distance),
+                    })
                   : engine.queued
-                    ? `Queued: ${engine.queued}`
-                    : 'Queue the next switch'}
+                    ? t('snake.queuedValue', {
+                        value1: t(`snake.direction.${engine.queued}`),
+                      })
+                    : t('snake.queueTheNextSwitch')}
             </small>
             <div>
               {upcoming
@@ -700,10 +712,10 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
                       onClick={() => steer(turn)}
                     >
                       {turn === 'left'
-                        ? '← Left'
+                        ? t('snake.left')
                         : turn === 'right'
-                          ? 'Right →'
-                          : '↑ Straight'}
+                          ? t('snake.right')
+                          : t('snake.straight')}
                     </button>
                   ))}
             </div>
@@ -715,17 +727,17 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
               data-held={held.brake}
               {...pedal(-1)}
             >
-              Hold to brake
+              {t('snake.holdToBrake')}
             </button>
             <div>
               <button onClick={pause}>
-                {engine.status === 'paused' ? 'Resume' : 'Pause'}
+                {engine.status === 'paused' ? t('snake.resume') : t('snake.pause')}
               </button>
               <button
                 aria-pressed={follow}
                 onClick={() => setFollow((current) => !current)}
               >
-                {follow ? 'Following' : 'Follow car'}
+                {follow ? t('snake.following') : t('snake.followCar')}
               </button>
             </div>
             <button
@@ -734,7 +746,7 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
               data-held={held.accelerator}
               {...pedal(1)}
             >
-              Hold to accelerate
+              {t('snake.holdToAccelerate')}
             </button>
           </div>
         </>

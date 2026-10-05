@@ -1,3 +1,6 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t, getLocale } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useRef, useState } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { downloadFile } from '../export/download';
@@ -33,6 +36,7 @@ export function StreetcarJournal({
   onSelect,
   onFleet,
 }: Props) {
+  useLanguage();
   const id = useId();
   const latest = useRef(entries);
   latest.current = entries;
@@ -68,30 +72,25 @@ export function StreetcarJournal({
     if (!file) return;
     try {
       if (file.size > 2_000_000)
-        throw new Error('This file is too large. Choose a journal backup under 2 MB.');
+        throw new Error(english('journal.thisFileIsTooLargeChooseAJournalBackupUnder'));
       const incoming = readJournalBackup(await file.text());
       const result = mergeJournal(latest.current, incoming);
       if ((await onChange(() => result.entries)) === false) return;
-      setMessage(
-        result.added +
-          (result.added === 1 ? ' new car restored.' : ' new cars restored.') +
-          ' Existing notes were kept.',
-      );
+      setMessage(t('journal.restored', { count: result.added }));
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : 'Unable to read this journal backup.',
+        error instanceof Error
+          ? error.message
+          : english('journal.unableToReadThisJournalBackup'),
       );
     }
     if (input.current) input.current.value = '';
   }
   return (
     <section className="streetcar-journal">
-      <p className="eyebrow">Your rolling collection</p>
-      <h1>Streetcar journal.</h1>
-      <p className="helper">
-        Mark cars seen or ridden and keep private notes. Add a car here, from the map or
-        Fleet. You can update a seen car to ridden whenever you take a ride.
-      </p>
+      <p className="eyebrow">{t('journal.yourRollingCollection')}</p>
+      <h1>{t('journal.streetcarJournal')}</h1>
+      <p className="helper">{t('journal.markCarsSeenOrRiddenAndKeepPrivateNotesAdd')}</p>
       <form
         className="tool-form"
         onSubmit={async (event) => {
@@ -99,12 +98,12 @@ export function StreetcarJournal({
           const vehicleId = newCar.trim();
           if (!vehicleId) return;
           if (entries.some((entry) => entry.vehicleId === vehicleId)) {
-            setMessage('This car is already in your journal. Edit its entry below.');
+            setMessage(english('journal.thisCarIsAlreadyInYourJournalEditItsEntry'));
             setQuery(vehicleId);
             return;
           }
           if (entries.length >= JOURNAL_LIMIT) {
-            setMessage('Your journal is full. Remove a car before adding another.');
+            setMessage(english('journal.yourJournalIsFullRemoveACarBeforeAddingAnother'));
             return;
           }
           const entry: JournalEntry = {
@@ -118,11 +117,11 @@ export function StreetcarJournal({
           setNewCar('');
           setNewNote('');
           setQuery('');
-          setMessage('Car ' + vehicleId + ' added to your journal.');
+          setMessage(t('journal.added', { car: vehicleId }));
         }}
       >
         <div className="form-control">
-          <label htmlFor={id + '-car'}>Streetcar number</label>
+          <label htmlFor={id + '-car'}>{t('journal.streetcarNumber')}</label>
           <input
             id={id + '-car'}
             required
@@ -133,18 +132,18 @@ export function StreetcarJournal({
           />
         </div>
         <div className="form-control">
-          <label htmlFor={id + '-new-status'}>Your experience</label>
+          <label htmlFor={id + '-new-status'}>{t('journal.yourExperience')}</label>
           <select
             id={id + '-new-status'}
             value={newStatus}
             onChange={(event) => setNewStatus(event.target.value as 'seen' | 'ridden')}
           >
-            <option value="seen">Seen</option>
-            <option value="ridden">Ridden</option>
+            <option value="seen">{t('journal.seen')}</option>
+            <option value="ridden">{t('journal.ridden')}</option>
           </select>
         </div>
         <div className="form-control">
-          <label htmlFor={id + '-new-note'}>Private note (optional)</label>
+          <label htmlFor={id + '-new-note'}>{t('journal.privateNoteOptional')}</label>
           <textarea
             id={id + '-new-note'}
             maxLength={1000}
@@ -154,22 +153,25 @@ export function StreetcarJournal({
           />
         </div>
         <button className="action-button" type="submit">
-          Add car to journal
+          {t('journal.addCarToJournal')}
         </button>
       </form>
       <div className="journal-summary">
         <strong>{entries.length}</strong>
         <span>
-          {entries.length === 1 ? 'unique streetcar' : 'unique streetcars'} collected
+          {entries.length === 1
+            ? t('journal.uniqueStreetcar')
+            : t('journal.uniqueStreetcars')}{' '}
+          {t('journal.collected')}
         </span>
         <small>
-          {badges.filter((badge) => badge.earned).length} / {badges.length} badges
-          unlocked
+          {badges.filter((badge) => badge.earned).length} / {badges.length}{' '}
+          {t('journal.badgesUnlocked')}
         </small>
       </div>
       <details className="journal-achievements">
-        <summary>Explore your collection badges</summary>
-        <div className="journal-badges" aria-label="Collection badges">
+        <summary>{t('journal.exploreYourCollectionBadges')}</summary>
+        <div className="journal-badges" aria-label={t('journal.collectionBadges')}>
           {badges.map((badge) => (
             <div
               key={badge.name}
@@ -177,33 +179,37 @@ export function StreetcarJournal({
             >
               <span aria-hidden="true">{badge.icon}</span>
               <div>
-                <strong>{badge.name}</strong>
-                <small>{badge.description}</small>
+                <strong>{t(badge.name)}</strong>
+                <small>{t(badge.description)}</small>
                 <small>
-                  {badge.earned ? 'Unlocked' : badge.progress + ' / ' + badge.target}
+                  {badge.earned
+                    ? t('journal.unlocked')
+                    : badge.progress + ' / ' + badge.target}
                 </small>
               </div>
             </div>
           ))}
         </div>
         <p className="microcopy">
-          Badges reflect your manually saved collection. An overnight assignment earns
-          Blue Night collector at any time of day.
+          {t(
+            'journal.badgesReflectYourManuallySavedCollectionAnOvernightAssignmentEarns',
+          )}
         </p>
       </details>
       <button className="action-button export-fleet" onClick={onFleet}>
-        Find a streetcar in Fleet →
+        {t('journal.findAStreetcarInFleet')}
       </button>
       {!persistent && (
         <p className="tip" role="status">
-          Browser storage is unavailable. Your journal lasts for this tab; download a
-          backup to keep it.
+          {t('journal.browserStorageIsUnavailableYourJournalLastsForThisTab')}
         </p>
       )}
       <p className="microcopy">
-        {accountSaved ? 'Saved privately to your account' : 'Saved only in this browser'},
-        up to {JOURNAL_LIMIT} different cars. No GPS coordinates are recorded. Notes and
-        dates are included in backups.
+        {accountSaved
+          ? t('journal.savedPrivatelyToYourAccount')
+          : t('journal.savedOnlyInThisBrowser')}
+        {t('journal.upTo')} {JOURNAL_LIMIT}{' '}
+        {t('journal.differentCarsNoGpsCoordinatesAreRecordedNotesAndDates')}
       </p>
       <div className="comparison-actions journal-backups">
         <button
@@ -217,16 +223,16 @@ export function StreetcarJournal({
             )
           }
         >
-          Back up journal
+          {t('journal.backUpJournal')}
         </button>
         <button className="action-button" onClick={() => input.current?.click()}>
-          Restore backup
+          {t('journal.restoreBackup')}
         </button>
         <input
           ref={input}
           type="file"
           accept=".json,application/json"
-          aria-label="Journal backup file"
+          aria-label={t('journal.journalBackupFile')}
           className="sr-only"
           onChange={(event) => {
             void restore(event.target.files?.[0]);
@@ -235,12 +241,12 @@ export function StreetcarJournal({
       </div>
       {message && (
         <p className="tip" role="status">
-          {message}
+          {t(message)}
         </p>
       )}
       <div className="tool-form">
         <div className="form-control">
-          <label htmlFor={id + '-search'}>Search your journal</label>
+          <label htmlFor={id + '-search'}>{t('journal.searchYourJournal')}</label>
           <input
             id={id + '-search'}
             type="search"
@@ -249,20 +255,22 @@ export function StreetcarJournal({
               setQuery(event.target.value);
               setPage(0);
             }}
-            placeholder="Car, route or note"
+            placeholder={t('journal.carRouteOrNote')}
           />
         </div>
       </div>
       <p className="fleet-count" role="status">
-        {results.length} {results.length === 1 ? 'collected car' : 'collected cars'} found
+        {results.length}{' '}
+        {results.length === 1 ? t('journal.collectedCar') : t('journal.collectedCars')}{' '}
+        {t('journal.found')}
       </p>
       {!entries.length && (
         <p className="tip">
-          Your first catch is waiting. Choose a streetcar and select “Add to journal”.
+          {t('journal.yourFirstCatchIsWaitingChooseAStreetcarAndSelect')}
         </p>
       )}
       {Boolean(entries.length) && !results.length && (
-        <p className="helper">No collected cars match that search.</p>
+        <p className="helper">{t('journal.noCollectedCarsMatchThatSearch')}</p>
       )}
       <div className="journal-entries">
         {results.slice(currentPage * 10, currentPage * 10 + 10).map((entry) => {
@@ -274,30 +282,33 @@ export function StreetcarJournal({
             <article
               className="journal-entry"
               key={entry.vehicleId}
-              aria-label={'Collected car ' + entry.label}
+              aria-label={t('journal.collectedCar2') + entry.label}
             >
               <div className="section-heading">
-                <h2>Car {entry.label}</h2>
+                <h2>
+                  {t('viewer.car')} {entry.label}
+                </h2>
                 <span className={'report-tag' + (!live || live.stale ? ' stale' : '')}>
                   {!active
-                    ? 'Live paused'
+                    ? t('journal.livePaused')
                     : !loaded
                       ? failed
-                        ? 'Unavailable'
-                        : 'Awaiting feed'
+                        ? t('journal.unavailable')
+                        : t('journal.awaitingFeed')
                       : live
                         ? live.stale
-                          ? 'Stale report'
-                          : 'In live feed'
-                        : 'Not in snapshot'}
+                          ? t('journal.staleReport')
+                          : t('journal.inLiveFeed')
+                        : t('journal.notInSnapshot')}
                 </span>
               </div>
               <p className="microcopy">
                 {entry.routeNumber
                   ? entry.routeNumber + ' ' + entry.routeName
-                  : 'Route not supplied'}{' '}
-                · {entry.status === 'ridden' ? 'Ridden' : 'Seen'} · Saved{' '}
-                {new Date(entry.recordedAt).toLocaleDateString('en-CA', {
+                  : t('header.routeNotSupplied')}{' '}
+                · {entry.status === 'ridden' ? t('journal.ridden') : t('journal.seen')}{' '}
+                {t('journal.saved')}{' '}
+                {new Date(entry.recordedAt).toLocaleDateString(getLocale(), {
                   timeZone: 'America/Toronto',
                 })}
               </p>
@@ -317,7 +328,7 @@ export function StreetcarJournal({
                   }}
                 >
                   <div className="form-control">
-                    <label htmlFor={id + '-status'}>Your experience</label>
+                    <label htmlFor={id + '-status'}>{t('journal.yourExperience')}</label>
                     <select
                       id={id + '-status'}
                       value={status}
@@ -325,12 +336,14 @@ export function StreetcarJournal({
                         setStatus(event.target.value as 'seen' | 'ridden')
                       }
                     >
-                      <option value="seen">Seen</option>
-                      <option value="ridden">Ridden</option>
+                      <option value="seen">{t('journal.seen')}</option>
+                      <option value="ridden">{t('journal.ridden')}</option>
                     </select>
                   </div>
                   <div className="form-control">
-                    <label htmlFor={id + '-note'}>Note for car {entry.label}</label>
+                    <label htmlFor={id + '-note'}>
+                      {t('journal.noteForCar')} {entry.label}
+                    </label>
                     <textarea
                       id={id + '-note'}
                       autoFocus
@@ -342,14 +355,14 @@ export function StreetcarJournal({
                   </div>
                   <div className="comparison-actions">
                     <button className="action-button" type="submit">
-                      Save note
+                      {t('journal.saveNote')}
                     </button>
                     <button
                       className="action-button"
                       type="button"
                       onClick={() => setEditing(undefined)}
                     >
-                      Cancel editing
+                      {t('journal.cancelEditing')}
                     </button>
                   </div>
                 </form>
@@ -370,7 +383,7 @@ export function StreetcarJournal({
                           )
                         }
                       >
-                        Mark ridden
+                        {t('journal.markRidden')}
                       </button>
                     )}
                     <button
@@ -382,11 +395,11 @@ export function StreetcarJournal({
                         setRemoving(undefined);
                       }}
                     >
-                      Edit note
+                      {t('journal.editNote')}
                     </button>
                     {live && (
                       <button className="action-button" onClick={() => onSelect(live)}>
-                        View on map
+                        {t('journal.viewOnMap')}
                       </button>
                     )}
                     <button
@@ -396,14 +409,16 @@ export function StreetcarJournal({
                         setEditing(undefined);
                       }}
                     >
-                      Remove
+                      {t('journal.remove')}
                     </button>
                   </div>
                 </>
               )}
               {removing === entry.vehicleId && (
                 <div className="journal-confirm">
-                  <p>Remove car {entry.label} and its note?</p>
+                  <p>
+                    {t('journal.removeCar')} {entry.label} {t('journal.andItsNote')}
+                  </p>
                   <div className="comparison-actions">
                     <button
                       className="action-button"
@@ -414,13 +429,13 @@ export function StreetcarJournal({
                         setRemoving(undefined);
                       }}
                     >
-                      Confirm removal
+                      {t('journal.confirmRemoval')}
                     </button>
                     <button
                       className="action-button"
                       onClick={() => setRemoving(undefined)}
                     >
-                      Keep car
+                      {t('journal.keepCar')}
                     </button>
                   </div>
                 </div>
@@ -432,16 +447,17 @@ export function StreetcarJournal({
       {results.length > 10 && (
         <div className="fleet-pagination">
           <button disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>
-            Previous cars
+            {t('journal.previousCars')}
           </button>
           <span>
-            Page {currentPage + 1} of {Math.ceil(results.length / 10)}
+            {t('fleetExplorer.page')} {currentPage + 1} {t('fleetExplorer.of')}{' '}
+            {Math.ceil(results.length / 10)}
           </span>
           <button
             disabled={(currentPage + 1) * 10 >= results.length}
             onClick={() => setPage(currentPage + 1)}
           >
-            Next cars
+            {t('journal.nextCars')}
           </button>
         </div>
       )}

@@ -1,17 +1,23 @@
+import { english } from '../../../shared/i18n/messages';
+import { LanguageSettings } from '../components/LanguageSettings';
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { AccountRequired, AuthControls, useAccount } from '../features/accounts/auth';
 
 export function ProfilePage() {
+  useLanguage();
   const account = useAccount();
   return (
     <>
       <header className="account-header">
         <a className="account-link" href="/">
-          ← TTC status
+          {t('profile.ttcStatus')}
         </a>
         <AuthControls />
       </header>
       <main className="profile-page">
+        <LanguageSettings />
         <AccountRequired>
           <ProfileSettings key={account.userId} />
         </AccountRequired>
@@ -20,6 +26,7 @@ export function ProfilePage() {
   );
 }
 function ProfileSettings() {
+  useLanguage();
   const account = useAccount();
   const request = useRef(account.request);
   request.current = account.request;
@@ -38,7 +45,8 @@ function ProfileSettings() {
     void request
       .current('/api/v1/me/profile')
       .then(async (response) => {
-        if (!response.ok) throw new Error('Unable to load your profile. Try again.');
+        if (!response.ok)
+          throw new Error(english('profile.unableToLoadYourProfileTryAgain'));
         const profile = (await response.json()) as {
           username: string;
           publicBadges: boolean;
@@ -69,8 +77,8 @@ function ProfileSettings() {
       if (!response.ok)
         throw new Error(
           response.status === 409
-            ? 'That username is taken. Choose another.'
-            : 'Unable to save your profile. Please try again.',
+            ? english('profile.thatUsernameIsTakenChooseAnother')
+            : english('profile.unableToSaveYourProfilePleaseTryAgain'),
         );
       const profile = (await response.json()) as {
         username: string;
@@ -78,34 +86,38 @@ function ProfileSettings() {
       };
       setUsername(profile.username);
       setSaved(profile);
-      setMessage('Profile saved.');
+      setMessage(english('profile.profileSaved'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to save your profile.');
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : english('profile.unableToSaveYourProfile'),
+      );
     } finally {
       setBusy(false);
     }
   }
   return (
     <>
-      <p className="eyebrow">Your corner of the city</p>
-      <h1>Your profile.</h1>
+      <p className="eyebrow">{t('profile.yourCornerOfTheCity')}</p>
+      <h1>{t('profile.yourProfile')}</h1>
       <p className="helper">
-        Choose a username and decide whether to share your accomplishments.
+        {t('profile.chooseAUsernameAndDecideWhetherToShareYourAccomplishments')}
       </p>
       {message && (
         <p className="tip" role="status">
-          {message}
+          {t(message)}
         </p>
       )}
       {!saved ? (
         <>
-          <p>Loading profile…</p>
+          <p>{t('profile.loadingProfile')}</p>
           {message && (
             <button
               className="action-button"
               onClick={() => setRetry((value) => value + 1)}
             >
-              Try again
+              {t('common.retry')}
             </button>
           )}
         </>
@@ -113,7 +125,7 @@ function ProfileSettings() {
         <form className="tool-form" onSubmit={save}>
           <fieldset disabled={busy}>
             <div className="form-control">
-              <label htmlFor="profile-username">Username</label>
+              <label htmlFor="profile-username">{t('profile.username')}</label>
               <input
                 id="profile-username"
                 autoComplete="username"
@@ -126,8 +138,7 @@ function ProfileSettings() {
                 aria-describedby="username-help"
               />
               <p id="username-help" className="microcopy">
-                3–30 lowercase letters, numbers, underscores or hyphens. Start with a
-                letter or number.
+                {t('profile.330LowercaseLettersNumbersUnderscoresOrHyphensStartWith')}
               </p>
             </div>
             <label className="privacy-choice">
@@ -136,15 +147,13 @@ function ProfileSettings() {
                 checked={publicBadges}
                 onChange={(event) => setPublicBadges(event.target.checked)}
               />{' '}
-              Show my profile and earned badges publicly
+              {t('profile.showMyProfileAndEarnedBadgesPublicly')}
             </label>
             <p className="microcopy">
-              Off by default. When enabled, anyone with your profile link can see your
-              username and earned badges. Journal notes, saved cars, dates and account
-              details remain private. You can turn sharing off at any time.
+              {t('profile.offByDefaultWhenEnabledAnyoneWithYourProfileLink')}
             </p>
             <button className="action-button" type="submit">
-              {busy ? 'Saving…' : 'Save profile'}
+              {busy ? t('profile.saving') : t('profile.saveProfile')}
             </button>
           </fieldset>
         </form>
@@ -152,13 +161,13 @@ function ProfileSettings() {
       {saved?.publicBadges && (
         <p>
           <a className="account-link" href={`/u/${saved.username}#badges`}>
-            View your public badges →
+            {t('profile.viewYourPublicBadges')}
           </a>
         </p>
       )}
       <p>
         <a className="account-link" href="/#view=journal">
-          Open your Journal →
+          {t('profile.openYourJournal')}
         </a>
       </p>
     </>
@@ -166,11 +175,12 @@ function ProfileSettings() {
 }
 
 export function PublicProfilePage({ username }: { username: string }) {
+  useLanguage();
   const [profile, setProfile] = useState<{
     username: string;
     badges: { name: string; icon: string; description: string }[];
   }>();
-  const [message, setMessage] = useState('Loading profile…');
+  const [message, setMessage] = useState(english('profile.loadingProfile'));
   useEffect(() => {
     const controller = new AbortController();
     fetch(`/api/v1/profiles/${encodeURIComponent(username)}`, {
@@ -181,8 +191,8 @@ export function PublicProfilePage({ username }: { username: string }) {
         if (!response.ok)
           throw new Error(
             response.status === 404
-              ? 'This profile is private or does not exist.'
-              : 'Unable to load this profile. Please try again.',
+              ? english('profile.thisProfileIsPrivateOrDoesNotExist')
+              : english('profile.unableToLoadThisProfilePleaseTryAgain'),
           );
         setProfile(await response.json());
       })
@@ -195,38 +205,38 @@ export function PublicProfilePage({ username }: { username: string }) {
     <>
       <header className="account-header">
         <a className="account-link" href="/">
-          ← TTC status
+          {t('profile.ttcStatus')}
         </a>
         <AuthControls />
       </header>
       <main className="profile-page">
         {profile ? (
           <>
-            <p className="eyebrow">Streetcar collector</p>
+            <p className="eyebrow">{t('profile.streetcarCollector')}</p>
             <h1>@{profile.username}</h1>
             <section id="badges">
-              <h2>Accomplishments</h2>
+              <h2>{t('profile.accomplishments')}</h2>
               <p className="microcopy">
-                Badges celebrate a manually saved streetcar collection.
+                {t('profile.badgesCelebrateAManuallySavedStreetcarCollection')}
               </p>
               <div className="journal-badges">
                 {profile.badges.map((badge) => (
                   <article className="journal-badge earned" key={badge.name}>
                     <span aria-hidden="true">{badge.icon}</span>
                     <div>
-                      <strong>{badge.name}</strong>
-                      <small>{badge.description}</small>
+                      <strong>{t(badge.name)}</strong>
+                      <small>{t(badge.description)}</small>
                     </div>
                   </article>
                 ))}
               </div>
               {!profile.badges.length && (
-                <p className="helper">The first badge is still ahead.</p>
+                <p className="helper">{t('profile.theFirstBadgeIsStillAhead')}</p>
               )}
             </section>
           </>
         ) : (
-          <p role="status">{message}</p>
+          <p role="status">{t(message)}</p>
         )}
       </main>
     </>

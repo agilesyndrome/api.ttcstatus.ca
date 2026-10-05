@@ -1,28 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-CA">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no" />
 <meta name="theme-color" content="#d71920" />
-<title>TTC Streetcar Snake</title>
-<meta name="application-name" content="TTC Streetcar Snake" />
-<meta name="apple-mobile-web-app-title" content="Streetcar Snake" />
-<meta name="description" content="Snake, but on Toronto's streetcar tracks. Collect Flexitys, throw switches, build an absurdly long TTC train, and try not to eat your own consist." />
+<title data-i18n="classic.ttcStreetcarSnake">{{i18n:classic.ttcStreetcarSnake}}</title>
+<meta name="application-name" content="{{i18n:classic.ttcStreetcarSnake}}" data-i18n-content="classic.ttcStreetcarSnake" />
+<meta name="apple-mobile-web-app-title" content="{{i18n:classic.streetcarSnake}}" data-i18n-content="classic.streetcarSnake" />
+<meta name="description" content="{{i18n:classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow}}" data-i18n-content="classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow" />
 
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="TTC Streetcar Snake" />
-<meta property="og:title" content="TTC Streetcar Snake" />
+<meta property="og:site_name" content="{{i18n:classic.ttcStreetcarSnake}}" data-i18n-content="classic.ttcStreetcarSnake" />
+<meta property="og:title" content="{{i18n:classic.ttcStreetcarSnake}}" data-i18n-content="classic.ttcStreetcarSnake" />
 <meta property="og:url" content="https://ttcstatus.ca/snake/v1/" />
-<meta property="og:description" content="Snake, but on Toronto's streetcar tracks. Collect Flexitys, throw switches, and build an absurdly long streetcar train." />
+<meta property="og:description" content="{{i18n:classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow2}}" data-i18n-content="classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow2" />
 <meta property="og:image" content="https://ttcstatus.ca/snake/v1/icon.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="512" />
 <meta property="og:image:height" content="512" />
-<meta property="og:image:alt" content="A cute red streetcar icon for TTC Streetcar Snake" />
+<meta property="og:image:alt" content="{{i18n:classic.aCuteRedStreetcarIconForTtcStreetcarSnake}}" data-i18n-content="classic.aCuteRedStreetcarIconForTtcStreetcarSnake" />
 
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="TTC Streetcar Snake" />
-<meta name="twitter:description" content="Snake, but on Toronto's streetcar tracks. Collect Flexitys, throw switches, and build an absurdly long streetcar train." />
+<meta name="twitter:title" content="{{i18n:classic.ttcStreetcarSnake}}" data-i18n-content="classic.ttcStreetcarSnake" />
+<meta name="twitter:description" content="{{i18n:classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow2}}" data-i18n-content="classic.snakeButOnTorontoSStreetcarTracksCollectFlexitysThrow2" />
 <meta name="twitter:image" content="https://ttcstatus.ca/snake/v1/icon.png" />
 <link rel="canonical" href="https://ttcstatus.ca/snake/v1/" />
 
@@ -35,26 +35,26 @@
 <!-- Canvas world: JavaScript draws the map and train here. -->
 <!-- The canvases are the only world-rendering surfaces. All fixed UI layers
      below remain HTML so they stay crisp and accessible on small screens. -->
-<canvas id="game" aria-label="TTC Streetcar Snake game"></canvas>
+<canvas id="game" aria-label="{{i18n:classic.ttcStreetcarSnakeGame}}" data-i18n-aria-label="classic.ttcStreetcarSnakeGame"></canvas>
 <canvas id="minimap" aria-hidden="true"></canvas>
-<div class="mini-label">Network map</div>
+<div class="mini-label"><span data-i18n="classic.networkMap">{{i18n:classic.networkMap}}</span></div>
 
 <!-- Live driving HUD. The game runtime updates these values by id. -->
 <div class="hud">
   <div class="brand">
-    <span class="badge">∞</span><strong>TTC STREETCAR SNAKE</strong>
-    <small>2026 network-inspired geometry • every Flexity is 30.20 m long in world scale</small>
+    <span class="badge">∞</span><strong><span data-i18n="classic.ttcStreetcarSnake2">{{i18n:classic.ttcStreetcarSnake2}}</span></strong>
+    <small><span data-i18n="classic.2026NetworkInspiredGeometryEveryFlexityIs3020M">{{i18n:classic.2026NetworkInspiredGeometryEveryFlexityIs3020M}}</span></small>
   </div>
-  <div class="stat stat-cars"><b id="carsStat">1</b><span>cars</span></div>
-  <div class="stat stat-joined"><b id="joinedStat">0</b><span>joined</span></div>
-  <div class="stat stat-best"><b id="bestStat">0</b><span>best</span></div>
-  <div class="stat stat-length"><b id="lengthStat">30 m</b><span>length</span></div>
-  <div class="stat stat-speed"><b id="speedStat">90</b><span>km/h</span></div>
-  <div id="locationHud"><span class="stop-diamond">◆</span><strong>Next Stop:</strong> finding the next pole…</div>
-  <div class="tip" id="tip">Hold ↑ to accelerate, ↓ to brake. At switches use ← / → / Space for left / right / straight.</div>
+  <div class="stat stat-cars"><b id="carsStat">1</b><span><span data-i18n="useMapCamera.cars">{{i18n:useMapCamera.cars}}</span></span></div>
+  <div class="stat stat-joined"><b id="joinedStat">0</b><span><span data-i18n="classic.joined">{{i18n:classic.joined}}</span></span></div>
+  <div class="stat stat-best"><b id="bestStat">0</b><span><span data-i18n="classic.best">{{i18n:classic.best}}</span></span></div>
+  <div class="stat stat-length"><b id="lengthStat"><span data-i18n="classic.30M">{{i18n:classic.30M}}</span></b><span><span data-i18n="classic.length">{{i18n:classic.length}}</span></span></div>
+  <div class="stat stat-speed"><b id="speedStat">90</b><span><span data-i18n="snake.kmH">{{i18n:snake.kmH}}</span></span></div>
+  <div id="locationHud"><span class="stop-diamond">◆</span><strong><span data-i18n="classic.nextStop">{{i18n:classic.nextStop}}</span></strong> <span data-i18n="classic.findingTheNextPole">{{i18n:classic.findingTheNextPole}}</span></div>
+  <div class="tip" id="tip"><span data-i18n="classic.holdToAccelerateToBrakeAtSwitchesUseSpaceFor">{{i18n:classic.holdToAccelerateToBrakeAtSwitchesUseSpaceFor}}</span></div>
   <div id="missionHud" aria-live="polite">
     <div id="missionRoute">501</div>
-    <div id="missionText"><b>Route mission</b><span>Destination</span></div>
+    <div id="missionText"><b><span data-i18n="classic.routeMission">{{i18n:classic.routeMission}}</span></b><span><span data-i18n="transitMap.destination">{{i18n:transitMap.destination}}</span></span></div>
   </div>
 </div>
 
@@ -62,57 +62,55 @@
 
 <!-- Contextual controls: this panel only appears near a junction. -->
 <!-- Switch choices are populated from the next junction in game.js. -->
-<div id="switchPanel" hidden aria-label="Upcoming track switch">
-  <div id="switchTitle">Upcoming switch</div>
-  <div id="switchMeta">Approaching junction</div>
+<div id="switchPanel" hidden aria-label="{{i18n:classic.upcomingTrackSwitch}}" data-i18n-aria-label="classic.upcomingTrackSwitch">
+  <div id="switchTitle"><span data-i18n="classic.upcomingSwitch">{{i18n:classic.upcomingSwitch}}</span></div>
+  <div id="switchMeta"><span data-i18n="classic.approachingJunction">{{i18n:classic.approachingJunction}}</span></div>
   <div id="switchChoices"></div>
 </div>
 
-<div id="speedControls" aria-label="Driving controls">
-  <button id="brake" class="pedal" aria-label="Brake">BRAKE<small>hold • − key</small></button>
-  <button id="accelerator" class="pedal" aria-label="Accelerator">ACCEL<small>hold • + key</small></button>
+<div id="speedControls" aria-label="{{i18n:classic.drivingControls}}" data-i18n-aria-label="classic.drivingControls">
+  <button id="brake" class="pedal" aria-label="{{i18n:classic.brake}}" data-i18n-aria-label="classic.brake"><span data-i18n="classic.brake2">{{i18n:classic.brake2}}</span><small><span data-i18n="classic.holdKey">{{i18n:classic.holdKey}}</span></small></button>
+  <button id="accelerator" class="pedal" aria-label="{{i18n:classic.accelerator}}" data-i18n-aria-label="classic.accelerator"><span data-i18n="classic.accel">{{i18n:classic.accel}}</span><small><span data-i18n="classic.holdKey2">{{i18n:classic.holdKey2}}</span></small></button>
 </div>
 
 <!-- Reference material and start/resume overlay. -->
 <!-- The overlay is also reused for game-over and checkpoint resume states. -->
-<button id="aboutBtn">Map + sources</button>
+<button id="aboutBtn"><span data-i18n="classic.mapSources">{{i18n:classic.mapSources}}</span></button>
 <div id="aboutPanel">
-  <h2>Map notes</h2>
-  <p>This is a deliberately simplified <strong>geographic</strong> model of Toronto's legacy streetcar track network, not a turn-by-turn operating map. It preserves the main corridors, terminal loops/stations, cross-network connections, and the three streetcar carhouses; tiny yard ladders and some special-work track are compressed for playability.</p>
-  <p><strong>Vehicle scale:</strong> TTC's Flexity low-floor streetcar is 30.20 m long and 2.54 m wide. Length is drawn at true world scale. Width gets a tiny minimum on small screens so your streetcar does not become avant-garde pixel art.</p>
-  <p><strong>2026 anchors:</strong> 501, 503, 504, 505, 506, 507/508, 509, 510, 511 and 512 corridors; Long Branch, Humber, Gunns, High Park, Dufferin Gate, Exhibition, Distillery, Bingham and Neville Park loops; Union, Spadina, Bathurst, Broadview, Dundas West and Main Street stations.</p>
-  <p><strong>Carhouses:</strong> Roncesvalles, Russell and Leslie Barns are playable. Harvey Shop/Hillcrest is included as a maintenance spur.</p>
-  <p><strong>Route continuity:</strong> if you do not throw a switch, the game now strongly prefers staying on the same TTC route/corridor. Cross-corridor special work remains playable when you deliberately select it. The 506 genuinely uses Dundas Street West between Howard Park and College; that Dundas → College transition is intentional.</p>
-  <p>Official references:<br>
-    <a href="https://cdn.ttc.ca/-/media/Project/TTC/DevProto/Images/Home/Routes-and-Schedules/Landing-page-pdfs/TTC_SubwayStreetcarLightrailMap.pdf" target="_blank" rel="noreferrer">TTC Subway, Light Rail and Streetcar Map — June 2026</a><br>
-    <a href="https://www.ttc.ca/en/transparency-and-accountability/Operating-Statistics/operating-statistics---2017/next-generation-streetcars" target="_blank" rel="noreferrer">TTC Flexity vehicle specifications</a><br>
-    <a href="https://www.ttc.ca/news/2015/November/TTCs-new-streetcar-facility-to-enter-service-this-Sunday" target="_blank" rel="noreferrer">TTC Leslie Barns / carhouse background</a>
+  <h2><span data-i18n="classic.mapNotes">{{i18n:classic.mapNotes}}</span></h2>
+  <p><span data-i18n="classic.thisIsADeliberatelySimplified">{{i18n:classic.thisIsADeliberatelySimplified}}</span> <strong><span data-i18n="classic.geographic">{{i18n:classic.geographic}}</span></strong> <span data-i18n="classic.modelOfTorontoSLegacyStreetcarTrackNetworkNotA">{{i18n:classic.modelOfTorontoSLegacyStreetcarTrackNetworkNotA}}</span></p>
+  <p><strong><span data-i18n="classic.vehicleScale">{{i18n:classic.vehicleScale}}</span></strong> <span data-i18n="classic.ttcSFlexityLowFloorStreetcarIs3020M">{{i18n:classic.ttcSFlexityLowFloorStreetcarIs3020M}}</span></p>
+  <p><strong><span data-i18n="classic.2026Anchors">{{i18n:classic.2026Anchors}}</span></strong> <span data-i18n="classic.501503504505506507508509510511">{{i18n:classic.501503504505506507508509510511}}</span></p>
+  <p><strong><span data-i18n="classic.carhouses">{{i18n:classic.carhouses}}</span></strong> <span data-i18n="classic.roncesvallesRussellAndLeslieBarnsArePlayableHarveyShopHillcrest">{{i18n:classic.roncesvallesRussellAndLeslieBarnsArePlayableHarveyShopHillcrest}}</span></p>
+  <p><strong><span data-i18n="classic.routeContinuity">{{i18n:classic.routeContinuity}}</span></strong> <span data-i18n="classic.ifYouDoNotThrowASwitchTheGameNow">{{i18n:classic.ifYouDoNotThrowASwitchTheGameNow}}</span></p>
+  <p><span data-i18n="classic.officialReferences">{{i18n:classic.officialReferences}}</span><br>
+    <a href="https://cdn.ttc.ca/-/media/Project/TTC/DevProto/Images/Home/Routes-and-Schedules/Landing-page-pdfs/TTC_SubwayStreetcarLightrailMap.pdf" target="_blank" rel="noreferrer"><span data-i18n="classic.ttcSubwayLightRailAndStreetcarMapJune2026">{{i18n:classic.ttcSubwayLightRailAndStreetcarMapJune2026}}</span></a><br>
+    <a href="https://www.ttc.ca/en/transparency-and-accountability/Operating-Statistics/operating-statistics---2017/next-generation-streetcars" target="_blank" rel="noreferrer"><span data-i18n="classic.ttcFlexityVehicleSpecifications">{{i18n:classic.ttcFlexityVehicleSpecifications}}</span></a><br>
+    <a href="https://www.ttc.ca/news/2015/November/TTCs-new-streetcar-facility-to-enter-service-this-Sunday" target="_blank" rel="noreferrer"><span data-i18n="classic.ttcLeslieBarnsCarhouseBackground">{{i18n:classic.ttcLeslieBarnsCarhouseBackground}}</span></a>
   </p>
-  <p><strong>Speed:</strong> Arcade is the default: 180 km/h departure speed with intentionally fictional overdrive up to 2000 km/h. Realistic / Purist is governed to 50 km/h. The real Flexity vehicle is rated to a 70 km/h maximum.</p>
-  <p><strong>Stops:</strong> the HUD follows geographic streetcar stop locations rather than a selected route schedule. Stops are snapped onto this simplified rail model, so throwing a switch immediately changes the upcoming stop. Tiny diamonds mark stop locations; you absolutely do not have to stop.</p>
-  <p><strong>Track model:</strong> each mapped street corridor renders directional virtual rails a few metres apart. Every degree-1 endpoint is a protected terminal turnback; Union gets a larger synthetic loop so a long consist cannot die merely by reaching the platform. Ossington's College↔Dundas diversion track is playable even though it has no regular route.</p>
-  <p><strong>Touch:</strong> pinch the game map to zoom the camera. Safari page zoom is suppressed during play so the brake and accelerator stay where your thumbs left them.</p>
-  <p><strong>Rule:</strong> collect parked streetcars, avoid biting your own train, and try not to explain a forty-car consist to Transit Control.</p>
+  <p><strong><span data-i18n="classic.speed">{{i18n:classic.speed}}</span></strong> <span data-i18n="classic.arcadeIsTheDefault180KmHDepartureSpeedWith">{{i18n:classic.arcadeIsTheDefault180KmHDepartureSpeedWith}}</span></p>
+  <p><strong><span data-i18n="classic.stops">{{i18n:classic.stops}}</span></strong> <span data-i18n="classic.theHudFollowsGeographicStreetcarStopLocationsRatherThanA">{{i18n:classic.theHudFollowsGeographicStreetcarStopLocationsRatherThanA}}</span></p>
+  <p><strong><span data-i18n="classic.trackModel">{{i18n:classic.trackModel}}</span></strong> <span data-i18n="classic.eachMappedStreetCorridorRendersDirectionalVirtualRailsAFew">{{i18n:classic.eachMappedStreetCorridorRendersDirectionalVirtualRailsAFew}}</span></p>
+  <p><strong><span data-i18n="classic.touch">{{i18n:classic.touch}}</span></strong> <span data-i18n="classic.pinchTheGameMapToZoomTheCameraSafariPage">{{i18n:classic.pinchTheGameMapToZoomTheCameraSafariPage}}</span></p>
+  <p><strong><span data-i18n="classic.rule">{{i18n:classic.rule}}</span></strong> <span data-i18n="classic.collectParkedStreetcarsAvoidBitingYourOwnTrainAndTry">{{i18n:classic.collectParkedStreetcarsAvoidBitingYourOwnTrainAndTry}}</span></p>
 </div>
 
 <div id="overlay">
   <div class="card start-card">
-    <div class="start-kicker">Toronto's least authorized streetcar service</div>
-    <h1 id="overlayTitle">Streetcar Snake</h1>
+    <div class="start-kicker"><span data-i18n="classic.torontoSLeastAuthorizedStreetcarService">{{i18n:classic.torontoSLeastAuthorizedStreetcarService}}</span></div>
+    <h1 id="overlayTitle"><span data-i18n="classic.streetcarSnake">{{i18n:classic.streetcarSnake}}</span></h1>
 
     <div class="toy-wrap" id="overlayHero">
-      <div class="toy-copy" id="overlayLead">
-        Eat streetcars. Get absurdly long.<br>Don't eat yourself.
-        <small>Basically Snake, except the snake is 30-tonne transit equipment.</small>
+      <div class="toy-copy" id="overlayLead"> <span data-i18n="classic.eatStreetcarsGetAbsurdlyLong">{{i18n:classic.eatStreetcarsGetAbsurdlyLong}}</span><br><span data-i18n="classic.donTEatYourself">{{i18n:classic.donTEatYourself}}</span> <small><span data-i18n="classic.basicallySnakeExceptTheSnakeIs30TonneTransitEquipment">{{i18n:classic.basicallySnakeExceptTheSnakeIs30TonneTransitEquipment}}</span></small>
       </div>
       <div class="toy-car" aria-hidden="true"><div class="toy-windows"></div></div>
     </div>
 
     <div class="quick-rules" id="overlayRules">
-      <span class="quick-rule">🚋 collect cars</span>
-      <span class="quick-rule">×2 ×3 chase bonuses</span>
-      <span class="quick-rule">↙ throw switches</span>
-      <span class="quick-rule">🐍 avoid your tail</span>
+      <span class="quick-rule"><span data-i18n="classic.collectCars">{{i18n:classic.collectCars}}</span></span>
+      <span class="quick-rule"><span data-i18n="classic.23ChaseBonuses">{{i18n:classic.23ChaseBonuses}}</span></span>
+      <span class="quick-rule"><span data-i18n="classic.throwSwitches">{{i18n:classic.throwSwitches}}</span></span>
+      <span class="quick-rule"><span data-i18n="classic.avoidYourTail">{{i18n:classic.avoidYourTail}}</span></span>
     </div>
 
     <p id="overlayStatus" hidden></p>
@@ -120,24 +118,24 @@
 
     <div class="mode-picker">
       <div class="mode-field">
-        <label for="gameModeSelect">Game mode</label>
+        <label for="gameModeSelect"><span data-i18n="classic.gameMode">{{i18n:classic.gameMode}}</span></label>
         <select id="gameModeSelect">
-          <option value="free">Free Play</option>
-          <option value="mission">Route Missions</option>
+          <option value="free" data-i18n="classic.freePlay">{{i18n:classic.freePlay}}</option>
+          <option value="mission" data-i18n="classic.routeMissions">{{i18n:classic.routeMissions}}</option>
         </select>
       </div>
       <div class="mode-field">
-        <label for="operatorModeSelect">Driving feel</label>
+        <label for="operatorModeSelect"><span data-i18n="classic.drivingFeel">{{i18n:classic.drivingFeel}}</span></label>
         <select id="operatorModeSelect">
-          <option value="arcade" selected>Arcade — 2000 km/h, absolutely unwell</option>
-          <option value="realistic">Realistic / Purist — 50 km/h cap</option>
+          <option value="arcade" selected data-i18n="classic.arcade2000KmHAbsolutelyUnwell">{{i18n:classic.arcade2000KmHAbsolutelyUnwell}}</option>
+          <option value="realistic" data-i18n="classic.realisticPurist50KmHCap">{{i18n:classic.realisticPurist50KmHCap}}</option>
         </select>
       </div>
     </div>
-    <label class="sound-option"><input id="muteSounds" type="checkbox" /> Mute sounds</label>
-    <button id="resumeBtn">Resume</button>
-    <button id="startBtn">Begin new game — Free Play • Arcade</button>
-    <div class="transit-joke" id="overlayJoke">⚠ Transit Control would like a word.</div>
+    <label class="sound-option"><input id="muteSounds" type="checkbox" /> <span data-i18n="snake.muteSounds">{{i18n:snake.muteSounds}}</span></label>
+    <button id="resumeBtn"><span data-i18n="snake.resume">{{i18n:snake.resume}}</span></button>
+    <button id="startBtn"><span data-i18n="classic.beginNewGameFreePlayArcade">{{i18n:classic.beginNewGameFreePlayArcade}}</span></button>
+    <div class="transit-joke" id="overlayJoke"><span data-i18n="classic.transitControlWouldLikeAWord">{{i18n:classic.transitControlWouldLikeAWord}}</span></div>
   </div>
 </div>
 

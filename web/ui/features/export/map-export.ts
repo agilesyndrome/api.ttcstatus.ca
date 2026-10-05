@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { Route } from '../../../../shared/map/model';
 export interface ExportDetails {
   title: string;
@@ -66,13 +67,15 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     legendY = mapY + mapHeight + 26;
   const lines = [
     ...(details.endpoints ?? []),
-    'Map snapshot: ' +
-      (details.snapshot || 'not supplied') +
-      ' · Captured: ' +
+    t('map-export.mapSnapshot') +
+      (details.snapshot || t('viewer.notSupplied')) +
+      t('map-export.captured') +
       details.capturedAt,
     ...(details.includeCars && details.feed ? [details.feed] : []),
-    'Schematic map · Train markers show predicted stations; streetcars show reported positions · Location marker and saved-stop stars omitted.',
-    'TTC service & Toronto geography · Open Government Licence – Toronto · © OpenStreetMap contributors · ODbL.',
+    t('map-export.schematicMapTrainMarkersShowPredictedStationsStreetcarsShowReported'),
+    t(
+      'map-export.ttcServiceTorontoGeographyOpenGovernmentLicenceTorontoOpenstreetmapContributors',
+    ),
   ].flatMap(
     (line) => line.match(/.{1,145}(?:\s|$)|.{1,145}/g)?.map((part) => part.trim()) ?? [],
   );
@@ -92,7 +95,7 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     element(
       'desc',
       { id: 'export-description' },
-      'Current view of the Toronto rail map. ' + lines.join(' '),
+      t('map-export.currentViewOfTheTorontoRailMap') + lines.join(' '),
     ),
   );
   root.append(
@@ -114,7 +117,7 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     element(
       'text',
       { x: padding, y: 70, 'font-size': 13 },
-      'Your Toronto rail field map · Current view',
+      t('map-export.yourTorontoRailFieldMapCurrentView'),
     ),
   );
   root.append(
@@ -140,7 +143,11 @@ export function exportMap(svg: SVGSVGElement, details: ExportDetails): string {
     element('rect', { x: 0, y: 0, width: 40, height: 56, rx: 6, fill: '#fffdf7' }),
   );
   north.append(
-    element('text', { x: 20, y: 14, 'text-anchor': 'middle', 'font-size': 11 }, 'N'),
+    element(
+      'text',
+      { x: 20, y: 14, 'text-anchor': 'middle', 'font-size': 11 },
+      t('keyboard.n'),
+    ),
   );
   north.append(
     element('path', {

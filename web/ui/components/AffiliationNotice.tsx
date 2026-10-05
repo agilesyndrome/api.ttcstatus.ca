@@ -1,6 +1,9 @@
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 import { usePreference } from '../hooks/usePreferences';
 
 export function AffiliationNotice() {
+  useLanguage();
   const [dismissed, setDismissed] = usePreference(
     'ttc:affiliation-notice:v1',
     false,
@@ -8,16 +11,18 @@ export function AffiliationNotice() {
   );
   if (dismissed) return null;
   return (
-    <aside className="affiliation-notice" aria-label="Independent site notice">
+    <aside
+      className="affiliation-notice"
+      aria-label={t('affiliation.independentSiteNotice')}
+    >
       <div>
-        <strong>An independent transit project</strong>
+        <strong>{t('affiliation.anIndependentTransitProject')}</strong>
         <p>
-          TTCstatus is not officially affiliated with, endorsed by, or operated by the
-          Toronto Transit Commission (TTC).
+          {t('affiliation.ttcstatusIsNotOfficiallyAffiliatedWithEndorsedByOrOperated')}
         </p>
       </div>
       <button className="action-button" onClick={() => setDismissed(true)}>
-        Got it
+        {t('affiliation.gotIt')}
       </button>
     </aside>
   );

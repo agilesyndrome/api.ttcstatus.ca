@@ -1,3 +1,4 @@
+import { renderLocalizedHtml } from '../i18n/html.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -40,7 +41,7 @@ export async function renderMapViewer(map) {
     VIEWER_DATA: payload,
     VIEWER_JS: client.outputFiles[0].text.replaceAll('</script', '<\\/script'),
   };
-  return template.replace(
+  return (await renderLocalizedHtml(template)).replace(
     /\/\* (VIEWER_CSS|VIEWER_DATA|VIEWER_JS) \*\//g,
     (_, name) => values[name],
   );

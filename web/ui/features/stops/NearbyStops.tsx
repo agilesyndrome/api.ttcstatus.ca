@@ -1,3 +1,6 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import { formatDistance, nearbyStops, type Location } from '../../commute';
@@ -10,6 +13,7 @@ interface Props {
   onSelect(feature: Feature): void;
 }
 export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Props) {
+  useLanguage();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [accessible, setAccessible] = useState(false);
@@ -23,9 +27,7 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
   const stops = location ? nearbyStops(data, location, accessible) : [];
   function locate() {
     if (!navigator.geolocation) {
-      setError(
-        'Location is unavailable in this browser. You can search for a stop above.',
-      );
+      setError(english('nearbyStops.locationIsUnavailableInThisBrowserYouCanSearchFor'));
       return;
     }
     const current = ++request.current;
@@ -46,19 +48,19 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
         setPending(false);
         setError(
           error.code === 1
-            ? 'Location permission was declined. You can still search for a stop above.'
+            ? english('nearbyStops.locationPermissionWasDeclinedYouCanStillSearchForA')
             : error.code === 3
-              ? 'Location took too long. Try again or search for a stop.'
-              : 'Your location could not be found. Try again or search for a stop.',
+              ? english('nearbyStops.locationTookTooLongTryAgainOrSearchForA')
+              : english('nearbyStops.yourLocationCouldNotBeFoundTryAgainOrSearch'),
         );
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
     );
   }
   return (
-    <section className="nearby-stops" aria-label="Nearby stops">
+    <section className="nearby-stops" aria-label={t('nearbyStops.nearbyStops')}>
       <div className="section-heading">
-        <h2>◎ Near me</h2>
+        <h2>{t('nearbyStops.nearMe')}</h2>
         {location && (
           <button
             className="text-button"
@@ -69,25 +71,25 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
               onClear();
             }}
           >
-            Clear location
+            {t('nearbyStops.clearLocation')}
           </button>
         )}
       </div>
       <button className="action-button" onClick={locate} disabled={pending}>
         {pending
-          ? 'Finding your location…'
+          ? t('nearbyStops.findingYourLocation')
           : location
-            ? 'Refresh & recenter map'
-            : 'Locate me & center map'}
+            ? t('nearbyStops.refreshRecenterMap')
+            : t('nearbyStops.locateMeCenterMap')}
       </button>
       {!location && !pending && (
         <p className="microcopy">
-          Centers the map on your approximate location at a neighborhood zoom.
+          {t('nearbyStops.centersTheMapOnYourApproximateLocationAtANeighborhood')}
         </p>
       )}
       {error && (
         <p role="alert" className="helper">
-          {error}
+          {t(error)}
         </p>
       )}
       {location ? (
@@ -98,7 +100,7 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
               checked={accessible}
               onChange={(event) => setAccessible(event.target.checked)}
             />{' '}
-            Listed accessible boarding only
+            {t('nearbyStops.listedAccessibleBoardingOnly')}
           </label>
           {stops.length ? (
             <ul className="compact-list">
@@ -107,7 +109,7 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
                   <button className="list-choice" onClick={() => onSelect(feature)}>
                     <strong>{feature.name}</strong>
                     <small>
-                      {formatDistance(metres)} away ·{' '}
+                      {formatDistance(metres)} {t('nearbyStops.away')}{' '}
                       {feature.routeIds
                         .map((id) => data.routes.find((route) => route.id === id)?.number)
                         .filter(Boolean)
@@ -119,20 +121,25 @@ export function NearbyStops({ data, location, onLocate, onClear, onSelect }: Pro
             </ul>
           ) : (
             <p className="helper">
-              No {accessible ? 'stops with listed accessible boarding' : 'boarding stops'}{' '}
-              within 2.5 km. Try searching for a stop or changing the filter.
+              {t('nearbyStops.no')}{' '}
+              {accessible
+                ? t('nearbyStops.stopsWithListedAccessibleBoarding')
+                : t('nearbyStops.boardingStops')}{' '}
+              {t('nearbyStops.within25KmTrySearchingForAStopOr')}
             </p>
           )}
           <p className="microcopy">
-            Straight-line distances.
+            {t('nearbyStops.straightLineDistances')}
             {location.accuracy !== undefined &&
-              ` Location accuracy ±${formatDistance(location.accuracy)}.`}{' '}
-            Your location stays in this tab.
+              t('nearbyStops.locationAccuracyValue', {
+                value1: formatDistance(location.accuracy),
+              })}{' '}
+            {t('nearbyStops.yourLocationStaysInThisTab')}
           </p>
         </>
       ) : (
         <p className="microcopy">
-          Use your location to find boarding stops within 2.5 km.
+          {t('nearbyStops.useYourLocationToFindBoardingStopsWithin25')}
         </p>
       )}
     </section>

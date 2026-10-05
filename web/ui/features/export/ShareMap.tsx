@@ -1,3 +1,6 @@
+import { english } from '../../../../shared/i18n/messages';
+import { t } from '../../i18n';
+import { useLanguage } from '../../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { mapLinkHash, type Selection, type MapTools } from '../../commute';
 import type { MapFilterValues } from '../map/MapFilters';
@@ -13,6 +16,7 @@ export function ShareMap({
   contextRoute?: string;
   tools?: MapTools;
 }) {
+  useLanguage();
   const [message, setMessage] = useState('');
   const [fallback, setFallback] = useState('');
   const request = useRef(0);
@@ -43,24 +47,24 @@ export function ShareMap({
       await navigator.clipboard.writeText(url.href);
       if (current === request.current) {
         setFallback('');
-        setMessage('Map link copied');
+        setMessage(english('shareMap.mapLinkCopied'));
       }
     } catch {
       if (current === request.current) {
         setFallback(url.href);
-        setMessage('Select and copy this map link');
+        setMessage(english('shareMap.selectAndCopyThisMapLink'));
       }
     }
   }
   return (
     <div className="share-map">
       <button className="action-button" onClick={() => void share()}>
-        ↗ Share map
+        {t('shareMap.shareMap')}
       </button>
-      <span role="status">{message}</span>
+      <span role="status">{t(message)}</span>
       {fallback && (
         <input
-          aria-label="Shareable map link"
+          aria-label={t('shareMap.shareableMapLink')}
           readOnly
           value={fallback}
           onFocus={(event) => event.target.select()}

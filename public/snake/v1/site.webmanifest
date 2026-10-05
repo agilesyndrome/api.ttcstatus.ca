@@ -1,7 +1,7 @@
 {
-  "name": "TTC Streetcar Snake",
-  "short_name": "Streetcar Snake",
-  "description": "Snake, but on Toronto's streetcar tracks.",
+  "name": "{{i18n:classic.ttcStreetcarSnake}}",
+  "short_name": "{{i18n:classic.streetcarSnake}}",
+  "description": "{{i18n:classic.snakeButOnTorontoSStreetcarTracks}}",
   "start_url": "/snake/v1/",
   "scope": "/snake/v1/",
   "display": "standalone",

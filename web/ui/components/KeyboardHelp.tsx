@@ -1,3 +1,6 @@
+import { english } from '../../../shared/i18n/messages';
+import { t } from '../i18n';
+import { useLanguage } from '../i18n/react';
 import { useEffect, useRef } from 'react';
 
 interface Props {
@@ -7,19 +10,20 @@ interface Props {
   onClose(): void;
 }
 const shortcuts = [
-  ['/', 'Focus stop and streetcar search'],
-  ['E', 'Open Explore'],
-  ['F', 'Open Fleet'],
-  ['C', 'Open Compare'],
-  ['D', 'Open stop directory'],
-  ['J', 'Open streetcar journal'],
-  ['P', 'Preview a printable map'],
-  ['S', 'Save or remove the selected stop'],
-  ['N', 'Switch day/night theme'],
-  ['R', 'Reset selection and fit the map'],
-  ['?', 'Open this help'],
+  ['/', english('keyboard.focusStopAndStreetcarSearch')],
+  ['E', english('keyboard.openExplore')],
+  ['F', english('keyboard.openFleet')],
+  ['C', english('keyboard.openCompare')],
+  ['D', english('keyboard.openStopDirectory')],
+  ['J', english('keyboard.openStreetcarJournal')],
+  ['P', english('keyboard.previewAPrintableMap')],
+  ['S', english('keyboard.saveOrRemoveTheSelectedStop')],
+  ['N', english('keyboard.switchDayNightTheme')],
+  ['R', english('keyboard.resetSelectionAndFitTheMap')],
+  ['?', english('keyboard.openThisHelp')],
 ] as const;
 export function KeyboardHelp({ open, enabled, onEnabled, onClose }: Props) {
+  useLanguage();
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const node = dialog.current!;
@@ -46,33 +50,30 @@ export function KeyboardHelp({ open, enabled, onEnabled, onClose }: Props) {
       }}
     >
       <div className="details-heading">
-        <h2 id="shortcut-title">Keyboard shortcuts</h2>
-        <button aria-label="Close shortcut help" onClick={onClose}>
+        <h2 id="shortcut-title">{t('keyboard.title')}</h2>
+        <button aria-label={t('keyboard.closeShortcutHelp')} onClick={onClose}>
           ×
         </button>
       </div>
-      <p className="helper">Shortcuts work while you’re outside a text field or menu.</p>
+      <p className="helper">{t('keyboard.shortcutsWorkWhileYouReOutsideATextFieldOr')}</p>
       <dl className="shortcut-list">
         {shortcuts.map(([key, action]) => (
           <div key={key}>
             <dt>
               <kbd>{key}</kbd>
             </dt>
-            <dd>{action}</dd>
+            <dd>{t(action)}</dd>
           </div>
         ))}
       </dl>
-      <p className="helper">
-        Focus the map to use arrow keys for panning, + / − for zoom, and Home to fit.
-        Escape closes this help.
-      </p>
+      <p className="helper">{t('keyboard.focusTheMapToUseArrowKeysForPanningFor')}</p>
       <label className="accessible-filter">
         <input
           type="checkbox"
           checked={enabled}
           onChange={(event) => onEnabled(event.target.checked)}
         />{' '}
-        Enable keyboard shortcuts
+        {t('keyboard.enableKeyboardShortcuts')}
       </label>
     </dialog>
   );
