@@ -145,9 +145,32 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
     engine.gameCars.length > 0 && engine.gameCars.length <= 8,
     'the game keeps a bounded streetcar population',
   );
+  const idsAtCatch = new Set(engine.gameCars.map((car) => car.vehicle.id));
+  for (let i = 0; i < 5; i++) engine.tick(0.1, []);
+  assert.ok(
+    engine.gameCars.every((car) => idsAtCatch.has(car.vehicle.id)),
+    'the respawn cooldown prevents an immediate new streetcar',
+  );
   assert.ok(
     engine.gameCars.some((car) => !initialTargetIds.has(car.vehicle.id)),
     'a collected target is replaced with a new generated streetcar',
+  );
+});
+
+test('game traffic grows at most one car after the opening fleet', () => {
+  const engine = new SnakeEngine(demoData, { gameTraffic: true });
+  engine.start('arcade', [], undefined, () => 0.4);
+  const initialIds = new Set(engine.gameCars.map((car) => car.vehicle.id));
+  for (let i = 0; i < 10; i++) engine.tick(0.1, []);
+  assert.deepEqual(
+    engine.gameCars.map((car) => car.vehicle.id).filter((id) => !initialIds.has(id)),
+    [],
+    'no automatic growth occurs during the first second',
+  );
+  for (let i = 0; i < 30; i++) engine.tick(0.1, []);
+  assert.ok(
+    engine.gameCars.filter((car) => !initialIds.has(car.vehicle.id)).length <= 1,
+    'traffic grows one car at a time after the cooldown',
   );
 });
 

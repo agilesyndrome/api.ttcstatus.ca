@@ -65,6 +65,8 @@ const CAR_LENGTH = 30.2,
   GAME_TARGET_SECONDS = 6.5,
   GAME_TARGET_MIN_DISTANCE = 85,
   GAME_TARGET_MAX_DISTANCE = 210,
+  GAME_TRAFFIC_COVERAGE_SECONDS = 7,
+  GAME_TRAFFIC_RESPAWN_DELAY = 3.5,
   GAME_RANDOM_MIN_AHEAD = 260,
   GAME_RANDOM_MIN_SPACING = 250,
   GAME_CAR_PREFIX = 'snake-v2-';
@@ -154,6 +156,7 @@ export class SnakeEngine {
   private random = Math.random;
   private gameCarSerial = 0;
   private guaranteedGameCarId?: string;
+  private gameTrafficCooldown = 0;
   private trafficRevision = 0;
   private trafficInput?: {
     source: PlottedVehicle[];
@@ -328,6 +331,36 @@ export class SnakeEngine {
       GAME_TARGET_MIN_DISTANCE,
       Math.min(GAME_TARGET_MAX_DISTANCE, (this.speed / 3.6) * GAME_TARGET_SECONDS),
     );
+  }
+
+  private coverageDistance() {
+    return Math.max(
+      GAME_TARGET_MAX_DISTANCE,
+      (this.speed / 3.6) * GAME_TRAFFIC_COVERAGE_SECONDS,
+    );
+  }
+
+  private trafficAhead(car: PlottedVehicle): number | undefined {
+    if (car.stale || !car.match || !this.edges.has(car.match.edgeId)) return;
+    return this.distanceAhead({
+      edgeId: car.match.edgeId,
+      direction: car.match.direction,
+      distance: car.match.distanceAlongMetres,
+    });
+  }
+
+  private gameCarAhead(maxDistance: number) {
+    return this.gameCars.find((car) => {
+      const ahead = this.trafficAhead(car);
+      return ahead !== undefined && ahead >= -0.00001 && ahead <= maxDistance;
+    });
+  }
+
+  private hasTrafficAhead(cars: PlottedVehicle[], maxDistance: number) {
+    return [...cars, ...this.gameCars].some((car) => {
+      const ahead = this.trafficAhead(car);
+      return ahead !== undefined && ahead >= -0.00001 && ahead <= maxDistance;
+    });
   }
 
   private positionAhead(metres: number, strict = false): Position | undefined {
@@ -529,28 +562,46 @@ export class SnakeEngine {
     return undefined;
   }
 
-  private maintainGameTraffic() {
+  private maintainGameTraffic(cars: PlottedVehicle[] = [], seed = false) {
     if (!this.options.gameTraffic || this.status !== 'running') return;
     const target = this.guaranteedGameCarId
       ? this.gameCars.find((car) => car.vehicle.id === this.guaranteedGameCarId)
       : undefined;
-    const ahead = target?.match
-      ? this.distanceAhead({
-          edgeId: target.match.edgeId,
-          direction: target.match.direction,
-          distance: target.match.distanceAlongMetres,
-        })
-      : undefined;
-    if (!target || ahead === undefined || ahead > this.targetDistance() + 15) {
-      if (target) this.removeGameCar(target.vehicle.id);
-      const position =
-        this.positionAhead(this.targetDistance(), true) ?? this.randomGamePosition();
-      if (position) this.addGameCar(position, true);
+    const targetAhead = target ? this.trafficAhead(target) : undefined;
+    if (target && targetAhead === undefined) {
+      this.removeGameCar(target.vehicle.id);
     }
-    while (this.gameCars.length < GAME_TRAFFIC_COUNT) {
-      const position = this.randomGamePosition();
-      if (!position) break;
+    if (!this.guaranteedGameCarId) {
+      const existing = this.gameCarAhead(this.coverageDistance());
+      if (existing) this.guaranteedGameCarId = existing.vehicle.id;
+      else if (
+        !this.hasTrafficAhead(cars, this.coverageDistance()) &&
+        (seed || this.gameTrafficCooldown <= 0)
+      ) {
+        const position = this.positionAhead(this.targetDistance(), true);
+        if (position) {
+          this.addGameCar(position, true);
+          if (!seed) this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
+        }
+      }
+    }
+    if (
+      this.gameCars.length >= GAME_TRAFFIC_COUNT ||
+      (!seed && this.gameTrafficCooldown > 0)
+    )
+      return;
+    if (seed) {
+      while (this.gameCars.length < GAME_TRAFFIC_COUNT) {
+        const position = this.randomGamePosition();
+        if (!position) break;
+        this.addGameCar(position);
+      }
+      return;
+    }
+    const position = this.randomGamePosition();
+    if (position) {
       this.addGameCar(position);
+      this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
     }
   }
 
@@ -573,6 +624,7 @@ export class SnakeEngine {
     this.gameCars = [];
     this.guaranteedGameCarId = undefined;
     this.gameCarSerial = 0;
+    this.gameTrafficCooldown = 0;
     this.invalidateTraffic();
     const refs =
       mission?.refs ??
@@ -612,7 +664,8 @@ export class SnakeEngine {
     this.message = mission
       ? t('snake.destinationValue', { value1: mission.headsign })
       : t('snake.followTheRailsThrowSwitchesToExplore');
-    this.maintainGameTraffic();
+    this.maintainGameTraffic(cars, true);
+    this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
     this.record();
   }
 
@@ -1229,6 +1282,7 @@ export class SnakeEngine {
   tick(seconds: number, cars: PlottedVehicle[], pedal: number | Pedals = 0) {
     if (this.status !== 'running') return;
     const dt = Math.max(0, Math.min(0.1, seconds));
+    this.gameTrafficCooldown = Math.max(0, this.gameTrafficCooldown - dt);
     const input =
       typeof pedal === 'number' ? { accelerator: pedal > 0, brake: pedal < 0 } : pedal;
     const acceleration = this.mode === 'purist' ? 34 : 360,
@@ -1286,8 +1340,13 @@ export class SnakeEngine {
           return;
         }
         this.collected.add(other.car.vehicle.id);
-        if (other.car.vehicle.id.startsWith(GAME_CAR_PREFIX))
+        if (other.car.vehicle.id.startsWith(GAME_CAR_PREFIX)) {
           this.removeGameCar(other.car.vehicle.id);
+          this.gameTrafficCooldown = Math.max(
+            this.gameTrafficCooldown,
+            GAME_TRAFFIC_RESPAWN_DELAY,
+          );
+        }
         this.count++;
         this.message = t('snake.coupledStreetcarValueValueCars', {
           value1: other.car.vehicle.label,
@@ -1322,6 +1381,6 @@ export class SnakeEngine {
         }
       }
     }
-    this.maintainGameTraffic();
+    this.maintainGameTraffic(cars);
   }
 }
