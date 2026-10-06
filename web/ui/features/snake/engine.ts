@@ -65,6 +65,8 @@ const CAR_LENGTH = 30.2,
   GAME_TARGET_SECONDS = 6.5,
   GAME_TARGET_MIN_DISTANCE = 85,
   GAME_TARGET_MAX_DISTANCE = 210,
+  GAME_RANDOM_MIN_AHEAD = 260,
+  GAME_RANDOM_MIN_SPACING = 250,
   GAME_CAR_PREFIX = 'snake-v2-';
 const deltaAngle = (angle: number) => ((angle + 540) % 360) - 180;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -328,7 +330,7 @@ export class SnakeEngine {
     );
   }
 
-  private positionAhead(metres: number): Position | undefined {
+  private positionAhead(metres: number, strict = false): Position | undefined {
     let position = { ...this.position },
       index = this.missionIndex,
       remaining = Math.max(0, metres + this.turnbackRemaining),
@@ -357,7 +359,8 @@ export class SnakeEngine {
       }
       const choices = this.choices(position),
         next = this.nextRef(choices, position, index, queued, refs);
-      if (!next || visited.has(`${next.edgeId}:${next.direction}`))
+      if (!next || visited.has(`${next.edgeId}:${next.direction}`)) {
+        if (strict) return;
         return {
           ...position,
           distance:
@@ -365,6 +368,7 @@ export class SnakeEngine {
               ? Math.max(0, edge.lengthMetres - 8)
               : Math.min(edge.lengthMetres, 8),
         };
+      }
       visited.add(`${next.edgeId}:${next.direction}`);
       index = this.indexAfter(next, index, refs);
       if (choices.length > 1) queued = null;
@@ -462,7 +466,35 @@ export class SnakeEngine {
     this.invalidateTraffic();
   }
 
-  private randomGamePosition(): Position {
+  private gamePositionSafe(position: Position): boolean {
+    const samePlayerRail = sameRail(position, this.position),
+      ahead = this.distanceAhead(position);
+    // Keep the near-term route clear.  The pace car is the one deliberate
+    // exception: it is placed by positionAhead() and is meant to be caught.
+    if (samePlayerRail && (ahead === undefined || ahead < GAME_RANDOM_MIN_AHEAD))
+      return false;
+    if (
+      this.gameCars.some((car) => {
+        if (!car.match) return false;
+        const other: Position = {
+          edgeId: car.match.edgeId,
+          direction: car.match.direction,
+          distance: car.match.distanceAlongMetres,
+        };
+        return (
+          sameRail(other, position) &&
+          Math.abs(other.distance - position.distance) < GAME_RANDOM_MIN_SPACING
+        );
+      })
+    )
+      return false;
+    // Different graph edges are not collision-compatible, so their map-space
+    // proximity is harmless.  This also lets the small fixture and tight
+    // downtown track pairs carry a useful background fleet.
+    return true;
+  }
+
+  private randomGamePosition(): Position | undefined {
     const candidates = [...this.edges.values()].filter(
       (edge) =>
         edge.lengthMetres >= 60 &&
@@ -478,13 +510,23 @@ export class SnakeEngine {
           distance: edge.lengthMetres * (0.1 + this.random() * 0.8),
         },
         pose = this.pose(position);
-      if (distance(player.source, pose.source) < 180) continue;
-      if (this.gameCars.some((car) => car.match && distance(car.point, pose.point) < 120))
+      if (distance(player.source, pose.source) < 180 && sameRail(position, this.position))
         continue;
-      return position;
+      if (this.gamePositionSafe(position)) return position;
     }
-    const edge = pool[0];
-    return { edgeId: edge.id, direction: 1, distance: edge.lengthMetres / 2 };
+    // Never fall back to the first edge: doing so used to spawn eight cars on
+    // top of one another, then replace all eight every simulation tick.
+    for (const edge of pool)
+      for (const direction of [1, -1] as const)
+        for (const fraction of [0.15, 0.35, 0.55, 0.75, 0.9]) {
+          const position: Position = {
+            edgeId: edge.id,
+            direction,
+            distance: edge.lengthMetres * fraction,
+          };
+          if (this.gamePositionSafe(position)) return position;
+        }
+    return undefined;
   }
 
   private maintainGameTraffic() {
@@ -501,13 +543,15 @@ export class SnakeEngine {
       : undefined;
     if (!target || ahead === undefined || ahead > this.targetDistance() + 15) {
       if (target) this.removeGameCar(target.vehicle.id);
-      this.addGameCar(
-        this.positionAhead(this.targetDistance()) ?? this.randomGamePosition(),
-        true,
-      );
+      const position =
+        this.positionAhead(this.targetDistance(), true) ?? this.randomGamePosition();
+      if (position) this.addGameCar(position, true);
     }
-    while (this.gameCars.length < GAME_TRAFFIC_COUNT)
-      this.addGameCar(this.randomGamePosition());
+    while (this.gameCars.length < GAME_TRAFFIC_COUNT) {
+      const position = this.randomGamePosition();
+      if (!position) break;
+      this.addGameCar(position);
+    }
   }
 
   start(mode: Mode, cars: PlottedVehicle[], mission?: Mission, random = Math.random) {

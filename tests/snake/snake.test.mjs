@@ -127,8 +127,11 @@ test('arcade swept movement cannot tunnel through food at 2000 km/h, and motion 
 
 test('game traffic seeds random streetcars and keeps a catchable target ahead', () => {
   const engine = started(demoData, 'arcade', { gameTraffic: true });
-  assert.equal(engine.gameCars.length, 8);
-  assert.equal(new Set(engine.gameCars.map((car) => car.vehicle.id)).size, 8);
+  assert.ok(engine.gameCars.length > 0 && engine.gameCars.length <= 8);
+  assert.equal(
+    new Set(engine.gameCars.map((car) => car.vehicle.id)).size,
+    engine.gameCars.length,
+  );
   assert.ok(engine.gameCars.every((car) => car.match && !car.stale));
   assert.ok(engine.gameCars.some((car) => car.vehicle.id.startsWith('snake-v2-')));
 
@@ -138,7 +141,10 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
     engine.count > 1,
     'a generated streetcar arrives within the seven-second window',
   );
-  assert.equal(engine.gameCars.length, 8, 'the game replaces collected streetcars');
+  assert.ok(
+    engine.gameCars.length > 0 && engine.gameCars.length <= 8,
+    'the game keeps a bounded streetcar population',
+  );
   assert.ok(
     engine.gameCars.some((car) => !initialTargetIds.has(car.vehicle.id)),
     'a collected target is replaced with a new generated streetcar',
