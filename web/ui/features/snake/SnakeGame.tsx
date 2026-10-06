@@ -16,6 +16,8 @@ interface Props {
   onClose(): void;
 }
 const noSelection = () => {};
+const GAME_DRAW_INTERVAL_MS = 50;
+const GAME_TICK_INTERVAL_MS = 33;
 const readBest = () => {
   try {
     const value = Number(localStorage.getItem('ttc:snake:v2:best'));
@@ -62,7 +64,12 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
   );
 }
 
-export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }: Props) {
+export const SnakeGame = memo(function SnakeGame({
+  data: sourceData,
+  cars: sourceCars,
+  feed,
+  onClose,
+}: Props) {
   useLanguage();
   useEffect(() => {
     try {
@@ -75,7 +82,10 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
   const data = gameMap.data;
   const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
   const dialog = useRef<HTMLDialogElement>(null);
-  const engine = useMemo(() => new SnakeEngine(data, { easySwitches: true }), [data]);
+  const engine = useMemo(
+    () => new SnakeEngine(data, { easySwitches: true, gameTraffic: true }),
+    [data],
+  );
   const missions = useMemo(() => gameMissions(data), [data]);
   const [mode, setMode] = useState<Mode>('arcade');
   const [missionId, setMissionId] = useState('');
@@ -96,6 +106,8 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
   const audio = useRef<AudioContext | undefined>(undefined);
   const soundMuted = useRef(muted);
   soundMuted.current = muted;
+  const followRef = useRef(follow);
+  followRef.current = follow;
   const mapControls = useRef<TransitMapControls | null>(null);
   const touches = useRef(new Map<number, Point>());
   const pinching = useRef(false);
@@ -238,13 +250,22 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
     document.addEventListener('visibilitychange', visibility);
     let frame: number,
       previous = 0,
-      lastDraw = 0;
+      lastDraw = 0,
+      simulationCarry = 0;
     const animate = (now: number) => {
+      const wasRunning = engine.status === 'running';
       const before = engine.count;
-      engine.tick(previous ? (now - previous) / 1000 : 0, traffic.current, heldPedals());
+      if (wasRunning) {
+        simulationCarry += previous ? Math.min(0.1, (now - previous) / 1000) : 0;
+        if (simulationCarry >= GAME_TICK_INTERVAL_MS / 1000) {
+          engine.tick(simulationCarry, traffic.current, heldPedals());
+          simulationCarry = 0;
+          if (followRef.current) mapControls.current?.followPoint(engine.pose().point);
+        }
+      } else simulationCarry = 0;
       previous = now;
       if (engine.count > before) chime();
-      if (now - lastDraw >= 32) {
+      if (wasRunning && now - lastDraw >= GAME_DRAW_INTERVAL_MS) {
         redraw();
         lastDraw = now;
       }
@@ -284,18 +305,27 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
     body = engine.body(),
     upcoming = engine.upcoming(),
     nextStop = engine.nextStop();
-  const preview = engine.routePreview((upcoming?.distance ?? 0) + 85),
-    held = heldPedals();
-  const previewEnd = preview.at(-1)!,
-    previewBefore = preview.at(-2) ?? previewEnd;
-  const previewAngle =
-    (Math.atan2(previewEnd[1] - previewBefore[1], previewEnd[0] - previewBefore[0]) *
-      180) /
-    Math.PI;
+  const held = heldPedals();
+  const switchArrow = upcoming
+    ? (() => {
+        const edge = data.edges.find(
+          (candidate) => candidate.id === upcoming.selected.edgeId,
+        );
+        if (!edge) return undefined;
+        const lead = Math.min(38, Math.max(1, edge.lengthMetres - 1));
+        return engine.pose({
+          ...upcoming.selected,
+          distance: upcoming.selected.direction === 1 ? lead : edge.lengthMetres - lead,
+        });
+      })()
+    : undefined;
   const fresh = cars.filter(
     (car) => !car.stale && car.match && !engine.collected.has(car.vehicle.id),
   );
-  const visibleCars = cars.filter((car) => !engine.collected.has(car.vehicle.id));
+  const visibleCars = [
+    ...fresh,
+    ...engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
+  ];
   const playing = engine.status === 'running' || engine.status === 'paused';
   const feedText = feed.failed
     ? t('snake.liveRefreshUnavailableUsingFreshReportsOnly')
@@ -409,9 +439,13 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
           controlsRef={mapControls}
           mapId="snake-map"
           data={data}
+          // The game only needs live, matched cars. Stale/off-track reports
+          // remain available to the explorer but would add needless SVG nodes
+          // and collision work here.
           cars={visibleCars}
           includeOvernight
-          showLabels
+          showLabels={false}
+          showStops={false}
           driving
           focusPoint={follow && playing ? pose.point : undefined}
           focusBounds={originBounds}
@@ -420,36 +454,29 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
           onSelectVehicle={noSelection}
           overlay={(scale) => (
             <g className="snake-train" pointerEvents="none">
-              <polyline
-                data-snake-route-preview
-                data-selection={upcoming?.manual ? 'manual' : 'automatic'}
-                points={preview.map((point) => point.join(',')).join(' ')}
-                fill="none"
-                stroke="var(--surface)"
-                strokeWidth={9}
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="round"
-              />
-              <polyline
-                points={preview.map((point) => point.join(',')).join(' ')}
-                fill="none"
-                stroke="#087f5b"
-                strokeWidth={5}
-                strokeDasharray={upcoming?.manual ? undefined : '6 4'}
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="round"
-                opacity={0.85}
-              />
-              {preview.length > 1 && (
-                <path
-                  d="M-8 -6L0 0L-8 6"
-                  transform={`translate(${previewEnd.join(' ')}) rotate(${previewAngle}) scale(${1 / scale})`}
-                  fill="none"
-                  stroke="#087f5b"
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              {switchArrow && (
+                <>
+                  <path
+                    data-snake-switch-arrow
+                    data-selection={upcoming?.manual ? 'manual' : 'automatic'}
+                    d="M-18 0H10M2 -8L10 0L2 8"
+                    transform={`translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`}
+                    fill="none"
+                    stroke="#16212b"
+                    strokeWidth={9}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M-18 0H10M2 -8L10 0L2 8"
+                    transform={`translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`}
+                    fill="none"
+                    stroke="#ffd43b"
+                    strokeWidth={5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </>
               )}
               <polyline
                 points={body.map((sample) => sample.point.join(',')).join(' ')}
@@ -760,4 +787,4 @@ export function SnakeGame({ data: sourceData, cars: sourceCars, feed, onClose }:
       )}
     </dialog>
   );
-}
+});

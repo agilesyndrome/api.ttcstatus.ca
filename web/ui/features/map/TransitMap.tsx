@@ -15,6 +15,7 @@ export function TransitMap({
   focusPoint,
   focusPointLevel,
   showLabels = false,
+  showStops = true,
   includeOvernight = false,
   showStreetcar = true,
   showSubway = true,
@@ -85,7 +86,7 @@ export function TransitMap({
       (isEndpoint(feature) ||
         selectedFeature?.id === feature.id ||
         feature.kind === 'terminal' ||
-        feature.routeIds.some((id) => allowedRoutes.has(id))) &&
+        (showStops && feature.routeIds.some((id) => allowedRoutes.has(id)))) &&
       (!selectedRoute ||
         feature.routeIds.includes(selectedRoute) ||
         selectedFeature?.id === feature.id ||

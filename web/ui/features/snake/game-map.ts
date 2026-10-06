@@ -1,5 +1,6 @@
 import type { Edge, EdgeRef, Point, ViewerData } from '../../../../shared/map/model';
 import { boundsOf } from '../../../../shared/map/model';
+import { simplifyPolyline } from '../../../../shared/map/geometry';
 import {
   localToMap,
   mapToGps,
@@ -11,6 +12,8 @@ import type { PlottedVehicle } from '../../../../shared/map/live-status';
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const rapid = (number: string) => /^(1|2|4|5|6)$/.test(number);
 const unique = <T>(items: T[]) => [...new Set(items)];
+const GAME_SMOOTHING_METRES = 24;
+const GAME_CORNER_RADIUS_METRES = 22;
 function sourcePoint(point: Point, data: ViewerData): Point {
   const gps = mapToGps(point, data.geographicTransform),
     p = data.geographicTransform.projection;
@@ -29,6 +32,441 @@ function geometry(edge: Edge, sourcePoints: Point[], data: ViewerData): Edge {
   const points = clean.map((point) => localToMap(point, data.geographicTransform));
   const lengthMetres = sourceDistances.at(-1)!;
   return { ...edge, sourcePoints: clean, points, sourceDistances, lengthMetres };
+}
+
+function roundCorners(points: Point[]): Point[] {
+  if (
+    points.length < 3 ||
+    (points[0][0] === points.at(-1)![0] && points[0][1] === points.at(-1)![1])
+  )
+    return points;
+  const rounded: Point[] = [points[0]];
+  for (let i = 1; i < points.length - 1; i++) {
+    const before = points[i - 1],
+      point = points[i],
+      after = points[i + 1],
+      incoming = distance(before, point),
+      outgoing = distance(point, after),
+      radius = Math.min(GAME_CORNER_RADIUS_METRES, incoming * 0.28, outgoing * 0.28);
+    if (radius < 8) {
+      rounded.push(point);
+      continue;
+    }
+    const entry: Point = [
+      point[0] + ((before[0] - point[0]) * radius) / incoming,
+      point[1] + ((before[1] - point[1]) * radius) / incoming,
+    ];
+    const exit: Point = [
+      point[0] + ((after[0] - point[0]) * radius) / outgoing,
+      point[1] + ((after[1] - point[1]) * radius) / outgoing,
+    ];
+    rounded.push(entry);
+    for (const t of [0.25, 0.5, 0.75])
+      rounded.push([
+        (1 - t) * (1 - t) * entry[0] + 2 * (1 - t) * t * point[0] + t * t * exit[0],
+        (1 - t) * (1 - t) * entry[1] + 2 * (1 - t) * t * point[1] + t * t * exit[1],
+      ]);
+    rounded.push(exit);
+  }
+  rounded.push(points.at(-1)!);
+  return rounded;
+}
+
+function gameGeometry(edge: Edge, sourcePoints: Point[], data: ViewerData): Edge {
+  const simplified = simplifyPolyline(sourcePoints, GAME_SMOOTHING_METRES);
+  return geometry(edge, roundCorners(simplified), data);
+}
+
+function edgeStart(edge: Edge, direction: 1 | -1) {
+  return direction === 1 ? edge.a : edge.b;
+}
+
+function edgeEnd(edge: Edge, direction: 1 | -1) {
+  return direction === 1 ? edge.b : edge.a;
+}
+
+function clearFeatureAttachments(data: ViewerData) {
+  data.features = data.features.map((feature) => {
+    const { edgeId: _edgeId, distanceAlongMetres: _distance, ...unattached } = feature;
+    return unattached;
+  });
+}
+
+function remapEdgeRefs(data: ViewerData, aliases: Map<string, EdgeRef>) {
+  data.paths = data.paths?.map((path) => ({
+    ...path,
+    edgeRefs: path.edgeRefs.map((ref) => {
+      const replacement = aliases.get(ref.edgeId);
+      if (!replacement) return ref;
+      return {
+        edgeId: replacement.edgeId,
+        direction: (ref.direction * replacement.direction) as 1 | -1,
+      };
+    }),
+  }));
+}
+
+/** Route variants frequently describe the same centreline in opposite order.
+ * They are useful source evidence, but two copies make an arcade switch look
+ * like a four-way turnout. Keep the richest copy and union its labels. */
+function collapseDuplicateRails(data: ViewerData): number {
+  const groups = new Map<string, Edge[]>();
+  for (const edge of data.edges) {
+    const key = [edge.a, edge.b].sort().join('|');
+    groups.set(key, [...(groups.get(key) ?? []), edge]);
+  }
+  // A terminal loop can be represented by two coincident source edges that a
+  // signed path deliberately traverses in sequence. Removing one would turn
+  // that loop into an immediate same-rail reversal and a long train would
+  // crash before it reached the terminal.
+  const protectedEdges = new Set<string>();
+  for (const group of groups.values()) {
+    const ids = new Set(group.map((edge) => edge.id));
+    for (const path of data.paths ?? []) {
+      const used = new Set(
+        path.edgeRefs.filter((ref) => ids.has(ref.edgeId)).map((ref) => ref.edgeId),
+      );
+      if (used.size > 1) used.forEach((id) => protectedEdges.add(id));
+    }
+  }
+  const aliases = new Map<string, EdgeRef>();
+  const kept: Edge[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 2) {
+      const ids = new Set(group.map((edge) => edge.id));
+      const joins = (a: EdgeRef, b: EdgeRef) => {
+        const first = group.find((edge) => edge.id === a.edgeId);
+        const second = group.find((edge) => edge.id === b.edgeId);
+        return (
+          first &&
+          second &&
+          first.id !== second.id &&
+          edgeEnd(first, a.direction) === edgeStart(second, b.direction)
+        );
+      };
+      let loopPair:
+        { path: NonNullable<ViewerData['paths']>[number]; index: number } | undefined;
+      let safeLoop = true;
+      for (const path of data.paths ?? []) {
+        for (let i = 0; i < path.edgeRefs.length; i++) {
+          const ref = path.edgeRefs[i];
+          if (!ids.has(ref.edgeId)) continue;
+          const next = path.edgeRefs[i + 1],
+            previous = path.edgeRefs[i - 1];
+          if (next && joins(ref, next)) {
+            loopPair ??= { path, index: i };
+            continue;
+          }
+          if (!(previous && joins(previous, ref))) safeLoop = false;
+        }
+      }
+      if (safeLoop && loopPair) {
+        const firstRef = loopPair.path.edgeRefs[loopPair.index];
+        const secondRef = loopPair.path.edgeRefs[loopPair.index + 1];
+        const firstEdge = group.find((edge) => edge.id === firstRef.edgeId)!;
+        const secondEdge = group.find((edge) => edge.id === secondRef.edgeId)!;
+        const orient = (edge: Edge, direction: 1 | -1) =>
+          direction === 1 ? edge.sourcePoints : edge.sourcePoints.slice().reverse();
+        const loop = gameGeometry(
+          {
+            ...firstEdge,
+            id: `snake:loop:${firstEdge.id}:${secondEdge.id}`,
+            a: edgeStart(firstEdge, firstRef.direction),
+            b: edgeStart(firstEdge, firstRef.direction),
+            routeIds: unique(group.flatMap((edge) => edge.routeIds)).sort(),
+            infrastructureIds: unique(
+              group.flatMap((edge) => edge.infrastructureIds),
+            ).sort(),
+          },
+          [
+            ...orient(firstEdge, firstRef.direction),
+            ...orient(secondEdge, secondRef.direction).slice(1),
+          ],
+          data,
+        );
+        kept.push(loop);
+        for (const path of data.paths ?? []) {
+          const nextRefs: EdgeRef[] = [];
+          for (let i = 0; i < path.edgeRefs.length; i++) {
+            const a = path.edgeRefs[i],
+              b = path.edgeRefs[i + 1];
+            if (a && b && joins(a, b)) {
+              nextRefs.push({ edgeId: loop.id, direction: 1 });
+              i++;
+            } else nextRefs.push(a);
+          }
+          path.edgeRefs = nextRefs;
+        }
+        continue;
+      }
+    }
+    if (group.some((edge) => protectedEdges.has(edge.id))) {
+      kept.push(...group);
+      continue;
+    }
+    const representative = group
+      .slice()
+      .sort(
+        (a, b) =>
+          b.routeIds.length * 100 +
+          b.infrastructureIds.length -
+          (a.routeIds.length * 100 + a.infrastructureIds.length),
+      )[0];
+    representative.routeIds = unique(group.flatMap((edge) => edge.routeIds)).sort();
+    representative.infrastructureIds = unique(
+      group.flatMap((edge) => edge.infrastructureIds),
+    ).sort();
+    kept.push(representative);
+    for (const edge of group) {
+      const sameDirection = edge.a === representative.a && edge.b === representative.b;
+      aliases.set(edge.id, {
+        edgeId: representative.id,
+        direction: sameDirection ? 1 : -1,
+      });
+    }
+  }
+  const collapsed = data.edges.length - kept.length;
+  data.edges = kept;
+  remapEdgeRefs(data, aliases);
+  return collapsed;
+}
+
+function protectedNodes(data: ViewerData, nodes: Map<string, Point>) {
+  const terminals = data.features
+    .filter((feature) => feature.kind === 'terminal')
+    .map((feature) => sourcePoint(feature.point, data));
+  return new Set(
+    [...nodes]
+      .filter(([, point]) => terminals.some((terminal) => distance(point, terminal) < 80))
+      .map(([id]) => id),
+  );
+}
+
+/** Contract degree-two source vertices only when every mission crossing that
+ * vertex uses both sides. This turns a street's dozens of shape fragments
+ * into one smooth driving corridor without teleporting a signed mission. */
+function collapseGeometryNodes(data: ViewerData): number {
+  let collapsed = 0;
+  for (;;) {
+    const adjacency = new Map<string, Edge[]>();
+    const nodes = new Map<string, Point>();
+    for (const edge of data.edges) {
+      nodes.set(edge.a, edge.sourcePoints[0]);
+      nodes.set(edge.b, edge.sourcePoints.at(-1)!);
+      for (const node of unique([edge.a, edge.b]))
+        adjacency.set(node, [...(adjacency.get(node) ?? []), edge]);
+    }
+    const protectedIds = protectedNodes(data, nodes);
+    let merged = false;
+    for (const [node, legs] of adjacency) {
+      if (
+        protectedIds.has(node) ||
+        legs.length !== 2 ||
+        legs[0].a === legs[0].b ||
+        legs[1].a === legs[1].b
+      )
+        continue;
+      const [first, second] = legs,
+        outerFirst = first.a === node ? first.b : first.a,
+        outerSecond = second.a === node ? second.b : second.a;
+      if (outerFirst === outerSecond) continue;
+
+      const joins = (a: EdgeRef, b: EdgeRef) =>
+        [a.edgeId, b.edgeId].sort().join('|') ===
+          [first.id, second.id].sort().join('|') &&
+        edgeEnd(
+          data.edges.find((edge) => edge.id === a.edgeId)!,
+          a.direction,
+        ) === node &&
+        edgeStart(
+          data.edges.find((edge) => edge.id === b.edgeId)!,
+          b.direction,
+        ) === node;
+      let safe = true;
+      for (const path of data.paths ?? []) {
+        for (let i = 0; i < path.edgeRefs.length; i++) {
+          const ref = path.edgeRefs[i];
+          if (ref.edgeId !== first.id && ref.edgeId !== second.id) continue;
+          const next = path.edgeRefs[i + 1];
+          const previous = path.edgeRefs[i - 1];
+          if (!(next && joins(ref, next)) && !(previous && joins(previous, ref))) {
+            safe = false;
+            break;
+          }
+        }
+        if (!safe) break;
+      }
+      if (!safe) continue;
+
+      const orient = (edge: Edge, from: string) =>
+        edge.a === from ? edge.sourcePoints : edge.sourcePoints.slice().reverse();
+      const points = [...orient(first, outerFirst), ...orient(second, node).slice(1)];
+      const mergedEdge = gameGeometry(
+        {
+          ...first,
+          id: `snake:corridor:${first.id}:${second.id}`,
+          a: outerFirst,
+          b: outerSecond,
+          routeIds: unique([...first.routeIds, ...second.routeIds]).sort(),
+          infrastructureIds: unique([
+            ...first.infrastructureIds,
+            ...second.infrastructureIds,
+          ]).sort(),
+        },
+        points,
+        data,
+      );
+      for (const path of data.paths ?? []) {
+        const nextRefs: EdgeRef[] = [];
+        for (let i = 0; i < path.edgeRefs.length; i++) {
+          const a = path.edgeRefs[i],
+            b = path.edgeRefs[i + 1];
+          if (b && joins(a, b)) {
+            const start = edgeStart(
+              data.edges.find((edge) => edge.id === a.edgeId)!,
+              a.direction,
+            );
+            nextRefs.push({
+              edgeId: mergedEdge.id,
+              direction: start === outerFirst ? 1 : -1,
+            });
+            i++;
+          } else nextRefs.push(a);
+        }
+        path.edgeRefs = nextRefs;
+      }
+      data.edges = data.edges.filter((edge) => edge !== first && edge !== second);
+      data.edges.push(mergedEdge);
+      merged = true;
+      collapsed++;
+      break;
+    }
+    if (!merged) return collapsed;
+  }
+}
+
+interface BarnAccess {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  routes: string[];
+}
+
+// These are deliberately game spurs, not a claim that the public schematic is
+// a surveyed yard plan. They give the two classic operating barns a clear,
+// reversible entry and exit instead of making a child hunt for an invisible
+// track inside a dense city block.
+const BARN_ACCESS: BarnAccess[] = [
+  {
+    id: 'roncesvalles',
+    name: 'Roncesvalles Carhouse',
+    latitude: 43 + 38 / 60 + 37 / 3600,
+    longitude: -(79 + 26 / 60 + 32 / 3600),
+    routes: ['501', '504'],
+  },
+  {
+    id: 'russell',
+    name: 'Russell Carhouse',
+    latitude: 43 + 39 / 60 + 42 / 3600,
+    longitude: -(79 + 19 / 60 + 34 / 3600),
+    routes: ['501', '506'],
+  },
+];
+
+function localGpsPoint(latitude: number, longitude: number, data: ViewerData): Point {
+  const p = data.geographicTransform.projection;
+  return [
+    (longitude - p.longitude) * p.metresPerLongitudeDegree,
+    (latitude - p.latitude) * p.metresPerLatitudeDegree,
+  ];
+}
+
+function addBarnAccess(data: ViewerData): number {
+  let added = 0;
+  for (const barn of BARN_ACCESS) {
+    const point = localGpsPoint(barn.latitude, barn.longitude, data);
+    const candidates = data.edges.filter((edge) =>
+      edge.routeIds.some((id) =>
+        barn.routes.includes(data.routes.find((route) => route.id === id)?.number ?? id),
+      ),
+    );
+    const hit = nearest(point, candidates.length ? candidates : data.edges);
+    if (!hit || hit.gap > 700) continue;
+
+    let node = hit.edge.a;
+    let anchor = hit.edge.sourcePoints[0];
+    if (hit.metres > 20 && hit.edge.lengthMetres - hit.metres > 20) {
+      node = `snake:barn:${barn.id}:entry`;
+      const first = gameGeometry(
+        { ...hit.edge, id: `${node}:in`, b: node },
+        [...hit.edge.sourcePoints.slice(0, hit.segment), hit.point],
+        data,
+      );
+      const second = gameGeometry(
+        { ...hit.edge, id: `${node}:out`, a: node },
+        [hit.point, ...hit.edge.sourcePoints.slice(hit.segment)],
+        data,
+      );
+      data.edges = data.edges.flatMap((edge) =>
+        edge.id === hit.edge.id ? [first, second] : [edge],
+      );
+      data.paths = data.paths?.map((path) => ({
+        ...path,
+        edgeRefs: path.edgeRefs.flatMap((ref): EdgeRef[] =>
+          ref.edgeId !== hit.edge.id
+            ? [ref]
+            : ref.direction === 1
+              ? [
+                  { edgeId: first.id, direction: 1 },
+                  { edgeId: second.id, direction: 1 },
+                ]
+              : [
+                  { edgeId: second.id, direction: -1 },
+                  { edgeId: first.id, direction: -1 },
+                ],
+        ),
+      }));
+      anchor = hit.point;
+    } else if (hit.metres >= hit.edge.lengthMetres - 20) {
+      node = hit.edge.b;
+      anchor = hit.edge.sourcePoints.at(-1)!;
+    }
+
+    const terminalNode = `snake:barn:${barn.id}`;
+    const approach: Point = [(anchor[0] + point[0]) / 2, (anchor[1] + point[1]) / 2];
+    const branch = gameGeometry(
+      {
+        id: `snake:barn:${barn.id}:access`,
+        a: node,
+        b: terminalNode,
+        routeIds: hit.edge.routeIds.slice(),
+        infrastructureIds: ['snake:barn-access'],
+      } as Edge,
+      [anchor, approach, point],
+      data,
+    );
+    data.edges.push(branch);
+    data.features.push({
+      id: `terminal:${barn.id}`,
+      name: barn.name,
+      kind: 'terminal',
+      point: localToMap(point, data.geographicTransform),
+      routeIds: unique(hit.edge.routeIds),
+      accessible: null,
+      boardingPoints: 0,
+      platformNames: [barn.name],
+      destinations: {},
+      replacementRouteIds: [],
+    });
+    if (!data.infrastructure.some((item) => item.id === 'snake:barn-access'))
+      data.infrastructure.push({
+        id: 'snake:barn-access',
+        name: 'Simple game access to TTC barns',
+      });
+    added++;
+  }
+  return added;
 }
 function nearest(point: Point, edges: Edge[]) {
   let best:
@@ -69,6 +507,7 @@ export interface SnakeMap {
  * become switches. Larger city loops and the Toronto street backbone survive. */
 export function buildSnakeMap(input: ViewerData): SnakeMap {
   const data = structuredClone(input);
+  clearFeatureAttachments(data);
   // Some decorative terminal labels are approximate. Prefer the actual named
   // boarding record before simplifying its loop (not a nearby unrelated rail).
   for (const terminal of data.features.filter((f) => f.kind === 'terminal')) {
@@ -216,6 +655,17 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
     edgeRefs: path.edgeRefs.filter((ref) => !removed.has(ref.edgeId)),
   }));
 
+  // From here on the graph is a game board, not an infrastructure inventory:
+  // one centreline per corridor, one long edge between meaningful choices,
+  // and a rounded polyline that is forgiving at arcade speed.
+  let collapsedEdges = removed.size;
+  collapsedEdges += collapseDuplicateRails(data);
+  collapsedEdges += collapseGeometryNodes(data);
+  // Contracting a corridor can create a new duplicate at its far end. Run
+  // the same cheap pass once more so merging does not reintroduce a turnout.
+  collapsedEdges += collapseDuplicateRails(data);
+  data.edges = data.edges.map((edge) => gameGeometry(edge, edge.sourcePoints, data));
+
   const transfers: SnakeMap['transfers'] = [];
   // Split existing edges at stations so the fake interchange works in either
   // direction, and expand every mission reference in its original order.
@@ -324,6 +774,7 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
       edgeRefs: path.edgeRefs.filter((ref) => !invalid.has(ref.edgeId)),
     }));
   }
+  addBarnAccess(data);
   // Reattach ALL stations, including grouped terminal records, to the game
   // geometry. Keep names, boarding IDs and service metadata from Toronto.
   data.features = data.features.map((feature) => {
@@ -365,7 +816,7 @@ export function buildSnakeMap(input: ViewerData): SnakeMap {
     [...data.edges.flatMap((e) => e.points), ...data.features.map((f) => f.point)],
     45,
   );
-  return { data, collapsedEdges: removed.size, transfers };
+  return { data, collapsedEdges, transfers };
 }
 
 /** Only already-matched reports can become pickups; feed ownership stays with

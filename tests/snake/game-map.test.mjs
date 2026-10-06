@@ -141,7 +141,13 @@ test('Snake owns its graph: frozen explorer input is unchanged and generation is
   assert.equal(gameMissions(game.data).length, gameMissions(original).length);
   assert.deepEqual(game.data.routes, original.routes);
   assert.deepEqual(
-    game.data.features.map((f) => [f.id, f.name]),
+    game.data.features
+      .filter(
+        (f) =>
+          !f.id.startsWith('terminal:roncesvalles') &&
+          !f.id.startsWith('terminal:russell'),
+      )
+      .map((f) => [f.id, f.name]),
     original.features.map((f) => [f.id, f.name]),
   );
 });
@@ -149,8 +155,8 @@ test('Snake owns its graph: frozen explorer input is unchanged and generation is
 test('every Toronto station, terminal, edge and ordered mission passes the game-map audit', () => {
   const audit = auditSnakeMap(game.data);
   assert.deepEqual(audit.errors, []);
-  assert.equal(audit.stations, 417);
-  assert.equal(audit.terminals, 16);
+  assert.equal(audit.stations, 419);
+  assert.equal(audit.terminals, 18);
   for (const terminal of game.data.features.filter((f) => f.kind === 'terminal')) {
     const e = game.data.edges.find((e) => e.id === terminal.edgeId);
     assert.ok(
@@ -158,6 +164,36 @@ test('every Toronto station, terminal, edge and ordered mission passes the game-
         terminal.distanceAlongMetres === e.lengthMetres,
       terminal.name,
     );
+  }
+});
+
+test('playground topology removes duplicate rails, smooths corridors, and exposes both barns', () => {
+  const degree = new Map();
+  for (const edge of game.data.edges)
+    for (const node of new Set([edge.a, edge.b]))
+      degree.set(node, (degree.get(node) ?? 0) + 1);
+  const duplicatePairs = new Map();
+  for (const edge of game.data.edges) {
+    const key = [edge.a, edge.b].sort().join('|');
+    duplicatePairs.set(key, (duplicatePairs.get(key) ?? 0) + 1);
+  }
+  assert.ok(game.collapsedEdges >= 400);
+  assert.ok(game.data.edges.length < 100);
+  assert.ok(Math.max(...degree.values()) <= 5);
+  assert.ok([...duplicatePairs.values()].every((count) => count <= 3));
+  assert.deepEqual(
+    game.data.features
+      .filter((feature) => /carhouse/i.test(feature.name))
+      .map((feature) => feature.name)
+      .sort(),
+    ['Roncesvalles Carhouse', 'Russell Carhouse'],
+  );
+  for (const barn of game.data.features.filter((feature) =>
+    /carhouse/i.test(feature.name),
+  )) {
+    const edge = game.data.edges.find((candidate) => candidate.id === barn.edgeId);
+    assert.ok(edge?.id.startsWith('snake:barn:'));
+    assert.equal(barn.distanceAlongMetres, edge.lengthMetres);
   }
 });
 

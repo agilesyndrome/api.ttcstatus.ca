@@ -4,6 +4,7 @@ import type { PlottedVehicle } from '../../../../shared/map/live-status';
 
 export interface TransitMapControls {
   zoomBy(factor: number, clientPoint?: Point): void;
+  followPoint(point: Point): void;
   cancelGesture(): void;
 }
 export interface TransitMapProps {
@@ -15,6 +16,8 @@ export interface TransitMapProps {
   /** Relative map scale for a focus point; 2.5 shows a neighborhood, 5 is detail view. */
   focusPointLevel?: number;
   showLabels?: boolean;
+  /** Hide ordinary stop markers for lightweight game/map presentations. */
+  showStops?: boolean;
   includeOvernight?: boolean;
   showStreetcar?: boolean;
   showSubway?: boolean;

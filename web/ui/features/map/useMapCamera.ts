@@ -90,6 +90,15 @@ export function useMapCamera({
     controlsRef.current = {
       zoomBy: (factor, clientPoint) =>
         zoom(factor, clientPoint ? world(...clientPoint) : undefined),
+      followPoint: (point) => {
+        const current = cameraRef.current;
+        move({
+          x: point[0] - current.width / 2,
+          y: point[1] - current.height / 2,
+          width: current.width,
+          height: current.height,
+        });
+      },
       cancelGesture: () => {
         for (const id of pointers.current.keys())
           if (svg.current?.hasPointerCapture(id)) svg.current.releasePointerCapture(id);

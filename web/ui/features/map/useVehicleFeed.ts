@@ -4,7 +4,11 @@ import { DEFAULT_LIVE_UPDATE_SECONDS } from '../../../../shared/live/config';
 import type { FeedState } from './LiveFeedStatus';
 
 /** One feed owner per page. Filters and legend never create their own requests. */
-export function useVehicleFeed(enabled: boolean): FeedState {
+export function useVehicleFeed(
+  enabled: boolean,
+  options: { polling?: boolean } = {},
+): FeedState {
+  const polling = options.polling ?? true;
   const [state, setState] = useState<FeedState>({
     failed: false,
     active: false,
@@ -13,6 +17,7 @@ export function useVehicleFeed(enabled: boolean): FeedState {
     now: Date.now(),
   });
   const poller = useRef<VehiclePoller | undefined>(undefined);
+  const singleShotRequested = useRef(false);
   useEffect(() => {
     const instance = new VehiclePoller({
       request: (signal, etag) =>
@@ -43,9 +48,22 @@ export function useVehicleFeed(enabled: boolean): FeedState {
   }, []);
   useEffect(() => {
     const sync = () => {
-      const active = enabled && !document.hidden && navigator.onLine;
-      poller.current?.setActive(active);
-      setState((current) => ({ ...current, active, now: Date.now() }));
+      const eligible = enabled && !document.hidden && navigator.onLine;
+      if (polling) {
+        singleShotRequested.current = false;
+        poller.current?.setActive(eligible);
+      } else {
+        poller.current?.setActive(false);
+        if (eligible && !singleShotRequested.current) {
+          singleShotRequested.current = true;
+          void poller.current?.refreshOnce();
+        }
+      }
+      setState((current) => ({
+        ...current,
+        active: polling && eligible,
+        now: Date.now(),
+      }));
     };
     const pause = () => {
       poller.current?.setActive(false);
@@ -65,6 +83,6 @@ export function useVehicleFeed(enabled: boolean): FeedState {
       window.removeEventListener('pagehide', pause);
       window.removeEventListener('pageshow', sync);
     };
-  }, [enabled]);
+  }, [enabled, polling]);
   return state;
 }

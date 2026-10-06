@@ -63,8 +63,8 @@ const car = (id, edgeId = 'queen-edge', distance = 180, extra = {}) => ({
   stale: false,
   ...extra,
 });
-function started(data = demoData, mode = 'arcade') {
-  const engine = new SnakeEngine(data);
+function started(data = demoData, mode = 'arcade', options = {}) {
+  const engine = new SnakeEngine(data, options);
   engine.start(mode, [], undefined, () => 0.4);
   engine.position = { edgeId: data.edges[0].id, direction: 1, distance: 100 };
   engine.trail = [];
@@ -123,6 +123,26 @@ test('arcade swept movement cannot tunnel through food at 2000 km/h, and motion 
   engine.tick(0.1, [car('fast', 'queen-edge', 145)]);
   assert.equal(engine.count, 2);
   assert.ok(Math.abs(engine.position.distance - (100 + (2000 / 3.6) * 0.1)) < 0.001);
+});
+
+test('game traffic seeds random streetcars and keeps a catchable target ahead', () => {
+  const engine = started(demoData, 'arcade', { gameTraffic: true });
+  assert.equal(engine.gameCars.length, 8);
+  assert.equal(new Set(engine.gameCars.map((car) => car.vehicle.id)).size, 8);
+  assert.ok(engine.gameCars.every((car) => car.match && !car.stale));
+  assert.ok(engine.gameCars.some((car) => car.vehicle.id.startsWith('snake-v2-')));
+
+  const initialTargetIds = new Set(engine.gameCars.map((car) => car.vehicle.id));
+  for (let i = 0; i < 70 && engine.count === 1; i++) engine.tick(0.1, []);
+  assert.ok(
+    engine.count > 1,
+    'a generated streetcar arrives within the seven-second window',
+  );
+  assert.equal(engine.gameCars.length, 8, 'the game replaces collected streetcars');
+  assert.ok(
+    engine.gameCars.some((car) => !initialTargetIds.has(car.vehicle.id)),
+    'a collected target is replaced with a new generated streetcar',
+  );
 });
 
 test('pause freezes movement, speed limits apply by mode and brakes can stop the train', () => {
@@ -290,6 +310,15 @@ test('legacy archive keeps the original simulation and art intact, with scoped l
   const js = await readFile('public/snake/v1/game.js', 'utf8');
   assert.match(js, /MISSION_DEFS/);
   assert.match(js, /ttcSnakeResume/);
+  for (const brokenApi of [
+    'getContextr',
+    'getBoundingClientRectr',
+    'preventDefaultr',
+    'Math.hypotr',
+  ]) {
+    assert.doesNotMatch(js, new RegExp(brokenApi.replace('.', '\\.'), 'g'));
+  }
+  assert.match(js, /startBtn\.addEventListener/);
 });
 
 test('next-stop guidance follows the chosen switch over real graph nodes and never invents a connector', () => {

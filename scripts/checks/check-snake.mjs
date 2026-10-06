@@ -162,12 +162,18 @@ try {
   const before = feedCalls;
   await game.getByRole('button', { name: 'Depart', exact: true }).click();
   await page.waitForTimeout(250);
+  const cameraBefore = await page.locator('#snake-map').getAttribute('viewBox');
   const initial = await game.locator('[data-snake-head]').getAttribute('transform');
   await page.waitForTimeout(250);
   assert.notEqual(
     await game.locator('[data-snake-head]').getAttribute('transform'),
     initial,
     'the streetcar moves along the map',
+  );
+  assert.notEqual(
+    await page.locator('#snake-map').getAttribute('viewBox'),
+    cameraBefore,
+    'the camera follows the moving streetcar',
   );
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('p');
@@ -291,9 +297,15 @@ try {
   await mobile.waitForTimeout(350); // Let Chromium finish the preceding CDP swipe's touch gesture.
   await cockpit.getByRole('button', { name: 'Pause', exact: true }).tap();
   await cockpit.getByText('Paused', { exact: true }).waitFor({ timeout: 2000 });
-  const selectedPreview = await cockpit
-    .locator('[data-snake-route-preview]')
-    .getAttribute('points');
+  assert.equal(
+    await cockpit.locator('[data-snake-route-preview]').count(),
+    0,
+    'the train has no attached route line',
+  );
+  const selectedArrow = await cockpit
+    .locator('[data-snake-switch-arrow]')
+    .getAttribute('transform');
+  assert.ok(selectedArrow, 'the selected switch has a visible direction arrow');
   await mobile.keyboard.press('e');
   assert.equal(
     await cockpit
@@ -302,9 +314,9 @@ try {
     'true',
   );
   assert.notEqual(
-    await cockpit.locator('[data-snake-route-preview]').getAttribute('points'),
-    selectedPreview,
-    'selected track changes the green departure preview',
+    await cockpit.locator('[data-snake-switch-arrow]').getAttribute('transform'),
+    selectedArrow,
+    'selected track changes the switch direction arrow',
   );
   await cockpit.getByText(/Next stop: Right stop/).waitFor();
   await mobile.keyboard.press('r');

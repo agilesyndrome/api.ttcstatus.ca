@@ -60,7 +60,12 @@ export interface UpcomingSwitch {
 }
 const CAR_LENGTH = 30.2,
   SPACING = CAR_LENGTH + 1.5,
-  LANE_OFFSET = 3.2;
+  LANE_OFFSET = 3.2,
+  GAME_TRAFFIC_COUNT = 8,
+  GAME_TARGET_SECONDS = 6.5,
+  GAME_TARGET_MIN_DISTANCE = 85,
+  GAME_TARGET_MAX_DISTANCE = 210,
+  GAME_CAR_PREFIX = 'snake-v2-';
 const deltaAngle = (angle: number) => ((angle + 540) % 360) - 180;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
@@ -124,6 +129,8 @@ export class SnakeEngine {
   readonly stopsByEdge = new Map<string, Feature[]>();
   readonly sourceLengths = new Map<string, number[]>();
   readonly terminals = new Map<string, { name: string; radius: number }>();
+  readonly routeNumbers: Map<string, string>;
+  readonly infrastructureNames: Map<string, string>;
   status: 'ready' | 'running' | 'paused' | 'over' = 'ready';
   position: Position;
   mode: Mode = 'arcade';
@@ -138,14 +145,32 @@ export class SnakeEngine {
   mission?: Mission;
   missionRefs: EdgeRef[] = [];
   missionIndex = -1;
+  gameCars: PlottedVehicle[] = [];
   private turnGraceUntil = 0;
   private lastRecorded = -Infinity;
   private turnback?: Turnback;
+  private random = Math.random;
+  private gameCarSerial = 0;
+  private guaranteedGameCarId?: string;
+  private trafficRevision = 0;
+  private trafficInput?: {
+    source: PlottedVehicle[];
+    revision: number;
+    cars: PlottedVehicle[];
+  };
+  private trafficCache?: {
+    cars: PlottedVehicle[];
+    poses: { car: PlottedVehicle; pose: Pose; spans: RailSpan[] }[];
+  };
 
   constructor(
     readonly data: ViewerData,
-    readonly options: { easySwitches?: boolean } = {},
+    readonly options: { easySwitches?: boolean; gameTraffic?: boolean } = {},
   ) {
+    this.routeNumbers = new Map(data.routes.map((route) => [route.id, route.number]));
+    this.infrastructureNames = new Map(
+      data.infrastructure.map((item) => [item.id, item.name]),
+    );
     this.edges = new Map(
       data.edges
         .filter(
@@ -242,32 +267,247 @@ export class SnakeEngine {
     };
   }
 
+  private trafficCars(cars: PlottedVehicle[]) {
+    if (
+      !this.trafficInput ||
+      this.trafficInput.source !== cars ||
+      this.trafficInput.revision !== this.trafficRevision
+    ) {
+      this.trafficInput = {
+        source: cars,
+        revision: this.trafficRevision,
+        cars: [...cars, ...this.gameCars],
+      };
+    }
+    return this.trafficInput.cars;
+  }
+
+  private invalidateTraffic() {
+    this.trafficRevision++;
+    this.trafficInput = undefined;
+  }
+
   private livePoses(cars: PlottedVehicle[]) {
-    return cars.flatMap((car) =>
-      !car.stale &&
-      car.match &&
-      this.edges.has(car.match.edgeId) &&
-      !this.collected.has(car.vehicle.id)
-        ? [
-            {
-              car,
-              pose: this.pose({
-                edgeId: car.match.edgeId,
-                distance: car.match.distanceAlongMetres,
-                direction: car.match.direction,
-              }),
-              spans: this.vehicleSpans(
+    const input = this.trafficCars(cars);
+    if (this.trafficCache?.cars !== input) {
+      this.trafficCache = {
+        cars: input,
+        poses: input.flatMap((car) =>
+          !car.stale && car.match && this.edges.has(car.match.edgeId)
+            ? [
                 {
-                  edgeId: car.match.edgeId,
-                  distance: car.match.distanceAlongMetres,
-                  direction: car.match.direction,
+                  car,
+                  pose: this.pose({
+                    edgeId: car.match.edgeId,
+                    distance: car.match.distanceAlongMetres,
+                    direction: car.match.direction,
+                  }),
+                  spans: this.vehicleSpans(
+                    {
+                      edgeId: car.match.edgeId,
+                      distance: car.match.distanceAlongMetres,
+                      direction: car.match.direction,
+                    },
+                    car.vehicle.routeId,
+                  ),
                 },
-                car.vehicle.routeId,
-              ),
-            },
-          ]
-        : [],
+              ]
+            : [],
+        ),
+      };
+    }
+    return this.trafficCache.poses.filter(
+      (other) => !this.collected.has(other.car.vehicle.id),
     );
+  }
+
+  private targetDistance() {
+    return Math.max(
+      GAME_TARGET_MIN_DISTANCE,
+      Math.min(GAME_TARGET_MAX_DISTANCE, (this.speed / 3.6) * GAME_TARGET_SECONDS),
+    );
+  }
+
+  private positionAhead(metres: number): Position | undefined {
+    let position = { ...this.position },
+      index = this.missionIndex,
+      remaining = Math.max(0, metres + this.turnbackRemaining),
+      refs = this.missionRefs;
+    let queued: string | null | undefined = this.queued;
+    const visited = new Set<string>();
+    for (let guard = 0; guard < 2500; guard++) {
+      const edge = this.edges.get(position.edgeId)!,
+        available =
+          position.direction === 1
+            ? edge.lengthMetres - position.distance
+            : position.distance;
+      if (remaining <= available + 0.00001)
+        return {
+          ...position,
+          distance: position.distance + position.direction * remaining,
+        };
+      remaining -= available;
+      if (this.mission && index === refs.length - 1) {
+        refs = refs
+          .slice()
+          .reverse()
+          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
+        index = -1;
+        queued = null;
+      }
+      const choices = this.choices(position),
+        next = this.nextRef(choices, position, index, queued, refs);
+      if (!next || visited.has(`${next.edgeId}:${next.direction}`))
+        return {
+          ...position,
+          distance:
+            position.direction === 1
+              ? Math.max(0, edge.lengthMetres - 8)
+              : Math.min(edge.lengthMetres, 8),
+        };
+      visited.add(`${next.edgeId}:${next.direction}`);
+      index = this.indexAfter(next, index, refs);
+      if (choices.length > 1) queued = null;
+      const following = this.edges.get(next.edgeId)!;
+      position = {
+        ...next,
+        distance: next.direction === 1 ? 0 : following.lengthMetres,
+      };
+    }
+  }
+
+  private distanceAhead(target: Position): number | undefined {
+    let position = { ...this.position },
+      index = this.missionIndex,
+      metres = this.turnbackRemaining,
+      refs = this.missionRefs;
+    let queued: string | null | undefined = this.queued;
+    const visited = new Set<string>();
+    for (let guard = 0; guard < 2500; guard++) {
+      const edge = this.edges.get(position.edgeId)!;
+      if (sameRail(position, target)) {
+        const ahead = (target.distance - position.distance) * position.direction;
+        if (ahead >= -0.00001) return metres + ahead;
+        return;
+      }
+      metres +=
+        position.direction === 1
+          ? edge.lengthMetres - position.distance
+          : position.distance;
+      if (this.mission && index === refs.length - 1) {
+        refs = refs
+          .slice()
+          .reverse()
+          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
+        index = -1;
+        queued = null;
+      }
+      const choices = this.choices(position),
+        next = this.nextRef(choices, position, index, queued, refs);
+      if (!next || visited.has(`${next.edgeId}:${next.direction}`)) return;
+      visited.add(`${next.edgeId}:${next.direction}`);
+      index = this.indexAfter(next, index, refs);
+      if (choices.length > 1) queued = null;
+      const following = this.edges.get(next.edgeId)!;
+      position = {
+        ...next,
+        distance: next.direction === 1 ? 0 : following.lengthMetres,
+      };
+    }
+  }
+
+  private makeGameCar(position: Position): PlottedVehicle {
+    const pose = this.pose(position),
+      gps = mapToGps(pose.point, this.data.geographicTransform),
+      edge = this.edges.get(position.edgeId)!,
+      number = edge.routeIds.map((id) => this.routeNumbers.get(id) ?? id)[0] ?? 'TTC',
+      id = `${GAME_CAR_PREFIX}${++this.gameCarSerial}`;
+    return {
+      vehicle: {
+        id,
+        label: `${number} · ${this.gameCarSerial}`,
+        mode: 'streetcar',
+        positionKind: 'gps',
+        latitude: gps.latitude,
+        longitude: gps.longitude,
+        routeId: edge.routeIds[0],
+        observedAt: new Date().toISOString(),
+      },
+      point: pose.point,
+      angle: pose.angle,
+      match: {
+        edgeId: position.edgeId,
+        distanceAlongMetres: position.distance,
+        distanceFromTrackMetres: 0,
+        direction: position.direction,
+        point: pose.point,
+        angle: pose.angle,
+      },
+      stale: false,
+    };
+  }
+
+  private addGameCar(position: Position, guaranteed = false) {
+    const car = this.makeGameCar(position);
+    this.gameCars = [...this.gameCars, car];
+    if (guaranteed) this.guaranteedGameCarId = car.vehicle.id;
+    this.invalidateTraffic();
+  }
+
+  private removeGameCar(id: string) {
+    const next = this.gameCars.filter((car) => car.vehicle.id !== id);
+    if (next.length === this.gameCars.length) return;
+    this.gameCars = next;
+    if (this.guaranteedGameCarId === id) this.guaranteedGameCarId = undefined;
+    this.invalidateTraffic();
+  }
+
+  private randomGamePosition(): Position {
+    const candidates = [...this.edges.values()].filter(
+      (edge) =>
+        edge.lengthMetres >= 60 &&
+        (edge.routeIds.length || edge.infrastructureIds.length),
+    );
+    const pool = candidates.length ? candidates : [...this.edges.values()],
+      player = this.pose();
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const edge = pool[Math.floor(this.random() * pool.length)],
+        position: Position = {
+          edgeId: edge.id,
+          direction: this.random() < 0.5 ? -1 : 1,
+          distance: edge.lengthMetres * (0.1 + this.random() * 0.8),
+        },
+        pose = this.pose(position);
+      if (distance(player.source, pose.source) < 180) continue;
+      if (this.gameCars.some((car) => car.match && distance(car.point, pose.point) < 120))
+        continue;
+      return position;
+    }
+    const edge = pool[0];
+    return { edgeId: edge.id, direction: 1, distance: edge.lengthMetres / 2 };
+  }
+
+  private maintainGameTraffic() {
+    if (!this.options.gameTraffic || this.status !== 'running') return;
+    const target = this.guaranteedGameCarId
+      ? this.gameCars.find((car) => car.vehicle.id === this.guaranteedGameCarId)
+      : undefined;
+    const ahead = target?.match
+      ? this.distanceAhead({
+          edgeId: target.match.edgeId,
+          direction: target.match.direction,
+          distance: target.match.distanceAlongMetres,
+        })
+      : undefined;
+    if (!target || ahead === undefined || ahead > this.targetDistance() + 15) {
+      if (target) this.removeGameCar(target.vehicle.id);
+      this.addGameCar(
+        this.positionAhead(this.targetDistance()) ?? this.randomGamePosition(),
+        true,
+      );
+    }
+    while (this.gameCars.length < GAME_TRAFFIC_COUNT)
+      this.addGameCar(this.randomGamePosition());
   }
 
   start(mode: Mode, cars: PlottedVehicle[], mission?: Mission, random = Math.random) {
@@ -285,6 +525,11 @@ export class SnakeEngine {
     this.turnGraceUntil = 0;
     this.lastRecorded = -Infinity;
     this.turnback = undefined;
+    this.random = random;
+    this.gameCars = [];
+    this.guaranteedGameCarId = undefined;
+    this.gameCarSerial = 0;
+    this.invalidateTraffic();
     const refs =
       mission?.refs ??
       [...this.edges.values()]
@@ -323,6 +568,7 @@ export class SnakeEngine {
     this.message = mission
       ? t('snake.destinationValue', { value1: mission.headsign })
       : t('snake.followTheRailsThrowSwitchesToExplore');
+    this.maintainGameTraffic();
     this.record();
   }
 
@@ -391,11 +637,11 @@ export class SnakeEngine {
           }).angle - arrival,
         );
         const routes = edge.routeIds
-          .map((id) => this.data.routes.find((route) => route.id === id)?.number)
+          .map((id) => this.routeNumbers.get(id))
           .filter(Boolean)
           .join('/');
         const name = edge.infrastructureIds
-          .map((id) => this.data.infrastructure.find((item) => item.id === id)?.name)
+          .map((id) => this.infrastructureNames.get(id))
           .filter(Boolean)
           .join(', ');
         const turn: Turn = angle < -24.1 ? 'left' : angle > 24.1 ? 'right' : 'straight';
@@ -505,7 +751,7 @@ export class SnakeEngine {
     const routeKeys = (edge: Edge) =>
       new Set(
         edge.routeIds.flatMap((id) => {
-          const number = this.data.routes.find((route) => route.id === id)?.number ?? id;
+          const number = this.routeNumbers.get(id) ?? id;
           return [
             number,
             number.replace(/[A-Z]$/, ''),
@@ -522,7 +768,7 @@ export class SnakeEngine {
       const nextKeys = routeKeys(next),
         shared = [...nextKeys].filter((key) => keys.has(key)).length;
       const infrastructure = next.infrastructureIds
-        .map((id) => this.data.infrastructure.find((item) => item.id === id)?.name ?? id)
+        .map((id) => this.infrastructureNames.get(id) ?? id)
         .join(' ');
       const yard = /yard|carhouse|barns|hillcrest|shop/i.test(infrastructure);
       const diversion = !next.routeIds.length && current.routeIds.length > 0;
@@ -996,6 +1242,8 @@ export class SnakeEngine {
           return;
         }
         this.collected.add(other.car.vehicle.id);
+        if (other.car.vehicle.id.startsWith(GAME_CAR_PREFIX))
+          this.removeGameCar(other.car.vehicle.id);
         this.count++;
         this.message = t('snake.coupledStreetcarValueValueCars', {
           value1: other.car.vehicle.label,
@@ -1030,5 +1278,6 @@ export class SnakeEngine {
         }
       }
     }
+    this.maintainGameTraffic();
   }
 }

@@ -28,11 +28,12 @@ import {
 } from '../../../../shared/accounts/journal';
 import { useAccount } from '../accounts/auth';
 import { useAccountJournal } from '../journal/useAccountJournal';
+import type { SnakeVersion } from '../../snake-route';
 
 const validBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 // One workspace owns selection and tool transitions; renderers only consume it.
-export function useHomeWorkspace() {
+export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   const { data, error, retry: retryMap } = useStaticMap();
   const [filters, setFilters] = usePreference(
     'ttc:filters:v1',
@@ -63,7 +64,7 @@ export function useHomeWorkspace() {
     ),
   );
   const [following, setFollowing] = useState(false);
-  const [snakeOpen, setSnakeOpen] = useState(false);
+  const [snakeOpen, setSnakeOpen] = useState(Boolean(initialSnakeVersion));
   const [shortcutHelp, setShortcutHelp] = useState(false);
   const [shortcutsEnabled, setShortcutsEnabled] = usePreference(
     'ttc:shortcuts:v1',
@@ -77,7 +78,11 @@ export function useHomeWorkspace() {
   const [resetKey, setResetKey] = useState(0);
   const theme = useTheme();
   const pendingCar = useRef(selection?.kind === 'car' ? selection.id : undefined);
-  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data));
+  // Snake gets one fresh snapshot on entry, then stops polling while the game
+  // owns the screen. The explorer resumes its normal poll cycle on close.
+  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data), {
+    polling: !snakeOpen,
+  });
   const previous = useRef<PlottedVehicle[]>([]);
   const sidebar = useRef<HTMLDivElement>(null);
   const cars = useMemo(

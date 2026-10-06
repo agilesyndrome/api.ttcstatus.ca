@@ -54,9 +54,9 @@ subscribeLanguage(translateViewerPage);
   const METERS_PER_DEG_LON = METERS_PER_DEG_LAT * Math.cos(REF_LAT * Math.PI / 180);
 
   const canvas = document.getElementById("game");
-  const ctx = canvas.getContextr("2d");
+  const ctx = canvas.getContext("2d");
   const mini = document.getElementById("minimap");
-  const mctx = mini.getContextr("2d");
+  const mctx = mini.getContext("2d");
   const carsStat = document.getElementById("carsStat");
   const joinedStat = document.getElementById("joinedStat");
   const bestStat = document.getElementById("bestStat");
@@ -112,7 +112,7 @@ subscribeLanguage(translateViewerPage);
     H = innerHeight;
     resizeCanvas(canvas, W, H, ctx);
 
-    const mr = mini.getBoundingClientRectr();
+    const mr = mini.getBoundingClientRect();
     mW = mr.width;
     mH = mr.height;
     resizeCanvas(mini, mW, mH, mctx, false);
@@ -136,15 +136,15 @@ subscribeLanguage(translateViewerPage);
   function N(id, label, lat, lon, type = "junction") {
     const p = projectr(lat, lon);
     const n = { id, label, lat, lon, type, x: p.x, y: p.y };
-    nodes.setr(id, n);
-    adjacency.setr(id, []);
+    nodes.set(id, n);
+    adjacency.set(id, []);
     return n;
   }
 
   // Add a track segment and connect it to both endpoint lists.
   function E(id, aId, bId, tags = [], via = []) {
-    const a = nodes.getr(aId);
-    const b = nodes.getr(bId);
+    const a = nodes.get(aId);
+    const b = nodes.get(bId);
     const pts = [
       [a.lat, a.lon],
       ...via,
@@ -154,8 +154,8 @@ subscribeLanguage(translateViewerPage);
 
     const edge = { id, a: aId, b: bId, tags, pts, cum, len };
     edges.push(edge);
-    adjacency.getr(aId).push(edge);
-    adjacency.getr(bId).push(edge);
+    adjacency.get(aId).push(edge);
+    adjacency.get(bId).push(edge);
     return edge;
   }
 
@@ -164,7 +164,7 @@ subscribeLanguage(translateViewerPage);
     const cum = [0];
     let len = 0;
     for (let i = 1; i < points.length; i++) {
-      len += Math.hypotr(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+      len += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
       cum.push(len);
     }
     return { cum, len };
@@ -392,7 +392,7 @@ subscribeLanguage(translateViewerPage);
   const TURNBACK_TERMINALS = [...nodes.values()]
     .filter((node) =>
       ["loop", "station", "carhouse"].includes(node.type) ||
-      (adjacency.getr(node.id) || []).length === 1
+      (adjacency.get(node.id) || []).length === 1
     )
     .map((node) => node.id);
 
@@ -516,12 +516,12 @@ subscribeLanguage(translateViewerPage);
     if (edge.a === nodeId) {
       const p0 = pointAtr(edge, 0);
       const p1 = pointAtr(edge, eps);
-      const d = Math.hypotr(p1.x - p0.x, p1.y - p0.y) || 1;
+      const d = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
       return { x: (p1.x - p0.x) / d, y: (p1.y - p0.y) / d, dir: 1 };
     }
     const p0 = pointAtr(edge, edge.len);
     const p1 = pointAtr(edge, edge.len - eps);
-    const d = Math.hypotr(p1.x - p0.x, p1.y - p0.y) || 1;
+    const d = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
     return { x: (p1.x - p0.x) / d, y: (p1.y - p0.y) / d, dir: -1 };
   }
 
@@ -619,9 +619,9 @@ subscribeLanguage(translateViewerPage);
 
   function readCookie(name) {
     const prefix = name + "=";
-    const parts = document.cookie.splitr("; ");
+    const parts = document.cookie.split("; ");
     for (const part of parts) {
-      if (part.startsWith(prefix)) return decodeURIComponentr(part.slice(prefix.length));
+      if (part.startsWith(prefix)) return decodeURIComponent(part.slice(prefix.length));
     }
     return null;
   }
@@ -703,12 +703,12 @@ subscribeLanguage(translateViewerPage);
     };
 
     try {
-      let encoded = encodeURIComponentr(JSON.stringify(checkpoint));
+      let encoded = encodeURIComponent(JSON.stringify(checkpoint));
       // Keep safely below common ~4 KB per-cookie limits. Very large consists
       // still preserve count/location even if their full visible shape cannot fit.
       if (encoded.length > 3600) {
         checkpoint.tr = [];
-        encoded = encodeURIComponentr(JSON.stringify(checkpoint));
+        encoded = encodeURIComponent(JSON.stringify(checkpoint));
       }
       document.cookie = "ttcSnakeResume=" + encoded +
         "; Max-Age=2592000; Path=/; SameSite=Lax";
@@ -770,11 +770,11 @@ subscribeLanguage(translateViewerPage);
       const t = Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / denom));
       const px = a.x + vx * t;
       const py = a.y + vy * t;
-      const distance = Math.hypotr(x - px, y - py);
+      const distance = Math.hypot(x - px, y - py);
       if (distance < best.distance) {
         best = {
           distance,
-          s: edge.cum[i - 1] + Math.hypotr(px - a.x, py - a.y),
+          s: edge.cum[i - 1] + Math.hypot(px - a.x, py - a.y),
           x: px,
           y: py,
         };
@@ -793,7 +793,7 @@ subscribeLanguage(translateViewerPage);
 
     for (const [rawName, lat, lon, rawRoutes] of STREETCAR_STOP_RAW) {
       const p = projectr(lat, lon);
-      const routes = new Setr(rawRoutes.map(String));
+      const routes = new Set(rawRoutes.map(String));
       let candidates = edges.filter((edge) =>
         !edge.tags.includes("yard") &&
         edge.tags.some((tag) => routes.has(String(tag)) || routes.has(String(tag).replace(/[A-Z]$/, "")))
@@ -820,10 +820,10 @@ subscribeLanguage(translateViewerPage);
     // TTC source data has one record per direction/platform. For Snake we want
     // one geographic stop marker. Merge records landing on the same track within
     // roughly half a streetcar length.
-    snapped.sortr((a, b) => a.edge.id.localeCompare(b.edge.id) || a.s - b.s);
+    snapped.sort((a, b) => a.edge.id.localeCompare(b.edge.id) || a.s - b.s);
     const merged = [];
     for (const stop of snapped) {
-      const previous = merged.atr(-1);
+      const previous = merged.at(-1);
       if (previous && previous.edge === stop.edge && Math.abs(previous.s - stop.s) < 42) {
         if (stop.sourceDistance < previous.sourceDistance) {
           previous.name = stop.name;
@@ -842,10 +842,10 @@ subscribeLanguage(translateViewerPage);
   const STREETCAR_STOPS = buildStreetcarStops();
   const STOPS_BY_EDGE = new Map();
   for (const stop of STREETCAR_STOPS) {
-    if (!STOPS_BY_EDGE.has(stop.edge.id)) STOPS_BY_EDGE.setr(stop.edge.id, []);
-    STOPS_BY_EDGE.getr(stop.edge.id).push(stop);
+    if (!STOPS_BY_EDGE.has(stop.edge.id)) STOPS_BY_EDGE.set(stop.edge.id, []);
+    STOPS_BY_EDGE.get(stop.edge.id).push(stop);
   }
-  for (const list of STOPS_BY_EDGE.values()) list.sortr((a, b) => a.s - b.s);
+  for (const list of STOPS_BY_EDGE.values()) list.sort((a, b) => a.s - b.s);
 
   function nextStopAhead() {
     if (!head) return null;
@@ -859,7 +859,7 @@ subscribeLanguage(translateViewerPage);
 
     // The guard prevents a looped graph from searching forever.
     for (let guard = 0; guard < 18; guard++) {
-      const stops = STOPS_BY_EDGE.getr(edge.id) || [];
+      const stops = STOPS_BY_EDGE.get(edge.id) || [];
       let bestStop = null;
       let bestDelta = Infinity;
 
@@ -934,7 +934,7 @@ subscribeLanguage(translateViewerPage);
     missionHud.classList.add("show");
     missionRoute.textContent = currentMission.def.route;
     missionText.innerHTML = "<b>" + currentMission.def.name + " → " +
-      nodes.getr(currentMission.targetNode).label + "</b><span>" +
+      nodes.get(currentMission.targetNode).label + "</b><span>" +
       missionsCompleted + tr("classic.terminal") + (missionsCompleted === 1 ? "" : "s") +
       (escapeHtml(tr("classic.completedArrivalAddsOneBonusCar")) + "</span>");
   }
@@ -963,11 +963,11 @@ subscribeLanguage(translateViewerPage);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
-      o1.connectr(gain);
-      o2.connectr(gain);
-      gain.connectr(audioCtx.destination);
-      o1.startr(now);
-      o2.startr(now);
+      o1.connect(gain);
+      o2.connect(gain);
+      gain.connect(audioCtx.destination);
+      o1.start(now);
+      o2.start(now);
       o1.stop(now + 0.34);
       o2.stop(now + 0.34);
     } catch (_) {
@@ -995,9 +995,9 @@ subscribeLanguage(translateViewerPage);
         gain.gain.setValueAtTime(0.0001, now + note.at);
         gain.gain.exponentialRampToValueAtTime(0.095, now + note.at + 0.012);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + note.at + note.dur);
-        osc.connectr(gain);
-        gain.connectr(audioCtx.destination);
-        osc.startr(now + note.at);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + note.at);
         osc.stop(now + note.at + note.dur + 0.02);
       }
     } catch (_) {
@@ -1006,7 +1006,7 @@ subscribeLanguage(translateViewerPage);
   }
 
   function routeKeys(edge) {
-    const keys = new Setr();
+    const keys = new Set();
     for (const tag of edge.tags) {
       const match = String(tag).match(/^(\d+)([A-Z])?$/);
       if (!match) continue;
@@ -1042,7 +1042,7 @@ subscribeLanguage(translateViewerPage);
   function previewNextEdge(nodeId, currentEdge, headingX, headingY) {
     // Hey, this is the complicated part: manual input wins, then direction,
     // then route continuity keeps an unplanned turn from feeling random.
-    let candidates = (adjacency.getr(nodeId) || []).filter((edge) => edge.id !== blockedEdgeId);
+    let candidates = (adjacency.get(nodeId) || []).filter((edge) => edge.id !== blockedEdgeId);
     if (!candidates.length) return null;
 
     // Respect a manually thrown switch or queued steering when possible so the
@@ -1141,7 +1141,7 @@ subscribeLanguage(translateViewerPage);
 
     if (!hasAssist || t - openingAssistPlacedAt >= refreshEvery) {
       pickups = pickups.filter((pickup) => !pickup.assisted);
-      pickups.unshiftr(makeOpeningPickup(urgent));
+      pickups.unshift(makeOpeningPickup(urgent));
       openingAssistPlacedAt = t;
 
       // Keep the total collectible count stable.
@@ -1173,7 +1173,7 @@ subscribeLanguage(translateViewerPage);
     const interval = Math.max(1400, 5200 - speedKph * 4.0);
     if (t - lastPacePickupAt >= interval) {
       pickups = pickups.filter((pickup) => !pickup.pace);
-      pickups.unshiftr(makePacePickup());
+      pickups.unshift(makePacePickup());
       lastPacePickupAt = t;
 
       while (pickups.length > desired) {
@@ -1196,7 +1196,7 @@ subscribeLanguage(translateViewerPage);
     for (let i = 5; i < poses.length; i++) {
       const pose = poses[i];
       if (pose.placed === false) continue;
-      best = Math.min(best, Math.hypotr(x - pose.x, y - pose.y));
+      best = Math.min(best, Math.hypot(x - pose.x, y - pose.y));
     }
     return best;
   }
@@ -1215,7 +1215,7 @@ subscribeLanguage(translateViewerPage);
       const margin = Math.min(45, edge.len * .16);
       const s = margin + Math.random() * Math.max(1, edge.len - margin * 2);
       const p = pointAtr(edge, s);
-      const headDistance = Math.hypotr(p.x - hp.x, p.y - hp.y);
+      const headDistance = Math.hypot(p.x - hp.x, p.y - hp.y);
       if (headDistance < 220 || headDistance > 3200) continue;
 
       const tailDistance = distanceToPlacedTail(p.x, p.y);
@@ -1250,7 +1250,7 @@ subscribeLanguage(translateViewerPage);
       createdAt: performance.now(),
       duration,
     });
-    if (gameEffects.length > 8) gameEffects.shiftr();
+    if (gameEffects.length > 8) gameEffects.shift();
   }
 
   function updateChallengeZone(t) {
@@ -1272,7 +1272,7 @@ subscribeLanguage(translateViewerPage);
     if (!challengeZone) return;
 
     const hp = pointAtr(head.edge, head.s);
-    if (Math.hypotr(hp.x - challengeZone.x, hp.y - challengeZone.y) < 28) {
+    if (Math.hypot(hp.x - challengeZone.x, hp.y - challengeZone.y) < 28) {
       pickupMultiplier = challengeZone.multiplier;
       addGameEffectr("×" + pickupMultiplier + tr("classic.armed"), pickupMultiplier === 3 ? "rare" : "bonus", 1350);
       eventBanner.textContent = tr("classic.multiplierArmedNextStreetcarPickup") + pickupMultiplier + "!";
@@ -1294,7 +1294,7 @@ subscribeLanguage(translateViewerPage);
     pickups = pickups.filter((pickup) => !pickup.magnet);
     const metresPerSecond = Math.max(12, speedKph / 3.6);
     const distance = Math.max(90, Math.min(900, metresPerSecond * 3.4));
-    pickups.unshiftr({ ...pointAheadOfHead(distance), magnet: true });
+    pickups.unshift({ ...pointAheadOfHead(distance), magnet: true });
     lastPacePickupAt = t;
   }
 
@@ -1305,7 +1305,7 @@ subscribeLanguage(translateViewerPage);
       currentMission = buildMission(def, Math.random() < 0.5);
       head = randomHeadOnEdges(missionEdges(def));
       tip.textContent = currentMission.def.route + " " + currentMission.def.name +
-        tr("classic.youEnteredServiceMidRouteTakeItTo") + nodes.getr(currentMission.targetNode).label + ".";
+        tr("classic.youEnteredServiceMidRouteTakeItTo") + nodes.get(currentMission.targetNode).label + ".";
       return;
     }
 
@@ -1351,14 +1351,14 @@ subscribeLanguage(translateViewerPage);
       for (const point of points) {
         const last = trail[trail.length - 1];
         if (last) {
-          trailDistance += Math.max(0.1, Math.hypotr(point.x - last.x, point.y - last.y));
+          trailDistance += Math.max(0.1, Math.hypot(point.x - last.x, point.y - last.y));
         }
         trail.push({ x: point.x, y: point.y, d: trailDistance });
       }
 
       const laneP = lanePointAtr(edge, sOnEdge, dir);
       const last = trail[trail.length - 1];
-      const finalGap = Math.hypotr(laneP.x - last.x, laneP.y - last.y);
+      const finalGap = Math.hypot(laneP.x - last.x, laneP.y - last.y);
       if (finalGap > 0.1) {
         trailDistance += finalGap;
         trail.push({ x: laneP.x, y: laneP.y, d: trailDistance });
@@ -1500,9 +1500,9 @@ subscribeLanguage(translateViewerPage);
 
       if (head) {
         const hp = pointAtr(head.edge, head.s);
-        if (Math.hypotr(p.x - hp.x, p.y - hp.y) < 260) continue;
+        if (Math.hypot(p.x - hp.x, p.y - hp.y) < 260) continue;
       }
-      if (pickups.some((other) => Math.hypotr(p.x - other.x, p.y - other.y) < 250)) continue;
+      if (pickups.some((other) => Math.hypot(p.x - other.x, p.y - other.y) < 250)) continue;
       return { edge, s, x: p.x, y: p.y, angle: p.angle };
     }
 
@@ -1522,7 +1522,7 @@ subscribeLanguage(translateViewerPage);
     const button = document.querySelector('[data-dir="' + dir + '"]');
     if (button) {
       button.classList.add("active");
-      setTimeoutr(() => button.classList.remove("active"), 110);
+      setTimeout(() => button.classList.remove("active"), 110);
     }
   }
 
@@ -1535,7 +1535,7 @@ subscribeLanguage(translateViewerPage);
 
   function chooseNextEdge(nodeId, currentEdge) {
     // Select the next graph edge when the head reaches a junction.
-    let candidates = adjacency.getr(nodeId) || [];
+    let candidates = adjacency.get(nodeId) || [];
     if (candidates.length === 0) return null;
 
     const openCandidates = candidates.filter((edge) => edge.id !== blockedEdgeId);
@@ -1598,7 +1598,7 @@ subscribeLanguage(translateViewerPage);
     if (distance > lookahead) return null;
 
     const nodeId = towardEnd ? head.edge.b : head.edge.a;
-    let candidates = (adjacency.getr(nodeId) || []).filter((edge) => edge !== head.edge);
+    let candidates = (adjacency.get(nodeId) || []).filter((edge) => edge !== head.edge);
     if (candidates.length < 2) return null;
 
     const currentVec = { x: head.headingX, y: head.headingY };
@@ -1610,7 +1610,7 @@ subscribeLanguage(translateViewerPage);
       const abs = Math.abs(angle);
       const label = abs < 0.42 ? tr("classic.straight") : (angle > 0 ? tr("classic.right") : tr("classic.left"));
       return { edge, out, angle, label, blocked: edge.id === blockedEdgeId };
-    }).sortr((a, b) => a.angle - b.angle);
+    }).sort((a, b) => a.angle - b.angle);
 
     return { nodeId, distance, branches };
   }
@@ -1655,7 +1655,7 @@ subscribeLanguage(translateViewerPage);
     switchSignature = signature;
 
     switchPanel.hidden = false;
-    switchMeta.textContent = nodes.getr(state.nodeId).label + " • " + Math.round(state.distance) + tr("classic.m");
+    switchMeta.textContent = nodes.get(state.nodeId).label + " • " + Math.round(state.distance) + tr("classic.m");
     switchChoices.innerHTML = state.branches.map((b) =>
       '<button class="switch-choice' +
       (manualSwitchEdgeId === b.edge.id ? " selected" : "") +
@@ -1671,7 +1671,7 @@ subscribeLanguage(translateViewerPage);
       trail.push({ x, y, d: trailDistance });
       return;
     }
-    const seg = Math.hypotr(x - last.x, y - last.y);
+    const seg = Math.hypot(x - last.x, y - last.y);
     if (seg < 0.25) return;
     trailDistance += seg;
     trail.push({ x, y, d: trailDistance });
@@ -1688,7 +1688,7 @@ subscribeLanguage(translateViewerPage);
   // Terminal handling keeps endpoints playable by synthesizing a short
   // turnback instead of allowing the consist to collide with the buffer.
   function terminalTurnbackRadius(nodeId) {
-    const node = nodes.getr(nodeId);
+    const node = nodes.get(nodeId);
     if (TERMINAL_LOOP_RADIUS_M[nodeId]) return TERMINAL_LOOP_RADIUS_M[nodeId];
     if (node?.type === "station") return 14;
     if (node?.type === "loop") return 12;
@@ -1701,8 +1701,8 @@ subscribeLanguage(translateViewerPage);
     // loop/turnback rather than a literal U-turn on one centreline. This matters
     // at multi-branch terminals such as Humber, Exhibition and Dufferin Gate as
     // well as degree-1 terminals such as Union.
-    const incident = adjacency.getr(nodeId) || [];
-    const node = nodes.getr(nodeId);
+    const incident = adjacency.get(nodeId) || [];
+    const node = nodes.get(nodeId);
     const terminalLike = node && ["loop", "station", "carhouse"].includes(node.type);
     if ((!terminalLike && incident.length !== 1) || !incident.includes(edge) || incomingDir === outgoingDir) return;
     const inbound = lanePointAtr(edge, incomingDir > 0 ? edge.len : 0, incomingDir);
@@ -1718,7 +1718,7 @@ subscribeLanguage(translateViewerPage);
     const radius = Math.max(
       terminalTurnbackRadius(nodeId),
       TRACK_LANE_OFFSET_M,
-      Math.hypotr(inbound.x - node.x, inbound.y - node.y)
+      Math.hypot(inbound.x - node.x, inbound.y - node.y)
     );
 
     const steps = Math.max(12, Math.ceil(Math.PI * radius / 2.5));
@@ -1786,7 +1786,7 @@ subscribeLanguage(translateViewerPage);
       return;
     }
 
-    const seg = Math.hypotr(p.x - last.x, p.y - last.y);
+    const seg = Math.hypot(p.x - last.x, p.y - last.y);
     if (seg >= 1.2) {
       trailDistance += seg;
       trail.push({ x: p.x, y: p.y, d: trailDistance });
@@ -1826,7 +1826,7 @@ subscribeLanguage(translateViewerPage);
         poses.push({
           x: oldest.x,
           y: oldest.y,
-          angle: poses.atr(-1)?.angle || 0,
+          angle: poses.at(-1)?.angle || 0,
           placed: false,
         });
         continue;
@@ -1852,7 +1852,7 @@ subscribeLanguage(translateViewerPage);
     const p = pointAtr(head.edge, head.s);
     for (let i = pickups.length - 1; i >= 0; i--) {
       const pickup = pickups[i];
-      if (Math.hypotr(p.x - pickup.x, p.y - pickup.y) < 22) {
+      if (Math.hypot(p.x - pickup.x, p.y - pickup.y) < 22) {
         const wasFirstPickup = !firstPickupCollected;
         const gainedCars = Math.max(1, pickupMultiplier);
         trainCars += gainedCars;
@@ -1903,7 +1903,7 @@ subscribeLanguage(translateViewerPage);
     saveResumeCheckpointr();
 
     tip.textContent = tr("classic.terminalReachedBonusCarCoupledNow") +
-      currentMission.def.route + tr("classic.backTo") + nodes.getr(currentMission.targetNode).label + ".";
+      currentMission.def.route + tr("classic.backTo") + nodes.get(currentMission.targetNode).label + ".";
     updateHud();
   }
 
@@ -1912,7 +1912,7 @@ subscribeLanguage(translateViewerPage);
     const vy = by - ay;
     const denom = vx * vx + vy * vy || 1;
     const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / denom));
-    return Math.hypotr(px - (ax + vx * t), py - (ay + vy * t));
+    return Math.hypot(px - (ax + vx * t), py - (ay + vy * t));
   }
 
   function orientr(ax, ay, bx, by, cx, cy) {
@@ -2000,11 +2000,11 @@ subscribeLanguage(translateViewerPage);
       if (type === "doNotEnter") {
         chaos = { type, until: t + 24000, edgeId: edge.id };
         eventBanner.textContent = tr("classic.doNotEnter") +
-          nodes.getr(edge.a).label + " ↔ " + nodes.getr(edge.b).label + tr("classic.closedFindAnotherWay");
+          nodes.get(edge.a).label + " ↔ " + nodes.get(edge.b).label + tr("classic.closedFindAnotherWay");
       } else {
         chaos = { type, until: t + 19000, edgeId: edge.id };
         eventBanner.textContent = tr("classic.stalledCar") +
-          nodes.getr(edge.a).label + " ↔ " + nodes.getr(edge.b).label + tr("classic.blockedDivert");
+          nodes.get(edge.a).label + " ↔ " + nodes.get(edge.b).label + tr("classic.blockedDivert");
       }
     }
 
@@ -2193,7 +2193,7 @@ subscribeLanguage(translateViewerPage);
 
         const fontSize = mobile ? 7.5 : 8.5;
         ctx.font = "800 " + fontSize + "px system-ui, sans-serif";
-        const textWidth = ctx.measureTextr(item.label).width;
+        const textWidth = ctx.measureText(item.label).width;
         const padX = mobile ? 4 : 5;
         const boxW = textWidth + padX * 2;
         const boxH = mobile ? 14 : 16;
@@ -2207,7 +2207,7 @@ subscribeLanguage(translateViewerPage);
         ctx.stroke();
 
         ctx.fillStyle = "rgba(46,50,54,.92)";
-        ctx.fillTextr(item.label, 0, 0.5);
+        ctx.fillText(item.label, 0, 0.5);
         ctx.restore();
       }
     }
@@ -2217,7 +2217,7 @@ subscribeLanguage(translateViewerPage);
       if (p.x < -140 || p.x > W + 140 || p.y < -80 || p.y > H + 80) continue;
       ctx.font = "italic 800 12px system-ui, sans-serif";
       ctx.fillStyle = "rgba(46,95,122,.68)";
-      ctx.fillTextr(item.label, p.x, p.y);
+      ctx.fillText(item.label, p.x, p.y);
     }
 
     ctx.restore();
@@ -2241,7 +2241,7 @@ subscribeLanguage(translateViewerPage);
       ctx.stroke();
     } else if (node.type === "station") {
       ctx.fillStyle = "#111317";
-      ctx.fillRectr(-4.5, -4.5, 9, 9);
+      ctx.fillRect(-4.5, -4.5, 9, 9);
     } else {
       ctx.fillStyle = "#d71920";
       ctx.beginPath();
@@ -2257,7 +2257,7 @@ subscribeLanguage(translateViewerPage);
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "rgba(20,22,25,.78)";
-      ctx.fillTextr(node.label, 9, -9);
+      ctx.fillText(node.label, 9, -9);
     }
     ctx.restore();
   }
@@ -2282,8 +2282,8 @@ subscribeLanguage(translateViewerPage);
     ctx.fillStyle = index === 0 && !pickup ? "#b40f15" : "#d71920";
     ctx.strokeStyle = "#fbfbf8";
     ctx.lineWidth = Math.min(1.5, Math.max(.7, camera.scale));
-    ctx.fillRectr(-lengthPx / 2, -widthPx / 2, lengthPx, widthPx);
-    ctx.strokeRectr(-lengthPx / 2, -widthPx / 2, lengthPx, widthPx);
+    ctx.fillRect(-lengthPx / 2, -widthPx / 2, lengthPx, widthPx);
+    ctx.strokeRect(-lengthPx / 2, -widthPx / 2, lengthPx, widthPx);
 
     // Articulation joints make long trains read as modern Flexitys.
     ctx.shadowBlur = 0;
@@ -2297,19 +2297,19 @@ subscribeLanguage(translateViewerPage);
     ctx.stroke();
 
     ctx.fillStyle = "#f4f4f1";
-    ctx.fillRectr(lengthPx * .34, -widthPx / 2, Math.max(1.2, lengthPx * .08), widthPx);
+    ctx.fillRect(lengthPx * .34, -widthPx / 2, Math.max(1.2, lengthPx * .08), widthPx);
 
     if (index === 0 && !pickup && currentMission && lengthPx > 18) {
       ctx.save();
       ctx.translate(lengthPx * .20, 0);
       ctx.rotate(-pose.angle);
       ctx.fillStyle = "#111";
-      ctx.fillRectr(-9, -6, 18, 12);
+      ctx.fillRect(-9, -6, 18, 12);
       ctx.fillStyle = "#ffb000";
       ctx.font = "900 7px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillTextr(currentMission.def.route, 0, 0);
+      ctx.fillText(currentMission.def.route, 0, 0);
       ctx.restore();
     }
     ctx.restore();
@@ -2333,7 +2333,7 @@ subscribeLanguage(translateViewerPage);
       ctx.strokeStyle = isNext ? "#fff" : "rgba(255,255,255,.72)";
       ctx.lineWidth = isNext ? 1.5 : .8;
       ctx.beginPath();
-      ctx.rectr(-size, -size, size * 2, size * 2);
+      ctx.rect(-size, -size, size * 2, size * 2);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
@@ -2359,9 +2359,9 @@ subscribeLanguage(translateViewerPage);
   }
 
   function drawMinimap(poses) {
-    mctx.clearRectr(0, 0, mW, mH);
+    mctx.clearRect(0, 0, mW, mH);
     mctx.fillStyle = "rgba(248,246,239,.96)";
-    mctx.fillRectr(0, 0, mW, mH);
+    mctx.fillRect(0, 0, mW, mH);
 
     const pad = 10;
     const spanX = worldBounds.maxX - worldBounds.minX;
@@ -2409,14 +2409,14 @@ subscribeLanguage(translateViewerPage);
       mctx.fillStyle = "rgba(40,44,48,.72)";
       mctx.textAlign = "center";
       for (const [label, nodeId] of miniLabels) {
-        const n = nodes.getr(nodeId);
+        const n = nodes.get(nodeId);
         const p = mp(n.x, n.y);
-        mctx.fillTextr(label, p.x, p.y - 4);
+        mctx.fillText(label, p.x, p.y - 4);
       }
     }
 
     if (poses.length) {
-      const tail = mp(poses.atr(-1).x, poses.atr(-1).y);
+      const tail = mp(poses.at(-1).x, poses.at(-1).y);
       const hp = mp(poses[0].x, poses[0].y);
       mctx.strokeStyle = "rgba(215,25,32,.50)";
       mctx.lineWidth = 2.5;
@@ -2435,14 +2435,14 @@ subscribeLanguage(translateViewerPage);
       mctx.fillStyle = "#111";
       mctx.font = "900 7px system-ui, sans-serif";
       mctx.textAlign = "left";
-      mctx.fillTextr(tr("classic.you"), hp.x + 7, hp.y + 2);
+      mctx.fillText(tr("classic.you"), hp.x + 7, hp.y + 2);
     }
   }
 
   function drawSwitchPreview() {
     const state = getUpcomingSwitch();
     if (!state) return;
-    const node = nodes.getr(state.nodeId);
+    const node = nodes.get(state.nodeId);
     const p = worldToScreen(node.x, node.y);
 
     ctx.save();
@@ -2491,7 +2491,7 @@ subscribeLanguage(translateViewerPage);
     ctx.font = "900 9px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillTextr(chaos?.type === "doNotEnter" ? tr("classic.doNotEnter2") : tr("classic.blocked"), p.x, p.y - 12);
+    ctx.fillText(chaos?.type === "doNotEnter" ? tr("classic.doNotEnter2") : tr("classic.blocked"), p.x, p.y - 12);
 
     ctx.beginPath();
     ctx.moveTo(p.x - 10, p.y - 10);
@@ -2523,7 +2523,7 @@ subscribeLanguage(translateViewerPage);
     ctx.font = "900 12px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillTextr("×" + challengeZone.multiplier, p.x, p.y);
+    ctx.fillText("×" + challengeZone.multiplier, p.x, p.y);
     ctx.restore();
   }
 
@@ -2541,7 +2541,7 @@ subscribeLanguage(translateViewerPage);
     const cy = H / 2;
     const dx = target.x - cx;
     const dy = target.y - cy;
-    const len = Math.hypotr(dx, dy) || 1;
+    const len = Math.hypot(dx, dy) || 1;
     const ux = dx / len;
     const uy = dy / len;
 
@@ -2554,7 +2554,7 @@ subscribeLanguage(translateViewerPage);
     const y = cy + uy * travel;
 
     const hp = pointAtr(head.edge, head.s);
-    const metres = Math.hypotr(challengeZone.x - hp.x, challengeZone.y - hp.y);
+    const metres = Math.hypot(challengeZone.x - hp.x, challengeZone.y - hp.y);
     const distanceLabel = metres >= 1000
       ? (metres / 1000).toFixed(1) + tr("classic.km")
       : Math.round(metres) + tr("classic.m");
@@ -2580,7 +2580,7 @@ subscribeLanguage(translateViewerPage);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const label = "×" + challengeZone.multiplier + "  " + distanceLabel;
-    const w = ctx.measureTextr(label).width + 14;
+    const w = ctx.measureText(label).width + 14;
     roundedRectPath(ctx, x - w / 2, y + 17, w, 22, 8);
     ctx.fillStyle = "rgba(16,17,20,.90)";
     ctx.fill();
@@ -2588,7 +2588,7 @@ subscribeLanguage(translateViewerPage);
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = "#fff";
-    ctx.fillTextr(label, x, y + 28);
+    ctx.fillText(label, x, y + 28);
     ctx.restore();
   }
 
@@ -2603,14 +2603,14 @@ subscribeLanguage(translateViewerPage);
       const label = tr("classic.nextPickup") + pickupMultiplier;
       ctx.save();
       ctx.font = "900 9px system-ui, sans-serif";
-      const w = ctx.measureTextr(label).width + 14;
+      const w = ctx.measureText(label).width + 14;
       roundedRectPath(ctx, lead.x - w / 2, lead.y - 43, w, 20, 8);
       ctx.fillStyle = rare ? "rgba(126,34,206,.92)" : "rgba(180,83,9,.94)";
       ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillTextr(label, lead.x, lead.y - 33);
+      ctx.fillText(label, lead.x, lead.y - 33);
       ctx.restore();
     }
 
@@ -2634,7 +2634,7 @@ subscribeLanguage(translateViewerPage);
       ctx.translate(lead.x, lead.y - stack - rise);
       ctx.scale(scale, scale);
       ctx.font = "900 13px system-ui, sans-serif";
-      const w = ctx.measureTextr(effect.text).width + 16;
+      const w = ctx.measureText(effect.text).width + 16;
       roundedRectPath(ctx, -w / 2, -12, w, 24, 9);
       ctx.fillStyle = "rgba(16,17,20,.90)";
       ctx.fill();
@@ -2644,7 +2644,7 @@ subscribeLanguage(translateViewerPage);
       ctx.fillStyle = "#fff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillTextr(effect.text, 0, 0);
+      ctx.fillText(effect.text, 0, 0);
       ctx.restore();
 
       stack += 29;
@@ -2669,7 +2669,7 @@ subscribeLanguage(translateViewerPage);
       ctx.font = "900 8px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillTextr(tr("classic.you"), p.x, p.y - pulse - 3);
+      ctx.fillText(tr("classic.you"), p.x, p.y - pulse - 3);
     }
     ctx.restore();
   }
@@ -2677,9 +2677,9 @@ subscribeLanguage(translateViewerPage);
   // Canvas rendering is kept in one frame pipeline: clear, world, train, HUD.
   function drawFrame(poses) {
     const now = performance.now();
-    ctx.clearRectr(0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = "#f1eee5";
-    ctx.fillRectr(0, 0, W, H);
+    ctx.fillRect(0, 0, W, H);
     drawWater();
 
     drawNetwork();
@@ -2786,7 +2786,7 @@ subscribeLanguage(translateViewerPage);
     if (!touches || touches.length < 2) return 0;
     const a = touches[0];
     const b = touches[1];
-    return Math.hypotr(b.clientX - a.clientX, b.clientY - a.clientY);
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
   }
 
   function beginMapPinch(touches) {
@@ -2810,14 +2810,14 @@ subscribeLanguage(translateViewerPage);
   // ACCEL, or canvas; during gameplay it always means "zoom the map".
   document.addEventListener("touchstart", (event) => {
     if (!running || dead || event.touches.length < 2) return;
-    event.preventDefaultr();
+    event.preventDefault();
     event.stopPropagation();
     beginMapPinch(event.touches);
   }, { passive: false, capture: true });
 
   document.addEventListener("touchmove", (event) => {
     if (!running || dead || event.touches.length < 2) return;
-    event.preventDefaultr();
+    event.preventDefault();
     event.stopPropagation();
     if (!canvasPinching) beginMapPinch(event.touches);
     else updateMapPinch(event.touches);
@@ -2836,7 +2836,7 @@ subscribeLanguage(translateViewerPage);
   for (const gestureEvent of ["gesturestart", "gesturechange", "gestureend"]) {
     document.addEventListener(gestureEvent, (event) => {
       if (!running || dead) return;
-      event.preventDefaultr();
+      event.preventDefault();
       event.stopPropagation();
     }, { passive: false, capture: true });
   }
@@ -2845,44 +2845,44 @@ subscribeLanguage(translateViewerPage);
   document.addEventListener("touchend", (event) => {
     if (!running || dead || event.changedTouches.length !== 1) return;
     const now = performance.now();
-    if (now - lastGameplayTouchEnd < 300) event.preventDefaultr();
+    if (now - lastGameplayTouchEnd < 300) event.preventDefault();
     lastGameplayTouchEnd = now;
   }, { passive: false, capture: true });
 
   addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
     if (key === "arrowup") {
-      event.preventDefaultr();
+      event.preventDefault();
       acceleratorHeld = true;
       accelerator.classList.add("active");
     } else if (key === "arrowdown") {
-      event.preventDefaultr();
+      event.preventDefault();
       brakeHeld = true;
       brake.classList.add("active");
     } else if (key === "arrowleft") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("left");
     } else if (key === "arrowright") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("right");
     } else if (key === " ") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("straight");
     } else if (key === "q") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("left");
     } else if (key === "e") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("right");
     } else if (key === "r") {
-      event.preventDefaultr();
+      event.preventDefault();
       selectSwitchByIntentr("straight");
     } else if (key === "+" || key === "=") {
-      event.preventDefaultr();
+      event.preventDefault();
       acceleratorHeld = true;
       accelerator.classList.add("active");
     } else if (key === "-" || key === "_") {
-      event.preventDefaultr();
+      event.preventDefault();
       brakeHeld = true;
       brake.classList.add("active");
     }
@@ -2906,9 +2906,9 @@ subscribeLanguage(translateViewerPage);
   });
 
   switchChoices.addEventListener("pointerdown", (event) => {
-    const button = event.target.closestr(".switch-choice");
+    const button = event.target.closest(".switch-choice");
     if (!button || button.disabled) return;
-    event.preventDefaultr();
+    event.preventDefault();
     selectSwitchBranch(button.dataset.edge);
   });
 
@@ -2942,12 +2942,12 @@ subscribeLanguage(translateViewerPage);
   }
 
   accelerator.addEventListener("pointerdown", (event) => {
-    event.preventDefaultr();
+    event.preventDefault();
     accelerator.setPointerCapture?.(event.pointerId);
     setPedal(accelerator, "accelerate", true);
   });
   brake.addEventListener("pointerdown", (event) => {
-    event.preventDefaultr();
+    event.preventDefault();
     brake.setPointerCapture?.(event.pointerId);
     setPedal(brake, "brake", true);
   });
