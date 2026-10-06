@@ -32,9 +32,11 @@ test('uploads unknown-length streams through bounded R2 multipart parts', async 
       };
     },
   };
-  const first = new Uint8Array(10 * 1024 * 1024);
+  const first = new Uint8Array(6 * 1024 * 1024);
   first.fill(1);
-  const second = new Uint8Array([2, 3, 4]);
+  const second = new Uint8Array(6 * 1024 * 1024);
+  second.fill(2);
+  const third = new Uint8Array([3, 4, 5]);
 
   const stored = await putStreamToR2(
     bucket,
@@ -43,6 +45,7 @@ test('uploads unknown-length streams through bounded R2 multipart parts', async 
       start(controller) {
         controller.enqueue(first);
         controller.enqueue(second);
+        controller.enqueue(third);
         controller.close();
       },
     }),
@@ -55,7 +58,7 @@ test('uploads unknown-length streams through bounded R2 multipart parts', async 
     uploaded.map(({ partNumber, bytes }) => [partNumber, bytes.byteLength]),
     [
       [1, 10 * 1024 * 1024],
-      [2, 3],
+      [2, 2 * 1024 * 1024 + 3],
     ],
   );
   assert.deepEqual(completed, [

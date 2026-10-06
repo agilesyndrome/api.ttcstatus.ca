@@ -24,17 +24,20 @@ export async function putStreamToR2(
   let totalBytes = 0;
   let partNumber = 1;
 
-  const flush = async (): Promise<void> => {
-    if (chunkBytes === 0) return;
-    const part = new Uint8Array(chunkBytes);
+  const flush = async (byteCount: number): Promise<void> => {
+    if (byteCount === 0) return;
+    const part = new Uint8Array(byteCount);
     let offset = 0;
-    for (const chunk of chunks) {
-      part.set(chunk, offset);
-      offset += chunk.byteLength;
+    while (offset < byteCount) {
+      const chunk = chunks[0];
+      const take = Math.min(chunk.byteLength, byteCount - offset);
+      part.set(chunk.subarray(0, take), offset);
+      offset += take;
+      chunkBytes -= take;
+      if (take === chunk.byteLength) chunks.shift();
+      else chunks[0] = chunk.subarray(take);
     }
     parts.push(await upload.uploadPart(partNumber++, part));
-    chunks = [];
-    chunkBytes = 0;
   };
 
   try {
@@ -46,9 +49,9 @@ export async function putStreamToR2(
         throw new Error(`Body exceeds ${maximumBytes} bytes`);
       chunks.push(value);
       chunkBytes += value.byteLength;
-      if (chunkBytes >= MULTIPART_PART_BYTES) await flush();
+      while (chunkBytes >= MULTIPART_PART_BYTES) await flush(MULTIPART_PART_BYTES);
     }
-    await flush();
+    await flush(chunkBytes);
 
     // Empty objects cannot be represented by a multipart upload. This feed is
     // never expected to be empty, but keeping the helper total makes failures
