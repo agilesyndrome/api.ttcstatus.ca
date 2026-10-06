@@ -17,7 +17,7 @@ const compiled = await build({
 });
 
 const modules = await import(
-  `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`,
+  `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
 );
 const platform = await getPlatformProxy({
   configPath: 'workers/api/wrangler.jsonc',
@@ -43,6 +43,8 @@ try {
     head: (...args) => baseEnv.GTFS_BUCKET.head(...args),
     delete: (...args) => baseEnv.GTFS_BUCKET.delete(...args),
     list: (...args) => baseEnv.GTFS_BUCKET.list(...args),
+    createMultipartUpload: (...args) =>
+      baseEnv.GTFS_BUCKET.createMultipartUpload(...args),
   };
   const mapGenerator = {
     async fetch(_input, init = {}) {
@@ -64,11 +66,16 @@ try {
         .run();
 
       try {
-        console.log(`Local bootstrap: generating map for network version ${versionId}...`);
-        const artifactId = await modules.generateStreetcarMap({
-          DB: baseEnv.DB,
-          SOURCE_ATTRIBUTION: baseEnv.SOURCE_ATTRIBUTION,
-        }, versionId);
+        console.log(
+          `Local bootstrap: generating map for network version ${versionId}...`,
+        );
+        const artifactId = await modules.generateStreetcarMap(
+          {
+            DB: baseEnv.DB,
+            SOURCE_ATTRIBUTION: baseEnv.SOURCE_ATTRIBUTION,
+          },
+          versionId,
+        );
         console.log(`Local bootstrap: generated map artifact ${artifactId}.`);
         return Response.json({ artifactId, versionId });
       } catch (error) {

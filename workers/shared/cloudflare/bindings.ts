@@ -59,12 +59,35 @@ export interface R2Bucket {
       customMetadata?: Record<string, string>;
     },
   ): Promise<R2Object | null>;
+  createMultipartUpload(
+    key: string,
+    options?: R2MultipartOptions,
+  ): Promise<R2MultipartUpload>;
   delete(keys: string | string[]): Promise<void>;
   list(options?: {
     prefix?: string;
     limit?: number;
     cursor?: string;
   }): Promise<R2Objects>;
+}
+
+export interface R2MultipartOptions {
+  httpMetadata?: Record<string, string>;
+  customMetadata?: Record<string, string>;
+}
+
+export interface R2UploadedPart {
+  partNumber: number;
+  etag: string;
+}
+
+export interface R2MultipartUpload {
+  uploadPart(
+    partNumber: number,
+    value: ReadableStream<Uint8Array> | ArrayBuffer | ArrayBufferView | string | Blob,
+  ): Promise<R2UploadedPart>;
+  complete(parts: R2UploadedPart[]): Promise<R2Object>;
+  abort(): Promise<void>;
 }
 
 export interface Fetcher {

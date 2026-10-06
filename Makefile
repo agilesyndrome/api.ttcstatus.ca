@@ -25,10 +25,10 @@ dev/new:
 
 
 admin/sync:
-	op run --env-file=.env -- ./bin/api POST /api/v1/admin/sync
+	op run --env-file=.env.prod -- ./bin/api POST /api/v1/admin/sync
 
 admin/sync/status:
-	op run --env-file=.env -- ./bin/api GET /api/v1/feed/status | jq
+	op run --env-file=.env.prod -- ./bin/api GET /api/v1/feed/status | jq
 
 map/streetcar:
 	@./bin/api GET /api/v1/map/streetcar --fail --show-error

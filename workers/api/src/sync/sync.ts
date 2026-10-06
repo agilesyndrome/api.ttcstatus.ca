@@ -20,6 +20,7 @@ import {
   type SyncResult,
 } from './sync-common';
 import { processVersion } from './sync-pipeline';
+import { putStreamToR2 } from './r2-upload';
 
 export type { SyncEnv, SyncResult } from './sync-common';
 
@@ -109,7 +110,8 @@ export async function syncStaticGtfs(env: SyncEnv): Promise<SyncResult> {
 
     const getHeaders = sourceHeaders(getResponse);
     const versionKey = `${R2_PREFIX}${Date.now()}.zip`;
-    const stored = await env.GTFS_BUCKET.put(
+    const stored = await putStreamToR2(
+      env.GTFS_BUCKET,
       versionKey,
       limitStream(getResponse.body, MAX_STATIC_GTFS_BYTES),
       {
@@ -123,6 +125,7 @@ export async function syncStaticGtfs(env: SyncEnv): Promise<SyncResult> {
           fetchedAt: nowIso(),
         },
       },
+      MAX_STATIC_GTFS_BYTES,
     );
     if (!stored) throw new Error('R2 did not return metadata for the cached GTFS object');
 
