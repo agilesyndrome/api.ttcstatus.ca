@@ -12,13 +12,7 @@ interface Props {
   onClose(): void;
 }
 
-export function RouteGuide({
-  data,
-  route,
-  savedIds,
-  onSelect,
-  onClose,
-}: Props) {
+export function RouteGuide({ data, route, savedIds, onSelect, onClose }: Props) {
   useLanguage();
   const id = useId();
   const itineraries = useMemo(() => routeItineraries(data, route.id), [data, route.id]);

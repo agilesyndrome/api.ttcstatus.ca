@@ -1,10 +1,6 @@
 import type { Preview } from '@storybook/react-vite';
 import '../web/ui/styles/main.css';
-import {
-  getLocale,
-  setLanguagePreference,
-  type Locale,
-} from '../web/ui/i18n';
+import { getLocale, setLanguagePreference, type Locale } from '../web/ui/i18n';
 
 export const globalTypes = {
   locale: {

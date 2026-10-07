@@ -24,13 +24,7 @@ export function ShareMap({
     request.current++;
     setMessage('');
     setFallback('');
-  }, [
-    selection?.kind,
-    selection?.id,
-    filters,
-    contextRoute,
-    tools?.panel,
-  ]);
+  }, [selection?.kind, selection?.id, filters, contextRoute, tools?.panel]);
   useEffect(
     () => () => {
       request.current++;

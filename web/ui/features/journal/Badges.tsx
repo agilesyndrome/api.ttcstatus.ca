@@ -25,15 +25,41 @@ export function Badges({ entries }: { entries: JournalEntry[] }) {
       <h1>{t('navigation.badges')}</h1>
       <div className="journal-badges" aria-label={t('journal.collectionBadges')}>
         {collection.map((badge) => (
-          <article className={'journal-badge' + (badge.earned ? ' earned' : '')} key={badge.name}>
+          <article
+            className={'journal-badge' + (badge.earned ? ' earned' : '')}
+            key={badge.name}
+          >
             <span aria-hidden="true">{badge.icon}</span>
-            <div><strong>{t(badge.name)}</strong><small>{t(badge.description)}</small><small>{badge.earned ? t('journal.unlocked') : `${badge.progress} / ${badge.target}`}</small></div>
+            <div>
+              <strong>{t(badge.name)}</strong>
+              <small>{t(badge.description)}</small>
+              <small>
+                {badge.earned
+                  ? t('journal.unlocked')
+                  : `${badge.progress} / ${badge.target}`}
+              </small>
+            </div>
           </article>
         ))}
         <article className={'journal-badge' + (playedSnake ? ' earned' : '')}>
-          <span aria-hidden="true">🐍</span><div><strong>{t('badges.playedSnake')}</strong><small>{t('badges.playedSnakeDescription')}</small><small>{playedSnake ? t('journal.unlocked') : t('badges.notYetPlayed')}</small></div>
+          <span aria-hidden="true">🐍</span>
+          <div>
+            <strong>{t('badges.playedSnake')}</strong>
+            <small>{t('badges.playedSnakeDescription')}</small>
+            <small>
+              {playedSnake ? t('journal.unlocked') : t('badges.notYetPlayed')}
+            </small>
+          </div>
         </article>
-        {!playedClassic && <article className="journal-badge"><span aria-hidden="true">?</span><div><strong>{t('badges.hidden')}</strong><small>{t('badges.hiddenDescription')}</small></div></article>}
+        {!playedClassic && (
+          <article className="journal-badge">
+            <span aria-hidden="true">?</span>
+            <div>
+              <strong>{t('badges.hidden')}</strong>
+              <small>{t('badges.hiddenDescription')}</small>
+            </div>
+          </article>
+        )}
       </div>
     </section>
   );

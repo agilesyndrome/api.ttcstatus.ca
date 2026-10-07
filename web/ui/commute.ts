@@ -140,8 +140,7 @@ export function readMapLink(hash: string): MapLink {
   const filters: Partial<MapFilterValues> = {};
   const tools: MapTools = {};
   const panel = params.get('view');
-  if (panel === 'journal' || panel === 'badges')
-    tools.panel = panel;
+  if (panel === 'journal' || panel === 'badges') tools.panel = panel;
   for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const) {
     if (params.get(key) === '1' || params.get(key) === '0')
       filters[key] = params.get(key) === '1';

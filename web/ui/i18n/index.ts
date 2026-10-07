@@ -130,9 +130,7 @@ export function translate(
   const message = own(messages) || own(fallback) || key;
   // A single pass prevents interpolated user content being interpreted as a template.
   return message.replace(/\{(\w+)\}/g, (token, name: string) =>
-    Object.hasOwn(values, name)
-      ? String(values[name])
-      : token,
+    Object.hasOwn(values, name) ? String(values[name]) : token,
   );
 }
 export const t = translate;

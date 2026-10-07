@@ -24,8 +24,7 @@ export function LanguageSettings() {
         onChange={(event) => {
           if (isLanguagePreference(event.target.value)) {
             setLanguagePreference(event.target.value);
-            if (account.userId)
-              void account.saveLanguage(event.target.value);
+            if (account.userId) void account.saveLanguage(event.target.value);
           }
         }}
       >

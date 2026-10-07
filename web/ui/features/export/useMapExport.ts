@@ -10,11 +10,7 @@ interface Options {
   feed: ReturnType<typeof useVehicleFeed>;
 }
 
-export function useMapExport({
-  data,
-  shownRoutes,
-  feed,
-}: Options) {
+export function useMapExport({ data, shownRoutes, feed }: Options) {
   const [exportImage, setExportImage] = useState<string>();
   const [exportCars, setExportCars] = useState(true);
   const capturedMap = useRef<SVGSVGElement | undefined>(undefined);
