@@ -31,6 +31,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     exportCars,
     selectedRoute,
     mobilePanelOpen,
+    following,
     setFollowing,
     snakeOpen,
     setSnakeOpen,
@@ -128,12 +129,16 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
               </button>
             }
             data={data}
+            followPoint={car && following ? car.point : undefined}
             cars={
-              filters.live
-                ? cars.filter((car) =>
-                    car.vehicle.mode === 'subway' ? filters.subway : filters.streetcar,
-                  )
-                : []
+              // A followed car gets the map to itself; anything else unfollows.
+              car && following
+                ? [car]
+                : filters.live
+                  ? cars.filter((car) =>
+                      car.vehicle.mode === 'subway' ? filters.subway : filters.streetcar,
+                    )
+                  : []
             }
             selectedRoute={selectedRoute}
             selectedFeature={feature}

@@ -82,17 +82,20 @@ try {
   await page.locator('[data-vehicle="4400"]').waitFor();
   const kingRoute = page.locator('.route-list').getByRole('button', { name: /504 King/ });
   await kingRoute.click();
+  // Let the camera glide to the route before sampling the zoom level.
+  await page.waitForTimeout(500);
+  const zoomBeforeSearch = await page.locator('.map-controls output').innerText();
   await search.fill('4400');
   await page
     .locator('.search-results')
     .getByRole('button', { name: /Streetcar 4400/ })
     .click();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(500);
   assert.equal(
     await page.locator('.map-controls output').innerText(),
-    '500%',
-    'streetcar search zooms to the reported location',
+    zoomBeforeSearch,
+    'streetcar search centers without changing the zoom level',
   );
   assert.equal(
     await kingRoute.getAttribute('aria-pressed'),
@@ -123,8 +126,8 @@ try {
   await page.waitForTimeout(100);
   assert.equal(
     await page.locator('.map-controls output').innerText(),
-    '500%',
-    'reselecting the same streetcar focuses it again',
+    '100%',
+    'reselecting the same streetcar centers it without zooming',
   );
   assert.equal(mapCalls, 1, 'filters and selection never reload geometry');
   await page.getByRole('button', { name: 'Fit map', exact: true }).click();

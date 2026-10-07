@@ -141,12 +141,11 @@ try {
   await assertHeadingVisible('Car 4400');
   await page.setViewportSize({ width: 390, height: 667 });
   await assertHeadingVisible('Car 4400');
-  await page.getByRole('button', { name: 'Follow this car', exact: false }).tap();
+  await page.getByRole('button', { name: '4400 Unfollow', exact: true }).tap();
   assert.equal(
-    await page
-      .getByRole('button', { name: 'Following this car', exact: false })
-      .getAttribute('aria-pressed'),
-    'true',
+    await page.getByRole('button', { name: '4400 Unfollow', exact: true }).count(),
+    0,
+    'unfollowing removes the control until a car is selected again',
   );
   assert.deepEqual(errors, []);
   console.log(

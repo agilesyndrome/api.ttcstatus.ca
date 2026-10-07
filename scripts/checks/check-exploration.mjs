@@ -191,20 +191,12 @@ try {
       .getAttribute('aria-selected'),
     'true',
   );
-  await page.getByRole('button', { name: 'Follow this car', exact: false }).click();
-  assert.equal(
-    await page
-      .getByRole('button', { name: 'Following this car', exact: false })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
+  await page.getByRole('button', { name: '4400 Unfollow', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   assert.equal(
-    await page
-      .getByRole('button', { name: 'Follow this car', exact: false })
-      .getAttribute('aria-pressed'),
-    'false',
-    'manual zoom pauses following',
+    await page.getByRole('button', { name: '4400 Unfollow', exact: true }).count(),
+    0,
+    'manual zoom pauses following and removes the unfollow control',
   );
 
   await page.getByRole('tab', { name: 'Compare', exact: true }).click();
@@ -410,7 +402,7 @@ try {
   await follower.clock.install({ time: reportTime });
   await follower.goto(`${origin}/#car=4400`);
   await follower.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
-  await follower.getByRole('button', { name: 'Follow this car', exact: false }).click();
+  await follower.getByRole('button', { name: '4400 Unfollow', exact: true }).waitFor();
   const before = await follower.locator('#map').getAttribute('viewBox');
   latitude += 0.001;
   reportTime += 30000;
@@ -418,12 +410,6 @@ try {
   await follower.waitForFunction(
     (previous) => document.querySelector('#map').getAttribute('viewBox') !== previous,
     before,
-  );
-  assert.equal(
-    await follower
-      .getByRole('button', { name: 'Following this car', exact: false })
-      .getAttribute('aria-pressed'),
-    'true',
   );
   await follower.getByRole('button', { name: 'Fit map', exact: true }).click();
   const paused = await follower.locator('#map').getAttribute('viewBox');

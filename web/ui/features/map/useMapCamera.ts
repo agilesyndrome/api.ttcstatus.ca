@@ -18,6 +18,7 @@ export function useMapCamera({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
+  followPoint,
 }: Pick<
   TransitMapProps,
   | 'data'
@@ -33,6 +34,7 @@ export function useMapCamera({
   | 'controlsRef'
   | 'onSelectFeature'
   | 'onSelectVehicle'
+  | 'followPoint'
 >) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
@@ -56,7 +58,14 @@ export function useMapCamera({
   const detailedCars = level >= 2.5;
 
   // Camera updates during a gesture are limited to one render per animation frame.
-  function move(next: Bounds) {
+  const tween = useRef<number | undefined>(undefined);
+  function stopTween() {
+    if (tween.current !== undefined) {
+      cancelAnimationFrame(tween.current);
+      tween.current = undefined;
+    }
+  }
+  function apply(next: Bounds) {
     pending.current = next;
     cameraRef.current = next;
     if (frame.current === undefined)
@@ -64,6 +73,28 @@ export function useMapCamera({
         frame.current = undefined;
         setCamera(pending.current);
       });
+  }
+  function move(next: Bounds) {
+    stopTween();
+    apply(next);
+  }
+  // Focus and following glide to their target instead of snapping.
+  function animate(next: Bounds, duration = 400) {
+    stopTween();
+    const from = { ...cameraRef.current };
+    const began = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - began) / duration);
+      const eased = 1 - Math.pow(1 - k, 3);
+      apply({
+        x: from.x + (next.x - from.x) * eased,
+        y: from.y + (next.y - from.y) * eased,
+        width: from.width + (next.width - from.width) * eased,
+        height: from.height + (next.height - from.height) * eased,
+      });
+      tween.current = k < 1 ? requestAnimationFrame(step) : undefined;
+    };
+    tween.current = requestAnimationFrame(step);
   }
   function zoom(factor: number, anchor?: Point) {
     const current = cameraRef.current;
@@ -147,6 +178,7 @@ export function useMapCamera({
       observer.disconnect();
       node.removeEventListener('wheel', wheel);
       if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+      stopTween();
     };
   }, [data]);
   useEffect(() => {
@@ -158,14 +190,14 @@ export function useMapCamera({
       .filter((edge) => edge.routeIds.includes(selectedRoute))
       .flatMap((edge) => edge.points);
     if (routePoints.length)
-      move(fitCamera(boundsOf(routePoints, 80), size.width / size.height));
+      animate(fitCamera(boundsOf(routePoints, 80), size.width / size.height));
   }, [selectedRoute, data]);
   useEffect(() => {
     if (!selectedFeature) return;
     const fitted = initialRef.current,
       width = fitted.width / 5,
       height = fitted.height / 5;
-    move({
+    animate({
       x: selectedFeature.point[0] - width / 2,
       y: selectedFeature.point[1] - height / 2,
       width,
@@ -179,10 +211,26 @@ export function useMapCamera({
       level = Math.max(1, focusPointLevel ?? 5),
       width = driving ? cameraRef.current.width : fitted.width / level,
       height = driving ? cameraRef.current.height : fitted.height / level;
-    move({ x: focusPoint[0] - width / 2, y: focusPoint[1] - height / 2, width, height });
+    animate({
+      x: focusPoint[0] - width / 2,
+      y: focusPoint[1] - height / 2,
+      width,
+      height,
+    });
   }, [focusPoint, focusPointLevel, driving]);
   useEffect(() => {
-    if (focusBounds) move(fitCamera(focusBounds, size.width / size.height));
+    if (!followPoint) return;
+    const current = cameraRef.current;
+    // Following centers the car without changing the zoom level.
+    animate({
+      x: followPoint[0] - current.width / 2,
+      y: followPoint[1] - current.height / 2,
+      width: current.width,
+      height: current.height,
+    });
+  }, [followPoint]);
+  useEffect(() => {
+    if (focusBounds) animate(fitCamera(focusBounds, size.width / size.height));
   }, [focusBounds]);
 
   const handlers: SVGProps<SVGSVGElement> = {
@@ -246,6 +294,8 @@ export function useMapCamera({
         );
         if (car) onSelectVehicle(car);
         else if (feature) onSelectFeature(feature);
+        // Clicking empty map space is an action too: it pauses following.
+        else interact.current?.();
       }
       pointers.current.delete(event.pointerId);
       if (event.currentTarget.hasPointerCapture(event.pointerId))

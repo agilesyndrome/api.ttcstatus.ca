@@ -194,7 +194,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 onOpenJournal={() => setPanel('journal')}
                 onToggleSave={feature ? toggleSave : undefined}
                 following={following}
-                onFollow={car ? () => setFollowing((current) => !current) : undefined}
+                onFollow={car && following ? () => setFollowing(false) : undefined}
                 onSelectVehicle={(car) => selectVehicle(car, true)}
                 onClose={() => {
                   pendingCar.current = undefined;
@@ -240,6 +240,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
               setFilters(next);
               if (!next.live && selection?.kind === 'car') {
                 pendingCar.current = undefined;
+                setFollowing(false);
                 setSelection(
                   selectedRoute ? { kind: 'route', id: selectedRoute } : undefined,
                 );

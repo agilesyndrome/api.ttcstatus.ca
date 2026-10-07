@@ -207,12 +207,10 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
           data?.routes.find((route) => route.id === car.vehicle.routeId)?.overnight,
         ),
     }));
-    setFocusPoint([...car.point]);
-    setFocusPointLevel(undefined);
+    // Entering a car view from a shared link follows it until another action.
+    // The map centers on it without changing the zoom level.
+    setFollowing(true);
   }, [car, data, selectedRoute, setFilters]);
-  useEffect(() => {
-    if (following && car && !car.stale) setFocusPoint([...car.point]);
-  }, [following, car?.vehicle.id, car?.point[0], car?.point[1], car?.stale]);
 
   function reset() {
     setMobilePanelOpen(false);
@@ -245,7 +243,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setSelection({ kind: 'car', id: next.vehicle.id });
     setNotice('');
     setPanel('explore');
-    setFollowing(false);
+    // Selecting a car follows it; any other action pans away and unfollows.
+    // The map centers on it without changing the zoom level.
+    setFollowing(true);
     if (focus) {
       setSelectedRoute(undefined);
       setFilters((current) => ({
@@ -257,8 +257,6 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
             data?.routes.find((route) => route.id === next.vehicle.routeId)?.overnight,
           ),
       }));
-      setFocusPoint([...next.point]);
-      setFocusPointLevel(undefined);
     }
   }
   function selectRoute(id?: string) {

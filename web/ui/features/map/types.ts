@@ -15,6 +15,8 @@ export interface TransitMapProps {
   focusPoint?: Point;
   /** Relative map scale for a focus point; 2.5 shows a neighborhood, 5 is detail view. */
   focusPointLevel?: number;
+  /** Keep the current zoom and center on this point, e.g. while following a car. */
+  followPoint?: Point;
   showLabels?: boolean;
   /** Hide ordinary stop markers for lightweight game/map presentations. */
   showStops?: boolean;

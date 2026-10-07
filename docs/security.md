@@ -1,15 +1,14 @@
 # Security and deployment notes
 
-## Exposed admin credential
+## Admin credential
 
-The previously committed `.env` is no longer tracked. Both Workers reject its
-SHA-256 fingerprint, even if an environment still configures that credential.
-The fingerprint is not a replacement token. Source scanning reports filenames
-without printing credential values.
+The previously committed `.env` is no longer tracked. The `SYNC_TOKEN` has been
+rotated, so no revoked-credential check remains in the code. Source scanning
+reports filenames without printing credential values.
 
-Git history still contains the old credential. Removing a file does not revoke a
-deployed secret, and rewriting history would affect other branches and clones.
-This refactor does not rewrite history or mutate production configuration.
+Git history still contains the old credential, which is no longer valid.
+Rewriting history would affect other branches and clones; this refactor does
+not rewrite history or mutate production configuration.
 
 Before deploying this branch, generate a new high-entropy `SYNC_TOKEN` and set the
 same value on the API and map-generator Workers through Wrangler's secret prompts:
@@ -68,8 +67,8 @@ journal data and session-token verification retain their existing behavior.
 
 `authorizedSync` hashes both the presented bearer credential and the configured
 `SYNC_TOKEN` with SHA-256 and compares fixed-length hex digests, so request
-timing cannot leak the raw secret. The revoked Git-history fingerprint is
-checked against the digest of the configured secret before any match is honored.
+timing cannot leak the raw secret. (The token has been rotated, so no
+revoked-fingerprint comparison remains.)
 All four admin/diagnostic surfaces (`/api/v1/admin/sync`,
 `/api/v1/debug/map/streetcar.svg`, the generator's `/api/debug/render` and
 `/api/internal/generate`, and `/api/v1/feed/status`) use this check.
@@ -87,18 +86,18 @@ on the laptop).
 `public/_headers` applies `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
 `X-Frame-Options: DENY` and HSTS to all static responses. The classic snake game
 gets an enforced `Content-Security-Policy` (`default-src 'self'`, no remote
-origins). The application shell is in `Content-Security-Policy-Report-Only` mode
-until the production Clerk frontend-api origin is confirmed and added — decode
-it from the `pk_live_…` key suffix:
+origins). The application shell policy is also enforced. The production Clerk
+frontend-api origin (`clerk.ttcstatus.ca`) was decoded from the `pk_live_…` key
+suffix and added to the policy:
 
 ```sh
 op run --env-file=.env.prod -- node -e \
-  "const k=process.env.CLERK_PUBLISHABLE_KEY;console.log(Buffer.from(k.split('_').slice(3).join('_'),'base64url').toString())"
+  "const k=process.env.CLERK_PUBLISHABLE_KEY;console.log(Buffer.from(k.replace(/^pk_live_/,''),'base64url').toString())"
 ```
 
-Then replace `https://*.clerk.accounts.dev` in the report-only policy with the
-actual origin, sign in at https://ttcstatus.ca, confirm zero console violations,
-and rename the header to `Content-Security-Policy`.
+After the next deploy, sign in at https://ttcstatus.ca and confirm nothing
+legitimate is blocked; if a console error appears, widen the affected directive
+in `public/_headers` before redeploying.
 
 ## Operational correctness
 
@@ -109,9 +108,9 @@ as failed. These cases have SQLite-backed regression tests.
 
 ## Follow-up deployment work
 
-Site-wide enforced CSP for the Clerk-backed application shell is staged as a
-report-only policy: it requires the deployed Clerk origins to avoid breaking
-legitimate usage. Application rate limits remain deployment follow-ups: the
+Site-wide enforced CSP for the Clerk-backed application shell is deployed:
+the production Clerk frontend-api origin (`clerk.ttcstatus.ca`) is baked into
+`public/_headers`. Application rate limits remain deployment follow-ups: the
 first line of defense is the Cloudflare zone WAF (custom rules and one
 rate-limiting rule are included in the Free plan). All traffic must reach the
 Workers through the `ttcstatus.ca` zone for those rules to apply — the

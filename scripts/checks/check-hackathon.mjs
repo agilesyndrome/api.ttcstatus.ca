@@ -208,18 +208,23 @@ try {
     camera,
     'feed lifecycle does not recenter selected stops',
   );
+  const carZoom = await page.locator('.map-controls output').innerText();
   await page.locator('.stop-cars .list-choice').click();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
-  await page.waitForTimeout(100);
-  assert.equal(await page.locator('.map-controls output').innerText(), '500%');
+  await page.waitForTimeout(500);
+  assert.equal(
+    await page.locator('.map-controls output').innerText(),
+    carZoom,
+    'selecting a car keeps the current zoom level',
+  );
   assert.equal(await page.locator('.selected-car-ring').count(), 1);
   await page.reload();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(500);
   assert.equal(
     await page.locator('.map-controls output').innerText(),
-    '500%',
-    'streetcar link focuses after the feed arrives',
+    '100%',
+    'streetcar link centers after the feed arrives without zooming',
   );
   await page.getByRole('button', { name: 'Fit map', exact: true }).click();
   await page.waitForTimeout(150);

@@ -101,24 +101,8 @@ export function StopDetails({
         </dl>
         {onFollow && (
           <>
-            <button
-              className="action-button follow-car"
-              aria-pressed={Boolean(following)}
-              onClick={onFollow}
-            >
-              {following
-                ? t('stopDetails.followingThisValue', {
-                    value1:
-                      car.vehicle.mode === 'subway'
-                        ? t('stopDetails.train')
-                        : t('commute.car'),
-                  })
-                : t('stopDetails.followThisValue', {
-                    value1:
-                      car.vehicle.mode === 'subway'
-                        ? t('stopDetails.train')
-                        : t('commute.car'),
-                  })}
+            <button className="action-button follow-car" onClick={onFollow}>
+              {t('stopDetails.unfollowValue', { value1: car.vehicle.label })}
             </button>
             {following && (
               <p className="microcopy">
