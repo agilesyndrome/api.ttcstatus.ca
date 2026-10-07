@@ -84,12 +84,16 @@ export interface UpcomingSwitch {
 const CAR_LENGTH = 30.2,
   SPACING = CAR_LENGTH + 1.5,
   LANE_OFFSET = 3.2,
-  GAME_TRAFFIC_COUNT = 8,
-  GAME_TARGET_SECONDS = 6.5,
-  GAME_TARGET_MIN_DISTANCE = 85,
-  GAME_TARGET_MAX_DISTANCE = 210,
+  // A busier, faster-paced network: the guaranteed catchable car is placed
+  // a few dozen metres to a couple hundred metres ahead (time-based, so it
+  // never spawns on top of the player), ambient traffic is denser, and the
+  // respawn cadence keeps a target in front of the player within ~6 s.
+  GAME_TRAFFIC_COUNT = 10,
+  GAME_TARGET_SECONDS = 4,
+  GAME_TARGET_MIN_DISTANCE = 60,
+  GAME_TARGET_MAX_DISTANCE = 240,
   GAME_TRAFFIC_COVERAGE_SECONDS = 7,
-  GAME_TRAFFIC_RESPAWN_DELAY = 3.5,
+  GAME_TRAFFIC_RESPAWN_DELAY = 2.5,
   GAME_RANDOM_MIN_AHEAD = 260,
   GAME_RANDOM_MIN_SPACING = 250,
   GAME_CAR_PREFIX = 'snake-v2-',
@@ -685,6 +689,20 @@ export class SnakeEngine {
       : 0;
   }
 
+  /** A human name for a stretch of track: street names beat route numbers. */
+  private edgeName(edge: Edge): string {
+    const streets = edge.infrastructureIds
+      .map((id) => this.infrastructureNames.get(id))
+      .filter(Boolean)
+      .join(', ');
+    if (streets) return streets;
+    const routes = edge.routeIds
+      .map((id) => this.routeNumbers.get(id))
+      .filter(Boolean)
+      .join('/');
+    return routes || t('snake.track');
+  }
+
   private startHazard() {
     const kinds: HazardKind[] = ['slow', 'stalled', 'closed'];
     const kind = kinds[Math.floor(this.random() * kinds.length)];
@@ -710,13 +728,9 @@ export class SnakeEngine {
     this.banner =
       kind === 'stalled'
         ? t('snake.stalledCarValueValueFindAnotherWay', {
-            value1:
-              edge.routeIds
-                .map((id) => this.routeNumbers.get(id))
-                .filter(Boolean)
-                .join('/') || t('snake.track'),
+            value1: this.edgeName(edge),
           })
-        : t('snake.doNotEnterSectionFindAnotherWay');
+        : t('snake.doNotEnterValueFindAnotherWay', { value1: this.edgeName(edge) });
   }
 
   private updateHazards() {
@@ -728,6 +742,13 @@ export class SnakeEngine {
         this.hazardClock + HAZARD_GAP_MIN + this.random() * HAZARD_GAP_EXTRA;
     } else if (!this.activeHazard && this.hazardClock >= this.nextHazardAt) {
       this.startHazard();
+    }
+    // The slow-order banner counts down so the pace change reads at a glance.
+    if (this.activeHazard?.kind === 'slow') {
+      this.banner = t('snake.transitControlSlowOrderValueKmHForValueSeconds', {
+        value1: this.slowCapKph,
+        value2: Math.max(1, Math.ceil(this.hazardUntil - this.hazardClock)),
+      });
     }
   }
 

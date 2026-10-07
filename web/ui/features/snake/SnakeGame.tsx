@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Point, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { TransitMap, type TransitMapControls } from '../map/TransitMap';
+import { TrackClosures } from '../map/TrackClosures';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
 import { SnakeEngine, gameMissions, type Mission, type Mode, type Turn } from './engine';
@@ -281,10 +282,17 @@ export const SnakeGame = memo(function SnakeGame({
         if (simulationCarry >= GAME_TICK_INTERVAL_MS / 1000) {
           engine.tick(simulationCarry, traffic.current, heldPedals());
           simulationCarry = 0;
-          // Each collected car widens the camera one step.
+          // Each collected car widens the camera one step — but never past a
+          // comfortable driving scale, so long trains never over-zoom-out.
           if (engine.count > grown.current) {
             grown.current = engine.count;
-            mapControls.current?.zoomBy(1.18);
+            const controls = mapControls.current;
+            if (
+              controls &&
+              controls.cameraWidth() * 1.18 <=
+                Math.min(data.bounds.width / 3, data.bounds.width)
+            )
+              controls.zoomBy(1.18);
           }
           if (followRef.current) mapControls.current?.followPoint(engine.pose().point);
         }
@@ -401,11 +409,12 @@ export const SnakeGame = memo(function SnakeGame({
     if (touches.current.size < 2) return;
     const [a, b] = [...touches.current.values()],
       distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (distance && pinchDistance.current)
-      mapControls.current?.zoomBy(pinchDistance.current / distance, [
-        (a[0] + b[0]) / 2,
-        (a[1] + b[1]) / 2,
-      ]);
+    // Ignore jitter and two-finger pans: without this guard, sub-pixel
+    // distance noise zooms the map in and out while the fingers drift.
+    const factor =
+      distance > 24 && pinchDistance.current > 24 ? pinchDistance.current / distance : 1;
+    if (Math.abs(factor - 1) >= 0.04)
+      mapControls.current?.zoomBy(factor, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
     pinchDistance.current = distance;
   }
   function pinchEnd(event: React.PointerEvent<HTMLDialogElement>) {
@@ -466,7 +475,6 @@ export const SnakeGame = memo(function SnakeGame({
           showLabels={false}
           showStops={false}
           driving
-          focusPoint={follow && playing ? pose.point : undefined}
           focusBounds={originBounds}
           onInteract={() => setFollow(false)}
           onZoomInteract={() => {
@@ -476,26 +484,17 @@ export const SnakeGame = memo(function SnakeGame({
           onSelectVehicle={noSelection}
           overlay={(scale) => (
             <g className="snake-train" pointerEvents="none">
-              {engine.hazard?.edgeId &&
-                (() => {
-                  const edge = data.edges.find(
-                    (candidate) => candidate.id === engine.hazard?.edgeId,
-                  );
-                  if (!edge) return null;
-                  return (
-                    <g data-snake-hazard={engine.hazard.kind}>
-                      <polyline
-                        points={edge.points.map((point) => point.join(',')).join(' ')}
-                        fill="none"
-                        stroke={engine.hazard.kind === 'stalled' ? '#f4a300' : '#d71920'}
-                        strokeWidth={10}
-                        strokeDasharray="14 10"
-                        strokeLinecap="round"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    </g>
-                  );
-                })()}
+              {engine.hazard?.edgeId && engine.hazard.kind !== 'slow' && (
+                <TrackClosures
+                  data={data}
+                  closures={[
+                    {
+                      edgeIds: [engine.hazard.edgeId],
+                      kind: engine.hazard.kind === 'stalled' ? 'stalled' : 'closed',
+                    },
+                  ]}
+                />
+              )}
               {switchArrow && (
                 <>
                   <path

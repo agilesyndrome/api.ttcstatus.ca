@@ -1118,7 +1118,7 @@
   "snake.youHitYourOwnTrainValueCarsGameOver": "You built a {value1}-car monster and it ate itself. Please stand by while Transit Control invents an explanation.",
   "snake.transitControlSlowOrderValueKmHForValueSeconds": "TRANSIT CONTROL: slow order — {value1} km/h for {value2} s",
   "snake.stalledCarValueValueFindAnotherWay": "STALLED CAR on {value1} — find another way",
-  "snake.doNotEnterSectionFindAnotherWay": "DO NOT ENTER section ahead — find another way",
+  "snake.doNotEnterValueFindAnotherWay": "DO NOT ENTER: {value1} — find another way",
   "snake.valueCarsCoupledBestValue": "{value1} cars coupled · Best {value2}",
   "snake.kmH": "km/h",
   "snake.keyLeft": "Left",

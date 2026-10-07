@@ -445,7 +445,7 @@
   "snake.youEnteredADoNotEnterSectionTransitControlHasRemovedYou": "Vous avez franchi une section INTERDIT. Le contrôle des transports vous a retiré de service avec une efficacité inhabituelle.",
   "snake.transitControlSlowOrderValueKmHForValueSeconds": "CONTRÔLE DES TRANSPORTS : limitation — {value1} km/h pendant {value2} s",
   "snake.stalledCarValueValueFindAnotherWay": "TRAMWAY EN PANNE sur {value1} — trouvez une autre voie",
-  "snake.doNotEnterSectionFindAnotherWay": "Section INTERDIT plus loin — trouvez une autre voie",
+  "snake.doNotEnterValueFindAnotherWay": "INTERDIT : {value1} — trouvez une autre voie",
   "snake.valueCarsCoupledBestValue": "{value1} tramways attelés · Record {value2}",
   "snake.keyLeft": "Gauche",
   "snake.keyRight": "Droite",

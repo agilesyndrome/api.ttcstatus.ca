@@ -6,6 +6,8 @@ import type { TransitMapProps } from './types';
 export type { TransitMapControls } from './types';
 import { useMapCamera } from './useMapCamera';
 import { Tracks, points } from './TrackLayer';
+import { TrackClosures } from './TrackClosures';
+export type { TrackClosure } from './TrackClosures';
 
 export function TransitMap({
   data,
@@ -27,6 +29,7 @@ export function TransitMap({
   selectedVehicleId,
   comparisonStops,
   pickingLabel,
+  closures = [],
   onInteract,
   onZoomInteract,
   onExport,
@@ -224,6 +227,7 @@ export function TransitMap({
           showStreetcar={showStreetcar}
           showSubway={showSubway}
         />
+        <TrackClosures data={data} closures={closures} />
         {visibleFeatures.map((feature) => (
           <g
             key={feature.id}

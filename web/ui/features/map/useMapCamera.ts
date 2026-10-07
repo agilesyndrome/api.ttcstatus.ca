@@ -154,6 +154,7 @@ export function useMapCamera({
         pointers.current.clear();
         moved.current = true;
       },
+      cameraWidth: () => cameraRef.current.width,
     };
     return () => {
       controlsRef.current = null;

@@ -1,11 +1,14 @@
 import type { ReactNode, RefObject } from 'react';
 import type { Bounds, Feature, Point, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
+import type { TrackClosure } from './TrackClosures';
 
 export interface TransitMapControls {
   zoomBy(factor: number, clientPoint?: Point): void;
   followPoint(point: Point, width?: number): void;
   cancelGesture(): void;
+  /** The camera's current view width in map units (zoom level for callers). */
+  cameraWidth(): number;
 }
 export interface TransitMapProps {
   data: ViewerData;
@@ -30,6 +33,8 @@ export interface TransitMapProps {
   focusBounds?: Bounds;
   comparisonStops?: { from?: Feature; to?: Feature };
   pickingLabel?: string;
+  /** Closed or obstructed segments, drawn over the tracks (game and app share this). */
+  closures?: TrackClosure[];
   onInteract?(): void;
   /** Fires instead of onInteract for zoom gestures, so zooming can keep following. */
   onZoomInteract?(): void;

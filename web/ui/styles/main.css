@@ -1576,6 +1576,26 @@ select:focus-visible {
 .snake-event[data-hazard='stalled'] {
   background: #e8927c;
 }
+/* Shared closure language (Snake disruptions and, later, real TTC closures):
+   dashed over the closed segment with a slow pulse so it reads at any zoom. */
+.track-closures polyline {
+  animation: track-closure-pulse 1.8s ease-in-out infinite;
+}
+@keyframes track-closure-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-closures polyline {
+    animation: none;
+    opacity: 0.8;
+  }
+}
 @media (max-width: 620px) {
   .snake-event {
     top: calc(196px + env(safe-area-inset-top));
