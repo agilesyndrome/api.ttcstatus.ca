@@ -1,15 +1,14 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
-import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { writeMapViewer } from '../build/build-viewer.mjs';
+import { resolve } from 'node:path';
 
-// Compile the actual Worker geometry and renderer, rather than maintain a
-// second layout implementation just for local previewing.
+// Compile the actual Worker geometry rather than maintain a second layout
+// implementation for local previewing. This module only lays out a local map
+// bundle; production generation stays in the map-generator Worker.
 const compiled = await build({
   stdin: {
     contents:
-      'export { layoutStreetcarMap } from "./workers/map-generator/src/topology/schematic"; export { renderDebugMapSvg } from "./workers/map-generator/src/rendering/debug-render"; export { projectToLocalMetres } from "./shared/map/geometry";',
+      'export { layoutStreetcarMap } from "./workers/map-generator/src/topology/schematic"; export { projectToLocalMetres } from "./shared/map/geometry";',
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -18,24 +17,15 @@ const compiled = await build({
   platform: 'node',
   format: 'esm',
 });
-const { layoutStreetcarMap, renderDebugMapSvg, projectToLocalMetres } = await import(
+const { layoutStreetcarMap, projectToLocalMetres } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
 );
-export async function previewMap(
-  input = 'data/fixtures/streetcarmap.json',
-  output = 'dist/streetcar-schematic.json',
-  svg = 'dist/streetcar-debug.svg',
-  html = resolve(dirname(svg), 'streetcar-debug.html'),
-) {
-  if ([output, svg, html].some((path) => resolve(input) === resolve(path))) {
-    throw new Error('Use separate output files to preserve the input map.');
-  }
-  await Promise.all(
-    [output, svg, html].map((file) => mkdir(dirname(file), { recursive: true })),
-  );
-  const seed = JSON.parse(await readFile(input, 'utf8'));
+
+/** Lay out a local map bundle for the vite preview middleware and map tests. */
+export async function previewMap(input = 'data/fixtures/streetcarmap.json', output) {
+  const seed = JSON.parse(await readFile(resolve(input), 'utf8'));
   // Rebuild even an existing schematic from its retained source geometry so
-  // downloading an older published graph does not bypass the current fixes.
+  // previewing an older published graph does not bypass the current fixes.
   let toMetres;
   if (seed.paths.every((p) => Array.isArray(p.sourcePoints))) {
     toMetres = (p) => p;
@@ -74,19 +64,10 @@ export async function previewMap(
   for (const stop of seed.stops)
     [stop.x, stop.y] = stop.sourcePoint ?? toMetres([stop.x, stop.y]);
   const map = layoutStreetcarMap(seed);
-  await writeFile(output, JSON.stringify(map) + '\n');
-  await writeFile(svg, renderDebugMapSvg(map));
-  await writeMapViewer(map, html);
+  if (output) {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    await mkdir(resolve(output, '..'), { recursive: true });
+    await writeFile(output, JSON.stringify(map) + '\n');
+  }
   return map;
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const input = process.argv[2] ?? 'data/fixtures/streetcarmap.json';
-  const output = process.argv[3] ?? 'dist/streetcar-schematic.json';
-  const svg = process.argv[4] ?? 'dist/streetcar-debug.svg';
-  const html = process.argv[5] ?? 'dist/map/index.html';
-  const map = await previewMap(input, output, svg, html);
-  console.log(
-    `Wrote ${svg}, ${output}, and ${html}: ${map.graph.nodes.length} nodes, ${map.graph.edges.length} shared edges, ${map.stops.length} stops.`,
-  );
 }

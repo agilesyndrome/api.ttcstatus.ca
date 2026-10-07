@@ -1,0 +1,8 @@
+#!/bin/sh
+# Gate commits on pre-flight checks: secrets, boundaries, types, lint, format,
+# tests and build. Skip deliberately with: git commit --no-verify
+echo "pre-commit: running npm run pre-flight (skip with --no-verify)"
+if ! npm run pre-flight; then
+  echo "pre-commit: pre-flight failed; commit aborted." >&2
+  exit 1
+fi

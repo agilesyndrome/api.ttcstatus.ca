@@ -86,44 +86,15 @@ service/track data. Inline route numbers identify visible corridors, overnight
 variants use their daytime route colours, and dashed grey indicates physical
 track without scheduled streetcar service.
 
-Generate a local preview without credentials, D1, deployment or feed downloads:
-
-```bash
-npm run map:preview
-npm run typecheck
-npm test
-```
-
-This reads `data/fixtures/streetcarmap.json`, writes `dist/streetcar-schematic.json`, and refreshes
-`dist/streetcar-debug.svg`. It preserves the input map. For the legacy v1.0.1 fixture,
-the preview recovers approximate metre coordinates from the audited Ossington
-overlay because that format omitted its geographic display transform. Production
-generation uses D1 source coordinates directly. Optional positional arguments are
-input JSON, output JSON, output SVG. An older schematic with retained source
-geometry is rebuilt through the current generator rather than displayed unchanged.
-
-Download the current published JSON, render it locally, and open it in your
-default browser with one command (run `npm install` first):
-
-```bash
-make map/debug
-```
-
-This saves the API response as `dist/streetcarmap.json`, generates
-`dist/streetcar-schematic.json` and `dist/streetcar-debug.svg`, and opens a local
-`dist/streetcar-debug.html` wrapper so SVG file associations cannot send the preview
-to an image editor. Rendering uses the same code as the map-generator Worker;
-there is no JSON re-upload, sync, or debug token required. The JSON endpoint
-returns the pre-generated map; this command does not regenerate the production
-artifact from GTFS. Failed downloads stop the command and preserve the previous
-input file.
-
-Use `make map/streetcar/svg` to render the downloaded `dist/streetcarmap.json` without
-downloading again. With no download, it uses `data/fixtures/streetcarmap.json`.
-Set `MAP_INPUT` to render a different local bundle. Set `API_HOST` to select another API, or `MAP_OPEN` to a browser
-opener executable (for example, `MAP_OPEN=echo make map/debug` to print the preview
-URL in a headless environment). The browser wrapper fits the entire map and
-legend into the viewport, with zoom buttons, drag-to-pan and a Fit map button.
+The local vite preview (`npm run dev:viewer`) serves `/api/v1/map/streetcar`
+from `data/fixtures/streetcarmap.json` (or `.wrangler/preview/rail-map.json`
+after `make dev/new`, or `MAP_INPUT`), laid out by the real map-generator
+geometry without credentials, D1 or feed downloads. For the legacy v1.0.1
+fixture, the preview recovers approximate metre coordinates from the audited
+Ossington overlay because that format omitted its geographic display transform.
+Production generation uses D1 source coordinates directly, and an older
+schematic with retained source geometry is rebuilt through the current
+generator rather than displayed unchanged.
 
 See [the SnakeTTC map contract](./docs/snakettc-map-contract.md) for gameplay and
 distance mapping. SnakeTTC currently uses its own hand-built graph; consuming this
@@ -303,12 +274,19 @@ so an older cached seed map cannot prevent it from picking up the repaired map.
 ### Cloudflare deploy configuration
 
 This repository contains two Workers, so configure two Cloudflare Workers Builds projects
-from the same repository:
+from the same repository. Both projects use the same gating build command:
 
-- API project: root directory `/`, build command `npm run build:api`, deploy command
+- API project: root directory `/`, build command `npm run ci`, deploy command
   `npx wrangler deploy -c workers/api/wrangler.jsonc --keep-vars`
-- Map project: root directory `/`, build command `npm run build:map`, deploy command
+- Map project: root directory `/`, build command `npm run ci`, deploy command
   `npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars`
+
+`npm run ci` is the deploy gate: it runs `npm run pre-flight` (secrets scan,
+boundary check, typecheck, lint, format check, unit tests, build), then the
+Storybook build and `wrangler deploy --dry-run` for both Workers. If any step
+fails, Cloudflare never deploys. Deploying is therefore safe on every push:
+the code that reaches the deploy command has passed the same checks as the
+local pre-commit hook and GitHub Actions.
 
 Deploy the map project before the API project because the API uses a Service Binding to it.
 Both projects must have the same D1 database bound to the `DB` binding. Replace
@@ -319,7 +297,7 @@ Enter the Cloudflare build and deploy commands without Markdown backticks. For t
 map project, use these literal values:
 
 ```text
-Build command: npm run build:map
+Build command: npm run ci
 Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars
 ```
 
@@ -358,9 +336,12 @@ The map-generator debug renderer uses the same secret name independently:
 npx wrangler secret put SYNC_TOKEN -c workers/map-generator/wrangler.jsonc
 ```
 
-Deploy the map generator first because the API Worker has a Service Binding to it:
+Deploy the map generator first because the API Worker has a Service Binding to it.
+These manual deploys are the break-glass path for when Cloudflare Workers Builds
+is unavailable; normally Cloudflare deploys every push after `npm run ci` passes:
 
 ```bash
+npm run pre-flight
 npm run deploy:map
 npm run deploy:api
 ```

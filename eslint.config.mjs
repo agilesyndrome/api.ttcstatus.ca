@@ -4,11 +4,12 @@ export default tseslint.config(
   {
     ignores: [
       'node_modules/**',
-      '.wrangler/**',
-      'dist/**',
-      'storybook-static/**',
+      '**/.wrangler/**',
+      '**/dist/**',
+      '**/storybook-static/**',
       'public/**',
       'data/**',
+      'tmp/**',
     ],
   },
   ...tseslint.configs.recommended,

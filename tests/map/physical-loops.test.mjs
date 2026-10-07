@@ -40,12 +40,7 @@ let dir, map;
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), 'ttc-physical-loops-'));
   // Rebuild an immutable older fixture: additions must work without a GTFS update.
-  map = await previewMap(
-    'data/fixtures/streetcar-schematic.json',
-    join(dir, 'map.json'),
-    join(dir, 'map.svg'),
-    join(dir, 'index.html'),
-  );
+  map = await previewMap('data/fixtures/streetcar-schematic.json', join(dir, 'map.json'));
 });
 after(async () => {
   if (dir) await rm(dir, { recursive: true, force: true });

@@ -8,7 +8,6 @@ node_modules/
 !.env.example
 *.log
 .DS_Store
-/streetcar-debug.html
 
 /public/assets/
 /public/index.html

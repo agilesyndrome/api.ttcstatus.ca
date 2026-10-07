@@ -363,6 +363,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       : {
           journal: t('workspace.streetcarJournal'),
           badges: t('navigation.badges'),
+          fleet: t('workspace.fleetTools'),
+          compare: t('workspace.compareTools'),
+          stops: t('workspace.stopDirectory'),
         }[panel];
 
   return {

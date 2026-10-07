@@ -1,7 +1,6 @@
 import { build } from 'esbuild';
-import { access, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { access, mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { previewMap } from './preview-map.mjs';
 
@@ -60,19 +59,14 @@ export async function createPreviewMiddleware() {
     if (path === '/api/healthz') return json({ ok: true, worker: 'local-preview' });
     if (path === '/api/v1/map/streetcar') {
       try {
-        mapPromise ??= (async () => {
-          const dir = await mkdtemp(join(tmpdir(), 'ttc-react-preview-'));
-          return previewMap(
+        mapPromise ??= (async () =>
+          previewMap(
             process.env.MAP_INPUT ||
               (await access('.wrangler/preview/rail-map.json').then(
                 () => '.wrangler/preview/rail-map.json',
                 () => 'data/fixtures/streetcarmap.json',
               )),
-            join(dir, 'map.json'),
-            join(dir, 'map.svg'),
-            join(dir, 'map.html'),
-          );
-        })().catch((error) => {
+          ))().catch((error) => {
           mapPromise = undefined;
           throw error;
         });

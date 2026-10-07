@@ -580,7 +580,6 @@ test('preview rebuilds an older schematic from retained source geometry', async 
     const expected = await previewMap(
       'data/fixtures/streetcar-schematic.json',
       join(directory, 'expected.json'),
-      join(directory, 'expected.svg'),
     );
     const stale = structuredClone(source);
     stale.generatorVersion = 'snake-v1.1.0';
@@ -592,7 +591,7 @@ test('preview rebuilds an older schematic from retained source geometry', async 
     const input = join(directory, 'input.json'),
       output = join(directory, 'output.json');
     await writeFile(input, JSON.stringify(stale));
-    await previewMap(input, output, join(directory, 'map.svg'));
+    await previewMap(input, output);
     const rebuilt = JSON.parse(await readFile(output, 'utf8'));
     assert.equal(rebuilt.generatorVersion, 'snake-v1.4.1');
     assert.deepEqual(rebuilt.graph, expected.graph);
