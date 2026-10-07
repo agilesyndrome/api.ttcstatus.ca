@@ -164,6 +164,48 @@ test('protected routes keep authorization and service calls use the migrated pat
   );
 });
 
+test('manual sync runs the pipeline inline and reports the real outcome', async () => {
+  const url = 'https://example.test/api/v1/admin/sync';
+  const request = (database) =>
+    api.fetch(
+      new Request(url, {
+        method: 'POST',
+        headers: { authorization: 'Bearer test' },
+      }),
+      {
+        SYNC_TOKEN: 'test',
+        DB: database,
+        STATIC_GTFS_URL: 'https://feed.test/static.zip',
+        SOURCE_ATTRIBUTION: 'test',
+        GTFS_BUCKET: {},
+        MAP_GENERATOR: { fetch: async () => new Response('{}') },
+      },
+      ctx,
+    );
+  // A broken environment surfaces the actual pipeline error instead of an
+  // unconditional background "accepted": the sync completes within the request.
+  const failing = await request(db);
+  assert.equal(failing.status, 500);
+  assert.match((await failing.json()).error, /Unable to initialize source state/);
+  // A held lock answers busy synchronously rather than deferring the work.
+  const locked = {
+    prepare() {
+      return {
+        bind() {
+          return this;
+        },
+        first: async () => ({ source_key: 'ttc-surface-gtfs' }),
+        all: async () => ({ results: [] }),
+        run: async () => ({ meta: { changes: 0 } }),
+      };
+    },
+  };
+  const busy = await request(locked);
+  assert.equal(busy.status, 200);
+  assert.equal((await busy.json()).reason, 'sync-already-running');
+  assert.equal(busy.headers.get('cache-control'), 'no-store');
+});
+
 test('map GET and HEAD accept compressed weak ETags and validator lists', async () => {
   const env = {
     DB: {

@@ -69,7 +69,7 @@ export async function routeRequest(
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/admin/sync') {
-    return manualSyncResponse(request, env, ctx);
+    return manualSyncResponse(request, env);
   }
 
   return json({ error: 'not-found' }, 404, { 'cache-control': 'no-store' });

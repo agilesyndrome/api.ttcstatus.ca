@@ -256,7 +256,7 @@ Optional manual sync endpoint. It is only enabled when a `SYNC_TOKEN` Worker sec
 
 `Authorization: Bearer <SYNC_TOKEN>`
 
-The endpoint returns `202 Accepted` after scheduling the sync in the background. Check `/api/v1/feed/status` for import or map-generation errors and `/api/v1/map/streetcar` once the active artifact is ready.
+The endpoint runs the whole pipeline inside the request and returns the final outcome — `unchanged`, `updated` (with `versionId`) or `busy` — so a changed feed takes roughly a minute before the response arrives. Keep the request open until then: an interrupted run leaves the downloaded version for the nightly cron, which resumes it. (Earlier revisions answered `202 Accepted` immediately and continued via `ctx.waitUntil`, but the runtime caps background continuation at about 30 seconds past the response — enough for an unchanged check, silently too short to download, import and generate a changed feed.) Check `/api/v1/feed/status` for import or map-generation errors and `/api/v1/map/streetcar` once the active artifact is ready.
 
 Convenience commands (admin commands read `.env` through 1Password CLI;
 map commands use the public endpoint without credentials):
@@ -323,7 +323,7 @@ Build command: npm run build:map
 Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars
 ```
 
-The static import is intentionally a background production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. Normal API reads remain lightweight because they never parse GTFS.
+The static import is intentionally a heavyweight production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. The nightly Cron Trigger runs it in the background; the manual endpoint runs the same pipeline inline within its request. Normal API reads remain lightweight because they never parse GTFS.
 
 Create one D1 database and one R2 bucket:
 
