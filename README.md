@@ -281,7 +281,7 @@ from the same repository. Both projects use the same gating build command:
 - Map project: root directory `/`, build command `npm run ci`, deploy command
   `npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars`
 
-`npm run ci` is the deploy gate: it runs `npm run pre-flight` (secrets scan,
+`npm run ci` is the deploy gate: it runs `npm run pre-flight` (secret scans,
 boundary check, typecheck, lint, format check, unit tests, build), then the
 Storybook build and `wrangler deploy --dry-run` for both Workers. If any step
 fails, Cloudflare never deploys. Deploying is therefore safe on every push:
@@ -391,6 +391,54 @@ coalescing inside one snapshot store. This is cached HTTP polling, with up to
 one configured interval of latency, rather than a persistent push connection.
 
 ## Local development
+
+### Pre-flight board
+
+Every quality gate in this repository runs through one command:
+
+```bash
+./pre-flight            # the full board: secret scans, boundaries, types,
+                        # lint, format, tests and builds
+./pre-flight check      # the same, minus the two build routes
+./pre-flight check lint # only the named routes
+```
+
+The board is configured entirely by `security.json` at the repository root:
+which routes exist, their commands, the tools they need, and the baseline
+time each one takes. Every run reports its time as a percentage of its
+baseline, so a test that quietly became 40% slower over the years shows up
+as `delayed +40%` on the board. Slow runs never fail anything — only real
+check failures do.
+
+Interactive terminals get the departure board (routes, spinners, live
+times). Headless environments — CI, pipes, `CI=1` — drop the pretty output
+automatically and stream plain `[route]`-prefixed logs instead.
+
+The secret scans use gitleaks. On first use it is downloaded to `.tools/`
+(ignored by Git) for Linux, macOS or Windows from the release pinned in
+`security.json`, verified against pinned SHA-256 digests. One route scans
+the working tree (tracked plus new files, so ignored `.env.local` and
+`.env.prod` stay private); the other scans the full git history. The two
+historical findings from before the `SYNC_TOKEN` rotation are acknowledged
+in `.gitleaksignore`; any new finding fails the board.
+
+```bash
+./pre-flight status               # every route: SKIP/ON/OFF, baseline, tools
+./pre-flight skip test            # skip a route on the NEXT run only
+./pre-flight on test              # enable a route (cancels a pending skip)
+./pre-flight off secrets-history  # disable a route in security.json
+./pre-flight baseline             # re-record baseline times on this machine
+./pre-flight install              # (re)install tools such as gitleaks
+./pre-flight help                 # everything else
+```
+
+`npm run check` and `npm run check:secrets` route through the same board.
+Swapping a tool — the secret scanner, say — is a one-line edit of that
+route's `command` in `security.json`; the runner, board and baselines are
+unchanged. `{bin:tsc}`-style tokens resolve to the local `node_modules`
+binary on any platform, and a tool with an `install` entry is probed and
+installed automatically before its checks run. On Windows, run the same
+commands as `node pre-flight …`.
 
 ### Hackathon: your commute cockpit
 

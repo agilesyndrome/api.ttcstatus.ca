@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "api.ttcstatus.ca pre-flight configuration (security.json)",
+  "description": "Every route on the pre-flight board: its command, its tools, its state and its baseline time. Managed by ./pre-flight commands; edit by hand freely.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["checks"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "number",
+      "description": "Config format version.",
+      "default": 1
+    },
+    "pretty": {
+      "description": "Board rendering: 'auto' picks the pretty board on a TTY and plain logs in CI/pipes; true/false force a style.",
+      "default": "auto",
+      "oneOf": [{ "type": "string", "enum": ["auto"] }, { "type": "boolean" }]
+    },
+    "parallel": {
+      "type": "boolean",
+      "description": "Run checks at the same time (default) or one at a time.",
+      "default": true
+    },
+    "output": {
+      "type": "string",
+      "description": "How much check output to print: 'auto' (failures full, passes tailed), 'always', or 'quiet'.",
+      "enum": ["auto", "always", "quiet"],
+      "default": "auto"
+    },
+    "baselineTolerancePct": {
+      "type": "number",
+      "description": "A check is flagged 'delayed' only when it exceeds its baseline by more than this percentage. Delays never fail the run.",
+      "default": 30
+    },
+    "toolsDir": {
+      "type": "string",
+      "description": "Where installable tools are placed and PATH-managed. Keep it gitignored.",
+      "default": ".tools"
+    },
+    "tools": {
+      "type": "object",
+      "description": "External tools checks may need. Each entry: how to probe for it and how to install it when missing.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "probe": {
+            "type": "string",
+            "description": "Cheap command that succeeds when the tool is present."
+          },
+          "install": {
+            "type": "string",
+            "description": "Command that installs the tool when the probe fails."
+          },
+          "version": {
+            "type": "string",
+            "description": "Pinned version to install and probe for."
+          },
+          "sha256": {
+            "description": "Optional pinned archive digests, keyed by platform (linux-x64, darwin-arm64, windows-x64, …).",
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "description": "The routes on the board. Key = route id used on the command line.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Human-readable name shown on the board and in status."
+          },
+          "group": {
+            "type": "string",
+            "description": "'check' routes run for ./pre-flight check; 'build' routes only run on the full board.",
+            "enum": ["check", "build"],
+            "default": "check"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Set by ./pre-flight on|off. Disabled routes are skipped everywhere except when named explicitly.",
+            "default": true
+          },
+          "skipNext": {
+            "type": "boolean",
+            "description": "Set by ./pre-flight skip. Skips exactly one run, then clears itself.",
+            "default": false
+          },
+          "command": {
+            "type": "string",
+            "description": "Shell command to run. '{bin:name}' resolves to the local node_modules binary on any platform. cwd is the repo root and the tools directory is on PATH."
+          },
+          "aliases": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Extra names accepted on the command line."
+          },
+          "tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Entries under `tools` that must be present (probed, then installed) before this check runs."
+          }
+        }
+      }
+    },
+    "baselines": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recordedAt": {
+          "type": ["string", "null"],
+          "description": "ISO date of the last ./pre-flight baseline run."
+        },
+        "seconds": {
+          "type": "object",
+          "description": "Route id → seconds a passing run took. Every run reports its +/- % against these.",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    }
+  }
+}

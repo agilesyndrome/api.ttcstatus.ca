@@ -7,6 +7,7 @@ export default tseslint.config(
       '**/.wrangler/**',
       '**/dist/**',
       '**/storybook-static/**',
+      '**/.tools/**',
       'public/**',
       'data/**',
       'tmp/**',

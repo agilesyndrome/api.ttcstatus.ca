@@ -119,7 +119,10 @@ should use `api.ttcstatus.ca` (set `workers_dev` to `false` in
 `workers/api/wrangler.jsonc` once the custom domain is confirmed live).
 
 CI checks types, lint, formatting, regression tests, module boundaries, source
-credentials, builds, Worker packaging, browser flows and component stories. The source scanner covers common
-credential patterns and accidental environment-file tracking; it is not a full
-historical secret audit. npm audit found no known vulnerabilities in the reviewed
-lockfile.
+credentials, builds, Worker packaging, browser flows and component stories. The pre-flight
+board scans credentials with gitleaks — pinned to a verified release in `security.json` —
+over both the working tree and the full git history, replacing the old regex scanner; the
+two known historical findings (the pre-rotation `.env` and the revoked-token digest) are
+acknowledged in `.gitleaksignore`, so any new credential fails the board. Scan output is
+redacted and never prints credential values. npm audit found no known vulnerabilities in
+the reviewed lockfile.

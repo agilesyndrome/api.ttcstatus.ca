@@ -1,0 +1,10 @@
+# Accepted gitleaks findings — each line is a fingerprint (commit:file:rule:line).
+# Everything here is already known, already rotated, and documented in
+# docs/security.md. Anything NOT in this file fails the pre-flight board.
+#
+# 1) The .env file committed before it was untracked (commit fa13585).
+#    The SYNC_TOKEN inside it has been rotated and no longer authorizes anything.
+fa1358584325b7314c348a866a13fb7fd0f1f0f3:.env:ttcstatus-env-file:1
+# 2) The revoked-token SHA-256 fingerprint this repo once compared against
+#    (commit 2148b4f). The constant was removed when the token was rotated.
+2148b4f0b04425df3d39491af0ae6b52ed0e87d6:workers/shared/http/admin-auth.ts:generic-api-key:2

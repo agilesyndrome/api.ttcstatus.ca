@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// api.ttcstatus.ca pre-flight board — every check, its baseline, one command.
+// Try `./pre-flight help` (or `node pre-flight help` on Windows).
+import './scripts/preflight/cli.mjs';

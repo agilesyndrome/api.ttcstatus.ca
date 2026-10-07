@@ -79,15 +79,16 @@ helpers and label placement. Both viewers use shared map calculations.
 
 ## Scripts, tests and artifacts
 
-| Directory             | Responsibility                                                         |
-| --------------------- | ---------------------------------------------------------------------- |
-| `scripts/build/`      | Standalone viewer build                                                |
-| `scripts/preview/`    | Local API/viewer adapters and browser authentication fixture           |
-| `scripts/checks/`     | Browser checks, source credential scan and import-boundary checks      |
-| `scripts/operations/` | Explicit production map regeneration command                           |
-| `tests/`              | Tests grouped by operation, with shared compilation and SQLite helpers |
-| `data/fixtures/`      | Unchanged reference map bundles                                        |
-| `dist/`               | Generated homepage, viewer and deployment assets; ignored by Git       |
+| Directory             | Responsibility                                                          |
+| --------------------- | ----------------------------------------------------------------------- |
+| `scripts/build/`      | Standalone viewer build                                                 |
+| `scripts/preview/`    | Local API/viewer adapters and browser authentication fixture            |
+| `scripts/checks/`     | Browser checks and the import-boundary check                            |
+| `scripts/preflight/`  | `./pre-flight` board: config, renderer, runner and gitleaks integration |
+| `scripts/operations/` | Explicit production map regeneration command                            |
+| `tests/`              | Tests grouped by operation, with shared compilation and SQLite helpers  |
+| `data/fixtures/`      | Unchanged reference map bundles                                         |
+| `dist/`               | Generated homepage, viewer and deployment assets; ignored by Git        |
 
 The browser authentication fixture replaces only the SDK/session interface;
 separate server tests verify real signed tokens and reject tampering. SQLite-backed

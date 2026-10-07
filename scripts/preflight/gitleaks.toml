@@ -1,0 +1,39 @@
+# Secret-detection rules for api.ttcstatus.ca. Extends gitleaks' built-in
+# ruleset with this repo's own credentials and policies. Used by both secret
+# routes on the pre-flight board:
+#
+#   secrets          — working tree (scripts/preflight/gitleaks-tree.mjs)
+#   secrets-history  — full git history (gitleaks git .)
+#
+# Known historical findings that have already been rotated are recorded in
+# .gitleaksignore at the repo root; anything new fails the board.
+
+title = 'api.ttcstatus.ca'
+
+[extend]
+useDefault = true
+
+# The admin sync token shared by the API and map-generator Workers.
+[[rules]]
+id = 'ttcstatus-sync-token'
+description = 'TTC Status SYNC_TOKEN admin credential'
+regex = '''SYNC_TOKEN[ ]?=[ ]?([A-Za-z0-9_-]{20,})'''
+secretGroup = 1
+keywords = ['SYNC_TOKEN']
+
+  [[rules.allowlists]]
+  description = 'placeholder values in the example file'
+  stopwords = ['REPLACE_WITH']
+
+# Policy: environment files must never be tracked (the old scanner enforced
+# this directly). Any assignment inside a tracked .env or .env.<name> file
+# is a finding; .env.example is the allowed template.
+[[rules]]
+id = 'ttcstatus-env-file'
+description = 'Environment file with assignments is tracked'
+path = '''(^|/)\.env(\.[^/.]+)?$'''
+regex = '''(?m)^[+]?[A-Za-z_][A-Za-z0-9_]*[ ]?=[ ]?\S'''
+
+  [[rules.allowlists]]
+  description = '.env.example is the allowed template'
+  paths = ['''\.env\.example$''']
