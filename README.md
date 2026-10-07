@@ -269,6 +269,40 @@ npm run deploy:api
 The React homepage revalidates map data on load and uses a schematic-format URL
 so an older cached seed map cannot prevent it from picking up the repaired map.
 
+## Named map artifacts and tags
+
+Every imported network version publishes immutable map artifacts under a
+**name**, which is also the public API path:
+
+| Name        | Path                    | Contents                                             |
+| ----------- | ----------------------- | ---------------------------------------------------- |
+| `streetcar` | `/api/v1/map/streetcar` | The schematic status map (`snake-v1` style)          |
+| `snake`     | `/api/v1/map/snake`     | The derived game board (collapsed, rounded, trimmed) |
+
+The nightly import (and `npm run map:regenerate:remote`) stores and activates
+both artifacts atomically. Any artifact can additionally be pinned with
+arbitrary **tags** (`latest`, `stable`, …) from the command line:
+
+```bash
+npm run map:tag -- list
+npm run map:tag -- set --name streetcar --tag stable                     # newest artifact
+npm run map:tag -- set --name streetcar --tag latest --artifact 42
+npm run map:tag -- set --name snake --tag stable --generator-version snake-v1.4.1
+npm run map:tag -- clear --name streetcar --tag experimental
+```
+
+Tag resolution on `GET /api/v1/map/<name>`:
+
+1. `?tag=<tag>` must exist, otherwise the request fails with `map-tag-missing`
+   (tags never fall back silently).
+2. Without `?tag=`, a `stable` tag wins when one is pinned.
+3. Otherwise the pipeline's `active` pointer serves the map, so publishing
+   never breaks just because nobody tagged anything.
+
+The snake board is published as a fully derived viewer payload (it has no
+`graph` section), so the homepage can consume it exactly as served; add
+`?map=snake` to `/xplore` to spin the snake board as the production map.
+
 ## Provisioning
 
 ### Cloudflare deploy configuration

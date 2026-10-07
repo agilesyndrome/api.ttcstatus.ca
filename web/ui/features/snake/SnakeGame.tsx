@@ -1,23 +1,34 @@
-import { t, getLocale } from '../../i18n';
+import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { memo, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Point, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
-import type { FeedState } from '../map/LiveFeedStatus';
 import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
-import { SnakeEngine, gameMissions, type Mode, type Turn } from './engine';
+import { SnakeEngine, gameMissions, type Mission, type Mode, type Turn } from './engine';
 
 interface Props {
   data: ViewerData;
   cars: PlottedVehicle[];
-  feed: FeedState;
   onClose(): void;
 }
 const noSelection = () => {};
 const GAME_DRAW_INTERVAL_MS = 50;
 const GAME_TICK_INTERVAL_MS = 33;
+// The board is derived synchronously from the already-loaded schematic (no
+// second network request). Memoize it per schematic so reopening the game is
+// instant instead of rebuilding the collapsed board every time.
+const snakeBoardCache = new WeakMap<ViewerData, ReturnType<typeof buildSnakeMap>>();
+const missionCache = new WeakMap<ViewerData, Mission[]>();
+const buildBoard = (source: ViewerData) => {
+  let cached = snakeBoardCache.get(source);
+  if (!cached) {
+    cached = buildSnakeMap(source);
+    snakeBoardCache.set(source, cached);
+  }
+  return cached;
+};
 const readBest = () => {
   try {
     const value = Number(localStorage.getItem('ttc:snake:v2:best'));
@@ -67,7 +78,6 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
 export const SnakeGame = memo(function SnakeGame({
   data: sourceData,
   cars: sourceCars,
-  feed,
   onClose,
 }: Props) {
   useLanguage();
@@ -78,15 +88,33 @@ export const SnakeGame = memo(function SnakeGame({
       /* Optional achievement storage. */
     }
   }, []);
-  const gameMap = useMemo(() => buildSnakeMap(sourceData), [sourceData]);
+  const gameMap = useMemo(() => buildBoard(sourceData), [sourceData]);
   const data = gameMap.data;
   const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
   const dialog = useRef<HTMLDialogElement>(null);
-  const engine = useMemo(
-    () => new SnakeEngine(data, { easySwitches: true, gameTraffic: true }),
-    [data],
+  const [touch] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false,
   );
-  const missions = useMemo(() => gameMissions(data), [data]);
+  const engine = useMemo(
+    () =>
+      new SnakeEngine(data, {
+        easySwitches: true,
+        gameTraffic: true,
+        keyHints: !touch,
+        chaos: true,
+      }),
+    [data, touch],
+  );
+  const missions = useMemo(() => {
+    let cached = missionCache.get(sourceData);
+    if (!cached) {
+      cached = gameMissions(sourceData);
+      missionCache.set(sourceData, cached);
+    }
+    return cached;
+  }, [sourceData]);
   const [mode, setMode] = useState<Mode>('arcade');
   const [missionId, setMissionId] = useState('');
   const [best, setBest] = useState(readBest);
@@ -115,10 +143,13 @@ export const SnakeGame = memo(function SnakeGame({
   const swipe = useRef<{ x: number; y: number; multiple: boolean } | undefined>(
     undefined,
   );
+  // The game starts zoomed in on the streetcar and zooms out as the train
+  // grows (one step per car collected); manual zoom otherwise sticks.
+  const grown = useRef(1);
   const originBounds = useMemo(() => {
     const point = engine.pose().point,
-      width = data.bounds.width / 7,
-      height = data.bounds.height / 7;
+      width = data.bounds.width / 12,
+      height = (width * data.bounds.height) / data.bounds.width;
     return { x: point[0] - width / 2, y: point[1] - height / 2, width, height };
   }, [engine, data]);
 
@@ -142,6 +173,8 @@ export const SnakeGame = memo(function SnakeGame({
     engine.pause();
     keys.current.clear();
     pedals.current.clear();
+    // Resuming always re-centers on the streetcar.
+    if (engine.status === 'running') setFollow(true);
     redraw();
   }
   function steer(turn: Turn | string) {
@@ -163,6 +196,7 @@ export const SnakeGame = memo(function SnakeGame({
       missions.find((mission) => mission.id === missionId),
     );
     setFollow(true);
+    grown.current = 1;
     keys.current.clear();
     pedals.current.clear();
     redraw();
@@ -200,36 +234,22 @@ export const SnakeGame = memo(function SnakeGame({
         event.target.closest('button')
       )
         return;
-      if (
-        ![
-          'arrowup',
-          'arrowdown',
-          'arrowleft',
-          'arrowright',
-          ' ',
-          '+',
-          '=',
-          '-',
-          '_',
-          'q',
-          'e',
-          'r',
-          'p',
-        ].includes(key)
-      )
-        return;
+      if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) return;
       if (engine.status === 'ready' || engine.status === 'over') return;
       event.preventDefault();
       event.stopPropagation();
       keys.current.add(event.code || key);
+      if (key === 'arrowup' || key === 'arrowdown') redraw();
       if (event.repeat) return;
-      if (key === 'p') pause();
-      else if (key === 'arrowleft' || key === 'q') steer('left');
-      else if (key === 'arrowright' || key === 'e') steer('right');
-      else if (key === ' ' || key === 'r') steer('straight');
+      if (key === 'arrowleft') steer('left');
+      else if (key === 'arrowright') steer('right');
+      else if (key === ' ') steer('straight');
     };
-    const keyup = (event: KeyboardEvent) =>
+    const keyup = (event: KeyboardEvent) => {
       keys.current.delete(event.code || event.key.toLowerCase());
+      const key = event.key.toLowerCase();
+      if (key === 'arrowup' || key === 'arrowdown') redraw();
+    };
     const away = () => {
       keys.current.clear();
       pedals.current.clear();
@@ -254,18 +274,27 @@ export const SnakeGame = memo(function SnakeGame({
       simulationCarry = 0;
     const animate = (now: number) => {
       const wasRunning = engine.status === 'running';
+      const wasOver = engine.status === 'over';
       const before = engine.count;
       if (wasRunning) {
         simulationCarry += previous ? Math.min(0.1, (now - previous) / 1000) : 0;
         if (simulationCarry >= GAME_TICK_INTERVAL_MS / 1000) {
           engine.tick(simulationCarry, traffic.current, heldPedals());
           simulationCarry = 0;
+          // Each collected car widens the camera one step.
+          if (engine.count > grown.current) {
+            grown.current = engine.count;
+            mapControls.current?.zoomBy(1.18);
+          }
           if (followRef.current) mapControls.current?.followPoint(engine.pose().point);
         }
       } else simulationCarry = 0;
       previous = now;
       if (engine.count > before) chime();
-      if (wasRunning && now - lastDraw >= GAME_DRAW_INTERVAL_MS) {
+      // A run ending mid-tick shows its verdict immediately, not on the next
+      // draw interval.
+      if (!wasOver && engine.status === 'over') redraw();
+      else if (wasRunning && now - lastDraw >= GAME_DRAW_INTERVAL_MS) {
         redraw();
         lastDraw = now;
       }
@@ -294,11 +323,8 @@ export const SnakeGame = memo(function SnakeGame({
     const has = (codes: string[]) => codes.some((code) => keys.current.has(code));
     return {
       accelerator:
-        has(['ArrowUp', 'Equal', 'NumpadAdd', 'arrowup', '+', '=']) ||
-        [...pedals.current.values()].includes(1),
-      brake:
-        has(['ArrowDown', 'Minus', 'NumpadSubtract', 'arrowdown', '-', '_']) ||
-        [...pedals.current.values()].includes(-1),
+        has(['ArrowUp', 'arrowup']) || [...pedals.current.values()].includes(1),
+      brake: has(['ArrowDown', 'arrowdown']) || [...pedals.current.values()].includes(-1),
     };
   }
   const pose = engine.pose(),
@@ -327,13 +353,6 @@ export const SnakeGame = memo(function SnakeGame({
     ...engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
   ];
   const playing = engine.status === 'running' || engine.status === 'paused';
-  const feedText = feed.failed
-    ? t('snake.liveRefreshUnavailableUsingFreshReportsOnly')
-    : !feed.active
-      ? t('snake.liveFeedPausedUsingFreshReportsOnly')
-      : fresh.length
-        ? t('snake.valueFreshStreetcarsOnTheMap', { value1: fresh.length })
-        : t('snake.waitingForFreshStreetcarPositions');
   const pedal = (value: number) => ({
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
       event.preventDefault();
@@ -450,10 +469,33 @@ export const SnakeGame = memo(function SnakeGame({
           focusPoint={follow && playing ? pose.point : undefined}
           focusBounds={originBounds}
           onInteract={() => setFollow(false)}
+          onZoomInteract={() => {
+            /* Zooming keeps camera following; only panning takes over. */
+          }}
           onSelectFeature={noSelection}
           onSelectVehicle={noSelection}
           overlay={(scale) => (
             <g className="snake-train" pointerEvents="none">
+              {engine.hazard?.edgeId &&
+                (() => {
+                  const edge = data.edges.find(
+                    (candidate) => candidate.id === engine.hazard?.edgeId,
+                  );
+                  if (!edge) return null;
+                  return (
+                    <g data-snake-hazard={engine.hazard.kind}>
+                      <polyline
+                        points={edge.points.map((point) => point.join(',')).join(' ')}
+                        fill="none"
+                        stroke={engine.hazard.kind === 'stalled' ? '#f4a300' : '#d71920'}
+                        strokeWidth={10}
+                        strokeDasharray="14 10"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </g>
+                  );
+                })()}
               {switchArrow && (
                 <>
                   <path
@@ -520,8 +562,12 @@ export const SnakeGame = memo(function SnakeGame({
                   ],
                   data.geographicTransform,
                 );
+                // True-to-scale car length in screen pixels. Cars sit SPACING
+                // metres apart, so the true length always fits without
+                // bunching; zoomed out they shrink instead of overlapping
+                // (the constant-width body polyline keeps the train legible).
                 const length = Math.max(
-                  18,
+                  8,
                   Math.hypot(front[0] - back[0], front[1] - back[1]) * scale,
                 );
                 return (
@@ -596,24 +642,22 @@ export const SnakeGame = memo(function SnakeGame({
           {t('snake.best')} {best}
         </span>
       </div>
+      {playing && engine.banner && (
+        <div className="snake-event" data-hazard={engine.hazard?.kind} role="status">
+          {engine.banner}
+        </div>
+      )}
       {playing && (
         <div className="snake-status">
-          <p role="status">{t(engine.message)}</p>
+          <p className="snake-sr" role="status">
+            {t(engine.message)}
+          </p>
           {nextStop && (
-            <p>
-              {t('snake.nextStop')} {nextStop.name} · {Math.round(nextStop.metres)}{' '}
-              {t('snake.m')}
+            <p className="snake-next-stop">
+              {t('snake.nextStop')}{' '}
+              <b>{nextStop.name.split(/\s+[-–—]\s*/)[0]?.trim() || nextStop.name}</b> ·{' '}
+              {Math.round(nextStop.metres)} {t('snake.m')}
             </p>
-          )}
-          <small>{feedText}</small>
-          {feed.snapshot && (
-            <small>
-              {t('snake.positions')}{' '}
-              {new Date(
-                feed.snapshot.feedTimestamp ?? feed.snapshot.fetchedAt,
-              ).toLocaleTimeString(getLocale(), { timeZone: 'America/Toronto' })}{' '}
-              · {feed.snapshot.attribution}
-            </small>
           )}
         </div>
       )}
@@ -625,9 +669,23 @@ export const SnakeGame = memo(function SnakeGame({
               : t('snake.yourStreetcarYourSwitches')}
           </p>
           <h1>
-            {engine.status === 'over' ? t('snake.gameOver') : t('snake.takeTheControls')}
+            {engine.status === 'over'
+              ? engine.gameOverKind === 'closedSection'
+                ? t('snake.absolutelyNot')
+                : t('snake.serviceSuspended')
+              : t('snake.takeTheControls')}
           </h1>
-          {engine.status === 'over' && <p role="status">{t(engine.message)}</p>}
+          {engine.status === 'over' && (
+            <>
+              <p role="status">{t(engine.message)}</p>
+              <p className="snake-scoreline">
+                {t('snake.valueCarsCoupledBestValue', {
+                  value1: engine.count,
+                  value2: best,
+                })}
+              </p>
+            </>
+          )}
           <label>
             {t('snake.drivingMode')}
             <select
@@ -639,11 +697,6 @@ export const SnakeGame = memo(function SnakeGame({
               <option value="purist">{t('snake.puristDriveOneStreetcar')}</option>
             </select>
           </label>
-          <p>
-            {mode === 'arcade'
-              ? t('snake.coupleLiveStreetcarsIntoAnEverLongerTrainAvoidYour')
-              : t('snake.driveOneStreetcarAtUpTo50KmHTouch')}
-          </p>
           <label>
             {t('snake.route')}
             <select
@@ -659,19 +712,6 @@ export const SnakeGame = memo(function SnakeGame({
               ))}
             </select>
           </label>
-          <p>{t('snake.routeMissionsFollowTheSignedPathReachTheTerminalFor')}</p>
-          <p>
-            {t('snake.aTorontoPlaygroundWithSimplerJunctionsAndAutomaticTerminalTurns')}
-            {gameMap.transfers.length > 0 &&
-              t('snake.takeASubwayTransferToSnakeBetweenLines')}
-          </p>
-          <p className="snake-instructions">
-            {t('snake.accelerateAndBrakeSpaceOrQERThrowSwitches')}
-          </p>
-          <p className="snake-feed-note">
-            {feedText}
-            {t('snake.onlyFreshOnTrackReportsCountPositionsUpdateWithThe')}
-          </p>
           <label className="snake-mute">
             <input
               type="checkbox"
@@ -703,57 +743,29 @@ export const SnakeGame = memo(function SnakeGame({
               <button onClick={pause}>{t('snake.resumeDriving')}</button>
             </div>
           )}
-          <div className="snake-switches" aria-label={t('snake.switchControls')}>
-            <small>
-              {engine.turningAround
-                ? t('snake.turningAroundValueM', {
-                    value1: Math.round(engine.turnbackRemaining),
-                  })
-                : upcoming
-                  ? t('snake.switchSummary', {
-                      mode: upcoming.manual ? t('snake.selected') : t('snake.auto'),
-                      direction: upcoming.selected.label,
-                      distance: Math.round(upcoming.distance),
-                    })
-                  : engine.queued
-                    ? t('snake.queuedValue', {
-                        value1: t(`snake.direction.${engine.queued}`),
-                      })
-                    : t('snake.queueTheNextSwitch')}
-            </small>
-            <div>
-              {upcoming
-                ? upcoming.choices.map((choice) => (
-                    <button
-                      key={choice.edgeId}
-                      aria-pressed={upcoming.selected.edgeId === choice.edgeId}
-                      data-selection={
-                        upcoming.selected.edgeId === choice.edgeId
-                          ? upcoming.manual
-                            ? 'manual'
-                            : 'automatic'
-                          : undefined
-                      }
-                      onClick={() => steer(choice.edgeId)}
-                    >
-                      {choice.label}
-                    </button>
-                  ))
-                : (['left', 'straight', 'right'] as Turn[]).map((turn) => (
-                    <button
-                      key={turn}
-                      aria-pressed={engine.queued === turn}
-                      onClick={() => steer(turn)}
-                    >
-                      {turn === 'left'
-                        ? t('snake.left')
-                        : turn === 'right'
-                          ? t('snake.right')
-                          : t('snake.straight')}
-                    </button>
-                  ))}
+          {/* No switch nearby: no directional indicators. */}
+          {upcoming && (
+            <div className="snake-switches" aria-label={t('snake.switchControls')}>
+              <div>
+                {upcoming.choices.map((choice) => (
+                  <button
+                    key={choice.edgeId}
+                    aria-pressed={upcoming.selected.edgeId === choice.edgeId}
+                    data-selection={
+                      upcoming.selected.edgeId === choice.edgeId
+                        ? upcoming.manual
+                          ? 'manual'
+                          : 'automatic'
+                        : undefined
+                    }
+                    onClick={() => steer(choice.edgeId)}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="snake-pedals">
             <button
               className="snake-brake"

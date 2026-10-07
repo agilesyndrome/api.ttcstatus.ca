@@ -4,7 +4,7 @@ import type { PlottedVehicle } from '../../../../shared/map/live-status';
 
 export interface TransitMapControls {
   zoomBy(factor: number, clientPoint?: Point): void;
-  followPoint(point: Point): void;
+  followPoint(point: Point, width?: number): void;
   cancelGesture(): void;
 }
 export interface TransitMapProps {
@@ -31,6 +31,8 @@ export interface TransitMapProps {
   comparisonStops?: { from?: Feature; to?: Feature };
   pickingLabel?: string;
   onInteract?(): void;
+  /** Fires instead of onInteract for zoom gestures, so zooming can keep following. */
+  onZoomInteract?(): void;
   onExport?(): void;
   overlay?: ReactNode | ((scale: number) => ReactNode);
   mapTools?: ReactNode;

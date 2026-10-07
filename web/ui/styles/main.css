@@ -1517,21 +1517,77 @@ select:focus-visible {
   top: calc(190px + env(safe-area-inset-top));
   left: 16px;
   max-width: min(330px, calc(100% - 32px));
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-radius: 9px;
   background: var(--surface);
   pointer-events: none;
   opacity: 0.94;
 }
 .snake-status p {
-  font-size: 12px;
-  margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
 }
-.snake-status small {
-  display: block;
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--muted);
+.snake-status .snake-next-stop b {
+  font-size: 15px;
+  font-weight: 750;
+}
+.snake-status .snake-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 620px) {
+  .snake-status {
+    top: calc(150px + env(safe-area-inset-top));
+    left: 12px;
+    max-width: calc(100% - 24px);
+    padding: 9px 12px;
+  }
+  .snake-status p {
+    font-size: 13px;
+  }
+  .snake-status .snake-next-stop b {
+    font-size: 14px;
+  }
+}
+.snake-event {
+  position: absolute;
+  top: calc(135px + env(safe-area-inset-top));
+  right: 16px;
+  max-width: min(320px, calc(100% - 32px));
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: #f4a300;
+  color: #25343c;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  box-shadow: 0 8px 30px #25343c30;
+  pointer-events: none;
+}
+.snake-event[data-hazard='closed'] {
+  background: #d71920;
+  color: #fffdf7;
+}
+.snake-event[data-hazard='stalled'] {
+  background: #e8927c;
+}
+@media (max-width: 620px) {
+  .snake-event {
+    top: calc(196px + env(safe-area-inset-top));
+    right: 12px;
+    max-width: calc(100% - 24px);
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+}
+.snake-menu .snake-scoreline {
+  font-weight: 700;
+  color: var(--text);
 }
 .snake-paused {
   position: absolute;
@@ -1556,13 +1612,6 @@ select:focus-visible {
   transform: translateX(-50%);
   max-width: calc(100% - 24px);
   text-align: center;
-}
-.snake-switches small {
-  display: inline-block;
-  background: var(--surface);
-  padding: 6px 10px;
-  border-radius: 6px 6px 0 0;
-  font-size: 11px;
 }
 .snake-switches > div {
   display: flex;

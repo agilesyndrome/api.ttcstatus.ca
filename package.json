@@ -35,6 +35,7 @@
     "test:collection": "node scripts/checks/check-collection.mjs",
     "test:stories": "node scripts/checks/check-stories.mjs",
     "map:regenerate:remote": "node scripts/operations/regenerate-map.mjs",
+    "map:tag": "node scripts/operations/tag-map.mjs",
     "test:snake": "node scripts/checks/check-snake.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -43,7 +43,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     focusPointLevel,
     resetKey,
     theme,
-    feed,
     cars,
     feature,
     car,
@@ -97,7 +96,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           <SnakeGame
             data={data}
             cars={cars}
-            feed={feed}
             onClose={() => {
               setSnakeOpen(false);
               requestAnimationFrame(() =>

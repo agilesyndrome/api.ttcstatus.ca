@@ -47,9 +47,9 @@ export async function routeRequest(
 
   if (
     (request.method === 'GET' || request.method === 'HEAD') &&
-    url.pathname === '/api/v1/map/streetcar'
+    (url.pathname === '/api/v1/map/streetcar' || url.pathname === '/api/v1/map/snake')
   ) {
-    return mapResponse(request, env, ctx);
+    return mapResponse(request, env, ctx, url.pathname.split('/').at(-1));
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/network') {

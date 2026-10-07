@@ -28,6 +28,7 @@ export function TransitMap({
   comparisonStops,
   pickingLabel,
   onInteract,
+  onZoomInteract,
   onExport,
   overlay,
   mapTools,
@@ -48,7 +49,7 @@ export function TransitMap({
     zoom,
     move,
     initial,
-    interact,
+    zoomInteract,
     handlers,
   } = useMapCamera({
     data,
@@ -61,6 +62,7 @@ export function TransitMap({
     followPoint,
     resetKey,
     onInteract,
+    onZoomInteract,
     driving,
     controlsRef,
     onSelectFeature,
@@ -536,7 +538,7 @@ export function TransitMap({
         <button
           aria-label={t('transitMap.zoomIn')}
           onClick={() => {
-            interact.current?.();
+            zoomInteract.current?.();
             zoom(0.7);
           }}
         >
@@ -546,7 +548,7 @@ export function TransitMap({
         <button
           aria-label={t('transitMap.zoomOut')}
           onClick={() => {
-            interact.current?.();
+            zoomInteract.current?.();
             zoom(1 / 0.7);
           }}
         >
@@ -554,7 +556,7 @@ export function TransitMap({
         </button>
         <button
           onClick={() => {
-            interact.current?.();
+            zoomInteract.current?.();
             move(initial);
           }}
         >

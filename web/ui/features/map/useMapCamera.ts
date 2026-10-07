@@ -14,6 +14,7 @@ export function useMapCamera({
   focusBounds,
   resetKey = 0,
   onInteract,
+  onZoomInteract,
   driving = false,
   controlsRef,
   onSelectFeature,
@@ -30,6 +31,7 @@ export function useMapCamera({
   | 'focusBounds'
   | 'resetKey'
   | 'onInteract'
+  | 'onZoomInteract'
   | 'driving'
   | 'controlsRef'
   | 'onSelectFeature'
@@ -51,6 +53,12 @@ export function useMapCamera({
   const pending = useRef<Bounds>(camera);
   const interact = useRef(onInteract);
   interact.current = onInteract;
+  // Zoom gestures report through onZoomInteract when provided (falling back
+  // to onInteract) so following code can keep following through a zoom.
+  const zoomInteract = useRef(onZoomInteract ?? onInteract);
+  zoomInteract.current = onZoomInteract ?? onInteract;
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
   const scale = size.width / camera.width;
   const level = initial.width / camera.width;
   // At network scale, one compact marker per car leaves the tracks readable.
@@ -103,7 +111,9 @@ export function useMapCamera({
         current,
         factor,
         anchor ?? [current.x + current.width / 2, current.y + current.height / 2],
-        initialRef.current.width / 12,
+        // The driving game starts close-up and may pinch in below the
+        // explorer's floor; give it one extra stop of headroom.
+        initialRef.current.width / (driving ? 18 : 12),
         initialRef.current.width,
       ),
     );
@@ -121,13 +131,21 @@ export function useMapCamera({
     controlsRef.current = {
       zoomBy: (factor, clientPoint) =>
         zoom(factor, clientPoint ? world(...clientPoint) : undefined),
-      followPoint: (point) => {
-        const current = cameraRef.current;
+      followPoint: (point, width) => {
+        const current = cameraRef.current,
+          bounds = initialRef.current;
+        // Keep the car centered. With an explicit width, also zoom toward it
+        // (clamped to the same limits as manual zoom), keeping the aspect.
+        const aspect = sizeRef.current.width / sizeRef.current.height;
+        const nextWidth = width
+          ? Math.max(bounds.width / (driving ? 18 : 12), Math.min(bounds.width, width))
+          : current.width;
+        const height = nextWidth / aspect;
         move({
-          x: point[0] - current.width / 2,
-          y: point[1] - current.height / 2,
-          width: current.width,
-          height: current.height,
+          x: point[0] - nextWidth / 2,
+          y: point[1] - height / 2,
+          width: nextWidth,
+          height,
         });
       },
       cancelGesture: () => {
@@ -167,7 +185,7 @@ export function useMapCamera({
     observer.observe(node);
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
-      interact.current?.();
+      zoomInteract.current?.();
       zoom(
         Math.exp(Math.max(-160, Math.min(160, event.deltaY)) * 0.0025),
         world(event.clientX, event.clientY),
@@ -306,7 +324,7 @@ export function useMapCamera({
       moved.current = true;
     },
     onDoubleClick: (event) => {
-      interact.current?.();
+      zoomInteract.current?.();
       zoom(0.5, world(event.clientX, event.clientY));
     },
     onKeyDown: (event) => {
@@ -344,6 +362,7 @@ export function useMapCamera({
     move,
     initial,
     interact,
+    zoomInteract,
     handlers,
   };
 }

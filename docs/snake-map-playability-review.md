@@ -37,6 +37,11 @@ review found and addressed these small, deterministic improvements:
 31. Audit every edge, feature, and ordered mission after generation.
 32. Drive every directed edge at extreme speed in regression tests.
 33. Complete every production mission twice with a 30-car train in regression tests.
+34. Trim a short tail track that dangles from a terminal, so a u-turn happens at
+    the terminal point instead of 300 m down the layover stub.
+35. Anchor a station's fake interchange on every line whose own track passes
+    the station, so a crossing line (Line 1 / Line 6 at Finch West) gains its
+    transfer even when no co-located platform record lists the other route.
 
 The result is intentionally not a surveyed track inventory: it is a compact,
 smooth, connected playground where a long train eventually collides with its

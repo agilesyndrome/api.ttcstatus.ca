@@ -4,8 +4,17 @@ import {
   GENERATOR_VERSION,
   MAP_MODE,
   MAP_STYLE,
+  STREETCAR_MAP_NAME,
 } from '../config';
 import type { MapGeneratorEnv } from '../types';
+
+export interface ArtifactOptions {
+  /** Published map name (its public API path), e.g. 'streetcar' or 'snake'. */
+  name?: string;
+  style?: string;
+  generatorVersion?: string;
+  mode?: string;
+}
 
 function chunkString(value: string): string[] {
   const chunks: string[] = [];
@@ -29,7 +38,12 @@ export async function storeMapArtifact(
   env: MapGeneratorEnv,
   versionId: number,
   bundle: unknown,
+  options: ArtifactOptions = {},
 ): Promise<number> {
+  const name = options.name ?? STREETCAR_MAP_NAME;
+  const mode = options.mode ?? MAP_MODE;
+  const style = options.style ?? MAP_STYLE;
+  const generatorVersion = options.generatorVersion ?? GENERATOR_VERSION;
   const json = JSON.stringify(bundle);
   const etag = await sha256Hex(json);
   const chunks = chunkString(json);
@@ -41,7 +55,7 @@ export async function storeMapArtifact(
      WHERE version_id = ? AND mode = ? AND style = ? AND generator_version = ?
      LIMIT 1`,
   )
-    .bind(versionId, MAP_MODE, MAP_STYLE, GENERATOR_VERSION)
+    .bind(versionId, mode, style, generatorVersion)
     .first<{ id: number }>();
 
   let artifactId: number;
@@ -60,14 +74,15 @@ export async function storeMapArtifact(
   } else {
     await env.DB.prepare(
       `INSERT INTO map_artifacts (
-         version_id, mode, style, generator_version, etag, byte_size, chunk_count, created_at, active
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         version_id, mode, style, generator_version, name, etag, byte_size, chunk_count, created_at, active
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     )
       .bind(
         versionId,
-        MAP_MODE,
-        MAP_STYLE,
-        GENERATOR_VERSION,
+        mode,
+        style,
+        generatorVersion,
+        name,
         etag,
         byteSize,
         chunks.length,
@@ -80,7 +95,7 @@ export async function storeMapArtifact(
        WHERE version_id = ? AND mode = ? AND style = ? AND generator_version = ?
        LIMIT 1`,
     )
-      .bind(versionId, MAP_MODE, MAP_STYLE, GENERATOR_VERSION)
+      .bind(versionId, mode, style, generatorVersion)
       .first<{ id: number }>();
     if (!inserted)
       throw new Error('Map artifact insert succeeded but could not be read back');

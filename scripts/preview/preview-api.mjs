@@ -12,7 +12,9 @@ export async function createPreviewMiddleware() {
     export { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from './workers/api/src/realtime/realtime';
     export { VehicleSnapshotCache } from './workers/api/src/realtime/vehicle-snapshot-cache';
     export { liveUpdateSeconds } from './shared/live/config';
-    export { ifNoneMatchMatches } from './shared/http/etag';`,
+    export { ifNoneMatchMatches } from './shared/http/etag';
+    export { buildViewerData } from './shared/map/model';
+    export { buildSnakeMap } from './shared/map/game-map';`,
       resolveDir: process.cwd(),
       loader: 'ts',
     },
@@ -30,6 +32,8 @@ export async function createPreviewMiddleware() {
     DEFAULT_VEHICLE_FEED_URL,
     liveUpdateSeconds,
     ifNoneMatchMatches,
+    buildViewerData,
+    buildSnakeMap,
   } = await import(pathToFileURL(resolve('.wrangler/preview/react-realtime.mjs')).href);
   const updateSeconds = liveUpdateSeconds(process.env.REALTIME_UPDATE_SECONDS);
   const snapshots = new VehicleSnapshotCache(
@@ -38,7 +42,7 @@ export async function createPreviewMiddleware() {
     updateSeconds,
     fetchRailSnapshot,
   );
-  let mapPromise;
+  let sourcePromise;
   return async (request, response, next) => {
     const path = new URL(request.url, 'http://localhost').pathname;
     if (!path.startsWith('/api/')) return next();
@@ -57,9 +61,11 @@ export async function createPreviewMiddleware() {
       return json({ error: 'profile-not-found' }, 404, { 'cache-control': 'no-store' });
     if (request.method !== 'GET') return json({ error: 'not-found' }, 404);
     if (path === '/api/healthz') return json({ ok: true, worker: 'local-preview' });
-    if (path === '/api/v1/map/streetcar') {
+    if (path === '/api/v1/map/streetcar' || path === '/api/v1/map/snake') {
       try {
-        mapPromise ??= (async () =>
+        // Cache the source bundle; the snake board is derived per request so
+        // one cached promise can serve both named maps.
+        sourcePromise ??= (async () =>
           previewMap(
             process.env.MAP_INPUT ||
               (await access('.wrangler/preview/rail-map.json').then(
@@ -67,10 +73,17 @@ export async function createPreviewMiddleware() {
                 () => 'data/fixtures/streetcarmap.json',
               )),
           ))().catch((error) => {
-          mapPromise = undefined;
+          sourcePromise = undefined;
           throw error;
         });
-        return json(await mapPromise, 200, { 'cache-control': 'public, max-age=3600' });
+        const source = await sourcePromise;
+        if (path === '/api/v1/map/snake') {
+          // Derive the published snake board exactly like the generator does.
+          return json(buildSnakeMap(buildViewerData(source)).data, 200, {
+            'cache-control': 'public, max-age=3600',
+          });
+        }
+        return json(source, 200, { 'cache-control': 'public, max-age=3600' });
       } catch (error) {
         console.error(error);
         return json({ error: 'map-not-ready' }, 503);

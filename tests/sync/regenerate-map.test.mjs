@@ -54,9 +54,9 @@ function fixture({
       if (validationFails) throw new Error('invalid schematic');
       return { edges: [1, 2], features: [1] };
     },
-    storeMapArtifact: async () => {
+    generateStreetcarMap: async () => {
       if (storageFails) throw new Error('chunk write failed');
-      return 9;
+      return { artifactId: 9, snakeArtifactId: 10 };
     },
   };
   return { db, modules, calls };
@@ -70,17 +70,23 @@ test('dry-run validates without writing, locking or publishing production record
   );
   assert.ok(f.calls.every((call) => call.sql.startsWith('SELECT')));
 });
-test('regeneration publishes with one guarded statement and releases its own sync lock', async () => {
+test('regeneration publishes both named maps with guarded statements and releases its own sync lock', async () => {
   const f = fixture();
   const result = await regenerateMap(f.db, f.modules);
   assert.equal(result.status, 'updated');
   assert.equal(result.previousArtifactId, 3);
+  assert.equal(result.snakeArtifactId, 10);
   const publication = f.calls.filter((call) =>
     call.sql.startsWith('UPDATE map_artifacts'),
   );
-  assert.equal(publication.length, 1);
-  assert.ok(publication[0].sql.includes('ready.chunk_count = (SELECT COUNT(*)'));
-  assert.ok(publication[0].sql.includes('network_versions WHERE id = ? AND active = 1'));
+  // One guarded flip per published name: the schematic and the snake board.
+  assert.equal(publication.length, 2);
+  for (const statement of publication) {
+    assert.ok(statement.sql.includes('ready.chunk_count = (SELECT COUNT(*)'));
+    assert.ok(statement.sql.includes('network_versions WHERE id = ? AND active = 1'));
+  }
+  assert.ok(publication.some((call) => call.sql.includes("style = 'snake-v1'")));
+  assert.ok(publication.some((call) => call.sql.includes("style = 'snake-board-v1'")));
   const release = f.calls.at(-1);
   assert.ok(release.sql.includes('AND lock_until = ?'));
   assert.equal(release.values[1], f.calls[0].values[0]);

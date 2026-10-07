@@ -53,6 +53,19 @@ export async function activateNetworkVersion(
     .bind(artifactId, version.id)
     .first<{ id: number }>();
   if (!ready) throw new Error('Cannot activate an incomplete or mismatched map artifact');
+  // The same version must also carry a complete snake board artifact so the
+  // named map flips atomically for every published name.
+  const snakeReady = await env.DB.prepare(
+    `SELECT id FROM map_artifacts
+     WHERE version_id = ? AND name = 'snake'
+     AND chunk_count > 0
+     AND chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = map_artifacts.id)
+     ORDER BY id DESC LIMIT 1`,
+  )
+    .bind(version.id)
+    .first<{ id: number }>();
+  if (!snakeReady)
+    throw new Error('Cannot activate a version without a complete snake map artifact');
   const activatedAt = nowIso();
 
   await env.DB.batch([
@@ -62,7 +75,7 @@ export async function activateNetworkVersion(
     ).bind(SOURCE_KEY),
     env.DB.prepare(
       `UPDATE map_artifacts SET active = 0
-       WHERE mode = 'streetcar' AND style = 'snake-v1' AND active = 1`,
+       WHERE mode = 'streetcar' AND active = 1`,
     ),
     env.DB.prepare(
       `UPDATE network_versions
@@ -70,6 +83,9 @@ export async function activateNetworkVersion(
        WHERE id = ?`,
     ).bind(activatedAt, version.id),
     env.DB.prepare(`UPDATE map_artifacts SET active = 1 WHERE id = ?`).bind(artifactId),
+    env.DB.prepare(
+      `UPDATE map_artifacts SET active = 1 WHERE name = 'snake' AND version_id = ?`,
+    ).bind(version.id),
     env.DB.prepare(
       `UPDATE source_state
        SET source_url = ?, source_etag = ?, source_last_modified = ?,

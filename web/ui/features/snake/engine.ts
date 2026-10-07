@@ -38,6 +38,29 @@ export interface SwitchChoice extends EdgeRef {
   angle: number;
   label: string;
 }
+
+/**
+ * A switch button names the control that throws it plus the street and route
+ * number, e.g. "[Left] Carlton · 505". Touch devices have no keyboard, so
+ * there the button shows a direction arrow instead of a key hint.
+ */
+export function switchLabel(
+  turn: Turn,
+  street: string,
+  routes: string,
+  keys = true,
+): string {
+  const place =
+    street && routes ? `${street} · ${routes}` : street || routes || t('snake.track');
+  const key =
+    turn === 'left'
+      ? t('snake.keyLeft')
+      : turn === 'right'
+        ? t('snake.keyRight')
+        : t('snake.keyStraight');
+  const arrow = turn === 'left' ? '←' : turn === 'right' ? '→' : '↑';
+  return `${keys ? `[${key}]` : arrow} ${place}`;
+}
 export interface Pedals {
   accelerator: boolean;
   brake: boolean;
@@ -69,7 +92,23 @@ const CAR_LENGTH = 30.2,
   GAME_TRAFFIC_RESPAWN_DELAY = 3.5,
   GAME_RANDOM_MIN_AHEAD = 260,
   GAME_RANDOM_MIN_SPACING = 250,
-  GAME_CAR_PREFIX = 'snake-v2-';
+  GAME_CAR_PREFIX = 'snake-v2-',
+  // Overdrive: the arcade governor, pedal rates and braking are deliberately
+  // absurd; the fun is surviving a 3000 km/h streetcar that stops fast.
+  ARCADE_MAX_SPEED = 3000,
+  ARCADE_ACCELERATION = 600,
+  ARCADE_BRAKING = 900,
+  PURIST_MAX_SPEED = 50,
+  // Transit Control disruptions (classic-game chaos).
+  SLOW_ORDER_SECONDS = 12,
+  SLOW_ORDER_CAP_ARCADE = 600,
+  SLOW_ORDER_CAP_PURIST = 25,
+  STALLED_SECONDS = 19,
+  CLOSED_SECONDS = 24,
+  HAZARD_FIRST_MIN = 20,
+  HAZARD_FIRST_EXTRA = 15,
+  HAZARD_GAP_MIN = 30,
+  HAZARD_GAP_EXTRA = 25;
 const deltaAngle = (angle: number) => ((angle + 540) % 360) - 180;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
@@ -127,6 +166,17 @@ export function gameMissions(data: ViewerData): Mission[] {
     .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
 }
 
+export type HazardKind = 'slow' | 'stalled' | 'closed';
+export interface Hazard {
+  kind: HazardKind;
+  edgeId?: string;
+}
+/**
+ * Disruptions are fictional gameplay events layered over the graph, like the
+ * classic game: slow orders cap the speedometer, and a stalled car or a
+ * DO-NOT-ENTER section closes one track until cleared. Entering a closed
+ * section ends the run.
+ */
 export class SnakeEngine {
   readonly edges: Map<string, Edge>;
   readonly adjacent = new Map<string, Edge[]>();
@@ -150,6 +200,13 @@ export class SnakeEngine {
   missionRefs: EdgeRef[] = [];
   missionIndex = -1;
   gameCars: PlottedVehicle[] = [];
+  /** Visible one-line disruption banner; empty when the track is clear. */
+  banner = '';
+  gameOverKind?: 'selfCollision' | 'collision' | 'closedSection';
+  private hazardClock = 0;
+  private nextHazardAt = Infinity;
+  private hazardUntil = 0;
+  private activeHazard?: Hazard;
   private turnGraceUntil = 0;
   private lastRecorded = -Infinity;
   private turnback?: Turnback;
@@ -170,7 +227,13 @@ export class SnakeEngine {
 
   constructor(
     readonly data: ViewerData,
-    readonly options: { easySwitches?: boolean; gameTraffic?: boolean } = {},
+    readonly options: {
+      easySwitches?: boolean;
+      gameTraffic?: boolean;
+      keyHints?: boolean;
+      /** Transit Control disruptions (slow orders, stalled cars, closures). */
+      chaos?: boolean;
+    } = {},
   ) {
     this.routeNumbers = new Map(data.routes.map((route) => [route.id, route.number]));
     this.infrastructureNames = new Map(
@@ -605,6 +668,69 @@ export class SnakeEngine {
     }
   }
 
+  /** The current disruption, if any, for banners and track overlays. */
+  get hazard(): Hazard | undefined {
+    return this.activeHazard;
+  }
+
+  /**
+   * The slow-order speed cap in km/h for the current mode. 0 when no slow
+   * order is active.
+   */
+  get slowCapKph(): number {
+    return this.activeHazard?.kind === 'slow'
+      ? this.mode === 'purist'
+        ? SLOW_ORDER_CAP_PURIST
+        : SLOW_ORDER_CAP_ARCADE
+      : 0;
+  }
+
+  private startHazard() {
+    const kinds: HazardKind[] = ['slow', 'stalled', 'closed'];
+    const kind = kinds[Math.floor(this.random() * kinds.length)];
+    if (kind === 'slow') {
+      this.activeHazard = { kind };
+      this.hazardUntil = this.hazardClock + SLOW_ORDER_SECONDS;
+      this.banner = t('snake.transitControlSlowOrderValueKmHForValueSeconds', {
+        value1: this.slowCapKph,
+        value2: SLOW_ORDER_SECONDS,
+      });
+      return;
+    }
+    // Close one reasonable stretch of scheduled track; yards and connectors
+    // would make the closure hard to even notice.
+    const candidates = [...this.edges.values()].filter(
+      (edge) => edge.lengthMetres > 120 && edge.routeIds.length,
+    );
+    const edge = candidates[Math.floor(this.random() * candidates.length)];
+    if (!edge) return;
+    this.activeHazard = { kind, edgeId: edge.id };
+    this.hazardUntil =
+      this.hazardClock + (kind === 'stalled' ? STALLED_SECONDS : CLOSED_SECONDS);
+    this.banner =
+      kind === 'stalled'
+        ? t('snake.stalledCarValueValueFindAnotherWay', {
+            value1:
+              edge.routeIds
+                .map((id) => this.routeNumbers.get(id))
+                .filter(Boolean)
+                .join('/') || t('snake.track'),
+          })
+        : t('snake.doNotEnterSectionFindAnotherWay');
+  }
+
+  private updateHazards() {
+    if (!this.options.chaos) return;
+    if (this.activeHazard && this.hazardClock >= this.hazardUntil) {
+      this.activeHazard = undefined;
+      this.banner = '';
+      this.nextHazardAt =
+        this.hazardClock + HAZARD_GAP_MIN + this.random() * HAZARD_GAP_EXTRA;
+    } else if (!this.activeHazard && this.hazardClock >= this.nextHazardAt) {
+      this.startHazard();
+    }
+  }
+
   start(mode: Mode, cars: PlottedVehicle[], mission?: Mission, random = Math.random) {
     this.mode = mode;
     this.speed = mode === 'purist' ? 50 : 180;
@@ -625,6 +751,11 @@ export class SnakeEngine {
     this.guaranteedGameCarId = undefined;
     this.gameCarSerial = 0;
     this.gameTrafficCooldown = 0;
+    this.banner = '';
+    this.gameOverKind = undefined;
+    this.activeHazard = undefined;
+    this.hazardClock = 0;
+    this.nextHazardAt = HAZARD_FIRST_MIN + random() * HAZARD_FIRST_EXTRA;
     this.invalidateTraffic();
     const refs =
       mission?.refs ??
@@ -747,7 +878,7 @@ export class SnakeEngine {
           direction,
           angle,
           turn,
-          label: `${turn === 'left' ? t('snake.left') : turn === 'right' ? t('snake.right') : t('snake.straight')} · ${routes || name || t('snake.track')}`,
+          label: switchLabel(turn, name, routes, this.options.keyHints ?? true),
         };
       })
       .sort((a, b) => a.angle - b.angle);
@@ -1155,6 +1286,14 @@ export class SnakeEngine {
       edgeId: this.position.edgeId,
       direction: (this.position.direction === 1 ? -1 : 1) as 1 | -1,
     };
+    // Entering a closed section ends the run before the wheels cross over.
+    if (this.activeHazard?.edgeId && next.edgeId === this.activeHazard.edgeId) {
+      this.status = 'over';
+      this.gameOverKind = 'closedSection';
+      this.banner = '';
+      this.message = t('snake.youEnteredADoNotEnterSectionTransitControlHasRemovedYou');
+      return;
+    }
     this.missionIndex = this.indexAfter(next, this.missionIndex);
     const edge = this.edges.get(next.edgeId)!;
     const outgoing = { ...next, distance: next.direction === 1 ? 0 : edge.lengthMetres };
@@ -1279,22 +1418,49 @@ export class SnakeEngine {
     }
   }
 
+  /**
+   * The rear coupling face of a plotted streetcar, in source metres along
+   * its own rail. Arcade coupling happens when the player's FRONT reaches
+   * this face, not when either train's centre or front overlaps.
+   */
+  private rearPosition(car: PlottedVehicle): Position | undefined {
+    const match = car.match;
+    if (!match || !this.edges.has(match.edgeId)) return;
+    const edge = this.edges.get(match.edgeId)!;
+    return {
+      edgeId: edge.id,
+      direction: match.direction,
+      distance: Math.max(
+        0,
+        Math.min(
+          edge.lengthMetres,
+          match.distanceAlongMetres - match.direction * (CAR_LENGTH / 2),
+        ),
+      ),
+    };
+  }
+
   tick(seconds: number, cars: PlottedVehicle[], pedal: number | Pedals = 0) {
     if (this.status !== 'running') return;
     const dt = Math.max(0, Math.min(0.1, seconds));
     this.gameTrafficCooldown = Math.max(0, this.gameTrafficCooldown - dt);
+    this.hazardClock += dt;
+    this.updateHazards();
     const input =
       typeof pedal === 'number' ? { accelerator: pedal > 0, brake: pedal < 0 } : pedal;
-    const acceleration = this.mode === 'purist' ? 34 : 360,
-      braking = this.mode === 'purist' ? 58 : 420;
+    const acceleration = this.mode === 'purist' ? 34 : ARCADE_ACCELERATION,
+      braking = this.mode === 'purist' ? 58 : ARCADE_BRAKING;
     this.speed = Math.max(
       0,
       Math.min(
-        this.mode === 'purist' ? 50 : 2000,
+        this.mode === 'purist' ? PURIST_MAX_SPEED : ARCADE_MAX_SPEED,
         this.speed +
           ((input.accelerator ? acceleration : 0) - (input.brake ? braking : 0)) * dt,
       ),
     );
+    // Transit Control's slow order overrides the pedal box.
+    if (this.activeHazard?.kind === 'slow')
+      this.speed = Math.min(this.speed, this.slowCapKph);
     let left = (this.speed / 3.6) * dt;
     const traffic = this.livePoses(cars);
     for (
@@ -1325,20 +1491,26 @@ export class SnakeEngine {
       this.record();
       const player = this.vehicleSpans(this.position, this.mission?.routeId, true);
       for (const other of traffic) {
-        if (
-          this.collected.has(other.car.vehicle.id) ||
-          !player.some((span) =>
-            other.spans.some((otherSpan) => spansOverlap(span, otherSpan)),
-          )
-        )
-          continue;
+        if (this.collected.has(other.car.vehicle.id)) continue;
         if (this.mode === 'purist') {
+          if (
+            !player.some((span) =>
+              other.spans.some((otherSpan) => spansOverlap(span, otherSpan)),
+            )
+          )
+            continue;
           this.status = 'over';
+          this.gameOverKind = 'collision';
+          this.banner = '';
           this.message = t('snake.collisionWithStreetcarValueGameOver', {
             value1: other.car.vehicle.label,
           });
           return;
         }
+        // Arcade couples when the snake's front touches the streetcar's back.
+        const rear = this.rearPosition(other.car),
+          ahead = rear && this.distanceAhead(rear);
+        if (!rear || ahead === undefined || ahead > CAR_LENGTH / 2) continue;
         this.collected.add(other.car.vehicle.id);
         if (other.car.vehicle.id.startsWith(GAME_CAR_PREFIX)) {
           this.removeGameCar(other.car.vehicle.id);
@@ -1375,7 +1547,11 @@ export class SnakeEngine {
             )
           ) {
             this.status = 'over';
-            this.message = t('snake.youHitYourOwnTrainGameOver');
+            this.gameOverKind = 'selfCollision';
+            this.banner = '';
+            this.message = t('snake.youHitYourOwnTrainValueCarsGameOver', {
+              value1: this.count,
+            });
             return;
           }
         }

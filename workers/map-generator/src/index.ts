@@ -89,8 +89,13 @@ export default {
         .bind(new Date().toISOString(), versionId)
         .run();
 
-      const artifactId = await generateStreetcarMap(env, versionId);
-      return json({ ok: true, artifactId, versionId });
+      const result = await generateStreetcarMap(env, versionId);
+      return json({
+        ok: true,
+        artifactId: result.artifactId,
+        snakeArtifactId: result.snakeArtifactId,
+        versionId,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (versionId) {

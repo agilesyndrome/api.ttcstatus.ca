@@ -14,7 +14,9 @@ const {
   export { ensureState, acquireLock, releaseLock } from './workers/api/src/sync/sync-common';
   export { activateNetworkVersion, pruneOldNetworkVersions } from './workers/api/src/sync/network-lifecycle';
 `);
-const schema = await readFile('migrations/0001_initial.sql', 'utf8');
+const schema =
+  (await readFile('migrations/0001_initial.sql', 'utf8')) +
+  (await readFile('migrations/0003_map_names.sql', 'utf8'));
 function environment() {
   const deleted = [];
   return {
@@ -37,12 +39,25 @@ async function version(env, id, active = 0) {
     .run();
   return env.DB.prepare('SELECT * FROM network_versions WHERE id = ?').bind(id).first();
 }
-async function artifact(env, id, versionId, chunks = 1, active = 0) {
+async function artifact(env, id, versionId, chunks = 1, active = 0, board = false) {
   await env.DB.prepare(
-    `INSERT INTO map_artifacts (id, version_id, mode, style, generator_version, etag, byte_size, chunk_count, created_at, active)
-    VALUES (?, ?, 'streetcar', 'snake-v1', 'fixture', ?, 2, ?, '2026-10-01', ?)`,
+    `INSERT INTO map_artifacts (id, version_id, mode, style, name, generator_version, etag, byte_size, chunk_count, created_at, active)
+    VALUES (?, ?, 'streetcar', ?, ?, 'fixture', ?, 2, ?, '2026-10-01', ?)`,
   )
-    .bind(id, versionId, `map-${id}`, chunks, active)
+    .bind(
+      id,
+      versionId,
+      board ? 'snake-board-v1' : 'snake-v1',
+      board ? 'snake' : 'streetcar',
+      `map-${id}`,
+      chunks,
+      active,
+    )
+    .run();
+}
+async function chunk(env, artifactId, index = 0) {
+  await env.DB.prepare('INSERT INTO map_artifact_chunks VALUES (?, ?, ?)')
+    .bind(artifactId, index, '{}')
     .run();
 }
 
@@ -85,15 +100,33 @@ test('publication refuses incomplete or mismatched artifacts without changing ac
     1,
   );
   await env.DB.prepare("INSERT INTO map_artifact_chunks VALUES (2, 1, '{}')").run();
+  // A complete schematic alone is not enough: every published name of the
+  // version must flip atomically or none of them does.
+  await assert.rejects(activateNetworkVersion(env, next, 2), /snake/);
+  const snake = await artifact(env, 3, 2, 1, 0, true);
+  await chunk(env, 3);
   await activateNetworkVersion(env, next, 2);
   assert.equal(
     (await env.DB.prepare('SELECT id FROM network_versions WHERE active = 1').first()).id,
     2,
   );
   assert.equal(
-    (await env.DB.prepare('SELECT id FROM map_artifacts WHERE active = 1').first()).id,
+    (
+      await env.DB.prepare(
+        "SELECT id FROM map_artifacts WHERE style = 'snake-v1' AND active = 1",
+      ).first()
+    ).id,
     2,
   );
+  assert.equal(
+    (
+      await env.DB.prepare(
+        "SELECT id FROM map_artifacts WHERE name = 'snake' AND active = 1",
+      ).first()
+    ).id,
+    3,
+  );
+  void snake;
 });
 
 test('retention keeps the active map even when newer imports have failed', async () => {

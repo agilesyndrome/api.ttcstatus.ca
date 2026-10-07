@@ -9,8 +9,8 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
   const {
     loadMapSourceData,
     buildStreetcarMapBundle,
+    generateStreetcarMap,
     buildViewerData,
-    storeMapArtifact,
     GENERATOR_VERSION,
   } = modules;
   const sourceKey = 'ttc-surface-gtfs';
@@ -78,7 +78,9 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       .bind(version.id, startedAt, startedAt)
       .first();
     jobId = job.id;
-    const artifactId = await storeMapArtifact(env, version.id, bundle);
+    // Publish the same pair of named artifacts as the nightly pipeline:
+    // the schematic map and the derived snake board.
+    const { artifactId, snakeArtifactId } = await generateStreetcarMap(env, version.id);
     // One atomic statement flips only map pointers. Keep the old artifact for rollback;
     // publish only if this network remains active and every chunk was stored.
     await db
@@ -90,6 +92,16 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
         AND ready.chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = ready.id))`,
       )
       .bind(artifactId, version.id, artifactId, version.id)
+      .run();
+    await db
+      .prepare(
+        `UPDATE map_artifacts SET active = CASE WHEN id = ? THEN 1 ELSE 0 END
+      WHERE mode = 'streetcar' AND style = 'snake-board-v1'
+      AND EXISTS (SELECT 1 FROM network_versions WHERE id = ? AND active = 1)
+      AND EXISTS (SELECT 1 FROM map_artifacts AS ready WHERE ready.id = ? AND ready.version_id = ?
+        AND ready.chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = ready.id))`,
+      )
+      .bind(snakeArtifactId, version.id, snakeArtifactId, version.id)
       .run();
     const published = await db
       .prepare('SELECT active FROM map_artifacts WHERE id = ?')
@@ -103,6 +115,7 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       status: 'updated',
       networkVersion: version.id,
       artifactId,
+      snakeArtifactId,
       previousArtifactId: active?.id,
       generatorVersion: GENERATOR_VERSION,
       edges: viewer.edges.length,
@@ -129,16 +142,17 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  if (process.argv.slice(2).some((arg) => arg !== '--dry-run'))
-    throw new Error('Usage: npm run map:regenerate:remote -- [--dry-run]');
+  if (process.argv.slice(2).some((arg) => !['--dry-run', '--local'].includes(arg)))
+    throw new Error('Usage: npm run map:regenerate:remote -- [--dry-run] | [--local]');
+  const local = process.argv.includes('--local');
   const compiled = await build({
     stdin: {
       contents: `
     export { loadMapSourceData } from './workers/map-generator/src/source/repository';
     export { buildStreetcarMapBundle } from './workers/map-generator/src/layout/build-map';
-    export { storeMapArtifact } from './workers/map-generator/src/artifacts/artifact-store';
-    export { GENERATOR_VERSION } from './workers/map-generator/src/config';
-    export { buildViewerData } from './shared/map/model';`,
+    export { generateStreetcarMap } from './workers/map-generator/src/generate';
+    export { buildViewerData } from './shared/map/model';
+    export { GENERATOR_VERSION } from './workers/map-generator/src/config';`,
       resolveDir: process.cwd(),
       loader: 'ts',
     },
@@ -150,8 +164,40 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const modules = await import(
     `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
   );
-  // Use a temporary config with only the remote production D1 binding. Wrangler
-  // supplies credentials and parameterized queries; no admin token or GTFS fetch.
+  // Remote mode uses a temporary config with only the production D1 binding;
+  // Wrangler supplies credentials and parameterized queries. Local mode targets
+  // the API Worker's own config so the regenerated pair lands in the same
+  // `workers/api/.wrangler` D1 state that `npm run dev:api` serves.
+  const { getPlatformProxy } = await import('wrangler');
+  if (local) {
+    // Explicit persist path (object form): the same `.wrangler/state/v3` that
+    // `wrangler dev -c workers/api/wrangler.jsonc` reads and writes, so the
+    // regenerated pair is served by the local dev API immediately.
+    const platform = await getPlatformProxy({
+      configPath: 'workers/api/wrangler.jsonc',
+      persist: { path: 'workers/api/.wrangler/state/v3' },
+    });
+    try {
+      console.log(
+        JSON.stringify(
+          await regenerateMap(platform.env.DB, modules, {
+            dryRun: process.argv.includes('--dry-run'),
+          }),
+          null,
+          2,
+        ),
+      );
+    } finally {
+      await platform.dispose();
+    }
+  } else {
+    await regenerateRemote(modules, getPlatformProxy, {
+      dryRun: process.argv.includes('--dry-run'),
+    });
+  }
+}
+
+async function regenerateRemote(modules, getPlatformProxy, { dryRun }) {
   const configPath = 'workers/map-generator/wrangler.jsonc';
   const { config, error } = ts.parseConfigFileTextToJson(
     configPath,
@@ -181,7 +227,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         ],
       }),
     );
-    const { getPlatformProxy } = await import('wrangler');
     platform = await getPlatformProxy({
       configPath: file,
       envFiles: [],
@@ -191,7 +236,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     console.log(
       JSON.stringify(
         await regenerateMap(platform.env.DB, modules, {
-          dryRun: process.argv.includes('--dry-run'),
+          dryRun,
         }),
         null,
         2,

@@ -148,6 +148,8 @@ try {
   });
   const page = await context.newPage();
   await page.goto(origin + '/xplore');
+  const notice = page.getByRole('button', { name: 'Got it', exact: true });
+  if (await notice.count()) await notice.click();
   const launch = page.getByRole('button', { name: 'Play Streetcar Snake', exact: true });
   await launch.waitFor();
   await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
@@ -157,8 +159,25 @@ try {
   assert.ok(
     (await game.getByLabel('Route', { exact: true }).locator('option').count()) > 10,
   );
-  await game.getByText(/fresh streetcars on the map/).waitFor();
   assert.equal(mapCalls, 1, 'game reuses the already-loaded map');
+  const viewWidth = async () =>
+    Number((await page.locator('#snake-map').getAttribute('viewBox')).split(' ')[2]);
+  // Wait for the opening camera glide (focusBounds) to settle, then capture
+  // the zoom BEFORE departure: a pickup can happen within a few hundred
+  // milliseconds, and the growth zoom would inflate the baseline.
+  await page.waitForFunction(
+    (limit) =>
+      Number(
+        document.querySelector('#snake-map')?.getAttribute('viewBox')?.split(' ')[2],
+      ) < limit,
+    map.display.width / 6,
+    { timeout: 5000, polling: 100 },
+  );
+  const startWidth = await viewWidth();
+  assert.ok(
+    startWidth < map.display.width / 6,
+    'the game starts zoomed in on the streetcar',
+  );
   const before = feedCalls;
   await game.getByRole('button', { name: 'Depart', exact: true }).click();
   await page.waitForTimeout(250);
@@ -175,8 +194,34 @@ try {
     cameraBefore,
     'the camera follows the moving streetcar',
   );
+  // Zooming never hands the camera over; only manual panning does.
+  const following = () =>
+    game
+      .getByRole('button', { name: 'Following', exact: true })
+      .getAttribute('aria-pressed');
+  await game.getByRole('button', { name: 'Zoom out' }).click();
+  await game.getByRole('button', { name: 'Zoom in' }).click();
+  await page.waitForTimeout(150);
+  assert.equal(await following(), 'true', 'zooming keeps camera following');
+  // Resuming re-centers on the streetcar after a manual take-over.
+  await game.getByRole('button', { name: 'Following', exact: true }).click();
+  await game.getByRole('button', { name: 'Pause', exact: true }).click();
+  await game.getByText('Paused', { exact: true }).waitFor();
+  await game.getByRole('button', { name: 'Resume driving', exact: true }).click();
+  await page.waitForTimeout(150);
+  assert.equal(await following(), 'true', 'resuming re-enables camera following');
+  // Each collected car widens the camera one step.
+  await page.waitForFunction(
+    () => document.querySelector('[data-snake-count]')?.textContent !== '1',
+    undefined,
+    { timeout: 20000 },
+  );
+  assert.ok(
+    (await viewWidth()) > startWidth * 1.1,
+    'collecting cars zooms out as the train grows',
+  );
   await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('p');
+  await game.getByRole('button', { name: 'Pause', exact: true }).click();
   await game.getByText('Paused', { exact: true }).waitFor();
   const paused = await game.locator('[data-snake-head]').getAttribute('transform');
   await page.waitForTimeout(200);
@@ -242,6 +287,8 @@ try {
   const mobile = await mobileContext.newPage();
   mobile.on('pageerror', (error) => errors.push(error.message));
   await mobile.goto(origin + '/xplore');
+  const mobileNotice = mobile.getByRole('button', { name: 'Got it', exact: true });
+  if (await mobileNotice.count()) await mobileNotice.tap();
   await mobile.getByRole('button', { name: 'Play Streetcar Snake' }).tap();
   const cockpit = mobile.getByRole('dialog');
   await cockpit.getByRole('button', { name: 'Depart', exact: true }).tap();
@@ -251,7 +298,7 @@ try {
   await cockpit.getByRole('button', { name: 'Resume driving', exact: true }).tap();
   assert.equal(
     await cockpit
-      .getByRole('button', { name: '↑ Straight · 501', exact: true })
+      .getByRole('button', { name: '↑ 501', exact: true })
       .getAttribute('data-selection'),
     'automatic',
   );
@@ -279,7 +326,7 @@ try {
   });
   await mobile.waitForTimeout(80);
   await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  const left = cockpit.getByRole('button', { name: '← Left · 501', exact: true });
+  const left = cockpit.getByRole('button', { name: '← 501', exact: true });
   assert.equal(
     await left.getAttribute('aria-pressed'),
     'true',
@@ -306,10 +353,10 @@ try {
     .locator('[data-snake-switch-arrow]')
     .getAttribute('transform');
   assert.ok(selectedArrow, 'the selected switch has a visible direction arrow');
-  await mobile.keyboard.press('e');
+  await mobile.keyboard.press('ArrowRight');
   assert.equal(
     await cockpit
-      .getByRole('button', { name: 'Right → · 504', exact: true })
+      .getByRole('button', { name: '→ 504', exact: true })
       .getAttribute('aria-pressed'),
     'true',
   );
@@ -319,14 +366,16 @@ try {
     'selected track changes the switch direction arrow',
   );
   await cockpit.getByText(/Next stop: Right stop/).waitFor();
-  await mobile.keyboard.press('r');
+  // Space activates a focused button (standard behaviour), so steer from the body.
+  await mobile.evaluate(() => document.activeElement?.blur());
+  await mobile.keyboard.press('Space');
   assert.equal(
     await cockpit
-      .getByRole('button', { name: '↑ Straight · 501', exact: true })
+      .getByRole('button', { name: '↑ 501', exact: true })
       .getAttribute('data-selection'),
     'manual',
   );
-  await mobile.keyboard.press('q');
+  await mobile.keyboard.press('ArrowLeft');
   assert.equal(await left.getAttribute('aria-pressed'), 'true');
   await mobile.keyboard.down('ArrowDown');
   await mobile.waitForTimeout(60);
@@ -339,17 +388,16 @@ try {
   await mobile.waitForTimeout(60);
   assert.equal(await brake.getAttribute('data-held'), 'false');
   const accelerator = cockpit.getByRole('button', { name: 'Hold to accelerate' });
-  await mobile.keyboard.down('Shift');
-  await mobile.keyboard.down('Equal');
+  await mobile.keyboard.down('ArrowUp');
   await mobile.waitForTimeout(60);
   assert.equal(await accelerator.getAttribute('data-held'), 'true');
-  await mobile.keyboard.up('Shift');
-  await mobile.keyboard.up('Equal');
+  await mobile.waitForTimeout(60);
+  await mobile.keyboard.up('ArrowUp');
   await mobile.waitForTimeout(60);
   assert.equal(
     await accelerator.getAttribute('data-held'),
     'false',
-    'releasing Shift before + does not leave the accelerator stuck',
+    'releasing the arrow releases the accelerator',
   );
   const beforePinch = (await cockpit.locator('#snake-map').getAttribute('viewBox'))
     .split(' ')
@@ -443,7 +491,7 @@ try {
   assert.deepEqual(requests, []);
   assert.deepEqual(errors, []);
   console.log(
-    'Snake browser checks passed: shared map/feed, selected track previews and Q/E/R, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, playable legacy archive.',
+    'Snake browser checks passed: shared map/feed, selected track previews and arrow keys, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, playable legacy archive.',
   );
   await context.close();
   await mobileContext.close();

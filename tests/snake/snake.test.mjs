@@ -259,7 +259,7 @@ test('old tail samples kill an arcade run but never grow or kill a purist run', 
   arcade.trail = [{ ...arcade.pose(), travelled: 10 }];
   arcade.tick(0.01, []);
   assert.equal(arcade.status, 'over');
-  assert.match(arcade.message, /own train/);
+  assert.match(arcade.message, /monster/);
   const purist = started(demoData, 'purist');
   purist.travelled = 100;
   purist.trail = [{ ...purist.pose(), travelled: 10 }];
@@ -382,7 +382,7 @@ test('next-stop guidance follows the chosen switch over real graph nodes and nev
 test('original pedal rates, simultaneous inputs, coasting and mode governors remain distinct', () => {
   for (const [mode, acceleration, braking, cap] of [
     ['purist', 34, 58, 50],
-    ['arcade', 360, 420, 2000],
+    ['arcade', 600, 900, 3000],
   ]) {
     const engine = started(demoData, mode);
     engine.speed = 10;
@@ -394,7 +394,9 @@ test('original pedal rates, simultaneous inputs, coasting and mode governors rem
     );
     engine.speed = 20;
     engine.tick(0.1, [], { accelerator: true, brake: true });
-    assert.ok(Math.abs(engine.speed - (20 + (acceleration - braking) * 0.1)) < 1e-9);
+    assert.ok(
+      Math.abs(engine.speed - Math.max(0, 20 + (acceleration - braking) * 0.1)) < 1e-9,
+    );
     const speed = engine.speed;
     engine.tick(0.1, []);
     assert.equal(engine.speed, speed, 'releasing both pedals retains speed');
@@ -973,3 +975,35 @@ for (const [routeId, destination] of terminalCases)
       );
     }
   });
+
+test('Transit Control chaos caps speed with slow orders and stays silent without chaos enabled', () => {
+  // A deterministic random stream makes the first disruption a slow order.
+  const engine = new SnakeEngine(demoData, { chaos: true });
+  engine.start('arcade', [], undefined, () => 0);
+  assert.equal(engine.hazard, undefined, 'the network starts clear');
+  // Nineteen seconds of accelerator: the overdrive climbs past the cap that
+  // the coming slow order will impose.
+  for (let i = 0; i < 190; i++) engine.tick(0.1, [], { accelerator: true, brake: false });
+  assert.ok(
+    engine.speed > 600,
+    `the accelerator climbs past the coming slow-order cap: ${engine.speed}`,
+  );
+  // Twenty seconds in, Transit Control issues the slow order.
+  for (let i = 0; i < 10; i++) engine.tick(0.1, [], { accelerator: true, brake: false });
+  assert.equal(engine.hazard?.kind, 'slow');
+  assert.ok(engine.banner.length > 0, 'the slow order posts a banner');
+  assert.ok(engine.speed <= 600, `the slow order caps the speedometer: ${engine.speed}`);
+  // The order expires twelve seconds later and the accelerator opens again.
+  for (let i = 0; i < 130; i++) engine.tick(0.1, [], { accelerator: true, brake: false });
+  assert.equal(engine.hazard, undefined, 'the slow order expires');
+  assert.equal(engine.banner, '');
+  for (let i = 0; i < 10; i++) engine.tick(0.1, [], { accelerator: true, brake: false });
+  assert.ok(engine.speed > 600, `speed climbs again once lifted: ${engine.speed}`);
+  // Without the chaos option nothing ever happens.
+  const quiet = new SnakeEngine(demoData);
+  quiet.start('arcade', [], undefined, () => 0);
+  for (let i = 0; i < 400; i++) quiet.tick(0.1, [], { accelerator: true, brake: false });
+  assert.equal(quiet.hazard, undefined);
+  assert.equal(quiet.banner, '');
+  assert.ok(quiet.speed > 600, `no chaos, no cap: ${quiet.speed}`);
+});

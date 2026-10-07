@@ -5,9 +5,17 @@
  * generated public artifact. Bump GENERATOR_VERSION whenever a change here can
  * alter output geometry or the bundle schema.
  */
-export const GENERATOR_VERSION = 'snake-v1.4.1';
+export const GENERATOR_VERSION = 'snake-v1.4.2';
 export const MAP_STYLE = 'snake-v1';
 export const MAP_MODE = 'streetcar';
+
+// Published map names (their public API paths) and the snake game-board style.
+// The schematic map keeps its historical style name 'snake-v1'; the game-board
+// artifact of the same network is a distinct style so artifact rows never
+// collide on the (version_id, mode, style) uniqueness key.
+export const STREETCAR_MAP_NAME = 'streetcar';
+export const SNAKE_MAP_NAME = 'snake';
+export const SNAKE_BOARD_STYLE = 'snake-board-v1';
 
 // Conservative v1 simplification. Future topology-aware generation should
 // replace raw RDP, but this keeps the present implementation inexpensive.
