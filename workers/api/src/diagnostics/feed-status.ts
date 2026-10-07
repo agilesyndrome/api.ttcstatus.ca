@@ -1,7 +1,15 @@
 import type { Env } from '../env';
 import { json } from '../http/responses';
+import { authorizedSync } from '../../../shared/http/admin-auth';
 
-export async function feedStatusResponse(env: Env): Promise<Response> {
+// Operational diagnostics are internal: the public feed-status payload exposed
+// source URLs, R2 keys, lock state and raw upstream error text. Keep the data,
+// but require the admin credential, exactly like the other SYNC_TOKEN routes.
+export async function feedStatusResponse(request: Request, env: Env): Promise<Response> {
+  if (!env.SYNC_TOKEN)
+    return json({ error: 'feed-status-disabled' }, 404, { 'cache-control': 'no-store' });
+  if (!(await authorizedSync(request, env)))
+    return json({ error: 'unauthorized' }, 401, { 'cache-control': 'no-store' });
   const state = await env.DB.prepare(
     `SELECT source_key, source_url, source_etag, source_last_modified, source_content_length,
             r2_etag, active_version_id, last_checked_at, last_full_fetch_at,

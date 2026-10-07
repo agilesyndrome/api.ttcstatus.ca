@@ -16,6 +16,16 @@ test('admin authorization rejects missing or incorrect bearer credentials', asyn
     await authorizedSync(request('Bearer wrong'), { SYNC_TOKEN: 'test' }),
     false,
   );
+  // Digest comparison: extra material after the token must not match.
+  assert.equal(
+    await authorizedSync(request('Bearer test extra'), { SYNC_TOKEN: 'test' }),
+    false,
+  );
+  // Only the Bearer scheme is honored.
+  assert.equal(
+    await authorizedSync(request('Token test'), { SYNC_TOKEN: 'test' }),
+    false,
+  );
   assert.equal(
     await authorizedSync(request('Bearer test'), { SYNC_TOKEN: 'test' }),
     true,

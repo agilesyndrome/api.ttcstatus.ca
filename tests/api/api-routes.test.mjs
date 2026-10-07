@@ -26,7 +26,7 @@ test('public API uses /api for health, map, network, feed and protected operatio
     ['/api/healthz', 'HEAD', 200],
     ['/api/v1/map/streetcar', 'GET', 503, 'map-not-ready'],
     ['/api/v1/network', 'GET', 503, 'network-not-ready'],
-    ['/api/v1/feed/status', 'GET', 200],
+    ['/api/v1/feed/status', 'GET', 404, 'feed-status-disabled'],
     ['/api/v1/admin/sync', 'POST', 404, 'manual-sync-disabled'],
     ['/api/v1/debug/map/streetcar.svg', 'POST', 404, 'debug-render-disabled'],
   ]) {
@@ -60,6 +60,40 @@ test('protected routes keep authorization and service calls use the migrated pat
       )
     ).status,
     401,
+  );
+  // Feed status is admin-gated diagnostics: no token configured -> disabled,
+  // wrong token -> unauthorized, correct token -> payload.
+  assert.equal(
+    (
+      await api.fetch(
+        new Request('https://example.test/api/v1/feed/status'),
+        { DB: db },
+        ctx,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await api.fetch(
+        new Request('https://example.test/api/v1/feed/status'),
+        { DB: db, SYNC_TOKEN: 'test' },
+        ctx,
+      )
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await api.fetch(
+        new Request('https://example.test/api/v1/feed/status', {
+          headers: { authorization: 'Bearer test' },
+        }),
+        { DB: db, SYNC_TOKEN: 'test' },
+        ctx,
+      )
+    ).status,
+    200,
   );
   let requested;
   const env = {

@@ -1,6 +1,6 @@
 import type { AccountEnv } from './env';
 import { accountReply as reply } from '../http/responses';
-import { accountBody as body } from './body';
+import { accountBody as body, PROFILE_BODY_LIMIT } from './body';
 import { journalBadges, validJournal } from '../../../../shared/accounts/journal';
 import { validUsername } from '../../../../shared/accounts/profile';
 interface ProfileRow {
@@ -25,7 +25,7 @@ export async function ownedProfileResponse(
     });
   }
   if (request.method !== 'PUT') return reply({ error: 'method-not-allowed' }, 405);
-  const value = await body(request);
+  const value = await body(request, PROFILE_BODY_LIMIT);
   if (value instanceof Response) return value;
   if (
     Object.keys(value).some((key) => !['username', 'publicBadges'].includes(key)) ||

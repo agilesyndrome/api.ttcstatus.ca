@@ -61,7 +61,7 @@ export async function routeRequest(
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/feed/status') {
-    return feedStatusResponse(env);
+    return feedStatusResponse(request, env);
   }
 
   if (request.method === 'POST' && url.pathname === '/api/v1/debug/map/streetcar.svg') {

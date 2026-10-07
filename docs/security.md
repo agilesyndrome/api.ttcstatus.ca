@@ -49,8 +49,10 @@ bound resource consumption:
 
 - Debug map bodies: 2,000,000 streamed bytes; numeric attributes must be finite
   numbers, labels/identifiers must be strings, and rendering collections are bounded.
-- Account bodies: the existing 1,500,000-byte limit, enforced through the shared
-  byte reader with stream cleanup.
+- Account bodies: per-endpoint caps enforced through the shared byte reader with
+  stream cleanup — journals are capped at 1,200,000 bytes (above the ~1.1 MB
+  theoretical maximum of a fully loaded 500-entry ASCII journal) and profiles at
+  2,000 bytes (a username plus a boolean).
 - Static GTFS: 512 MiB downloaded, a 60-second HEAD deadline and a 180-second GET
   deadline. Real-time feed limits remain unchanged.
 - ZIP metadata: directory/member ranges must fit the archive; directories are
@@ -62,6 +64,42 @@ Generated debug SVG responses include a sandbox CSP and `nosniff`. Label text is
 escaped independently of numeric validation. Public profile projection, private
 journal data and session-token verification retain their existing behavior.
 
+## Admin authentication
+
+`authorizedSync` hashes both the presented bearer credential and the configured
+`SYNC_TOKEN` with SHA-256 and compares fixed-length hex digests, so request
+timing cannot leak the raw secret. The revoked Git-history fingerprint is
+checked against the digest of the configured secret before any match is honored.
+All four admin/diagnostic surfaces (`/api/v1/admin/sync`,
+`/api/v1/debug/map/streetcar.svg`, the generator's `/api/debug/render` and
+`/api/internal/generate`, and `/api/v1/feed/status`) use this check.
+
+## Operational diagnostics
+
+`/api/v1/feed/status` returns `404` when no `SYNC_TOKEN` is configured and
+`401` without the admin credential. It previously published source URLs, R2
+keys, lock state and raw upstream error text without authentication; the same
+payload is now only available to the admin credential (`make admin/sync/status`
+on the laptop).
+
+## Site-wide headers
+
+`public/_headers` applies `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+`X-Frame-Options: DENY` and HSTS to all static responses. The classic snake game
+gets an enforced `Content-Security-Policy` (`default-src 'self'`, no remote
+origins). The application shell is in `Content-Security-Policy-Report-Only` mode
+until the production Clerk frontend-api origin is confirmed and added — decode
+it from the `pk_live_…` key suffix:
+
+```sh
+op run --env-file=.env.prod -- node -e \
+  "const k=process.env.CLERK_PUBLISHABLE_KEY;console.log(Buffer.from(k.split('_').slice(3).join('_'),'base64url').toString())"
+```
+
+Then replace `https://*.clerk.accounts.dev` in the report-only policy with the
+actual origin, sign in at https://ttcstatus.ca, confirm zero console violations,
+and rename the header to `Content-Security-Policy`.
+
 ## Operational correctness
 
 Sync cleanup releases only its own lease. Publication requires a complete artifact
@@ -71,12 +109,15 @@ as failed. These cases have SQLite-backed regression tests.
 
 ## Follow-up deployment work
 
-The public feed-status payload is preserved to honor the compatibility requirement.
-Separating internal diagnostics would require a deliberate API contract change.
-Site-wide enforced CSP and application rate limits also remain deployment follow-ups:
-they require the deployed Clerk origins and existing Cloudflare policies to avoid
-breaking legitimate usage. The branch does not introduce speculative limits on
-public or account operations.
+Site-wide enforced CSP for the Clerk-backed application shell is staged as a
+report-only policy: it requires the deployed Clerk origins to avoid breaking
+legitimate usage. Application rate limits remain deployment follow-ups: the
+first line of defense is the Cloudflare zone WAF (custom rules and one
+rate-limiting rule are included in the Free plan). All traffic must reach the
+Workers through the `ttcstatus.ca` zone for those rules to apply — the
+`*.workers.dev` route bypasses zone security entirely, so production traffic
+should use `api.ttcstatus.ca` (set `workers_dev` to `false` in
+`workers/api/wrangler.jsonc` once the custom domain is confirmed live).
 
 CI checks types, lint, formatting, regression tests, module boundaries, source
 credentials, builds, Worker packaging, browser flows and component stories. The source scanner covers common

@@ -148,6 +148,26 @@ test('account writes reject wrong content types, malformed JSON, excessive bodie
       ).status,
       expected,
     );
+  // Per-endpoint caps: a profile is a username and a boolean, so its body
+  // ceiling is far below the journal's.
+  for (const [path, size, expected] of [
+    ['/api/v1/me/journal', 1_200_001, 413],
+    ['/api/v1/me/profile', 2_001, 413],
+  ])
+    assert.equal(
+      (
+        await ownedAccountResponse(
+          new Request(`https://ttcstatus.ca${path}`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: ' '.repeat(size),
+          }),
+          env,
+          'user_a',
+        )
+      ).status,
+      expected,
+    );
 });
 
 test('real Clerk session verification accepts signed tokens and rejects tampering, expiry, foreign origins and cookie-only requests', async () => {

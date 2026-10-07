@@ -1,6 +1,6 @@
 import type { AccountEnv } from './env';
 import { accountReply as reply } from '../http/responses';
-import { accountBody as body } from './body';
+import { JOURNAL_BODY_LIMIT, accountBody as body } from './body';
 import { validJournal } from '../../../../shared/accounts/journal';
 interface JournalRow {
   entries: string;
@@ -24,7 +24,7 @@ export async function ownedJournalResponse(
     });
   }
   if (request.method !== 'PUT') return reply({ error: 'method-not-allowed' }, 405);
-  const value = await body(request);
+  const value = await body(request, JOURNAL_BODY_LIMIT);
   if (value instanceof Response) return value;
   if (
     Object.keys(value).some((key) => !['entries', 'revision'].includes(key)) ||

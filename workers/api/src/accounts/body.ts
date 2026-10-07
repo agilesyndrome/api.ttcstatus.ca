@@ -1,15 +1,23 @@
 import { BodyTooLargeError, readLimitedBytes } from '../../../shared/http/streams';
 import { accountReply as reply } from '../http/responses';
 
+// A profile is a <=30-character username plus a boolean; a journal is at most
+// 500 entries of bounded fields (< ~1.1 MB of ASCII at the theoretical limit).
+// Neither endpoint needs the generic 1.5 MB reader ceiling, so each request is
+// capped to what its own schema can legitimately contain.
+export const PROFILE_BODY_LIMIT = 2_000;
+export const JOURNAL_BODY_LIMIT = 1_200_000;
+
 export async function accountBody(
   request: Request,
+  maximumBytes: number,
 ): Promise<Record<string, unknown> | Response> {
   if (!request.headers.get('content-type')?.startsWith('application/json'))
     return reply({ error: 'json-required' }, 415);
   if (!request.body) return reply({ error: 'invalid-body' }, 400);
   let bytes: Uint8Array;
   try {
-    bytes = await readLimitedBytes(request.body, 1_500_000);
+    bytes = await readLimitedBytes(request.body, maximumBytes);
   } catch (error) {
     if (error instanceof BodyTooLargeError)
       return reply({ error: 'body-too-large' }, 413);

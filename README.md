@@ -221,7 +221,15 @@ interval. No vehicle history is persisted.
 
 ### `GET /api/v1/feed/status`
 
-Operational source/import status. This endpoint is intentionally `no-store`.
+Operational source/import status. This endpoint requires
+`Authorization: Bearer <SYNC_TOKEN>` (same admin credential as `/api/v1/admin/*`);
+it exposes internal pipeline diagnostics (source URLs, R2 keys and raw error text)
+and is therefore no longer public. Unauthenticated requests receive `401`, and a
+Worker without `SYNC_TOKEN` returns `404`. Check locally or from the laptop with:
+
+```bash
+make admin/sync/status
+```
 
 ### `POST /api/v1/debug/map/streetcar.svg` (debug endpoint)
 

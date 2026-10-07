@@ -19,7 +19,7 @@ export async function putStreamToR2(
   const upload = await bucket.createMultipartUpload(key, options);
   const reader = stream.getReader();
   const parts: R2UploadedPart[] = [];
-  let chunks: Uint8Array[] = [];
+  const chunks: Uint8Array[] = [];
   let chunkBytes = 0;
   let totalBytes = 0;
   let partNumber = 1;

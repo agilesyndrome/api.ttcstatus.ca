@@ -12,7 +12,7 @@ Examples:
   bin/api POST /api/v1/admin/sync
 
 Set API_HOST to override https://api.ttcstatus.ca.
-SYNC_TOKEN is required for /api/v1/admin/* endpoints.
+SYNC_TOKEN is required for /api/v1/admin/* and /api/v1/feed/status endpoints.
 EOF
 }
 
@@ -37,9 +37,9 @@ fi
 
 curl_args=(--request "$method" --silent)
 
-if [[ $endpoint == /api/v1/admin/* ]]; then
+if [[ $endpoint == /api/v1/admin/* || $endpoint == /api/v1/feed/status ]]; then
   if [[ -z ${SYNC_TOKEN:-} ]]; then
-    echo "SYNC_TOKEN must be set for admin endpoints" >&2
+    echo "SYNC_TOKEN must be set for admin and feed-status endpoints" >&2
     exit 1
   fi
   curl_args+=(--header "Authorization: Bearer $SYNC_TOKEN")
