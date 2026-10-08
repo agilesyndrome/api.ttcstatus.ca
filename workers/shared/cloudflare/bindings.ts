@@ -94,6 +94,14 @@ export interface Fetcher {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }
 
+/** Narrow version_metadata binding interface; Cloudflare injects the running
+ * Worker version's id, tag and creation timestamp. */
+export interface WorkerVersionMetadata {
+  id: string;
+  tag: string;
+  timestamp: string;
+}
+
 export interface ExecutionContextLike {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException?(): void;

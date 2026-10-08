@@ -147,6 +147,15 @@ service or directed turn permissions.
 
 Worker health check.
 
+### `GET /api/v1/version`
+
+Reports the deployed Worker version metadata (`id`, `tag`, `timestamp`) from the
+Cloudflare `CF_VERSION_METADATA` binding, plus the site's source repository.
+Manual `wrangler deploy` builds carry no binding-backed version and answer with
+`deploy: null`. The homepage footer independently shows `ttcstatus.ca v<version>`
+with a source link to the deployed Git commit, both embedded at build time
+(`package.json` version plus `WORKERS_CI_COMMIT_SHA` from Workers Builds).
+
 ### `GET /api/v1/map/streetcar`
 
 Returns the complete pre-generated `snake-v1` streetcar map JSON.
@@ -311,9 +320,15 @@ This repository contains two Workers, so configure two Cloudflare Workers Builds
 from the same repository. Both projects use the same gating build command:
 
 - API project: root directory `/`, build command `npm run ci`, deploy command
-  `npx wrangler deploy -c workers/api/wrangler.jsonc --keep-vars`
+  `npm run deploy:api`
 - Map project: root directory `/`, build command `npm run ci`, deploy command
-  `npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars`
+  `npm run deploy:map`
+
+The deploy commands apply pending D1 migrations (`npm run db:migrate:remote`)
+before shipping either Worker, so a deploy can never run ahead of the schema
+it needs. Migrations are tracked and idempotent; both projects share one
+database, so whichever deploy runs first brings the schema up to date. A
+failed migration stops the deploy.
 
 `npm run ci` is the deploy gate: it runs `npm run pre-flight` (secret scans,
 boundary check, typecheck, lint, format check, unit tests, build), then the
@@ -332,7 +347,7 @@ map project, use these literal values:
 
 ```text
 Build command: npm run ci
-Deploy command: npx wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars
+Deploy command: npm run deploy:map
 ```
 
 The static import is intentionally a heavyweight production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. The nightly Cron Trigger runs it in the background; the manual endpoint runs the same pipeline inline within its request. Normal API reads remain lightweight because they never parse GTFS.
@@ -479,7 +494,10 @@ commands as `node pre-flight …`.
 The React homepage now includes:
 
 - **My stops**: save up to 100 stops, return to them with one click, and see gold
-  stars on the map. Bookmarks stay in this browser. Removed network stops remain
+  stars on the map. Signed-in saves live in the account database
+  (`/api/v1/me/stops`) with revision-checked updates like the streetcar journal;
+  signed-out visitors keep them in this browser, and they merge into the account
+  on sign in. Removed network stops remain
   removable bookmarks rather than silently disappearing.
 - **Near me**: request your location to find the five closest boarding stops
   within 2.5 km, with an optional filter for listed accessible boarding. Location
@@ -551,8 +569,9 @@ These features reuse the existing single vehicle subscription and loaded map,
 without additional TTC polling. Account journals use the protected API and D1
 tables described in [Clerk setup](docs/clerk-setup.md). Storage restrictions keep
 preferences and bookmarks in memory for the current visit; journals are saved
-to the signed-in account. Geolocation runs only after pressing **Find nearby stops** and requires
-a secure browser context (HTTPS or localhost).
+to the signed-in account. Geolocation runs only after pressing the **◎ locate
+button** on the map (described to assistive tech as **Locate me & centre map**)
+and requires a secure browser context (HTTPS or localhost).
 
 Run the fixture-based browser checks against a local preview:
 

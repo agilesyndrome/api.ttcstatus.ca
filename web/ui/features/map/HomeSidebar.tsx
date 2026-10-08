@@ -29,6 +29,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     savedStops,
     setSavedStops,
     savedPersistent,
+    savedSignedIn,
     accountJournal,
     journal,
     setJournal,
@@ -56,7 +57,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     selectVehicle,
     selectRoute,
     surprise,
-    locate,
     toggleSave,
     collectCar,
     shownRoutes,
@@ -212,6 +212,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             data={data}
             ids={savedStops}
             persistent={savedPersistent}
+            signedIn={savedSignedIn}
             onSelect={selectFeature}
             snapshot={feed.snapshot}
             cars={cars}
@@ -227,7 +228,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
           <NearbyStops
             data={data}
             location={location}
-            onLocate={locate}
             onClear={() => {
               setLocation(undefined);
               setFocusPoint(undefined);

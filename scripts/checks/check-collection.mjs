@@ -28,6 +28,12 @@ const day = data.routes.find((route) => route.number === '501');
 const night = data.routes.find((route) => route.overnight && route.scheduled);
 const errors = [];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+// The first-visit affiliation banner overlays the bottom of the map and the
+// mobile panel; dismiss it so the checks can reach the tools underneath.
+async function dismissNotice(page) {
+  const gotIt = page.getByRole('button', { name: 'Got it', exact: true });
+  if (await gotIt.count()) await gotIt.click();
+}
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 960 },
@@ -64,58 +70,35 @@ try {
   const page = await context.newPage();
   await page.goto(origin);
   await page.locator('[data-vehicle="4400"]').waitFor();
-  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
-  assert.equal(await page.locator('#panel-stops .list-choice').count(), 20);
-  await page.getByRole('button', { name: 'Next stops', exact: true }).click();
-  assert.ok(
-    (await page.locator('#panel-stops .fleet-pagination').innerText()).includes('Page 2'),
-  );
-  await page.getByLabel('Listed accessible boarding', { exact: true }).check();
-  assert.ok(
-    (await page.locator('#panel-stops .fleet-pagination').innerText()).includes('Page 1'),
-  );
-  await page.getByLabel('Saved stops only', { exact: true }).check();
-  await page.getByText('No places match these filters.', { exact: false }).waitFor();
-  await page.getByRole('button', { name: 'Reset stop filters' }).click();
+  await dismissNotice(page);
+  // Saving a stop happens from the explore panel's stop details.
+  const headerSearch = page.getByRole('searchbox', {
+    name: 'Search stops, stations, routes or streetcar numbers',
+  });
+  await headerSearch.fill(stop.name);
   await page
-    .getByRole('searchbox', { name: 'Search stops', exact: true })
-    .fill(stop.name);
-  await page
-    .locator('#panel-stops .list-choice')
-    .filter({ hasText: stop.name })
+    .locator('.search-results')
+    .getByRole('button', { name: stop.name, exact: false })
     .first()
     .click();
-  assert.equal(
-    await page
-      .getByRole('tab', { name: 'Explore', exact: true })
-      .getAttribute('aria-selected'),
-    'true',
-  );
+  await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   await page.getByRole('button', { name: 'Save stop', exact: false }).click();
-  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
-  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
-  await page.getByRole('button', { name: 'Reset stop filters' }).click();
-  await page.getByLabel('Sort stops', { exact: true }).selectOption('distance');
-  assert.ok(
-    (await page.locator('#panel-stops .list-choice').first().innerText()).includes(
-      stop.name,
-    ),
-  );
-  await page.getByLabel('Saved stops only', { exact: true }).check();
-  assert.equal(await page.locator('#panel-stops .list-choice').count(), 1);
-  await page.screenshot({ path: '/tmp/ttc-hackathon-stops.png' });
+  await page.getByRole('button', { name: 'Clear location', exact: true }).click();
+  await page.screenshot({ path: '/tmp/ttc-hackathon-explore.png' });
 
   async function collect(id) {
-    await page.getByRole('tab', { name: 'Fleet', exact: true }).click();
-    await page.getByRole('searchbox', { name: 'Find in fleet', exact: true }).fill(id);
-    await page.locator('.fleet-list .list-choice').first().click();
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
+    await page.locator(`[data-vehicle="${id}"] .streetcar-body`).last().click();
+    await page.getByRole('heading', { name: `Car ${id}`, exact: true }).waitFor();
     await page.getByRole('button', { name: 'Add to journal', exact: false }).click();
     assert.ok(
       await page
         .getByRole('button', { name: 'In your journal', exact: false })
         .isDisabled(),
     );
+    await page.getByRole('button', { name: 'Close streetcar details' }).click();
   }
   await collect('4400');
   await collect('4401');
@@ -161,7 +144,7 @@ try {
 
   // Capture a map containing location and bookmark markers, then verify neither is exported.
   await page.getByRole('tab', { name: 'Explore', exact: true }).click();
-  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
   await page.getByRole('button', { name: 'Switch to night theme' }).click();
   await page.getByRole('button', { name: 'Print or download map', exact: true }).click();
@@ -246,10 +229,10 @@ try {
   await page.keyboard.press('Escape');
   assert.equal(await dialog.isVisible(), false);
 
-  // Phone layouts include all five tabs and the complete print dialog.
+  // Phone layouts include all three tabs and the complete print dialog.
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
-    for (const name of ['Stops', 'Journal']) {
+    for (const name of ['Journal', 'Badges']) {
       await page.getByRole('tab', { name, exact: true }).click();
       assert.ok(
         await page.evaluate(
@@ -280,11 +263,12 @@ try {
     await page.keyboard.press('Escape');
     await page.screenshot({ path: '/tmp/ttc-hackathon-collection-' + width + '.png' });
   }
-  await page.getByRole('tab', { name: 'Stops', exact: true }).focus();
+  await page.getByRole('tab', { name: 'Explore', exact: true }).click();
+  await page.getByRole('tab', { name: 'Journal', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
   assert.equal(
     await page
-      .getByRole('tab', { name: 'Journal', exact: true })
+      .getByRole('tab', { name: 'Badges', exact: true })
       .getAttribute('aria-selected'),
     'true',
   );
@@ -294,15 +278,6 @@ try {
       .getByRole('tab', { name: 'Explore', exact: true })
       .getAttribute('aria-selected'),
     'true',
-  );
-  await page.getByRole('button', { name: 'Clear location', exact: true }).click();
-  await page.getByRole('tab', { name: 'Stops', exact: true }).click();
-  assert.equal(await page.getByLabel('Sort stops', { exact: true }).inputValue(), 'name');
-  assert.ok(
-    await page
-      .getByLabel('Sort stops', { exact: true })
-      .locator('option[value="distance"]')
-      .isDisabled(),
   );
 
   const full = await context.newPage();
@@ -320,6 +295,7 @@ try {
   });
   await full.goto(origin + '/#car=4400');
   await full.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
+  await dismissNotice(full);
   assert.ok(
     await full
       .getByRole('button', { name: 'Journal full · 500 cars', exact: true })
@@ -347,6 +323,7 @@ try {
   });
   await privateTab.goto(origin + '/#car=4400');
   await privateTab.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
+  await dismissNotice(privateTab);
   await privateTab.getByRole('button', { name: 'Add to journal', exact: false }).click();
   await privateTab.getByRole('button', { name: 'Open journal', exact: false }).click();
   await privateTab
@@ -356,7 +333,7 @@ try {
   await privateTab.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Collection UI passed: stop directory/filter/paging/GPS sorting, server journal/notes/badges/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and five-tab keyboard navigation; no browser errors.',
+    'Collection UI passed: explore stop saving/location, server journal/notes/badges/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and three-tab keyboard navigation; no browser errors.',
   );
   await context.close();
 } finally {

@@ -73,6 +73,12 @@ async function fixture(context) {
     page.on('pageerror', (error) => errors.push(error.message)),
   );
 }
+// The first-visit affiliation banner overlays the bottom of the map and the
+// mobile panel; dismiss it so the checks can reach the tools underneath.
+async function dismissNotice(page) {
+  const gotIt = page.getByRole('button', { name: 'Got it', exact: true });
+  if (await gotIt.count()) await gotIt.click();
+}
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 960 },
@@ -93,6 +99,7 @@ try {
   await page.goto(`${origin}/#stop=${encodeURIComponent(stop.id)}`);
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   await page.locator('.stop-cars .list-choice').waitFor();
+  await dismissNotice(page);
   assert.equal(
     await page.locator('.stop-cars .list-choice').count(),
     1,
@@ -134,7 +141,7 @@ try {
     1,
     'saved stops survive reload',
   );
-  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
   assert.equal(await page.evaluate(() => window.locationRequests), 1);
   assert.equal(
@@ -158,7 +165,7 @@ try {
   await page.getByRole('button', { name: 'Clear location', exact: true }).click();
   assert.equal(await page.locator('.location-marker').count(), 0);
   await context.setGeolocation({ latitude: 45.42, longitude: -75.69, accuracy: 50 });
-  await page.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page
     .getByText(
       'No stops with listed accessible boarding within 2.5 km. Try searching for a stop or changing the filter.',
@@ -280,6 +287,7 @@ try {
   const blocked = await restricted.newPage();
   await blocked.goto(`${origin}/#stop=${encodeURIComponent(stop.id)}`);
   await blocked.getByRole('heading', { name: stop.name, exact: true }).waitFor();
+  await dismissNotice(blocked);
   await blocked.getByRole('button', { name: '☆ Save stop', exact: true }).click();
   await blocked
     .getByText('Browser storage unavailable; saved for this visit.', { exact: true })
@@ -290,7 +298,9 @@ try {
       await blocked.getByRole('textbox', { name: 'Shareable map link' }).inputValue()
     ).includes('#stop='),
   );
-  await blocked.getByRole('button', { name: 'Find nearby stops', exact: true }).click();
+  await blocked
+    .getByRole('button', { name: 'Locate me & centre map', exact: true })
+    .click();
   await blocked
     .getByRole('alert')
     .filter({ hasText: 'Location permission was declined' })
@@ -309,6 +319,7 @@ try {
   const fullPage = await full.newPage();
   await fullPage.goto(`${origin}/#stop=${encodeURIComponent(stop.id)}`);
   await fullPage.getByRole('heading', { name: stop.name, exact: true }).waitFor();
+  await dismissNotice(fullPage);
   assert.ok(
     await fullPage.getByRole('button', { name: '☆ Save stop', exact: true }).isDisabled(),
     'saved-stop limit is enforced',

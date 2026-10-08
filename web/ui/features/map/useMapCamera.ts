@@ -313,8 +313,10 @@ export function useMapCamera({
         );
         if (car) onSelectVehicle(car);
         else if (feature) onSelectFeature(feature);
-        // Clicking empty map space is an action too: it pauses following.
-        else interact.current?.();
+        // Clicking empty map space pauses following — except while driving,
+        // where a stray tap or a released pedal touch must never strand the
+        // camera while the train keeps moving.
+        else if (!driving) interact.current?.();
       }
       pointers.current.delete(event.pointerId);
       if (event.currentTarget.hasPointerCapture(event.pointerId))

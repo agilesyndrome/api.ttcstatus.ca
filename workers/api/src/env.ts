@@ -1,4 +1,9 @@
-import type { D1Database, Fetcher, R2Bucket } from '../../shared/cloudflare/bindings';
+import type {
+  D1Database,
+  Fetcher,
+  R2Bucket,
+  WorkerVersionMetadata,
+} from '../../shared/cloudflare/bindings';
 import type { SyncEnv } from './sync/sync';
 import type { AccountEnv } from './accounts';
 
@@ -6,6 +11,7 @@ export interface Env extends SyncEnv, AccountEnv {
   DB: D1Database;
   GTFS_BUCKET: R2Bucket;
   MAP_GENERATOR: Fetcher;
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
   STATIC_GTFS_URL: string;
   SOURCE_ATTRIBUTION: string;
   NO_VALIDATOR_REFETCH_DAYS?: string;

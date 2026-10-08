@@ -14,7 +14,10 @@ const {
 } = await compileModules(
   `export * from './workers/api/src/accounts/index'; export { default as api } from './workers/api/src/index';`,
 );
-const schema = await readFile('migrations/0002_accounts.sql', 'utf8');
+const schema =
+  (await readFile('migrations/0002_accounts.sql', 'utf8')) +
+  '\n' +
+  (await readFile('migrations/0004_saved_stops.sql', 'utf8'));
 const database = () => createDatabase(schema);
 
 const entry = {
@@ -81,6 +84,41 @@ test('journal ownership, durable updates, revision conflicts and invalid payload
   assert.equal(fresh.entries[0].note, 'Updated');
   assert.equal(fresh.revision, 2);
   assert.equal((await call({ entries: [], revision: 2 })).status, 200);
+});
+
+test('saved stops ownership, durable updates, revision conflicts and invalid payloads are enforced by real SQLite', async () => {
+  const env = { DB: database() };
+  const call = (value, user = 'user_a') =>
+    ownedAccountResponse(request('stops', value), env, user);
+  assert.deepEqual(await (await call()).json(), { stopIds: [], revision: 0 });
+  assert.equal((await call({ stopIds: ['stop_queen'], revision: 0 })).status, 200);
+  assert.deepEqual(await (await call()).json(), {
+    stopIds: ['stop_queen'],
+    revision: 1,
+  });
+  assert.deepEqual(await (await call(undefined, 'user_b')).json(), {
+    stopIds: [],
+    revision: 0,
+  });
+  assert.equal((await call({ stopIds: [], revision: 0 })).status, 409);
+  assert.equal((await call({ stopIds: ['stop_bathurst'], revision: 1 })).status, 200);
+  assert.deepEqual(await (await call()).json(), {
+    stopIds: ['stop_bathurst'],
+    revision: 2,
+  });
+  for (const invalid of [
+    { stopIds: [], revision: 2, userId: 'user_b' },
+    { stopIds: ['stop_queen', 'stop_queen'], revision: 2 },
+    { stopIds: [''], revision: 2 },
+    { stopIds: ['x'.repeat(201)], revision: 2 },
+    { stopIds: Array.from({ length: 101 }, (_, index) => `stop_${index}`), revision: 2 },
+    { stopIds: ['stop_queen'], revision: -1 },
+    { stopIds: ['stop_queen'], revision: 1.5 },
+  ])
+    assert.equal((await call(invalid)).status, 400);
+  assert.equal((await call({ stopIds: [], revision: 1 })).status, 409);
+  assert.equal((await call({ stopIds: [], revision: 2 })).status, 200);
+  assert.deepEqual(await (await call()).json(), { stopIds: [], revision: 3 });
 });
 
 test('profile defaults are private, usernames are unique, and public profiles expose only earned badges', async () => {
@@ -153,6 +191,7 @@ test('account writes reject wrong content types, malformed JSON, excessive bodie
   for (const [path, size, expected] of [
     ['/api/v1/me/journal', 1_200_001, 413],
     ['/api/v1/me/profile', 2_001, 413],
+    ['/api/v1/me/stops', 32_001, 413],
   ])
     assert.equal(
       (

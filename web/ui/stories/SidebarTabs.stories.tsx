@@ -16,7 +16,7 @@ function InteractiveTabs() {
   return (
     <aside className="sidebar" style={{ width: 350, height: 220 }}>
       <SidebarTabs value={panel} onChange={setPanel} />
-      {(['explore', 'fleet', 'compare', 'stops', 'journal'] as const).map((value) => (
+      {(['explore', 'journal', 'badges'] as const).map((value) => (
         <div
           key={value}
           id={`panel-${value}`}

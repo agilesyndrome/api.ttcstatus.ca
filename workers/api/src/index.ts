@@ -4,10 +4,27 @@ import type {
   ExecutionContextLike,
 } from '../../shared/cloudflare/bindings';
 import { routeRequest } from './http/router';
+import { json } from './http/responses';
 import { syncStaticGtfs } from './sync/sync';
 
 export default {
-  fetch: routeRequest,
+  async fetch(request: Request, env: Env, ctx: ExecutionContextLike): Promise<Response> {
+    try {
+      return await routeRequest(request, env, ctx);
+    } catch (error) {
+      // The full failure detail (message, stack, request) belongs in Workers
+      // Logs; the client only ever sees the opaque 500 below.
+      console.error('unhandled request failure', {
+        method: request.method,
+        url: request.url,
+        error:
+          error instanceof Error
+            ? { message: error.message, stack: error.stack }
+            : String(error),
+      });
+      return json({ error: 'internal-error' }, 500, { 'cache-control': 'no-store' });
+    }
+  },
   async scheduled(
     _controller: ScheduledControllerLike,
     env: Env,

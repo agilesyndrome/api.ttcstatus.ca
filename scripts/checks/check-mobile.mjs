@@ -67,7 +67,7 @@ try {
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
     assert.equal(await content.isVisible(), false);
     assert.equal(
-      await page.getByRole('tab', { name: 'Fleet', exact: true }).isVisible(),
+      await page.getByRole('tab', { name: 'Explore', exact: true }).isVisible(),
       true,
     );
 
@@ -96,12 +96,6 @@ try {
     await page.getByRole('button', { name: 'Close streetcar details' }).tap();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
 
-    await page.getByRole('tab', { name: 'Fleet', exact: true }).tap();
-    await assertHeadingVisible('Streetcar spotting');
-    await page.locator('.fleet-list .list-choice').first().tap();
-    await assertHeadingVisible('Car 4400');
-    await page.getByRole('button', { name: 'Close streetcar details' }).tap();
-
     await search.fill('Queen');
     const firstStop = page.locator('.search-results button').first();
     const stopName = (await firstStop.innerText()).split('\n')[0];
@@ -118,14 +112,9 @@ try {
       true,
     );
 
-    // Picking comparison endpoints makes room for the map, then restores tools.
-    await page.getByRole('tab', { name: 'Compare', exact: true }).tap();
-    await page.getByRole('button', { name: 'Pick start stop on map', exact: true }).tap();
+    // Collapsing the panel makes room for the map without overflowing the screen.
+    await toggle.tap();
     assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-    await search.fill(stopName);
-    await page.locator('.search-results button').first().tap();
-    await assertHeadingVisible('Compare stops');
-    assert.ok(await page.getByLabel('Start stop', { exact: true }).inputValue());
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     );
@@ -149,7 +138,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    'Mobile UI passed: touch selection/reselection, visible car/stop details, collapse/reopen, fleet and layers, search keyboard dismissal, shared links, 320/390/430px layouts; no browser errors.',
+    'Mobile UI passed: touch selection/reselection, visible car/stop details, collapse/reopen, layers, search keyboard dismissal, shared links, 320/390/430px layouts; no browser errors.',
   );
   await context.close();
 } finally {

@@ -17,7 +17,7 @@ source file locations.
 | `maps/`        | Map/network reads, map caching and protected debug forwarding                  |
 | `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response        |
 | `sync/`        | Static download, import, map generation, delta, publication and retention      |
-| `diagnostics/` | Existing public feed-status response                                           |
+| `diagnostics/` | Existing public feed-status response and deployed-version reporting            |
 
 Only `sync/sync.ts` contacts the static GTFS source. Import reads the cached R2
 archive. Public map requests read materialized data; live requests use the bounded

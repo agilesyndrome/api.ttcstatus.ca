@@ -2,6 +2,10 @@
   "name": "api.ttcstatus.ca",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agilesyndrome/api.ttcstatus.ca.git"
+  },
   "type": "module",
   "scripts": {
     "prepare": "node scripts/hooks/install.mjs",
@@ -19,8 +23,8 @@
     "dev:api": "npm run build:ui && npm run build:viewer && wrangler dev -c workers/api/wrangler.jsonc",
     "dev:viewer": "vite",
     "dev:map": "wrangler dev -c workers/map-generator/wrangler.jsonc",
-    "deploy:api": "wrangler deploy -c workers/api/wrangler.jsonc --keep-vars",
-    "deploy:map": "wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars",
+    "deploy:api": "npm run db:migrate:remote && wrangler deploy -c workers/api/wrangler.jsonc --keep-vars",
+    "deploy:map": "npm run db:migrate:remote && wrangler deploy -c workers/map-generator/wrangler.jsonc --keep-vars",
     "secrets:sync": "op run --env-file=.env.${ENV} -- node scripts/operations/sync-cloudflare-secrets.mjs",
     "db:migrate:local": "wrangler d1 migrations apply ttcstatus --local -c workers/api/wrangler.jsonc",
     "db:migrate:remote": "wrangler d1 migrations apply ttcstatus --remote -c workers/api/wrangler.jsonc",

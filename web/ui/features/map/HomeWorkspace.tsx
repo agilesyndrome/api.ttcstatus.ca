@@ -47,6 +47,9 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     feature,
     car,
     locationPoint,
+    locating,
+    locateError,
+    requestLocate,
     selectFeature,
     selectVehicle,
     previewMap,
@@ -117,14 +120,36 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
           <TransitMap
             mapTools={
-              <button
-                className="snake-launch"
-                aria-label={t('workspace.playStreetcarSnake')}
-                title={t('workspace.playStreetcarSnake')}
-                onClick={() => setSnakeOpen(true)}
-              >
-                🐍
-              </button>
+              <>
+                <button
+                  className="locate-launch"
+                  aria-label={t('nearbyStops.locateMeCenterMap')}
+                  title={t('nearbyStops.locateMeCenterMap')}
+                  aria-busy={locating}
+                  onClick={requestLocate}
+                  disabled={locating}
+                >
+                  ◎
+                  {locating && (
+                    <span className="sr-only" role="status">
+                      {t('nearbyStops.findingYourLocation')}
+                    </span>
+                  )}
+                </button>
+                {locateError && (
+                  <p role="alert" className="locate-error">
+                    {t(locateError)}
+                  </p>
+                )}
+                <button
+                  className="snake-launch"
+                  aria-label={t('workspace.playStreetcarSnake')}
+                  title={t('workspace.playStreetcarSnake')}
+                  onClick={() => setSnakeOpen(true)}
+                >
+                  🐍
+                </button>
+              </>
             }
             data={data}
             followPoint={car && following ? car.point : undefined}

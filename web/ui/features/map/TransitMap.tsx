@@ -1,5 +1,6 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
+import { useMemo } from 'react';
 import type { Feature, Point } from '../../../../shared/map/model';
 import { streetcarBody } from '../../../../shared/map/live-status';
 import type { TransitMapProps } from './types';
@@ -78,75 +79,112 @@ export function TransitMap({
       action();
     }
   };
-  const allowedRoutes = new Set(
-    data.routes
-      .filter((route) => includeOvernight || !route.overnight)
-      .filter((route) =>
-        /^(1|2|4|5|6)$/.test(route.number) ? showSubway : showStreetcar,
-      )
-      .map((route) => route.id),
+  // Route visibility depends only on the toggles, not the camera or fleet;
+  // memoize so per-frame camera renders do not rebuild the Set.
+  const allowedRoutes = useMemo(
+    () =>
+      new Set(
+        data.routes
+          .filter((route) => includeOvernight || !route.overnight)
+          .filter((route) =>
+            /^(1|2|4|5|6)$/.test(route.number) ? showSubway : showStreetcar,
+          )
+          .map((route) => route.id),
+      ),
+    [data, includeOvernight, showSubway, showStreetcar],
   );
   const isEndpoint = (feature: Feature) =>
     feature.id === comparisonStops?.from?.id || feature.id === comparisonStops?.to?.id;
-  const visibleFeatures = data.features.filter(
-    (feature) =>
-      (isEndpoint(feature) ||
-        selectedFeature?.id === feature.id ||
-        feature.kind === 'terminal' ||
-        (showStops && feature.routeIds.some((id) => allowedRoutes.has(id)))) &&
-      (!selectedRoute ||
-        feature.routeIds.includes(selectedRoute) ||
-        selectedFeature?.id === feature.id ||
-        isEndpoint(feature)),
+  const visibleFeatures = useMemo(
+    () =>
+      data.features.filter(
+        (feature) =>
+          (isEndpoint(feature) ||
+            selectedFeature?.id === feature.id ||
+            feature.kind === 'terminal' ||
+            (showStops && feature.routeIds.some((id) => allowedRoutes.has(id)))) &&
+          (!selectedRoute ||
+            feature.routeIds.includes(selectedRoute) ||
+            selectedFeature?.id === feature.id ||
+            isEndpoint(feature)),
+      ),
+    [data, allowedRoutes, showStops, selectedRoute, selectedFeature, comparisonStops],
   );
   // Keep labels readable; reveal ordinary stops at closer zoom levels.
-  const labelFeatures = visibleFeatures
-    .filter(
-      (feature) =>
-        isEndpoint(feature) ||
-        feature.kind === 'terminal' ||
-        selectedFeature?.id === feature.id ||
-        level > (showLabels ? 1.5 : 3),
-    )
-    .sort(
-      (a, b) =>
-        Number(isEndpoint(b)) - Number(isEndpoint(a)) ||
-        Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) ||
-        Number(b.kind === 'terminal') - Number(a.kind === 'terminal'),
-    );
-  const occupied: { x: number; y: number; width: number; height: number }[] = [];
-  const readableLabels = labelFeatures.filter((feature) => {
-    const x = (feature.point[0] - camera.x) * scale + 8;
-    const y = (feature.point[1] - camera.y) * scale - 19;
-    const box = { x, y, width: feature.name.length * 6 + 10, height: 20 };
-    if (
-      x < 8 ||
-      y < 35 ||
-      x + box.width > size.width - 8 ||
-      y + box.height > size.height - 65
-    )
-      return false;
-    if (
-      occupied.some(
-        (other) =>
-          box.x < other.x + other.width &&
-          box.x + box.width > other.x &&
-          box.y < other.y + other.height &&
-          box.y + box.height > other.y,
+  // Placement depends on the camera, but the inputs are memoized so renders
+  // that keep the camera still (feed refreshes, HUD ticks) skip the O(n²)
+  // collision work, and per-label rotation math is precomputed once per map.
+  const labelFeatures = useMemo(
+    () =>
+      visibleFeatures
+        .filter(
+          (feature) =>
+            isEndpoint(feature) ||
+            feature.kind === 'terminal' ||
+            selectedFeature?.id === feature.id ||
+            level > (showLabels ? 1.5 : 3),
+        )
+        .sort(
+          (a, b) =>
+            Number(isEndpoint(b)) - Number(isEndpoint(a)) ||
+            Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) ||
+            Number(b.kind === 'terminal') - Number(a.kind === 'terminal'),
+        ),
+    [visibleFeatures, selectedFeature, showLabels, level, comparisonStops],
+  );
+  const contextLabels = useMemo(
+    () =>
+      data.labels.filter((label) => label.kind === 'street' || label.kind === 'water'),
+    [data],
+  );
+  const labelGeometry = useMemo(
+    () =>
+      new Map(
+        data.labels.map((label) => {
+          const angle = (label.angle * Math.PI) / 180;
+          return [
+            label,
+            {
+              width: label.text.length * 6,
+              height: 16,
+              cos: Math.cos(angle),
+              sin: Math.sin(angle),
+            },
+          ];
+        }),
+      ),
+    [data],
+  );
+  const [readableLabels, readableContextLabels] = useMemo(() => {
+    const occupied: { x: number; y: number; width: number; height: number }[] = [];
+    const readableLabels = labelFeatures.filter((feature) => {
+      const x = (feature.point[0] - camera.x) * scale + 8;
+      const y = (feature.point[1] - camera.y) * scale - 19;
+      const box = { x, y, width: feature.name.length * 6 + 10, height: 20 };
+      if (
+        x < 8 ||
+        y < 35 ||
+        x + box.width > size.width - 8 ||
+        y + box.height > size.height - 65
       )
-    )
-      return false;
-    occupied.push(box);
-    return true;
-  });
-  const readableContextLabels = data.labels
-    .filter((label) => label.kind === 'street' || label.kind === 'water')
-    .filter((label) => {
+        return false;
+      if (
+        occupied.some(
+          (other) =>
+            box.x < other.x + other.width &&
+            box.x + box.width > other.x &&
+            box.y < other.y + other.height &&
+            box.y + box.height > other.y,
+        )
+      )
+        return false;
+      occupied.push(box);
+      return true;
+    });
+    const readableContextLabels = contextLabels.filter((label) => {
       // Context uses rotated text. Reserve its screen-space bounds so street
       // names do not pile up over terminals when the whole map fits a phone.
-      const angle = (label.angle * Math.PI) / 180;
-      const width = label.text.length * 6,
-        height = 16;
+      const { width, height, cos, sin } = labelGeometry.get(label)!;
       const x = (label.point[0] - camera.x) * scale,
         y = (label.point[1] - camera.y) * scale;
       const corners = [
@@ -154,10 +192,7 @@ export function TransitMap({
         [width, -height],
         [0, 0],
         [width, 0],
-      ].map(([dx, dy]) => [
-        x + dx * Math.cos(angle) - dy * Math.sin(angle),
-        y + dx * Math.sin(angle) + dy * Math.cos(angle),
-      ]);
+      ].map(([dx, dy]) => [x + dx * cos - dy * sin, y + dx * sin + dy * cos]);
       const left = Math.min(...corners.map((point) => point[0])),
         top = Math.min(...corners.map((point) => point[1]));
       const box = {
@@ -186,16 +221,35 @@ export function TransitMap({
       occupied.push(box);
       return true;
     });
+    return [readableLabels, readableContextLabels] as const;
+  }, [
+    labelFeatures,
+    contextLabels,
+    labelGeometry,
+    camera,
+    scale,
+    size.width,
+    size.height,
+  ]);
   const shoreline = data.shoreline;
-  const water = shoreline.length
-    ? ([
-        ...shoreline,
-        [5000, shoreline.at(-1)![1]],
-        [5000, 5000],
-        [-5000, 5000],
-        [-5000, shoreline[0][1]],
-      ] as Point[])
-    : [];
+  // The water frame is pure data: build its point strings once per map, not
+  // on every camera frame.
+  const waterPoints = useMemo(() => {
+    const water = shoreline.length
+      ? ([
+          ...shoreline,
+          [5000, shoreline.at(-1)![1]],
+          [5000, 5000],
+          [-5000, 5000],
+          [-5000, shoreline[0][1]],
+        ] as Point[])
+      : [];
+    return {
+      water,
+      polygon: points(water),
+      coast: points(shoreline),
+    };
+  }, [shoreline]);
   return (
     <section className="map-viewport" aria-label={t('transitMap.interactiveTtcRailMap')}>
       <svg
@@ -212,9 +266,9 @@ export function TransitMap({
         {...handlers}
       >
         <g className="water-context" aria-hidden="true">
-          <polygon points={points(water)} fill="#d8e8e9" />
+          <polygon points={waterPoints.polygon} fill="#d8e8e9" />
           <polyline
-            points={points(shoreline)}
+            points={waterPoints.coast}
             fill="none"
             stroke="#bdd7da"
             vectorEffect="non-scaling-stroke"
@@ -323,6 +377,7 @@ export function TransitMap({
               )}
               {detailedCars ? (
                 streetcarBody(car, data.edges, scale)
+                  .slice()
                   .reverse()
                   .map((section, index) => (
                     <g

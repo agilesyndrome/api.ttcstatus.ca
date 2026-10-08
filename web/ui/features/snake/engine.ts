@@ -1,5 +1,5 @@
 import { english } from '../../../../shared/i18n/messages';
-import { t } from '../../i18n';
+import { t, getLanguageRevision } from '../../i18n';
 import { localToMap, mapToGps, pointAlongEdge } from '../../../../shared/map/projection';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type {
@@ -25,13 +25,6 @@ export interface Pose {
 }
 export interface TrailSample extends Pose {
   travelled: number;
-}
-export interface Mission {
-  id: string;
-  routeId: string;
-  label: string;
-  headsign: string;
-  refs: EdgeRef[];
 }
 export interface SwitchChoice extends EdgeRef {
   turn: Turn;
@@ -78,7 +71,6 @@ export interface UpcomingSwitch {
   distance: number;
   point: Point;
   position: Position;
-  missionIndex: number;
   nodeId: string;
 }
 const CAR_LENGTH = 30.2,
@@ -128,48 +120,6 @@ const sameRail = (a: EdgeRef, b: EdgeRef) =>
 const spansOverlap = (a: RailSpan, b: RailSpan) =>
   sameRail(a, b) && a.from <= b.to && b.from <= a.to;
 
-export function gameMissions(data: ViewerData): Mission[] {
-  const paths = new Map((data.paths ?? []).map((path) => [path.id, path]));
-  const edges = new Map(data.edges.map((edge) => [edge.id, edge]));
-  const seen = new Set<string>();
-  return (data.patterns ?? [])
-    .flatMap((pattern) => {
-      const route = data.routes.find(
-        (route) => route.id === pattern.routeId && route.scheduled && !route.overnight,
-      );
-      const path = pattern.pathId && paths.get(pattern.pathId);
-      if (
-        !route ||
-        !path ||
-        !path.edgeRefs?.length ||
-        path.edgeRefs.some((ref) => !edges.has(ref.edgeId))
-      )
-        return [];
-      // Reject broken sequences instead of teleporting between components.
-      for (let i = 1; i < path.edgeRefs.length; i++) {
-        const prev = path.edgeRefs[i - 1],
-          next = path.edgeRefs[i];
-        const a = edges.get(prev.edgeId)!,
-          b = edges.get(next.edgeId)!;
-        if ((prev.direction === 1 ? a.b : a.a) !== (next.direction === 1 ? b.a : b.b))
-          return [];
-      }
-      const key = `${route.id}:${pattern.headsign}`;
-      if (seen.has(key)) return [];
-      seen.add(key);
-      return [
-        {
-          id: `${route.id}:${path.id}:${pattern.headsign}`,
-          routeId: route.id,
-          label: `${route.number} · ${pattern.headsign}`,
-          headsign: pattern.headsign,
-          refs: path.edgeRefs,
-        },
-      ];
-    })
-    .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
-}
-
 export type HazardKind = 'slow' | 'stalled' | 'closed';
 export interface Hazard {
   kind: HazardKind;
@@ -200,13 +150,16 @@ export class SnakeEngine {
   collected = new Set<string>();
   queued?: Turn | string;
   message = english('snake.chooseAModeAndDepart');
-  mission?: Mission;
-  missionRefs: EdgeRef[] = [];
-  missionIndex = -1;
   gameCars: PlottedVehicle[] = [];
   /** Visible one-line disruption banner; empty when the track is clear. */
   banner = '';
   gameOverKind?: 'selfCollision' | 'collision' | 'closedSection';
+  /** Switch choices depend only on the rail (edge + direction) and the
+   * language, so every graph walk reuses them instead of rebuilding labels,
+   * angles and sorts on each hop. */
+  private choiceCache = new Map<string, { language: number; choices: SwitchChoice[] }>();
+  /** Route-continuation keys per edge, for nextRef's scoring. */
+  private routeKeyCache = new Map<string, Set<string>>();
   private hazardClock = 0;
   private nextHazardAt = Infinity;
   private hazardUntil = 0;
@@ -432,9 +385,7 @@ export class SnakeEngine {
 
   private positionAhead(metres: number, strict = false): Position | undefined {
     let position = { ...this.position },
-      index = this.missionIndex,
-      remaining = Math.max(0, metres + this.turnbackRemaining),
-      refs = this.missionRefs;
+      remaining = Math.max(0, metres + this.turnbackRemaining);
     let queued: string | null | undefined = this.queued;
     const visited = new Set<string>();
     for (let guard = 0; guard < 2500; guard++) {
@@ -449,16 +400,8 @@ export class SnakeEngine {
           distance: position.distance + position.direction * remaining,
         };
       remaining -= available;
-      if (this.mission && index === refs.length - 1) {
-        refs = refs
-          .slice()
-          .reverse()
-          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
-        index = -1;
-        queued = null;
-      }
       const choices = this.choices(position),
-        next = this.nextRef(choices, position, index, queued, refs);
+        next = this.nextRef(choices, position, queued);
       if (!next || visited.has(`${next.edgeId}:${next.direction}`)) {
         if (strict) return;
         return {
@@ -470,7 +413,6 @@ export class SnakeEngine {
         };
       }
       visited.add(`${next.edgeId}:${next.direction}`);
-      index = this.indexAfter(next, index, refs);
       if (choices.length > 1) queued = null;
       const following = this.edges.get(next.edgeId)!;
       position = {
@@ -482,9 +424,7 @@ export class SnakeEngine {
 
   private distanceAhead(target: Position): number | undefined {
     let position = { ...this.position },
-      index = this.missionIndex,
-      metres = this.turnbackRemaining,
-      refs = this.missionRefs;
+      metres = this.turnbackRemaining;
     let queued: string | null | undefined = this.queued;
     const visited = new Set<string>();
     for (let guard = 0; guard < 2500; guard++) {
@@ -498,19 +438,10 @@ export class SnakeEngine {
         position.direction === 1
           ? edge.lengthMetres - position.distance
           : position.distance;
-      if (this.mission && index === refs.length - 1) {
-        refs = refs
-          .slice()
-          .reverse()
-          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
-        index = -1;
-        queued = null;
-      }
       const choices = this.choices(position),
-        next = this.nextRef(choices, position, index, queued, refs);
+        next = this.nextRef(choices, position, queued);
       if (!next || visited.has(`${next.edgeId}:${next.direction}`)) return;
       visited.add(`${next.edgeId}:${next.direction}`);
-      index = this.indexAfter(next, index, refs);
       if (choices.length > 1) queued = null;
       const following = this.edges.get(next.edgeId)!;
       position = {
@@ -752,7 +683,7 @@ export class SnakeEngine {
     }
   }
 
-  start(mode: Mode, cars: PlottedVehicle[], mission?: Mission, random = Math.random) {
+  start(mode: Mode, cars: PlottedVehicle[], random = Math.random) {
     this.mode = mode;
     this.speed = mode === 'purist' ? 50 : 180;
     this.count = 1;
@@ -761,9 +692,6 @@ export class SnakeEngine {
     this.trail = [];
     this.collected.clear();
     this.queued = undefined;
-    this.mission = mission;
-    this.missionRefs = mission?.refs.slice() ?? [];
-    this.missionIndex = -1;
     this.turnGraceUntil = 0;
     this.lastRecorded = -Infinity;
     this.turnback = undefined;
@@ -778,14 +706,13 @@ export class SnakeEngine {
     this.hazardClock = 0;
     this.nextHazardAt = HAZARD_FIRST_MIN + random() * HAZARD_FIRST_EXTRA;
     this.invalidateTraffic();
-    const refs =
-      mission?.refs ??
-      [...this.edges.values()]
-        .filter((edge) => edge.routeIds.length)
-        .map((edge) => ({
-          edgeId: edge.id,
-          direction: (random() < 0.5 ? -1 : 1) as 1 | -1,
-        }));
+    // Free play starts anywhere on a scheduled corridor; quiet rails still work.
+    const refs = [...this.edges.values()]
+      .filter((edge) => edge.routeIds.length)
+      .map((edge) => ({
+        edgeId: edge.id,
+        direction: (random() < 0.5 ? -1 : 1) as 1 | -1,
+      }));
     const pool = refs.length
       ? refs
       : [...this.edges.values()].map((edge) => ({
@@ -808,14 +735,11 @@ export class SnakeEngine {
       const ref = pool[index],
         edge = this.edges.get(ref.edgeId)!;
       this.position = { ...ref, distance: edge.lengthMetres * (0.2 + random() * 0.6) };
-      this.missionIndex = mission ? index : -1;
       if (traffic.every((other) => distance(other.pose.source, this.pose().source) > 75))
         break;
     }
     this.status = 'running';
-    this.message = mission
-      ? t('snake.destinationValue', { value1: mission.headsign })
-      : t('snake.followTheRailsThrowSwitchesToExplore');
+    this.message = t('snake.followTheRailsThrowSwitchesToExplore');
     this.maintainGameTraffic(cars, true);
     this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
     this.record();
@@ -838,20 +762,6 @@ export class SnakeEngine {
   get turnbackRemaining() {
     return this.turnback ? this.turnback.length - this.turnback.distance : 0;
   }
-  get destination() {
-    if (!this.mission) return '';
-    const ref = this.missionRefs.at(-1)!,
-      edge = this.edges.get(ref.edgeId)!;
-    const node = ref.direction === 1 ? edge.b : edge.a;
-    if (this.terminals.has(node)) return this.terminals.get(node)!.name;
-    const point = ref.direction === 1 ? edge.points.at(-1)! : edge.points[0];
-    return (
-      this.data.features
-        .slice()
-        .sort((a, b) => distance(a.point, point) - distance(b.point, point))[0]?.name ??
-      this.mission.headsign
-    );
-  }
   get remaining() {
     const edge = this.edges.get(this.position.edgeId)!;
     return this.position.direction === 1
@@ -864,7 +774,18 @@ export class SnakeEngine {
       : Math.max(230, Math.min(1400, (this.speed / 3.6) * 4.5));
   }
 
-  choices(position = this.position): SwitchChoice[] {
+  /** Cached per rail: labels, angles and order only change with the language. */
+  choices(position: Position = this.position): SwitchChoice[] {
+    const key = `${position.edgeId}:${position.direction}`;
+    const language = getLanguageRevision();
+    const cached = this.choiceCache.get(key);
+    if (cached && cached.language === language) return cached.choices;
+    const choices = this.buildChoices(position);
+    this.choiceCache.set(key, { language, choices });
+    return choices;
+  }
+
+  private buildChoices(position: Position): SwitchChoice[] {
     const current = this.edges.get(position.edgeId)!;
     const node = position.direction === 1 ? current.b : current.a;
     const arrival = this.pose({
@@ -908,8 +829,7 @@ export class SnakeEngine {
   upcoming(): UpcomingSwitch | undefined {
     if (this.turnback) return;
     let position = this.position,
-      metres = this.remaining,
-      index = this.missionIndex;
+      metres = this.remaining;
     const visited = new Set<string>();
     for (let guard = 0; guard < 250 && metres <= this.warningDistance; guard++) {
       const choices = this.choices(position),
@@ -918,8 +838,7 @@ export class SnakeEngine {
         ...position,
         distance: position.direction === 1 ? edge.lengthMetres : 0,
       };
-      if (this.mission && index === this.missionRefs.length - 1) return;
-      const selected = this.nextRef(choices, position, index);
+      const selected = this.nextRef(choices, position);
       if (
         choices.length > 1 &&
         selected &&
@@ -936,13 +855,11 @@ export class SnakeEngine {
           distance: metres,
           point: this.pose(end).point,
           position: end,
-          missionIndex: index,
           nodeId: position.direction === 1 ? edge.b : edge.a,
         };
       const next = selected;
       if (!next || visited.has(`${next.edgeId}:${next.direction}`)) return;
       visited.add(`${next.edgeId}:${next.direction}`);
-      index = this.indexAfter(next, index);
       const following = this.edges.get(next.edgeId)!;
       position = { ...next, distance: next.direction === 1 ? 0 : following.lengthMetres };
       metres += following.lengthMetres;
@@ -963,42 +880,10 @@ export class SnakeEngine {
       )[0];
   }
 
-  private indexAfter(next: EdgeRef, index: number, refs = this.missionRefs) {
-    return refs[index + 1] && sameRail(next, refs[index + 1])
-      ? index + 1
-      : refs.findIndex((ref) => sameRail(next, ref));
-  }
-
-  private nextRef(
-    choices: SwitchChoice[],
-    position = this.position,
-    index = this.missionIndex,
-    queued: string | null | undefined = this.queued,
-    refs = this.missionRefs,
-  ): EdgeRef | undefined {
-    if (this.mission && index === refs.length - 1)
-      return { edgeId: position.edgeId, direction: position.direction === 1 ? -1 : 1 };
-    if (queued && choices.length > 1) {
-      const exact = choices.find((choice) => choice.edgeId === queued);
-      if (exact) return exact;
-      if (['left', 'right', 'straight'].includes(queued))
-        return this.intentChoice(choices, queued as Turn);
-    }
-    const planned = refs[index + 1];
-    if (
-      planned &&
-      choices.some(
-        (choice) =>
-          choice.edgeId === planned.edgeId && choice.direction === planned.direction,
-      )
-    )
-      return planned;
-    // A scheduled same-edge reversal is a turnback, not a fabricated connector.
-    if (planned?.edgeId === position.edgeId && planned.direction !== position.direction)
-      return planned;
-    const current = this.edges.get(position.edgeId)!;
-    const routeKeys = (edge: Edge) =>
-      new Set(
+  private routeKeys(edge: Edge): Set<string> {
+    let keys = this.routeKeyCache.get(edge.id);
+    if (!keys) {
+      keys = new Set(
         edge.routeIds.flatMap((id) => {
           const number = this.routeNumbers.get(id) ?? id;
           return [
@@ -1008,24 +893,35 @@ export class SnakeEngine {
           ];
         }),
       );
-    const keys = routeKeys(current),
-      missionKeys = this.mission
-        ? routeKeys({ ...current, routeIds: [this.mission.routeId] })
-        : new Set<string>();
+      this.routeKeyCache.set(edge.id, keys);
+    }
+    return keys;
+  }
+
+  private nextRef(
+    choices: SwitchChoice[],
+    position: Position = this.position,
+    queued: string | null | undefined = this.queued,
+  ): EdgeRef | undefined {
+    if (queued && choices.length > 1) {
+      const exact = choices.find((choice) => choice.edgeId === queued);
+      if (exact) return exact;
+      if (['left', 'right', 'straight'].includes(queued))
+        return this.intentChoice(choices, queued as Turn);
+    }
+    const current = this.edges.get(position.edgeId)!;
+    const keys = this.routeKeys(current);
     const score = (choice: SwitchChoice) => {
       const next = this.edges.get(choice.edgeId)!;
-      const nextKeys = routeKeys(next),
-        shared = [...nextKeys].filter((key) => keys.has(key)).length;
+      const shared = [...this.routeKeys(next)].filter((key) => keys.has(key)).length;
       const infrastructure = next.infrastructureIds
         .map((id) => this.infrastructureNames.get(id) ?? id)
         .join(' ');
       const yard = /yard|carhouse|barns|hillcrest|shop/i.test(infrastructure);
       const diversion = !next.routeIds.length && current.routeIds.length > 0;
-      const missionBonus = [...nextKeys].some((key) => missionKeys.has(key)) ? 1.4 : 0;
       return (
         -Math.cos((choice.angle * Math.PI) / 180) -
-        Math.min(5.5, shared * 2.4) -
-        missionBonus +
+        Math.min(5.5, shared * 2.4) +
         (yard ? 3.5 : diversion ? 1.2 : 0)
       );
     };
@@ -1042,8 +938,7 @@ export class SnakeEngine {
       ...position,
       direction: (forward ? position.direction : -position.direction) as 1 | -1,
     };
-    let remaining = CAR_LENGTH / 2,
-      index = this.missionIndex;
+    let remaining = CAR_LENGTH / 2;
     let queued: string | null | undefined = this.queued;
     const spans: RailSpan[] = [];
     for (let guard = 0; remaining > 0.00001 && guard < 250; guard++) {
@@ -1063,15 +958,11 @@ export class SnakeEngine {
       const choices = this.choices(cursor);
       let next: EdgeRef | undefined;
       if (player && forward) {
-        // At a mission terminal the front follows the same turnback as the
-        // simulation, instead of forecasting a different branch at the node.
-        next =
-          this.mission && index === this.missionRefs.length - 1
-            ? { edgeId: cursor.edgeId, direction: cursor.direction === 1 ? -1 : 1 }
-            : (this.nextRef(choices, cursor, index, queued) ?? {
-                edgeId: cursor.edgeId,
-                direction: cursor.direction === 1 ? -1 : 1,
-              });
+        // The front forecasts the same continuation as the simulation.
+        next = this.nextRef(choices, cursor, queued) ?? {
+          edgeId: cursor.edgeId,
+          direction: cursor.direction === 1 ? -1 : 1,
+        };
       } else if (player) {
         // The rear must follow the switch actually taken, not today's queued
         // choice or the straightest branch behind the car.
@@ -1115,7 +1006,6 @@ export class SnakeEngine {
       // A car entering the synthetic loop has no body on its opposite rail
       // until it has actually travelled through the connector.
       if (next.edgeId === cursor.edgeId && next.direction !== cursor.direction) break;
-      index = this.indexAfter(next, index);
       if (choices.length > 1) queued = null;
       const following = this.edges.get(next.edgeId)!;
       cursor = { ...next, distance: next.direction === 1 ? 0 : following.lengthMetres };
@@ -1226,9 +1116,7 @@ export class SnakeEngine {
         if (sample.distance > this.turnback.distance)
           points.push(localToMap(sample.source, this.data.geographicTransform));
     let position = { ...this.position },
-      index = this.missionIndex,
-      remaining = Math.max(0, metres - this.turnbackRemaining),
-      refs = this.missionRefs;
+      remaining = Math.max(0, metres - this.turnbackRemaining);
     let queued: string | null | undefined = this.queued;
     const visited = new Set<string>();
     for (let guard = 0; remaining > 0.00001 && guard < 2500; guard++) {
@@ -1244,16 +1132,8 @@ export class SnakeEngine {
         points.push(this.pose(position).point);
         continue;
       }
-      if (this.mission && index === refs.length - 1) {
-        refs = refs
-          .slice()
-          .reverse()
-          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
-        index = -1;
-        queued = null;
-      }
       const choices = this.choices(position),
-        next = this.nextRef(choices, position, index, queued, refs) ?? {
+        next = this.nextRef(choices, position, queued) ?? {
           edgeId: position.edgeId,
           direction: position.direction === 1 ? (-1 as const) : (1 as const),
         };
@@ -1275,7 +1155,6 @@ export class SnakeEngine {
         }
         remaining -= turnback.length;
       }
-      index = this.indexAfter(next, index, refs);
       if (choices.length > 1) queued = null;
       position = outbound;
       points.push(this.pose(position).point);
@@ -1286,23 +1165,6 @@ export class SnakeEngine {
   private crossJunction() {
     this.record(true);
     const choices = this.choices();
-    const finishing = this.mission && this.missionIndex === this.missionRefs.length - 1;
-    if (finishing) {
-      this.trips++;
-      if (this.mode === 'arcade') this.count++;
-      // Reverse the SAME ordered path for the return mission. This is a game
-      // turnback; it does not claim a scheduled permission to turn every edge.
-      this.missionRefs = this.missionRefs
-        .slice()
-        .reverse()
-        .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
-      this.missionIndex = -1;
-      this.queued = undefined; // Transit Control signs the return departure.
-      this.message = t('snake.terminalReachedValueNowTowardsValue', {
-        value1: this.mode === 'arcade' ? t('snake.bonusCarCoupled') : '',
-        value2: this.destination,
-      });
-    }
     const next = this.nextRef(choices) ?? {
       edgeId: this.position.edgeId,
       direction: (this.position.direction === 1 ? -1 : 1) as 1 | -1,
@@ -1315,7 +1177,6 @@ export class SnakeEngine {
       this.message = t('snake.youEnteredADoNotEnterSectionTransitControlHasRemovedYou');
       return;
     }
-    this.missionIndex = this.indexAfter(next, this.missionIndex);
     const edge = this.edges.get(next.edgeId)!;
     const outgoing = { ...next, distance: next.direction === 1 ? 0 : edge.lengthMetres };
     if (
@@ -1328,7 +1189,7 @@ export class SnakeEngine {
     this.position = outgoing;
     this.record(true);
     // Hold a command through ordinary geometry nodes until an actual switch.
-    if (choices.length > 1 || finishing) this.queued = undefined;
+    if (choices.length > 1) this.queued = undefined;
   }
 
   private record(force = false) {
@@ -1390,9 +1251,7 @@ export class SnakeEngine {
 
   nextStop(): { name: string; metres: number } | undefined {
     let position = this.position,
-      index = this.missionIndex,
-      metres = this.turnbackRemaining,
-      refs = this.missionRefs;
+      metres = this.turnbackRemaining;
     let queued: string | null | undefined = this.queued;
     const visited = new Set<string>();
     for (let guard = 0; guard < 250 && metres < 5000; guard++) {
@@ -1412,19 +1271,10 @@ export class SnakeEngine {
         position.direction === 1
           ? edge.lengthMetres - position.distance
           : position.distance;
-      if (this.mission && index === refs.length - 1) {
-        refs = refs
-          .slice()
-          .reverse()
-          .map((ref) => ({ ...ref, direction: ref.direction === 1 ? -1 : 1 }));
-        index = -1;
-        queued = null;
-      }
-      const next = this.nextRef(choices, position, index, queued, refs);
+      const next = this.nextRef(choices, position, queued);
       if (!next || visited.has(`${next.edgeId}:${next.direction}`)) return;
       visited.add(`${next.edgeId}:${next.direction}`);
       if (choices.length > 1) queued = null;
-      index = this.indexAfter(next, index, refs);
       const following = this.edges.get(next.edgeId)!;
       const outbound = {
         ...next,
@@ -1510,7 +1360,7 @@ export class SnakeEngine {
       this.travelled += step;
       left -= step;
       this.record();
-      const player = this.vehicleSpans(this.position, this.mission?.routeId, true);
+      const player = this.vehicleSpans(this.position, undefined, true);
       for (const other of traffic) {
         if (this.collected.has(other.car.vehicle.id)) continue;
         if (this.mode === 'purist') {

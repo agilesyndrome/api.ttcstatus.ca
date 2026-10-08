@@ -7,6 +7,8 @@ import { accountReply as reply } from '../http/responses';
 // capped to what its own schema can legitimately contain.
 export const PROFILE_BODY_LIMIT = 2_000;
 export const JOURNAL_BODY_LIMIT = 1_200_000;
+// Saved stops are at most 100 ids of <= 200 characters each (< ~21 KB).
+export const SAVED_STOPS_BODY_LIMIT = 32_000;
 
 export async function accountBody(
   request: Request,

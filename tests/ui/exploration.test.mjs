@@ -250,14 +250,15 @@ test('real map viewer preserves grouped boarding IDs and canonical stop order fo
   );
 });
 
-test('share links restore tool tabs and comparison endpoints, ignoring malformed extra values', () => {
-  const tools = { panel: 'compare', fromId: 'A/Queen & King', toId: 'B:#北' };
-  const hash = mapLinkHash(undefined, DEFAULT_FILTERS, undefined, tools);
-  assert.deepEqual(readMapLink(hash), { filters: {}, ...tools });
+test('share links restore tool tabs, ignoring malformed extra values', () => {
+  for (const panel of ['journal', 'badges']) {
+    const hash = mapLinkHash(undefined, DEFAULT_FILTERS, undefined, { panel });
+    assert.equal(hash, '#view=' + panel);
+    assert.deepEqual(readMapLink(hash), { panel, filters: {} });
+  }
   assert.deepEqual(readMapLink('#view=other&from=&to=' + 'a'.repeat(201)), {
     filters: {},
   });
-  assert.deepEqual(readMapLink('#view=fleet'), { filters: {}, panel: 'fleet' });
   assert.equal(
     mapLinkHash(undefined, DEFAULT_FILTERS, undefined, { panel: 'explore' }),
     '',

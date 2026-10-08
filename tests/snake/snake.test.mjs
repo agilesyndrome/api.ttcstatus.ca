@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 
 const compiled = await build({
   stdin: {
-    contents: `export * from './web/ui/features/snake/engine'; export { demoData } from './web/ui/stories/fixtures'; export { buildViewerData } from './shared/map/model';`,
+    contents: `export * from './web/ui/features/snake/engine'; export { demoData } from './web/ui/stories/fixtures'; export { buildViewerData } from './shared/map/model'; export { buildSnakeMap } from './shared/map/game-map';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -13,7 +13,7 @@ const compiled = await build({
   write: false,
   format: 'esm',
 });
-const { SnakeEngine, gameMissions, demoData, buildViewerData } = await import(
+const { SnakeEngine, demoData, buildViewerData, buildSnakeMap } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
 );
 const edge = (id, a, b, sourcePoints, routeIds = ['501']) => ({
@@ -65,7 +65,7 @@ const car = (id, edgeId = 'queen-edge', distance = 180, extra = {}) => ({
 });
 function started(data = demoData, mode = 'arcade', options = {}) {
   const engine = new SnakeEngine(data, options);
-  engine.start(mode, [], undefined, () => 0.4);
+  engine.start(mode, [], () => 0.4);
   engine.position = { edgeId: data.edges[0].id, direction: 1, distance: 100 };
   engine.trail = [];
   engine.travelled = 0;
@@ -159,7 +159,7 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
 
 test('game traffic grows at most one car after the opening fleet', () => {
   const engine = new SnakeEngine(demoData, { gameTraffic: true });
-  engine.start('arcade', [], undefined, () => 0.4);
+  engine.start('arcade', [], () => 0.4);
   const initialIds = new Set(engine.gameCars.map((car) => car.vehicle.id));
   for (let i = 0; i < 10; i++) engine.tick(0.1, []);
   assert.deepEqual(
@@ -268,64 +268,35 @@ test('old tail samples kill an arcade run but never grow or kill a purist run', 
   assert.equal(purist.count, 1);
 });
 
-test('missions follow ordered directed paths, award a terminal bonus and reverse on the same rails', () => {
-  const refs = [
-    { edgeId: 'in', direction: 1 },
-    { edgeId: 'left', direction: 1 },
-  ];
-  const mission = {
-    id: 'mission',
-    routeId: '501',
-    label: '501 test',
-    headsign: 'Left terminal',
-    refs,
-  };
+test('free play starts anywhere on scheduled track and follows automatic corridor continuity', () => {
   const engine = started(network);
-  engine.start('arcade', [], mission, () => 0);
+  engine.start('arcade', [], () => 0);
+  assert.equal(engine.status, 'running');
+  assert.ok(network.edges.some((edge) => edge.id === engine.position.edgeId));
   engine.position = { edgeId: 'in', direction: 1, distance: 80 };
-  engine.missionIndex = 0;
+  engine.speed = 180;
+  engine.queue('left');
   drive(engine, 4.5);
   assert.equal(engine.position.edgeId, 'left');
-  assert.equal(engine.position.direction, -1);
-  assert.equal(engine.trips, 1);
-  assert.equal(engine.count, 2);
-  assert.deepEqual(engine.missionRefs, [
-    { edgeId: 'left', direction: -1 },
-    { edgeId: 'in', direction: -1 },
-  ]);
-  const purist = started(network);
-  purist.start('purist', [], mission, () => 0);
-  purist.position = { edgeId: 'left', direction: 1, distance: 190 };
-  purist.missionIndex = 1;
-  drive(purist, 1);
-  assert.equal(purist.trips, 1);
-  assert.equal(purist.count, 1);
+  assert.equal(engine.status, 'running');
+  assert.ok(engine.pose().point.every(Number.isFinite));
 });
 
-test('production viewer retains route paths and offers only connected actual service missions', async () => {
+test('production viewer retains route paths and free play starts on the published board', async () => {
   const source = JSON.parse(
     await readFile('data/fixtures/streetcar-schematic.json', 'utf8'),
   );
   const data = buildViewerData(source);
   assert.deepEqual(data.paths[0].edgeRefs, source.paths[0].edgeRefs);
-  const missions = gameMissions(data);
-  assert.ok(missions.length > 10);
-  assert.ok(missions.some((mission) => mission.routeId === '501'));
-  const disconnected = {
-    ...network,
-    patterns: [{ routeId: '501', pathId: 'bad', headsign: 'Bad', stopIds: [] }],
-    paths: [
-      {
-        id: 'bad',
-        routeIds: ['501'],
-        edgeRefs: [
-          { edgeId: 'in', direction: 1 },
-          { edgeId: 'left', direction: -1 },
-        ],
-      },
-    ],
-  };
-  assert.deepEqual(gameMissions(disconnected), []);
+  const board = buildSnakeMap(data).data;
+  const engine = new SnakeEngine(board, { easySwitches: true });
+  engine.start('arcade', [], () => 0);
+  assert.equal(engine.status, 'running');
+  assert.ok(board.edges.some((edge) => edge.id === engine.position.edgeId));
+  engine.speed = 180;
+  drive(engine, 6);
+  assert.equal(engine.status, 'running');
+  assert.ok(engine.pose().point.every(Number.isFinite));
 });
 
 test('legacy archive keeps the original simulation and art intact, with scoped links and PWA start URL', async () => {
@@ -616,7 +587,7 @@ test('terminal connectors consume measured distance, keep the head smooth and le
   );
 });
 
-test('signed return departures take precedence over spurs at multi-branch terminals in preview, guidance and motion', () => {
+test('queued steering survives degree-two geometry nodes and stays held until the next real switch', () => {
   const data = {
     ...network,
     features: [
@@ -629,40 +600,20 @@ test('signed return departures take precedence over spurs at multi-branch termin
       },
     ],
   };
-  const mission = {
-    id: 'terminal',
-    routeId: '501',
-    label: '501 terminal',
-    headsign: 'Terminal',
-    refs: [{ edgeId: 'in', direction: 1 }],
-  };
   const engine = started(data);
-  engine.start('arcade', [], mission, () => 0);
-  engine.position = { edgeId: 'in', direction: 1, distance: 99 };
-  engine.missionIndex = 0;
+  engine.start('arcade', [], () => 0);
+  engine.position = { edgeId: 'in', direction: 1, distance: 30 };
   engine.queue('left');
-  assert.equal(
-    engine.upcoming(),
-    undefined,
-    'the signed terminal departure suppresses spur choices',
-  );
   assert.ok(
-    engine.routePreview(85).at(-1)[0] < 149,
+    engine.routePreview(60).at(-1)[0] < 149,
     'preview returns along the same edge',
   );
-  const nextStop = engine.nextStop();
-  assert.equal(nextStop.name, 'Return stop');
-  assert.ok(nextStop.metres > 50, 'guidance includes the turnback length');
-  engine.speed = 36;
-  drive(engine, 4);
-  assert.equal(engine.trips, 1);
-  assert.equal(engine.position.edgeId, 'in');
-  assert.equal(engine.position.direction, -1);
-  assert.equal(engine.queued, undefined);
-  assert.ok(
-    Math.abs(engine.nextStop().metres - (nextStop.metres - 40)) < 1e-6,
-    `guidance follows the distance actually travelled through the terminal: ${engine.nextStop().metres} vs ${nextStop.metres - 40}`,
-  );
+  assert.equal(engine.nextStop().name, 'Return stop');
+  engine.speed = 180;
+  drive(engine, 2.5);
+  assert.equal(engine.position.edgeId, 'left');
+  assert.equal(engine.queued, undefined, 'a taken switch consumes the queued turn');
+  assert.equal(engine.status, 'running');
 });
 
 test('closed graph edges continue as laps on the same directed rail instead of reversing', () => {
@@ -697,86 +648,6 @@ test('closed graph edges continue as laps on the same directed rail instead of r
     assert.equal(engine.turningAround, false);
     assert.equal(engine.position.distance, direction === 1 ? 4 : 396);
   }
-});
-
-test('preview and guidance resume the ordered mission path when a diversion rejoins it', () => {
-  const data = {
-    ...demoData,
-    edges: [
-      edge('off', 'z', 'c', [
-        [0, 0],
-        [100, 0],
-      ]),
-      edge('in', 'a', 'b', [
-        [-200, 0],
-        [-100, 0],
-      ]),
-      edge('detour', 'b', 'd', [
-        [-100, 0],
-        [-100, 100],
-      ]),
-      edge(
-        'connector',
-        'd',
-        'c',
-        [
-          [-100, 100],
-          [100, 0],
-        ],
-        ['504'],
-      ),
-      edge('join', 'c', 'e', [
-        [100, 0],
-        [200, 0],
-      ]),
-      edge(
-        'return',
-        'e',
-        'f',
-        [
-          [200, 0],
-          [200, 100],
-        ],
-        ['504'],
-      ),
-      edge('straight', 'e', 'g', [
-        [200, 0],
-        [300, 0],
-      ]),
-    ],
-    features: [
-      {
-        ...demoData.features[0],
-        id: 'return',
-        name: 'Mission stop',
-        edgeId: 'return',
-        distanceAlongMetres: 40,
-      },
-    ],
-  };
-  const mission = {
-    id: 'mission',
-    routeId: '501',
-    label: '501 test',
-    headsign: 'Mission stop',
-    refs: ['in', 'detour', 'connector', 'join', 'return'].map((edgeId) => ({
-      edgeId,
-      direction: 1,
-    })),
-  };
-  const engine = started(data);
-  engine.start('arcade', [], mission, () => 0);
-  engine.position = { edgeId: 'off', direction: 1, distance: 80 };
-  engine.missionIndex = -1;
-  engine.queue('join');
-  assert.deepEqual(engine.nextStop(), { name: 'Mission stop', metres: 160 });
-  assert.ok(
-    engine.routePreview(205).at(-1)[1] < 80,
-    'preview follows the signed left turn after rejoining, despite a straighter same-route branch',
-  );
-  drive(engine, 2.5);
-  assert.equal(engine.position.edgeId, 'return');
-  assert.equal(engine.missionIndex, 4);
 });
 
 test('terminal sizes preserve Union, named station, general station, loop and carhouse distinctions', () => {
@@ -933,45 +804,39 @@ test('body occupancy continues through graph joints and follows the switch actua
   );
 });
 
-const terminalCases = [
-  ['501', 'towards Humber'],
-  ['504', 'towards Distillery'],
-  ['504', 'towards Dundas West Station'],
-  ['506', 'towards High Park'],
-  ['506', 'towards Main Street Station'],
-  ['509', 'towards Union Station'],
-  ['510', 'towards Spadina Station'],
-  ['511', 'towards Exhibition'],
-  ['512', 'towards St Clair Station'],
-];
-for (const [routeId, destination] of terminalCases)
-  test(`long trains clear both ${routeId} ${destination} terminal turnbacks on the production graph`, async () => {
-    const data = buildViewerData(
-      JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8')),
-    );
-    const mission = gameMissions(data).find(
-      (mission) => mission.routeId === routeId && mission.headsign.includes(destination),
-    );
-    assert.ok(mission, `${routeId} ${destination} mission exists`);
+const routes = ['501', '504', '505', '506', '510', '511', '512'];
+for (const number of routes)
+  test(`long trains stay drivable on the production board (${number}, free play)`, async () => {
+    const data = buildSnakeMap(
+      buildViewerData(
+        JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8')),
+      ),
+    ).data;
+    const route = data.routes.find((route) => route.number === number);
+    assert.ok(route, `${number} exists`);
+    const edge = data.edges
+      .filter((edge) => edge.routeIds.includes(route.id))
+      .sort((a, b) => b.lengthMetres - a.lengthMetres)[0];
+    assert.ok(edge, `${number} has track`);
     for (const speed of [180, 2000]) {
-      const engine = new SnakeEngine(data);
-      engine.start('arcade', [], mission, () => 0);
+      const engine = new SnakeEngine(data, { easySwitches: true });
+      engine.start('arcade', [], () => 0);
+      engine.position = {
+        edgeId: edge.id,
+        direction: 1,
+        distance: Math.min(10, edge.lengthMetres / 2),
+      };
       engine.count = 30;
       engine.speed = speed;
-      for (let i = 0; i < 18000 && engine.status === 'running' && engine.trips < 2; i++)
-        engine.tick(0.1, []);
+      for (let i = 0; i < 3000; i++) engine.tick(0.1, []);
       assert.equal(
         engine.status,
         'running',
         `${speed} km/h: ${engine.message} on ${engine.position.edgeId}`,
       );
-      assert.equal(engine.trips, 2, 'both terminals are reached');
-      for (let i = 0; i < Math.ceil(250 / ((speed / 3.6) * 0.1)); i++)
-        engine.tick(0.1, []);
-      assert.equal(
-        engine.status,
-        'running',
-        `${speed} km/h: continue beyond the short turnback grace with the inbound train still present`,
+      assert.ok(
+        engine.pose().point.every(Number.isFinite),
+        `${speed} km/h: pose stays finite on ${number}`,
       );
     }
   });
@@ -979,7 +844,7 @@ for (const [routeId, destination] of terminalCases)
 test('Transit Control chaos caps speed with slow orders and stays silent without chaos enabled', () => {
   // A deterministic random stream makes the first disruption a slow order.
   const engine = new SnakeEngine(demoData, { chaos: true });
-  engine.start('arcade', [], undefined, () => 0);
+  engine.start('arcade', [], () => 0);
   assert.equal(engine.hazard, undefined, 'the network starts clear');
   // Nineteen seconds of accelerator: the overdrive climbs past the cap that
   // the coming slow order will impose.
@@ -1001,7 +866,7 @@ test('Transit Control chaos caps speed with slow orders and stays silent without
   assert.ok(engine.speed > 600, `speed climbs again once lifted: ${engine.speed}`);
   // Without the chaos option nothing ever happens.
   const quiet = new SnakeEngine(demoData);
-  quiet.start('arcade', [], undefined, () => 0);
+  quiet.start('arcade', [], () => 0);
   for (let i = 0; i < 400; i++) quiet.tick(0.1, [], { accelerator: true, brake: false });
   assert.equal(quiet.hazard, undefined);
   assert.equal(quiet.banner, '');

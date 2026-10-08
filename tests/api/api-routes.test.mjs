@@ -26,6 +26,7 @@ test('public API uses /api for health, map, network, feed and protected operatio
     ['/api/healthz', 'HEAD', 200],
     ['/api/v1/map/streetcar', 'GET', 503, 'map-not-ready'],
     ['/api/v1/network', 'GET', 503, 'network-not-ready'],
+    ['/api/v1/version', 'GET', 200],
     ['/api/v1/feed/status', 'GET', 404, 'feed-status-disabled'],
     ['/api/v1/admin/sync', 'POST', 404, 'manual-sync-disabled'],
     ['/api/v1/debug/map/streetcar.svg', 'POST', 404, 'debug-render-disabled'],
@@ -258,4 +259,56 @@ test('every published map name serves through the same contract', async () => {
     assert.equal(response.status, 503, name);
     assert.equal((await response.json()).error, 'map-not-ready');
   }
+});
+
+test('unhandled request failures return an opaque 500', async () => {
+  // Schema drift (for example a pending migration) must not leak the D1
+  // error to browsers: the client sees an opaque 500, the detail goes to logs.
+  const explodingDb = {
+    prepare() {
+      throw new Error('no such table: map_tags');
+    },
+  };
+  const response = await api.fetch(
+    new Request('https://example.test/api/v1/map/streetcar'),
+    { DB: explodingDb },
+    ctx,
+  );
+  assert.equal(response.status, 500);
+  const body = await response.json();
+  assert.equal(body.error, 'internal-error');
+  assert.equal(JSON.stringify(body).includes('map_tags'), false);
+  assert.equal(response.headers.get('access-control-allow-origin'), '*');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('version endpoint reports the deployed worker version when bound', async () => {
+  const absent = await api.fetch(
+    new Request('https://example.test/api/v1/version'),
+    {},
+    ctx,
+  );
+  assert.equal(absent.status, 200);
+  assert.deepEqual(await absent.json(), {
+    site: 'ttcstatus.ca',
+    source: 'https://github.com/agilesyndrome/api.ttcstatus.ca',
+    deploy: null,
+  });
+  const deployed = await api.fetch(
+    new Request('https://example.test/api/v1/version'),
+    {
+      CF_VERSION_METADATA: {
+        id: 'cbeb3c1e-24ce-4850-8ab3-fde9a00102b0',
+        tag: 'release-1',
+        timestamp: '2026-10-07T19:06:53.273Z',
+      },
+    },
+    ctx,
+  );
+  assert.deepEqual((await deployed.json()).deploy, {
+    id: 'cbeb3c1e-24ce-4850-8ab3-fde9a00102b0',
+    tag: 'release-1',
+    timestamp: '2026-10-07T19:06:53.273Z',
+  });
+  assert.equal(deployed.headers.get('cache-control'), 'no-store');
 });

@@ -1,6 +1,6 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t } from '../../i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { type Feature, type Point } from '../../../../shared/map/model';
 import { gpsToMap } from '../../../../shared/map/projection';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
@@ -13,6 +13,7 @@ import { useShortcuts } from '../../hooks/useShortcuts';
 import {
   DEFAULT_FILTERS,
   mapLinkHash,
+  nearbyStops,
   readMapLink,
   revealRoutes,
   validFilters,
@@ -28,6 +29,7 @@ import {
 } from '../../../../shared/accounts/journal';
 import { useAccount } from '../accounts/auth';
 import { useAccountJournal } from '../journal/useAccountJournal';
+import { useAccountStops } from '../stops/useAccountStops';
 import type { SnakeVersion } from '../../snake-route';
 
 const validBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
@@ -40,12 +42,40 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     DEFAULT_FILTERS,
     validFilters,
   );
-  const [savedStops, setSavedStops, savedPersistent] = usePreference<string[]>(
+  // Signed-out visitors keep stops in this browser; signing in moves them to
+  // the account database, where the server owns durability and conflict checks.
+  const [localStops, setLocalStops, savedPersistent] = usePreference<string[]>(
     'ttc:stops:v1',
     [],
     validSavedStops,
   );
   const account = useAccount();
+  const accountStops = useAccountStops();
+  const signedIn = Boolean(account.userId);
+  const savedStops = signedIn ? accountStops.stopIds : localStops;
+  function setSavedStops(update: SetStateAction<string[]>) {
+    if (signedIn)
+      void accountStops.change((current) =>
+        typeof update === 'function' ? update(current) : update,
+      );
+    else setLocalStops(update);
+  }
+  const migratedStops = useRef<string | null>(null);
+  useEffect(() => {
+    const userId = account.userId;
+    if (!userId || !accountStops.ready || migratedStops.current === userId) return;
+    if (!localStops.length) {
+      migratedStops.current = userId;
+      return;
+    }
+    migratedStops.current = userId;
+    void accountStops
+      .change((current) => [...new Set([...current, ...localStops])].slice(0, 100))
+      .then((saved) => {
+        if (saved) setLocalStops([]);
+        else migratedStops.current = null;
+      });
+  }, [account.userId, accountStops.ready, accountStops.change, localStops]);
   const accountJournal = useAccountJournal();
   const journal = accountJournal.entries;
   const setJournal = accountJournal.change;
@@ -218,6 +248,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setSelection(undefined);
     setSelectedRoute(undefined);
     setNotice('');
+    setLocateError('');
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
     setPanel('explore');
@@ -286,10 +317,63 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     if (!data) return;
     setLocation(next);
     setFollowing(false);
-    // Center on the actual location even when there are no stops nearby. The
-    // wider neighborhood crop keeps the map useful without zooming into a marker.
-    setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
-    setFocusPointLevel(2.5);
+    // Center on the location only when the network is nearby; 2.5× is the zoom
+    // where streetcars gain their detailed bodies. Out-of-area locations keep
+    // the whole Toronto map in view instead of panning to empty space.
+    if (nearbyStops(data, next).length) {
+      setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
+      setFocusPointLevel(2.5);
+    } else {
+      setFocusPoint(undefined);
+      setFocusPointLevel(undefined);
+      setResetKey((key) => key + 1);
+    }
+  }
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState('');
+  const locateRequest = useRef(0);
+  useEffect(
+    () => () => {
+      locateRequest.current++;
+    },
+    [],
+  );
+  // One map-level control owns geolocation, so the explore panel stays
+  // read-only and errors surface on the map beside the button that caused them.
+  function requestLocate() {
+    if (!data) return;
+    if (!navigator.geolocation) {
+      setLocateError(
+        english('nearbyStops.locationIsUnavailableInThisBrowserYouCanSearchFor'),
+      );
+      return;
+    }
+    const current = ++locateRequest.current;
+    setLocating(true);
+    setLocateError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (current !== locateRequest.current) return;
+        setLocating(false);
+        locate({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      },
+      (error) => {
+        if (current !== locateRequest.current) return;
+        setLocating(false);
+        setLocateError(
+          error.code === 1
+            ? english('nearbyStops.locationPermissionWasDeclinedYouCanStillSearchForA')
+            : error.code === 3
+              ? english('nearbyStops.locationTookTooLongTryAgainOrSearchForA')
+              : english('nearbyStops.yourLocationCouldNotBeFoundTryAgainOrSearch'),
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+    );
   }
   function toggleSave() {
     if (!feature) return;
@@ -363,9 +447,6 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       : {
           journal: t('workspace.streetcarJournal'),
           badges: t('navigation.badges'),
-          fleet: t('workspace.fleetTools'),
-          compare: t('workspace.compareTools'),
-          stops: t('workspace.stopDirectory'),
         }[panel];
 
   return {
@@ -377,6 +458,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     savedStops,
     setSavedStops,
     savedPersistent,
+    savedSignedIn: signedIn,
     accountJournal,
     journal,
     setJournal,
@@ -419,7 +501,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     selectVehicle,
     selectRoute,
     surprise,
-    locate,
+    locating,
+    locateError,
+    requestLocate,
     toggleSave,
     collectCar,
     previewMap,

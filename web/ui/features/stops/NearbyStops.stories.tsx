@@ -5,7 +5,7 @@ import { demoData } from '../../stories/fixtures';
 
 const meta = {
   component: NearbyStops,
-  args: { data: demoData, onLocate: fn(), onClear: fn(), onSelect: fn() },
+  args: { data: demoData, onClear: fn(), onSelect: fn() },
   tags: ['autodocs'],
 } satisfies Meta<typeof NearbyStops>;
 export default meta;

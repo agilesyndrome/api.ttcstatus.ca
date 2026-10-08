@@ -174,8 +174,8 @@ test('directory distances use geographic coordinates, with stable alphabetical f
   );
 });
 
-test('new tool links restore the directory and journal without including personal collection data', () => {
-  for (const panel of ['stops', 'journal']) {
+test('new tool links restore the journal and badges without including personal collection data', () => {
+  for (const panel of ['journal', 'badges']) {
     const hash = mapLinkHash(undefined, DEFAULT_FILTERS, undefined, { panel });
     assert.equal(hash, '#view=' + panel);
     assert.deepEqual(readMapLink(hash), { panel, filters: {} });

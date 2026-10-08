@@ -220,6 +220,13 @@ button[aria-pressed='true'] {
 .live-car.off-track rect {
   stroke-dasharray: 2 1;
 }
+/* The driving game re-rasterizes every animated car each frame; a per-frame
+   drop-shadow filter is the single largest compositing cost there, and the
+   detailed body already draws its own halo outline. */
+.snake-world .live-car,
+.snake-world .live-car:focus {
+  filter: none;
+}
 .map-label {
   pointer-events: none;
 }

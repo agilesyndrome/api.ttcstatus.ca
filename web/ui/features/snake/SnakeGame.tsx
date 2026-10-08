@@ -7,7 +7,7 @@ import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { TrackClosures } from '../map/TrackClosures';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
-import { SnakeEngine, gameMissions, type Mission, type Mode, type Turn } from './engine';
+import { SnakeEngine, type Mode, type Turn } from './engine';
 
 interface Props {
   data: ViewerData;
@@ -21,7 +21,6 @@ const GAME_TICK_INTERVAL_MS = 33;
 // second network request). Memoize it per schematic so reopening the game is
 // instant instead of rebuilding the collapsed board every time.
 const snakeBoardCache = new WeakMap<ViewerData, ReturnType<typeof buildSnakeMap>>();
-const missionCache = new WeakMap<ViewerData, Mission[]>();
 const buildBoard = (source: ViewerData) => {
   let cached = snakeBoardCache.get(source);
   if (!cached) {
@@ -30,6 +29,50 @@ const buildBoard = (source: ViewerData) => {
   }
   return cached;
 };
+/** The generator publishes the exact board as a named map artifact; prefer
+ * that prebuilt payload over blocking the main thread deriving it here. One
+ * request per schematic, falling back to the local derivation when absent. */
+const prebuiltBoardCache = new WeakMap<ViewerData, Promise<ViewerData>>();
+const isBoard = (value: unknown): value is ViewerData =>
+  Boolean(value) &&
+  !('graph' in (value as object)) &&
+  Array.isArray((value as ViewerData).edges) &&
+  (value as ViewerData).edges.length > 0 &&
+  Array.isArray((value as ViewerData).features) &&
+  Boolean((value as ViewerData).geographicTransform) &&
+  Array.isArray((value as ViewerData).routes);
+const loadBoard = (source: ViewerData) => {
+  let pending = prebuiltBoardCache.get(source);
+  if (!pending) {
+    pending = (async () => {
+      try {
+        const response = await fetch('/api/v1/map/snake', { cache: 'no-cache' });
+        if (response.ok) {
+          const payload = await response.json();
+          if (isBoard(payload)) return payload;
+        }
+      } catch {
+        /* Fall back to deriving the board from the loaded schematic. */
+      }
+      return buildBoard(source).data;
+    })();
+    prebuiltBoardCache.set(source, pending);
+  }
+  return pending;
+};
+function useSnakeBoard(source: ViewerData) {
+  const [board, setBoard] = useState<ViewerData>();
+  useEffect(() => {
+    let current = true;
+    void loadBoard(source).then((next) => {
+      if (current) setBoard(next);
+    });
+    return () => {
+      current = false;
+    };
+  }, [source]);
+  return board;
+}
 const readBest = () => {
   try {
     const value = Number(localStorage.getItem('ttc:snake:v2:best'));
@@ -82,6 +125,27 @@ export const SnakeGame = memo(function SnakeGame({
   onClose,
 }: Props) {
   useLanguage();
+  // Prefer the published prebuilt board; fall back to deriving locally.
+  const board = useSnakeBoard(sourceData);
+  if (!board)
+    return (
+      <div className="snake-loading" role="status">
+        {t('workspace.loadingStreetcarSnake')}
+      </div>
+    );
+  return <SnakeCockpit data={board} sourceCars={sourceCars} onClose={onClose} />;
+});
+
+const SnakeCockpit = memo(function SnakeCockpit({
+  data,
+  sourceCars,
+  onClose,
+}: {
+  data: ViewerData;
+  sourceCars: PlottedVehicle[];
+  onClose(): void;
+}) {
+  useLanguage();
   useEffect(() => {
     try {
       localStorage.setItem('ttc:snake:v2:played', '1');
@@ -89,8 +153,6 @@ export const SnakeGame = memo(function SnakeGame({
       /* Optional achievement storage. */
     }
   }, []);
-  const gameMap = useMemo(() => buildBoard(sourceData), [sourceData]);
-  const data = gameMap.data;
   const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
   const dialog = useRef<HTMLDialogElement>(null);
   const [touch] = useState(() =>
@@ -108,16 +170,7 @@ export const SnakeGame = memo(function SnakeGame({
       }),
     [data, touch],
   );
-  const missions = useMemo(() => {
-    let cached = missionCache.get(sourceData);
-    if (!cached) {
-      cached = gameMissions(sourceData);
-      missionCache.set(sourceData, cached);
-    }
-    return cached;
-  }, [sourceData]);
   const [mode, setMode] = useState<Mode>('arcade');
-  const [missionId, setMissionId] = useState('');
   const [best, setBest] = useState(readBest);
   const [follow, setFollow] = useState(true);
   const [muted, setMuted] = useState(() => {
@@ -191,11 +244,7 @@ export const SnakeGame = memo(function SnakeGame({
         /* Silent play remains available. */
       }
     }
-    engine.start(
-      mode,
-      traffic.current,
-      missions.find((mission) => mission.id === missionId),
-    );
+    engine.start(mode, traffic.current);
     setFollow(true);
     grown.current = 1;
     keys.current.clear();
@@ -340,26 +389,27 @@ export const SnakeGame = memo(function SnakeGame({
     upcoming = engine.upcoming(),
     nextStop = engine.nextStop();
   const held = heldPedals();
-  const switchArrow = upcoming
-    ? (() => {
-        const edge = data.edges.find(
-          (candidate) => candidate.id === upcoming.selected.edgeId,
-        );
-        if (!edge) return undefined;
-        const lead = Math.min(38, Math.max(1, edge.lengthMetres - 1));
-        return engine.pose({
-          ...upcoming.selected,
-          distance: upcoming.selected.direction === 1 ? lead : edge.lengthMetres - lead,
-        });
-      })()
-    : undefined;
-  const fresh = cars.filter(
-    (car) => !car.stale && car.match && !engine.collected.has(car.vehicle.id),
-  );
-  const visibleCars = [
-    ...fresh,
-    ...engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
-  ];
+  // Memoized per inputs: the visible fleet changes when the live feed, the
+  // ambient traffic or the collected set changes — not on every frame.
+  const visibleCars = useMemo(() => {
+    const collected = engine.collected;
+    const fresh = cars.filter(
+      (car) => !car.stale && car.match && !collected.has(car.vehicle.id),
+    );
+    return [...fresh, ...engine.gameCars.filter((car) => !collected.has(car.vehicle.id))];
+  }, [cars, engine, engine.gameCars, engine.collected.size, redraw]);
+  const switchArrow = useMemo(() => {
+    if (!upcoming) return undefined;
+    const edge = data.edges.find(
+      (candidate) => candidate.id === upcoming.selected.edgeId,
+    );
+    if (!edge) return undefined;
+    const lead = Math.min(38, Math.max(1, edge.lengthMetres - 1));
+    return engine.pose({
+      ...upcoming.selected,
+      distance: upcoming.selected.direction === 1 ? lead : edge.lengthMetres - lead,
+    });
+  }, [upcoming, data, engine]);
   const playing = engine.status === 'running' || engine.status === 'paused';
   const pedal = (value: number) => ({
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -620,7 +670,7 @@ export const SnakeGame = memo(function SnakeGame({
           <small>
             {engine.status === 'ready'
               ? t('snake.torontoSnakePlayground')
-              : `${engine.mode === 'purist' ? t('snake.purist') : t('snake.arcade')} · ${engine.mission ? `${data.routes.find((route) => route.id === engine.mission?.routeId)?.number} · ${engine.destination}` : t('snake.freePlay')}`}
+              : `${engine.mode === 'purist' ? t('snake.purist') : t('snake.arcade')} · ${t('snake.freePlay')}`}
           </small>
         </div>
         <button aria-label={t('snake.closeStreetcarSnake')} onClick={onClose}>
@@ -696,21 +746,7 @@ export const SnakeGame = memo(function SnakeGame({
               <option value="purist">{t('snake.puristDriveOneStreetcar')}</option>
             </select>
           </label>
-          <label>
-            {t('snake.route')}
-            <select
-              aria-label={t('snake.route')}
-              value={missionId}
-              onChange={(event) => setMissionId(event.target.value)}
-            >
-              <option value="">{t('snake.freePlayAllTracks')}</option>
-              {missions.map((mission) => (
-                <option key={mission.id} value={mission.id}>
-                  {mission.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className="snake-freeplay-note">{t('snake.freePlayAllTracks')}</p>
           <label className="snake-mute">
             <input
               type="checkbox"

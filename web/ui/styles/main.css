@@ -104,6 +104,11 @@
   color: var(--muted);
   font-size: 12px;
 }
+footer .site-version {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
 #details details {
   font-size: 12px;
   line-height: 1.7;
@@ -1360,6 +1365,42 @@ select:focus-visible {
   box-shadow: 0 3px 16px #25343c15;
   z-index: 2;
 }
+.locate-launch {
+  position: absolute;
+  right: 20px;
+  top: 80px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 23px;
+  line-height: 1;
+  background: var(--surface);
+  box-shadow: 0 3px 16px #25343c15;
+  z-index: 2;
+}
+.locate-launch[aria-busy='true'] {
+  animation: locate-pulse 1.2s ease-in-out infinite;
+}
+@keyframes locate-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.locate-error {
+  position: absolute;
+  right: 20px;
+  top: 132px;
+  z-index: 3;
+  max-width: 260px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 3px 16px #25343c15;
+  font-size: 12px;
+}
 .snake-loading {
   position: fixed;
   inset: 0;
@@ -1497,6 +1538,11 @@ select:focus-visible {
   display: flex;
   align-items: center;
   margin: 14px 0;
+}
+.snake-menu .snake-freeplay-note {
+  color: var(--accent);
+  font-weight: 650;
+  margin: 4px 0 0;
 }
 .snake-menu .primary-action {
   display: block;
@@ -1667,6 +1713,8 @@ select:focus-visible {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  /* iOS long-press callout would cancel the held pedal pointer. */
+  -webkit-touch-callout: none;
   background: var(--surface);
 }
 .snake-pedals > div {

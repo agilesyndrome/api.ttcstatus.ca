@@ -10,6 +10,7 @@ interface Props {
   data: ViewerData;
   ids: string[];
   persistent: boolean;
+  signedIn?: boolean;
   onSelect(feature: Feature): void;
   onRemove(id: string): void;
   onRestore?(ids: string[]): void;
@@ -24,6 +25,7 @@ export function MyStops({
   data,
   ids,
   persistent,
+  signedIn = false,
   onSelect,
   onRemove,
   onRestore,
@@ -100,9 +102,11 @@ export function MyStops({
       )}
       {onRestore && <BookmarkBackup data={data} ids={ids} onRestore={onRestore} />}
       <p className="microcopy">
-        {persistent
-          ? t('myStops.savedOnThisBrowser')
-          : t('savedComparisons.browserStorageUnavailableSavedForThisVisit')}
+        {signedIn
+          ? t('myStops.savedToYourAccount')
+          : persistent
+            ? t('myStops.savedOnThisBrowser')
+            : t('savedComparisons.browserStorageUnavailableSavedForThisVisit')}
       </p>
     </section>
   );

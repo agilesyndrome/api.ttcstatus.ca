@@ -17,7 +17,6 @@ const {
   auditSnakeMap,
   snakeCars,
   SnakeEngine,
-  gameMissions,
   buildViewerData,
   demoData,
   localToMap,
@@ -138,7 +137,6 @@ test('Snake owns its graph: frozen explorer input is unchanged and generation is
   assert.equal(JSON.stringify(input), before);
   assert.notEqual(game.data.edges, original.edges);
   assert.ok(game.collapsedEdges > 200);
-  assert.equal(gameMissions(game.data).length, gameMissions(original).length);
   assert.deepEqual(game.data.routes, original.routes);
   assert.deepEqual(
     game.data.features
@@ -152,7 +150,7 @@ test('Snake owns its graph: frozen explorer input is unchanged and generation is
   );
 });
 
-test('every Toronto station, terminal, edge and ordered mission passes the game-map audit', () => {
+test('every Toronto station, terminal and edge passes the game-map audit', () => {
   const audit = auditSnakeMap(game.data);
   assert.deepEqual(audit.errors, []);
   assert.equal(audit.stations, 419);
@@ -220,19 +218,17 @@ test('every directed departure, including loops and dead ends, drives safely at 
 });
 
 for (const speed of [180, 2000])
-  test(`all 38 missions make both terminal departures with 30 cars at ${speed} km/h`, () => {
-    for (const mission of gameMissions(game.data)) {
-      const engine = new SnakeEngine(game.data, { easySwitches: true });
-      engine.start('arcade', [], mission);
-      engine.count = 30;
-      engine.speed = speed;
-      let steps = 0;
-      while (engine.status === 'running' && engine.trips < 2 && steps++ < 40000)
-        engine.tick(0.1, []);
-      assert.equal(engine.trips, 2, `${mission.label}: ${engine.message}`);
-      for (let i = 0; i < 30; i++) engine.tick(0.1, []);
-      assert.equal(engine.status, 'running', mission.label);
-    }
+  test(`free play on the published board stays drivable with 30 cars at ${speed} km/h`, () => {
+    const engine = new SnakeEngine(game.data, { easySwitches: true });
+    engine.start('arcade', []);
+    engine.count = 30;
+    engine.speed = speed;
+    for (let i = 0; i < 3000; i++) engine.tick(0.1, []);
+    assert.equal(engine.status, 'running', `${speed} km/h: ${engine.message}`);
+    assert.ok(
+      engine.pose().point.every(Number.isFinite),
+      `${speed} km/h: pose stays finite`,
+    );
   });
 
 test('isolated small loops survive and large loops retain their continuous lap', () => {

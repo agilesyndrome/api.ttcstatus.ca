@@ -7,7 +7,7 @@ const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const compiled = await build({
   stdin: {
-    contents: `export { mapToGps, pointAlongEdge } from './shared/map/projection'; export { demoData } from './web/ui/stories/fixtures';`,
+    contents: `export { mapToGps, pointAlongEdge } from './shared/map/projection'; export { buildViewerData } from './shared/map/model'; export { buildSnakeMap } from './shared/map/game-map'; export { demoData } from './web/ui/stories/fixtures';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -15,9 +15,10 @@ const compiled = await build({
   write: false,
   format: 'esm',
 });
-const { mapToGps, pointAlongEdge, demoData } = await import(
-  `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
-);
+const { mapToGps, pointAlongEdge, buildViewerData, buildSnakeMap, demoData } =
+  await import(
+    `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
+  );
 const fixtureEdge = (id, a, b, sourcePoints, routeIds = ['501']) => {
   const lengthMetres = Math.hypot(
     sourcePoints[1][0] - sourcePoints[0][0],
@@ -102,7 +103,8 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   let feedCalls = 0,
-    mapCalls = 0;
+    mapCalls = 0,
+    snakeBoardCalls = 0;
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
   );
@@ -112,6 +114,12 @@ try {
   await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) => {
     mapCalls++;
     return route.fulfill({ json: map });
+  });
+  // The game prefers the published prebuilt board; desktop exercises that
+  // path with a board derived exactly like the generator publishes it.
+  await context.route('**/api/v1/map/snake', (route) => {
+    snakeBoardCalls++;
+    return route.fulfill({ json: buildSnakeMap(buildViewerData(map)).data });
   });
   await context.route('**/api/v1/vehicles/streetcar', (route) => {
     feedCalls++;
@@ -156,10 +164,12 @@ try {
   await launch.click();
   const game = page.getByRole('dialog', { name: 'Streetcar Snake' });
   await game.waitFor();
-  assert.ok(
-    (await game.getByLabel('Route', { exact: true }).locator('option').count()) > 10,
-  );
   assert.equal(mapCalls, 1, 'game reuses the already-loaded map');
+  assert.equal(
+    snakeBoardCalls,
+    1,
+    'game opens on the published prebuilt board with one request',
+  );
   const viewWidth = async () =>
     Number((await page.locator('#snake-map').getAttribute('viewBox')).split(' ')[2]);
   // Wait for the opening camera glide (focusBounds) to settle, then capture
@@ -270,6 +280,11 @@ try {
   );
   await mobileContext.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
     route.fulfill({ json: forkMap }),
+  );
+  // No published board here: the game must fall back to deriving the board
+  // from the loaded fork map instead of failing to open.
+  await mobileContext.route('**/api/v1/map/snake', (route) =>
+    route.fulfill({ status: 503, json: { error: 'map-not-ready' } }),
   );
   await mobileContext.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({

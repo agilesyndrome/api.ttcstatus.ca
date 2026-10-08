@@ -61,6 +61,16 @@ export async function createPreviewMiddleware() {
       return json({ error: 'profile-not-found' }, 404, { 'cache-control': 'no-store' });
     if (request.method !== 'GET') return json({ error: 'not-found' }, 404);
     if (path === '/api/healthz') return json({ ok: true, worker: 'local-preview' });
+    if (path === '/api/v1/version')
+      return json(
+        {
+          site: 'ttcstatus.ca',
+          source: 'https://github.com/agilesyndrome/api.ttcstatus.ca',
+          deploy: null,
+        },
+        200,
+        { 'cache-control': 'no-store' },
+      );
     if (path === '/api/v1/map/streetcar' || path === '/api/v1/map/snake') {
       try {
         // Cache the source bundle; the snake board is derived per request so

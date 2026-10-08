@@ -128,8 +128,25 @@ export function projectSnapshot(
 
 /** Sample the articulated body behind its GPS fix. Continue only through real
  * graph endpoints, choosing the straightest route-compatible continuation.
- * Body length is exaggerated for readability; it is not a vehicle-length scale. */
+ * Body length is exaggerated for readability; it is not a vehicle-length scale.
+ * The last result per car is cached: pans and redraws at a constant zoom reuse
+ * it instead of re-walking the graph for every section of every car. */
+const streetcarBodyCache = new WeakMap<
+  PlottedVehicle,
+  { edges: Edge[]; scale: number; body: { point: Point; angle: number }[] }
+>();
 export function streetcarBody(
+  car: PlottedVehicle,
+  edges: Edge[],
+  scale: number,
+): { point: Point; angle: number }[] {
+  const hit = streetcarBodyCache.get(car);
+  if (hit && hit.edges === edges && hit.scale === scale) return hit.body;
+  const body = computeStreetcarBody(car, edges, scale);
+  streetcarBodyCache.set(car, { edges, scale, body });
+  return body;
+}
+function computeStreetcarBody(
   car: PlottedVehicle,
   edges: Edge[],
   scale: number,
