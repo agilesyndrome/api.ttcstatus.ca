@@ -25,6 +25,8 @@ test('public API uses /api for health, map, network, feed and protected operatio
     ['/api/healthz', 'GET', 200],
     ['/api/healthz', 'HEAD', 200],
     ['/api/v1/map/streetcar', 'GET', 503, 'map-not-ready'],
+    ['/api/v1/map/snake', 'GET', 503, 'map-not-ready'],
+    ['/api/v1/map/ttcstatus', 'GET', 503, 'map-not-ready'],
     ['/api/v1/network', 'GET', 503, 'network-not-ready'],
     ['/api/v1/version', 'GET', 200],
     ['/api/v1/feed/status', 'GET', 404, 'feed-status-disabled'],
@@ -249,8 +251,9 @@ test('map GET and HEAD accept compressed weak ETags and validator lists', async 
 });
 
 test('every published map name serves through the same contract', async () => {
-  // The snake board is a named artifact like the schematic, not a client hack.
-  for (const name of ['streetcar', 'snake']) {
+  // The snake board and the stable ttcstatus site map are named artifacts like
+  // the schematic, not client hacks.
+  for (const name of ['streetcar', 'snake', 'ttcstatus']) {
     const response = await api.fetch(
       new Request(`https://example.test/api/v1/map/${name}`),
       { DB: db },

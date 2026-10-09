@@ -33,9 +33,7 @@ try {
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
   );
-  await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
-    route.fulfill({ json: map }),
-  );
+  await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({ json: snapshot, headers: { 'x-live-update-seconds': '30' } }),
   );

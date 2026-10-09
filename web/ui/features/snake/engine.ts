@@ -86,6 +86,12 @@ const CAR_LENGTH = 30.2,
   GAME_TARGET_MAX_DISTANCE = 240,
   GAME_TRAFFIC_COVERAGE_SECONDS = 7,
   GAME_TRAFFIC_RESPAWN_DELAY = 2.5,
+  // Traffic maintenance scans the reachable graph once per candidate car, so
+  // its cost scales with tick count, not distance travelled. Cadence it to a
+  // fixed simulation interval — matched to the 0.1 s tick the simulation
+  // checks use — so per-frame driving ticks on high-refresh displays never
+  // multiply these scans.
+  GAME_TRAFFIC_SCAN_SECONDS = 0.1,
   GAME_RANDOM_MIN_AHEAD = 260,
   GAME_RANDOM_MIN_SPACING = 250,
   GAME_CAR_PREFIX = 'snake-v2-',
@@ -158,6 +164,11 @@ export class SnakeEngine {
    * language, so every graph walk reuses them instead of rebuilding labels,
    * angles and sorts on each hop. */
   private choiceCache = new Map<string, { language: number; choices: SwitchChoice[] }>();
+  /** Default continuation order per rail: a stable, precomputed sort of the
+   * switch choices by the route-continuation score. nextRef runs on every
+   * simulation substep and every lookahead hop; re-scoring and re-sorting the
+   * same deterministic list each call was pure allocation churn. */
+  private refOrderCache = new Map<string, string[]>();
   /** Route-continuation keys per edge, for nextRef's scoring. */
   private routeKeyCache = new Map<string, Set<string>>();
   private hazardClock = 0;
@@ -171,6 +182,7 @@ export class SnakeEngine {
   private gameCarSerial = 0;
   private guaranteedGameCarId?: string;
   private gameTrafficCooldown = 0;
+  private trafficScanCarry = 0;
   private trafficRevision = 0;
   private trafficInput?: {
     source: PlottedVehicle[];
@@ -700,6 +712,7 @@ export class SnakeEngine {
     this.guaranteedGameCarId = undefined;
     this.gameCarSerial = 0;
     this.gameTrafficCooldown = 0;
+    this.trafficScanCarry = 0;
     this.banner = '';
     this.gameOverKind = undefined;
     this.activeHazard = undefined;
@@ -909,23 +922,40 @@ export class SnakeEngine {
       if (['left', 'right', 'straight'].includes(queued))
         return this.intentChoice(choices, queued as Turn);
     }
-    const current = this.edges.get(position.edgeId)!;
-    const keys = this.routeKeys(current);
-    const score = (choice: SwitchChoice) => {
-      const next = this.edges.get(choice.edgeId)!;
-      const shared = [...this.routeKeys(next)].filter((key) => keys.has(key)).length;
-      const infrastructure = next.infrastructureIds
-        .map((id) => this.infrastructureNames.get(id) ?? id)
-        .join(' ');
-      const yard = /yard|carhouse|barns|hillcrest|shop/i.test(infrastructure);
-      const diversion = !next.routeIds.length && current.routeIds.length > 0;
-      return (
-        -Math.cos((choice.angle * Math.PI) / 180) -
-        Math.min(5.5, shared * 2.4) +
-        (yard ? 3.5 : diversion ? 1.2 : 0)
-      );
-    };
-    return choices.slice().sort((a, b) => score(a) - score(b))[0];
+    if (choices.length <= 1) return choices[0];
+    // The unqueued continuation order depends only on the current rail, so it
+    // is computed once per rail and cached: score the branches, sort, store.
+    const key = `${position.edgeId}:${position.direction}`;
+    let order = this.refOrderCache.get(key);
+    if (!order) {
+      const current = this.edges.get(position.edgeId)!;
+      const keys = this.routeKeys(current);
+      const score = (choice: SwitchChoice) => {
+        const next = this.edges.get(choice.edgeId)!;
+        const shared = [...this.routeKeys(next)].filter((routeKey) =>
+          keys.has(routeKey),
+        ).length;
+        const infrastructure = next.infrastructureIds
+          .map((id) => this.infrastructureNames.get(id) ?? id)
+          .join(' ');
+        const yard = /yard|carhouse|barns|hillcrest|shop/i.test(infrastructure);
+        const diversion = !next.routeIds.length && current.routeIds.length > 0;
+        return (
+          -Math.cos((choice.angle * Math.PI) / 180) -
+          Math.min(5.5, shared * 2.4) +
+          (yard ? 3.5 : diversion ? 1.2 : 0)
+        );
+      };
+      order = choices
+        .slice()
+        .sort((a, b) => score(a) - score(b))
+        .map((choice) => choice.edgeId);
+      this.refOrderCache.set(key, order);
+    }
+    for (const edgeId of order) {
+      const hit = choices.find((choice) => choice.edgeId === edgeId);
+      if (hit) return hit;
+    }
   }
 
   private railSpans(
@@ -1201,14 +1231,25 @@ export class SnakeEngine {
     let remove = 0;
     while (remove < this.trail.length - 1 && this.trail[remove].travelled < oldest)
       remove++;
-    if (remove) this.trail.splice(0, remove);
+    if (remove) {
+      this.trail.splice(0, remove);
+    }
   }
 
   body(): TrailSample[] {
-    return this.trail.filter(
-      (sample) =>
-        sample.travelled >= this.travelled - (this.count - 1) * SPACING - CAR_LENGTH / 2,
-    );
+    // Trail samples are ordered by travelled distance, so a binary search for
+    // the window's lower bound replaces filtering the whole trail on every
+    // rendered frame. The cutoff can move backwards (a car was collected) as
+    // well as forwards, so no monotone index is kept.
+    const cutoff = this.travelled - (this.count - 1) * SPACING - CAR_LENGTH / 2;
+    let low = 0,
+      high = this.trail.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (this.trail[middle].travelled < cutoff) low = middle + 1;
+      else high = middle;
+    }
+    return this.trail.slice(low);
   }
 
   carCentres(): Pose[] {
@@ -1428,6 +1469,10 @@ export class SnakeEngine {
         }
       }
     }
-    this.maintainGameTraffic(cars);
+    this.trafficScanCarry += dt;
+    if (this.trafficScanCarry + 1e-9 >= GAME_TRAFFIC_SCAN_SECONDS) {
+      this.trafficScanCarry = 0;
+      this.maintainGameTraffic(cars);
+    }
   }
 }

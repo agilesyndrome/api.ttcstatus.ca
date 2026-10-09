@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import type { Feature, Point } from '../../../../shared/map/model';
 import { streetcarBody } from '../../../../shared/map/live-status';
 import type { TransitMapProps } from './types';
@@ -10,7 +10,7 @@ import { Tracks, points } from './TrackLayer';
 import { TrackClosures } from './TrackClosures';
 export type { TrackClosure } from './TrackClosures';
 
-export function TransitMap({
+export const TransitMap = memo(function TransitMap({
   data,
   cars = [],
   selectedRoute,
@@ -156,6 +156,10 @@ export function TransitMap({
     [data],
   );
   const [readableLabels, readableContextLabels] = useMemo(() => {
+    // Driving freezes the label layout: the camera pans every follow tick, so
+    // recomputing this O(n²) collision grid per frame is pure waste. The game
+    // renders its own HUD/overlay, so empty label layers cost nothing.
+    if (driving) return [[], []] as const;
     const occupied: { x: number; y: number; width: number; height: number }[] = [];
     const readableLabels = labelFeatures.filter((feature) => {
       const x = (feature.point[0] - camera.x) * scale + 8;
@@ -226,6 +230,7 @@ export function TransitMap({
     labelFeatures,
     contextLabels,
     labelGeometry,
+    driving,
     camera,
     scale,
     size.width,
@@ -629,4 +634,4 @@ export function TransitMap({
       </nav>
     </section>
   );
-}
+});

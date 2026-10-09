@@ -141,12 +141,25 @@ export function useMapCamera({
           ? Math.max(bounds.width / (driving ? 18 : 12), Math.min(bounds.width, width))
           : current.width;
         const height = nextWidth / aspect;
-        move({
+        const next = {
           x: point[0] - nextWidth / 2,
           y: point[1] - height / 2,
           width: nextWidth,
           height,
-        });
+        };
+        if (driving && !width) {
+          // Following during gameplay moves only the viewBox: write it straight
+          // to the SVG instead of scheduling a React re-render of the whole
+          // map tree 30 times a second. The camera ref stays current so zoom
+          // gestures and tweens keep working from the right place.
+          cameraRef.current = next;
+          svg.current?.setAttribute(
+            'viewBox',
+            `${next.x} ${next.y} ${next.width} ${next.height}`,
+          );
+          return;
+        }
+        move(next);
       },
       cancelGesture: () => {
         for (const id of pointers.current.keys())
@@ -354,9 +367,13 @@ export function useMapCamera({
       }
     },
   };
+  // While driving, follow updates the camera imperatively (viewBox attribute)
+  // without React state; render from the ref so any re-render (HUD, gesture,
+  // resize) sees the live camera instead of snapping back to a stale frame.
+  const viewCamera = driving ? cameraRef.current : camera;
   return {
     svg,
-    camera,
+    camera: viewCamera,
     size,
     scale,
     level,

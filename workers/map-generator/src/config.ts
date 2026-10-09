@@ -16,6 +16,13 @@ export const MAP_MODE = 'streetcar';
 export const STREETCAR_MAP_NAME = 'streetcar';
 export const SNAKE_MAP_NAME = 'snake';
 export const SNAKE_BOARD_STYLE = 'snake-board-v1';
+// The main ttcstatus.ca map is the published snake-derived board under its own
+// immutable name, frozen here as the stable site map. The snake game's 'snake'
+// artifact can then evolve freely (gameplay, performance, board geometry)
+// without touching the production status map: same payload today, decoupled
+// lifecycles tomorrow.
+export const TTCSTATUS_MAP_NAME = 'ttcstatus';
+export const TTCSTATUS_BOARD_STYLE = 'ttcstatus-board-v1';
 
 // Conservative v1 simplification. Future topology-aware generation should
 // replace raw RDP, but this keeps the present implementation inexpensive.

@@ -1,6 +1,6 @@
 // Runs from npm's "prepare" lifecycle script on npm install / npm ci.
 // Copies scripts/hooks/pre-commit into .git/hooks so commits are gated on
-// `npm run pre-flight`. No dependencies; safe to run anywhere.
+// `./pre-flight precommit` (prettier --write, then every check). No dependencies; safe to run anywhere.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -34,4 +34,4 @@ mkdirSync(hooksDir, { recursive: true });
 const target = join(hooksDir, 'pre-commit');
 copyFileSync(source, target);
 chmodSync(target, 0o755);
-console.log('Installed .git/hooks/pre-commit (runs npm run pre-flight).');
+console.log('Installed .git/hooks/pre-commit (runs ./pre-flight precommit).');

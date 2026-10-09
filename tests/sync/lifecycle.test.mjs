@@ -47,8 +47,12 @@ async function artifact(env, id, versionId, chunks = 1, active = 0, board = fals
     .bind(
       id,
       versionId,
-      board ? 'snake-board-v1' : 'snake-v1',
-      board ? 'snake' : 'streetcar',
+      board === 'snake'
+        ? 'snake-board-v1'
+        : board === 'ttcstatus'
+          ? 'ttcstatus-board-v1'
+          : 'snake-v1',
+      board ? board : 'streetcar',
       `map-${id}`,
       chunks,
       active,
@@ -103,8 +107,12 @@ test('publication refuses incomplete or mismatched artifacts without changing ac
   // A complete schematic alone is not enough: every published name of the
   // version must flip atomically or none of them does.
   await assert.rejects(activateNetworkVersion(env, next, 2), /snake/);
-  const snake = await artifact(env, 3, 2, 1, 0, true);
+  await artifact(env, 3, 2, 1, 0, 'snake');
   await chunk(env, 3);
+  // The stable ttcstatus site map activates with the same guarantee.
+  await assert.rejects(activateNetworkVersion(env, next, 2), /ttcstatus/);
+  await artifact(env, 4, 2, 1, 0, 'ttcstatus');
+  await chunk(env, 4);
   await activateNetworkVersion(env, next, 2);
   assert.equal(
     (await env.DB.prepare('SELECT id FROM network_versions WHERE active = 1').first()).id,
@@ -126,7 +134,14 @@ test('publication refuses incomplete or mismatched artifacts without changing ac
     ).id,
     3,
   );
-  void snake;
+  assert.equal(
+    (
+      await env.DB.prepare(
+        "SELECT id FROM map_artifacts WHERE name = 'ttcstatus' AND active = 1",
+      ).first()
+    ).id,
+    4,
+  );
 });
 
 test('retention keeps the active map even when newer imports have failed', async () => {

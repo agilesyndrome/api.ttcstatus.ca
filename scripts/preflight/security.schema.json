@@ -65,6 +65,18 @@
         }
       }
     },
+    "precommit": {
+      "description": "What `./pre-flight precommit` (the git pre-commit hook) runs: auto-fix commands before the full board.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fix": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Auto-fix commands run in order before the board (e.g. prettier --write). '{bin:name}' resolves to the local node_modules binary. They rewrite the working tree so the format route passes; a failed fix aborts the commit."
+        }
+      }
+    },
     "checks": {
       "type": "object",
       "description": "The routes on the board. Key = route id used on the command line.",

@@ -12,6 +12,9 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
     generateStreetcarMap,
     buildViewerData,
     GENERATOR_VERSION,
+    STREETCAR_MAP_NAME,
+    SNAKE_MAP_NAME,
+    TTCSTATUS_MAP_NAME,
   } = modules;
   const sourceKey = 'ttc-surface-gtfs';
   const lockUntil = new Date(Date.now() + 20 * 60_000).toISOString();
@@ -46,7 +49,27 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       )
       .bind(version.id)
       .first();
-    if (!dryRun && active?.generator_version === GENERATOR_VERSION)
+    // "Unchanged" requires the complete published set — the schematic map plus
+    // both named boards — not just a matching schematic generator_version.
+    // Otherwise a generation that predates a new published name (added without
+    // a version bump, e.g. the ttcstatus stable-site board) looks "unchanged"
+    // forever and nothing ever backfills the missing artifact.
+    const publishedNames = [STREETCAR_MAP_NAME, SNAKE_MAP_NAME, TTCSTATUS_MAP_NAME];
+    const completeSet =
+      active?.generator_version === GENERATOR_VERSION
+        ? await db
+            .prepare(
+              `SELECT 1 WHERE (SELECT COUNT(DISTINCT name) FROM map_artifacts
+                 WHERE version_id = ? AND mode = 'streetcar' AND active = 1
+                   AND name IN (?, ?, ?)
+                   AND chunk_count > 0
+                   AND chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks
+                                      WHERE artifact_id = map_artifacts.id)) = ?`,
+            )
+            .bind(version.id, ...publishedNames, publishedNames.length)
+            .first()
+        : undefined;
+    if (!dryRun && completeSet)
       return {
         status: 'unchanged',
         networkVersion: version.id,
@@ -78,9 +101,10 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       .bind(version.id, startedAt, startedAt)
       .first();
     jobId = job.id;
-    // Publish the same pair of named artifacts as the nightly pipeline:
-    // the schematic map and the derived snake board.
-    const { artifactId, snakeArtifactId } = await generateStreetcarMap(env, version.id);
+    // Publish the same set of named artifacts as the nightly pipeline: the
+    // schematic map, the derived snake board and the stable ttcstatus map.
+    const { artifactId, snakeArtifactId, ttcstatusArtifactId } =
+      await generateStreetcarMap(env, version.id);
     // One atomic statement flips only map pointers. Keep the old artifact for rollback;
     // publish only if this network remains active and every chunk was stored.
     await db
@@ -103,6 +127,16 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       )
       .bind(snakeArtifactId, version.id, snakeArtifactId, version.id)
       .run();
+    await db
+      .prepare(
+        `UPDATE map_artifacts SET active = CASE WHEN id = ? THEN 1 ELSE 0 END
+      WHERE mode = 'streetcar' AND style = 'ttcstatus-board-v1'
+      AND EXISTS (SELECT 1 FROM network_versions WHERE id = ? AND active = 1)
+      AND EXISTS (SELECT 1 FROM map_artifacts AS ready WHERE ready.id = ? AND ready.version_id = ?
+        AND ready.chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = ready.id))`,
+      )
+      .bind(ttcstatusArtifactId, version.id, ttcstatusArtifactId, version.id)
+      .run();
     const published = await db
       .prepare('SELECT active FROM map_artifacts WHERE id = ?')
       .bind(artifactId)
@@ -116,6 +150,7 @@ export async function regenerateMap(db, modules, { dryRun = false } = {}) {
       networkVersion: version.id,
       artifactId,
       snakeArtifactId,
+      ttcstatusArtifactId,
       previousArtifactId: active?.id,
       generatorVersion: GENERATOR_VERSION,
       edges: viewer.edges.length,
@@ -152,7 +187,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     export { buildStreetcarMapBundle } from './workers/map-generator/src/layout/build-map';
     export { generateStreetcarMap } from './workers/map-generator/src/generate';
     export { buildViewerData } from './shared/map/model';
-    export { GENERATOR_VERSION } from './workers/map-generator/src/config';`,
+    export { GENERATOR_VERSION, STREETCAR_MAP_NAME, SNAKE_MAP_NAME, TTCSTATUS_MAP_NAME } from './workers/map-generator/src/config';`,
       resolveDir: process.cwd(),
       loader: 'ts',
     },

@@ -71,10 +71,14 @@ export async function createPreviewMiddleware() {
         200,
         { 'cache-control': 'no-store' },
       );
-    if (path === '/api/v1/map/streetcar' || path === '/api/v1/map/snake') {
+    if (
+      path === '/api/v1/map/streetcar' ||
+      path === '/api/v1/map/snake' ||
+      path === '/api/v1/map/ttcstatus'
+    ) {
       try {
         // Cache the source bundle; the snake board is derived per request so
-        // one cached promise can serve both named maps.
+        // one cached promise can serve every named map.
         sourcePromise ??= (async () =>
           previewMap(
             process.env.MAP_INPUT ||
@@ -87,8 +91,9 @@ export async function createPreviewMiddleware() {
           throw error;
         });
         const source = await sourcePromise;
-        if (path === '/api/v1/map/snake') {
-          // Derive the published snake board exactly like the generator does.
+        if (path !== '/api/v1/map/streetcar') {
+          // Derive the published board exactly like the generator does: the
+          // snake game and the stable ttcstatus site map share one payload.
           return json(buildSnakeMap(buildViewerData(source)).data, 200, {
             'cache-control': 'public, max-age=3600',
           });

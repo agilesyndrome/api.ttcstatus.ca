@@ -66,6 +66,21 @@ export async function activateNetworkVersion(
     .first<{ id: number }>();
   if (!snakeReady)
     throw new Error('Cannot activate a version without a complete snake map artifact');
+  // The same version must also carry a complete ttcstatus site map so the
+  // homepage's stable board flips atomically with the network pointer.
+  const ttcstatusReady = await env.DB.prepare(
+    `SELECT id FROM map_artifacts
+     WHERE version_id = ? AND name = 'ttcstatus'
+     AND chunk_count > 0
+     AND chunk_count = (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = map_artifacts.id)
+     ORDER BY id DESC LIMIT 1`,
+  )
+    .bind(version.id)
+    .first<{ id: number }>();
+  if (!ttcstatusReady)
+    throw new Error(
+      'Cannot activate a version without a complete ttcstatus map artifact',
+    );
   const activatedAt = nowIso();
 
   await env.DB.batch([
@@ -85,6 +100,9 @@ export async function activateNetworkVersion(
     env.DB.prepare(`UPDATE map_artifacts SET active = 1 WHERE id = ?`).bind(artifactId),
     env.DB.prepare(
       `UPDATE map_artifacts SET active = 1 WHERE name = 'snake' AND version_id = ?`,
+    ).bind(version.id),
+    env.DB.prepare(
+      `UPDATE map_artifacts SET active = 1 WHERE name = 'ttcstatus' AND version_id = ?`,
     ).bind(version.id),
     env.DB.prepare(
       `UPDATE source_state

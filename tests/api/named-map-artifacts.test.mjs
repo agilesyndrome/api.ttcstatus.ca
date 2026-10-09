@@ -45,7 +45,11 @@ async function artifact(env, id, name, versionId, generator, active = 0) {
     .bind(
       id,
       versionId,
-      name === 'snake' ? 'snake-board-v1' : 'snake-v1',
+      name === 'snake'
+        ? 'snake-board-v1'
+        : name === 'ttcstatus'
+          ? 'ttcstatus-board-v1'
+          : 'snake-v1',
       name,
       generator,
       `etag-${id}`,
@@ -65,10 +69,13 @@ test('named maps resolve tags first, then the active pipeline pointer', async ()
   await artifact(env, 2, 'streetcar', 8, 'g-new');
   // The nightly pipeline activates every published name of the version.
   await artifact(env, 3, 'snake', 8, 'g-new', 1);
+  await artifact(env, 4, 'ttcstatus', 8, 'g-new', 1);
 
-  // No tags yet: the nightly import's active pointer serves both names.
+  // No tags yet: the nightly import's active pointer serves every name.
   assert.equal((await resolveMapArtifact({ DB: env.DB }, 'streetcar')).artifact.id, 1);
   assert.equal((await resolveMapArtifact({ DB: env.DB }, 'snake')).artifact.id, 3);
+  // The stable site map resolves through its own name, never via 'snake'.
+  assert.equal((await resolveMapArtifact({ DB: env.DB }, 'ttcstatus')).artifact.id, 4);
   assert.equal((await resolveMapArtifact({ DB: env.DB }, 'streetcar')).via, 'active');
 
   // Publish a stable tag on the new schematic generation.
@@ -100,7 +107,9 @@ test('map endpoints serve any published name with tagged artifacts and caching h
   await artifact(env, 1, 'streetcar', 7, 'g-old', 1);
   await artifact(env, 2, 'streetcar', 8, 'g-new');
   await artifact(env, 3, 'snake', 8, 'g-new', 1);
+  await artifact(env, 4, 'ttcstatus', 8, 'g-new', 1);
   await tagMap(env.DB, { name: 'snake', tag: 'latest', generatorVersion: 'g-new' });
+  await tagMap(env.DB, { name: 'ttcstatus', tag: 'stable', generatorVersion: 'g-new' });
 
   await withEdgeCache(async () => {
     const legacy = await api.fetch(
@@ -139,6 +148,16 @@ test('map endpoints serve any published name with tagged artifacts and caching h
     );
     assert.equal(tagged.status, 200);
     assert.equal(tagged.headers.get('x-network-version'), '8');
+
+    // The stable site map serves at its own path with its pinned tag.
+    const site = await api.fetch(
+      new Request('https://example.test/api/v1/map/ttcstatus'),
+      env,
+      ctx,
+    );
+    assert.equal(site.status, 200);
+    assert.equal(site.headers.get('x-network-version'), '8');
+    assert.equal((await site.json()).ok, true);
   });
 
   const missing = await api.fetch(
@@ -159,6 +178,9 @@ test('map endpoints serve any published name with tagged artifacts and caching h
   const listed = await listMapTags(env.DB);
   assert.deepEqual(
     listed.tags.map((row) => [row.name, row.tag, row.artifact_id]),
-    [['snake', 'latest', 3]],
+    [
+      ['snake', 'latest', 3],
+      ['ttcstatus', 'stable', 4],
+    ],
   );
 });

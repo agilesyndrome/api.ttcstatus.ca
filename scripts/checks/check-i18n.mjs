@@ -10,9 +10,7 @@ async function prepare(context) {
   await context.route('**/api/v1/auth/config', (route) =>
     route.fulfill({ json: { enabled: false } }),
   );
-  await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
-    route.fulfill({ json: map }),
-  );
+  await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({ status: 503, json: {} }),
   );

@@ -94,6 +94,7 @@ export default {
         ok: true,
         artifactId: result.artifactId,
         snakeArtifactId: result.snakeArtifactId,
+        ttcstatusArtifactId: result.ttcstatusArtifactId,
         versionId,
       });
     } catch (error) {

@@ -4,13 +4,13 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
-const MAP_NAMES = ['streetcar', 'snake'];
+const MAP_NAMES = ['streetcar', 'snake', 'ttcstatus'];
 
 const usage = () => {
   console.log(`Publish map artifact tags against the remote production D1.
 
 Usage:
-  npm run map:tag -- set --name <streetcar|snake> --tag <stable|latest|...> [--artifact <id> | --generator-version <v>]
+  npm run map:tag -- set --name <streetcar|snake|ttcstatus> --tag <stable|latest|...> [--artifact <id> | --generator-version <v>]
   npm run map:tag -- clear --name <name> --tag <tag>
   npm run map:tag -- list
 
@@ -18,6 +18,7 @@ Examples:
   npm run map:tag -- set --name streetcar --tag stable            # newest streetcar artifact
   npm run map:tag -- set --name streetcar --tag latest --artifact 42
   npm run map:tag -- set --name snake --tag stable --generator-version snake-v1.4.1
+  npm run map:tag -- set --name ttcstatus --tag latest            # pin the stable site map
   npm run map:tag -- clear --name streetcar --tag experimental
 `);
 };

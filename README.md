@@ -283,10 +283,11 @@ so an older cached seed map cannot prevent it from picking up the repaired map.
 Every imported network version publishes immutable map artifacts under a
 **name**, which is also the public API path:
 
-| Name        | Path                    | Contents                                             |
-| ----------- | ----------------------- | ---------------------------------------------------- |
-| `streetcar` | `/api/v1/map/streetcar` | The schematic status map (`snake-v1` style)          |
-| `snake`     | `/api/v1/map/snake`     | The derived game board (collapsed, rounded, trimmed) |
+| Name        | Path                    | Contents                                                                                                                                |
+| ----------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `streetcar` | `/api/v1/map/streetcar` | The schematic status map (`snake-v1` style)                                                                                             |
+| `snake`     | `/api/v1/map/snake`     | The derived game board (collapsed, rounded, trimmed)                                                                                    |
+| `ttcstatus` | `/api/v1/map/ttcstatus` | The stable site map the homepage consumes: the same derived board published under its own immutable name, decoupled from the snake game |
 
 The nightly import (and `npm run map:regenerate:remote`) stores and activates
 both artifacts atomically. Any artifact can additionally be pinned with
@@ -297,6 +298,7 @@ npm run map:tag -- list
 npm run map:tag -- set --name streetcar --tag stable                     # newest artifact
 npm run map:tag -- set --name streetcar --tag latest --artifact 42
 npm run map:tag -- set --name snake --tag stable --generator-version snake-v1.4.1
+npm run map:tag -- set --name ttcstatus --tag latest                     # pin the stable site map
 npm run map:tag -- clear --name streetcar --tag experimental
 ```
 
@@ -308,9 +310,14 @@ Tag resolution on `GET /api/v1/map/<name>`:
 3. Otherwise the pipeline's `active` pointer serves the map, so publishing
    never breaks just because nobody tagged anything.
 
-The snake board is published as a fully derived viewer payload (it has no
-`graph` section), so the homepage can consume it exactly as served; add
-`?map=snake` to `/xplore` to spin the snake board as the production map.
+The board artifacts (`snake` and `ttcstatus`) are published as fully derived
+viewer payloads (they have no `graph` section), so the homepage consumes them
+exactly as served. **The homepage defaults to the stable `ttcstatus` name** —
+the same derived board frozen under its own immutable artifact — so future
+snake-game changes (board geometry, gameplay, performance work) land on the
+`snake` name only and can never touch the production status map; pin
+`?mapVersion=` or use `?map=streetcar` / `?map=snake` on `/xplore` to preview
+the other boards.
 
 ## Provisioning
 
@@ -450,11 +457,17 @@ Every quality gate in this repository runs through one command:
                         # lint, format, tests and builds
 ./pre-flight check      # the same, minus the two build routes
 ./pre-flight check lint # only the named routes
+./pre-flight precommit  # auto-fix commands from security.json (prettier
+                        # --write), then the full board — what the git
+                        # pre-commit hook runs
 ```
 
 The board is configured entirely by `security.json` at the repository root:
 which routes exist, their commands, the tools they need, and the baseline
-time each one takes. Every run reports its time as a percentage of its
+time each one takes. The `precommit.fix` list in the same file is what the
+git pre-commit hook runs first — `prettier --write .` — so formatting is
+fixed in the working tree before the format route checks it. Every run
+reports its time as a percentage of its
 baseline, so a test that quietly became 40% slower over the years shows up
 as `delayed +40%` on the board. Slow runs never fail anything — only real
 check failures do.
@@ -609,7 +622,8 @@ make dev
 
 This runs `npm run dev:viewer`. Open `http://127.0.0.1:4173/`.
 The React homepage loads the map from
-`/api/v1/map/streetcar` and enables live streetcars by default. Positions refresh
+`/api/v1/map/ttcstatus` (the stable board; the preview middleware derives it
+from the local fixtures exactly like the deployed generator) and enables live streetcars by default. Positions refresh
 every 30 seconds while the layer is enabled.
 Updates pause with the layer off, in hidden tabs, or offline; returning to an
 overdue view refreshes immediately. Only one request runs at a time. Failed
@@ -670,14 +684,16 @@ Apply the local D1 migration:
 npm run db:migrate:local
 ```
 
-Run the two Workers in separate terminals:
+Or run the whole local stack with dev/prod parity — `make dev` builds the UI,
+migrates local D1/R2, starts both Workers from their production `wrangler.jsonc`
+configs (API pinned to 8787, map-generator to 8788, real `MAP_GENERATOR` service
+binding between them, `--test-scheduled` for the cron path), and bootstraps the
+map through the same `POST /api/v1/admin/sync` endpoint production operators use:
 
 ```bash
-npm run dev:map
-```
-
-```bash
-npm run dev:api
+make dev            # start the whole local stack + bootstrap the map
+make dev/bootstrap  # re-run the pipeline against a running stack (local only)
+make dev/new        # drop + recreate local D1, then make dev
 ```
 
 Wrangler can exercise the scheduled handler locally using its scheduled test route.

@@ -1,13 +1,21 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { memo, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import type { Point, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { TrackClosures } from '../map/TrackClosures';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
-import { SnakeEngine, type Mode, type Turn } from './engine';
+import { SnakeEngine, type Hazard, type Mode, type Turn } from './engine';
 
 interface Props {
   data: ViewerData;
@@ -15,8 +23,6 @@ interface Props {
   onClose(): void;
 }
 const noSelection = () => {};
-const GAME_DRAW_INTERVAL_MS = 50;
-const GAME_TICK_INTERVAL_MS = 33;
 // The board is derived synchronously from the already-loaded schematic (no
 // second network request). Memoize it per schematic so reopening the game is
 // instant instead of rebuilding the collapsed board every time.
@@ -30,8 +36,10 @@ const buildBoard = (source: ViewerData) => {
   return cached;
 };
 /** The generator publishes the exact board as a named map artifact; prefer
- * that prebuilt payload over blocking the main thread deriving it here. One
- * request per schematic, falling back to the local derivation when absent. */
+ * that prebuilt payload (baked at deploy time by the map generator) over
+ * deriving it in the browser at all. When the artifact cannot be fetched, the
+ * fallback derivation runs in a worker — never on the main thread — so a
+ * cache miss costs a moment of waiting, not dropped animation frames. */
 const prebuiltBoardCache = new WeakMap<ViewerData, Promise<ViewerData>>();
 const isBoard = (value: unknown): value is ViewerData =>
   Boolean(value) &&
@@ -41,6 +49,34 @@ const isBoard = (value: unknown): value is ViewerData =>
   Array.isArray((value as ViewerData).features) &&
   Boolean((value as ViewerData).geographicTransform) &&
   Array.isArray((value as ViewerData).routes);
+const deriveBoardInWorker = (source: ViewerData) =>
+  new Promise<ViewerData>((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL('./board-worker.ts', import.meta.url), {
+        type: 'module',
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    const done = (handler: (event: MessageEvent) => void) => {
+      worker.onmessage = (event) => {
+        worker.terminate();
+        handler(event);
+      };
+      worker.onerror = (event) => {
+        worker.terminate();
+        reject(event);
+      };
+    };
+    done((event) => {
+      const payload = event.data as ViewerData | { error: string };
+      if (payload && 'error' in payload) reject(new Error(payload.error));
+      else resolve(payload);
+    });
+    worker.postMessage(source);
+  });
 const loadBoard = (source: ViewerData) => {
   let pending = prebuiltBoardCache.get(source);
   if (!pending) {
@@ -54,7 +90,13 @@ const loadBoard = (source: ViewerData) => {
       } catch {
         /* Fall back to deriving the board from the loaded schematic. */
       }
-      return buildBoard(source).data;
+      try {
+        return await deriveBoardInWorker(source);
+      } catch {
+        /* Last resort: some embedders (tests, static exports) have no worker
+         * support; a synchronous derivation still beats no game at all. */
+        return buildBoard(source).data;
+      }
     })();
     prebuiltBoardCache.set(source, pending);
   }
@@ -95,7 +137,15 @@ const MiniTracks = memo(function MiniTracks({ data }: { data: ViewerData }) {
     </g>
   );
 });
-function Minimap({ data, point }: { data: ViewerData; point: Point }) {
+function Minimap({
+  data,
+  point,
+  dotRef,
+}: {
+  data: ViewerData;
+  point: Point;
+  dotRef: RefObject<SVGCircleElement | null>;
+}) {
   useLanguage();
   const { x, y, width, height } = data.bounds;
   return (
@@ -107,6 +157,7 @@ function Minimap({ data, point }: { data: ViewerData; point: Point }) {
     >
       <MiniTracks data={data} />
       <circle
+        ref={dotRef}
         cx={point[0]}
         cy={point[1]}
         r={width / 65}
@@ -191,6 +242,17 @@ const SnakeCockpit = memo(function SnakeCockpit({
   const followRef = useRef(follow);
   followRef.current = follow;
   const mapControls = useRef<TransitMapControls | null>(null);
+  /** Imperative handles to the animated overlay nodes. React renders this
+   * skeleton rarely (game events, HUD ticks); the game loop moves it by
+   * writing attributes directly, never by reconciling the tree per frame. */
+  const trainRefs = useRef<{
+    scale: number;
+    body: (SVGPolylineElement | null)[];
+    arrow: (SVGPathElement | null)[];
+    circle: SVGCircleElement | null;
+    cars: (SVGGElement | null)[];
+  }>({ scale: 1, body: [], arrow: [], circle: null, cars: [] });
+  const minimapDot = useRef<SVGCircleElement>(null);
   const touches = useRef(new Map<number, Point>());
   const pinching = useRef(false);
   const pinchDistance = useRef(0);
@@ -320,40 +382,60 @@ const SnakeCockpit = memo(function SnakeCockpit({
     document.addEventListener('visibilitychange', visibility);
     let frame: number,
       previous = 0,
-      lastDraw = 0,
-      simulationCarry = 0;
+      lastHud = 0,
+      lastCount = engine.count,
+      lastHazard: Hazard | undefined = engine.hazard;
     const animate = (now: number) => {
       const wasRunning = engine.status === 'running';
       const wasOver = engine.status === 'over';
       const before = engine.count;
       if (wasRunning) {
-        simulationCarry += previous ? Math.min(0.1, (now - previous) / 1000) : 0;
-        if (simulationCarry >= GAME_TICK_INTERVAL_MS / 1000) {
-          engine.tick(simulationCarry, traffic.current, heldPedals());
-          simulationCarry = 0;
-          // Each collected car widens the camera one step — but never past a
-          // comfortable driving scale, so long trains never over-zoom-out.
-          if (engine.count > grown.current) {
-            grown.current = engine.count;
-            const controls = mapControls.current;
-            if (
-              controls &&
-              controls.cameraWidth() * 1.18 <=
-                Math.min(data.bounds.width / 3, data.bounds.width)
-            )
-              controls.zoomBy(1.18);
-          }
-          if (followRef.current) mapControls.current?.followPoint(engine.pose().point);
+        // Like the classic game, advance the simulation by the real frame
+        // delta (clamped) and draw every animation frame. A fixed tick and
+        // draw cadence quantizes motion into visible steps, which reads as
+        // herky-jerky scrolling; per-frame stepping keeps simulation, camera
+        // follow and overlay in lockstep at display refresh rate.
+        engine.tick(
+          previous ? Math.min(0.1, (now - previous) / 1000) : 0,
+          traffic.current,
+          heldPedals(),
+        );
+        // Each collected car widens the camera one step — but never past a
+        // comfortable driving scale, so long trains never over-zoom-out.
+        if (engine.count > grown.current) {
+          grown.current = engine.count;
+          const controls = mapControls.current;
+          if (
+            controls &&
+            controls.cameraWidth() * 1.18 <=
+              Math.min(data.bounds.width / 3, data.bounds.width)
+          )
+            controls.zoomBy(1.18);
         }
-      } else simulationCarry = 0;
+      }
       previous = now;
       if (engine.count > before) chime();
-      // A run ending mid-tick shows its verdict immediately, not on the next
-      // draw interval.
-      if (!wasOver && engine.status === 'over') redraw();
-      else if (wasRunning && now - lastDraw >= GAME_DRAW_INTERVAL_MS) {
+      // The camera follows every frame by writing the viewBox directly; no
+      // React state, no reconciliation, no per-frame render.
+      if (followRef.current && engine.status === 'running')
+        mapControls.current?.followPoint(engine.pose().point);
+      // The moving world (train, cars, switch arrow, minimap dot) updates
+      // imperatively every frame — never through React. Paused and game-over
+      // frames are static, so only a running engine redraws.
+      if (engine.status === 'running') drawOverlay();
+      // Discrete gameplay changes need a real render: new cars join the
+      // consist, disruptions change the banner and track overlay, and a run
+      // ending mid-tick shows its verdict immediately.
+      if (engine.count !== lastCount || engine.hazard !== lastHazard) {
+        lastCount = engine.count;
+        lastHazard = engine.hazard;
         redraw();
-        lastDraw = now;
+      } else if (!wasOver && engine.status === 'over') redraw();
+      // The textual HUD (speed, next stop, pedal lights) re-renders at a calm
+      // cadence instead of every animation frame.
+      else if (wasRunning && now - lastHud >= 250) {
+        redraw();
+        lastHud = now;
       }
       frame = requestAnimationFrame(animate);
     };
@@ -375,6 +457,61 @@ const SnakeCockpit = memo(function SnakeCockpit({
       /* A run does not require browser storage. */
     }
   }, [engine.count, best, engine]);
+
+  /** Per-frame world update, written straight to the SVG: the train polyline,
+   * car transforms, switch arrow and switch highlight move without a single
+   * React re-render. Car rect lengths depend only on the zoom scale, so those
+   * stay render-driven; only transforms change every frame. */
+  function drawOverlay() {
+    const refs = trainRefs.current,
+      scale = refs.scale;
+    if (refs.body[0] || refs.body[1]) {
+      const points = engine
+        .body()
+        .map((sample) => sample.point.join(','))
+        .join(' ');
+      refs.body[0]?.setAttribute('points', points);
+      refs.body[1]?.setAttribute('points', points);
+    }
+    const upcoming = engine.upcoming(),
+      edge = upcoming ? engine.edges.get(upcoming.selected.edgeId) : undefined;
+    if (upcoming && edge) {
+      const lead = Math.min(38, Math.max(1, edge.lengthMetres - 1));
+      const at = engine.pose({
+        ...upcoming.selected,
+        distance: upcoming.selected.direction === 1 ? lead : edge.lengthMetres - lead,
+      });
+      const transform = `translate(${at.point.join(' ')}) rotate(${at.angle}) scale(${1 / scale})`;
+      refs.arrow[0]?.setAttribute('transform', transform);
+      refs.arrow[1]?.setAttribute('transform', transform);
+      refs.arrow[0]?.removeAttribute('display');
+      refs.arrow[1]?.removeAttribute('display');
+      refs.circle?.removeAttribute('display');
+      refs.circle?.setAttribute('cx', String(upcoming.point[0]));
+      refs.circle?.setAttribute('cy', String(upcoming.point[1]));
+      refs.circle?.setAttribute('r', String(13 / scale));
+    } else {
+      refs.arrow[0]?.setAttribute('display', 'none');
+      refs.arrow[1]?.setAttribute('display', 'none');
+      refs.circle?.setAttribute('display', 'none');
+    }
+    const centres = engine.carCentres();
+    for (let index = 0; index < refs.cars.length; index++) {
+      const car = centres[index],
+        node = refs.cars[index];
+      if (!car || !node) continue;
+      node.setAttribute(
+        'transform',
+        `translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`,
+      );
+    }
+    const pose = engine.pose(),
+      dot = minimapDot.current;
+    if (dot) {
+      dot.setAttribute('cx', String(pose.point[0]));
+      dot.setAttribute('cy', String(pose.point[1]));
+    }
+  }
 
   function heldPedals() {
     const has = (codes: string[]) => codes.some((code) => keys.current.has(code));
@@ -532,136 +669,167 @@ const SnakeCockpit = memo(function SnakeCockpit({
           }}
           onSelectFeature={noSelection}
           onSelectVehicle={noSelection}
-          overlay={(scale) => (
-            <g className="snake-train" pointerEvents="none">
-              {engine.hazard?.edgeId && engine.hazard.kind !== 'slow' && (
-                <TrackClosures
-                  data={data}
-                  closures={[
-                    {
-                      edgeIds: [engine.hazard.edgeId],
-                      kind: engine.hazard.kind === 'stalled' ? 'stalled' : 'closed',
-                    },
-                  ]}
+          overlay={(scale) => {
+            // Remember the render-time scale for the imperative per-frame
+            // updates: car rect lengths and arrow thickness are zoom-driven,
+            // so they only change when this overlay re-renders.
+            trainRefs.current.scale = scale;
+            return (
+              <g className="snake-train" pointerEvents="none">
+                {engine.hazard?.edgeId && engine.hazard.kind !== 'slow' && (
+                  <TrackClosures
+                    data={data}
+                    closures={[
+                      {
+                        edgeIds: [engine.hazard.edgeId],
+                        kind: engine.hazard.kind === 'stalled' ? 'stalled' : 'closed',
+                      },
+                    ]}
+                  />
+                )}
+                {/* The arrow and highlight stay mounted; the game loop flips
+                 * their display and rewrites their transforms per frame. */}
+                <path
+                  data-snake-switch-arrow
+                  data-selection={upcoming?.manual ? 'manual' : 'automatic'}
+                  ref={(element) => {
+                    trainRefs.current.arrow[0] = element;
+                  }}
+                  d="M-18 0H10M2 -8L10 0L2 8"
+                  transform={
+                    switchArrow
+                      ? `translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`
+                      : undefined
+                  }
+                  display={switchArrow ? undefined : 'none'}
+                  fill="none"
+                  stroke="#16212b"
+                  strokeWidth={9}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
-              )}
-              {switchArrow && (
-                <>
-                  <path
-                    data-snake-switch-arrow
-                    data-selection={upcoming?.manual ? 'manual' : 'automatic'}
-                    d="M-18 0H10M2 -8L10 0L2 8"
-                    transform={`translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`}
-                    fill="none"
-                    stroke="#16212b"
-                    strokeWidth={9}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M-18 0H10M2 -8L10 0L2 8"
-                    transform={`translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`}
-                    fill="none"
-                    stroke="#ffd43b"
-                    strokeWidth={5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </>
-              )}
-              <polyline
-                points={body.map((sample) => sample.point.join(',')).join(' ')}
-                fill="none"
-                stroke="var(--surface)"
-                strokeWidth={9}
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="round"
-              />
-              <polyline
-                points={body.map((sample) => sample.point.join(',')).join(' ')}
-                fill="none"
-                stroke="#278f91"
-                strokeWidth={5}
-                vectorEffect="non-scaling-stroke"
-                strokeLinecap="round"
-              />
-              {upcoming && (
+                <path
+                  ref={(element) => {
+                    trainRefs.current.arrow[1] = element;
+                  }}
+                  d="M-18 0H10M2 -8L10 0L2 8"
+                  transform={
+                    switchArrow
+                      ? `translate(${switchArrow.point.join(' ')}) rotate(${switchArrow.angle}) scale(${1 / scale})`
+                      : undefined
+                  }
+                  display={switchArrow ? undefined : 'none'}
+                  fill="none"
+                  stroke="#ffd43b"
+                  strokeWidth={5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <polyline
+                  ref={(element) => {
+                    trainRefs.current.body[0] = element;
+                  }}
+                  points={body.map((sample) => sample.point.join(',')).join(' ')}
+                  fill="none"
+                  stroke="var(--surface)"
+                  strokeWidth={9}
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <polyline
+                  ref={(element) => {
+                    trainRefs.current.body[1] = element;
+                  }}
+                  points={body.map((sample) => sample.point.join(',')).join(' ')}
+                  fill="none"
+                  stroke="#278f91"
+                  strokeWidth={5}
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
                 <circle
-                  cx={upcoming.point[0]}
-                  cy={upcoming.point[1]}
+                  ref={(element) => {
+                    trainRefs.current.circle = element;
+                  }}
+                  cx={upcoming ? upcoming.point[0] : 0}
+                  cy={upcoming ? upcoming.point[1] : 0}
                   r={13 / scale}
+                  display={upcoming ? undefined : 'none'}
                   fill="#f4a30025"
                   stroke="#f4a300"
                   strokeWidth={3}
                   vectorEffect="non-scaling-stroke"
                 />
-              )}
-              {engine.carCentres().map((car, index) => {
-                const front = localToMap(
-                  [
-                    car.source[0] + car.tangent[0] * 15.1,
-                    car.source[1] + car.tangent[1] * 15.1,
-                  ],
-                  data.geographicTransform,
-                );
-                const back = localToMap(
-                  [
-                    car.source[0] - car.tangent[0] * 15.1,
-                    car.source[1] - car.tangent[1] * 15.1,
-                  ],
-                  data.geographicTransform,
-                );
-                // True-to-scale car length in screen pixels. Cars sit SPACING
-                // metres apart, so the true length always fits without
-                // bunching; zoomed out they shrink instead of overlapping
-                // (the constant-width body polyline keeps the train legible).
-                const length = Math.max(
-                  8,
-                  Math.hypot(front[0] - back[0], front[1] - back[1]) * scale,
-                );
-                return (
-                  <g
-                    key={index}
-                    data-snake-head={index === 0 ? '' : undefined}
-                    transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
-                  >
-                    <rect
-                      x={-length / 2}
-                      y={-5}
-                      width={length}
-                      height={10}
-                      rx={3}
-                      fill="var(--surface)"
-                      stroke={index === 0 ? '#278f91' : '#25343c'}
-                      strokeWidth={index === 0 ? 2.5 : 1}
-                    />
-                    <rect
-                      x={-length / 2 + 2}
-                      y={-2.5}
-                      width={length - 4}
-                      height={5}
-                      rx={1}
-                      fill="#d71920"
-                    />
-                    {[0.25, 0.5, 0.75].map((fraction) => (
-                      <path
-                        key={fraction}
-                        d={`M${-length / 2 + length * fraction} -4V4`}
-                        stroke="var(--surface)"
-                        strokeWidth={1}
+                {engine.carCentres().map((car, index) => {
+                  const front = localToMap(
+                    [
+                      car.source[0] + car.tangent[0] * 15.1,
+                      car.source[1] + car.tangent[1] * 15.1,
+                    ],
+                    data.geographicTransform,
+                  );
+                  const back = localToMap(
+                    [
+                      car.source[0] - car.tangent[0] * 15.1,
+                      car.source[1] - car.tangent[1] * 15.1,
+                    ],
+                    data.geographicTransform,
+                  );
+                  // True-to-scale car length in screen pixels. Cars sit SPACING
+                  // metres apart, so the true length always fits without
+                  // bunching; zoomed out they shrink instead of overlapping
+                  // (the constant-width body polyline keeps the train legible).
+                  const length = Math.max(
+                    8,
+                    Math.hypot(front[0] - back[0], front[1] - back[1]) * scale,
+                  );
+                  return (
+                    <g
+                      key={index}
+                      data-snake-head={index === 0 ? '' : undefined}
+                      ref={(element: SVGGElement | null) => {
+                        trainRefs.current.cars[index] = element;
+                      }}
+                      transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
+                    >
+                      <rect
+                        x={-length / 2}
+                        y={-5}
+                        width={length}
+                        height={10}
+                        rx={3}
+                        fill="var(--surface)"
+                        stroke={index === 0 ? '#278f91' : '#25343c'}
+                        strokeWidth={index === 0 ? 2.5 : 1}
                       />
-                    ))}
-                    {index === 0 && (
-                      <path
-                        d={`M${length / 2 - 5} -2L${length / 2 - 1} 0L${length / 2 - 5} 2Z`}
-                        fill="white"
+                      <rect
+                        x={-length / 2 + 2}
+                        y={-2.5}
+                        width={length - 4}
+                        height={5}
+                        rx={1}
+                        fill="#d71920"
                       />
-                    )}
-                  </g>
-                );
-              })}
-            </g>
-          )}
+                      {[0.25, 0.5, 0.75].map((fraction) => (
+                        <path
+                          key={fraction}
+                          d={`M${-length / 2 + length * fraction} -4V4`}
+                          stroke="var(--surface)"
+                          strokeWidth={1}
+                        />
+                      ))}
+                      {index === 0 && (
+                        <path
+                          d={`M${length / 2 - 5} -2L${length / 2 - 1} 0L${length / 2 - 5} 2Z`}
+                          fill="white"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          }}
         />
       </div>
       <header className="snake-top">
@@ -677,7 +845,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
           ✕
         </button>
       </header>
-      {playing && <Minimap data={data} point={pose.point} />}
+      {playing && <Minimap data={data} point={pose.point} dotRef={minimapDot} />}
       <div className="snake-hud">
         <span>
           <b data-snake-count>{engine.count}</b>{' '}

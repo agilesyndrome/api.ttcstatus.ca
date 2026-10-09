@@ -33,7 +33,7 @@ try {
   let mapCalls = 0,
     feedCalls = 0,
     conditional = false;
-  await page.route('**/api/v1/map/streetcar?format=schematic-v1', (request) => {
+  await page.route('**/api/v1/map/ttcstatus', (request) => {
     mapCalls++;
     return request.fulfill({ json: map });
   });

@@ -49,7 +49,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.route('**/api/v1/map/streetcar*', (route) => route.fulfill({ json: map }));
+  await page.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
   await page.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({ json: snapshot }),
   );

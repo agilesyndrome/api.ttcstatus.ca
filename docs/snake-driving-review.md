@@ -23,6 +23,15 @@ head and tail visibly traverse the turnback without a rail-to-rail jump. These
 connectors are game geometry, not surveyed track. Real closed edges continue as
 laps without a synthetic reversal; disconnected crossings do not become joints.
 
+The classic loop stepped its simulation by the real frame delta and redrew
+every animation frame. The cockpit keeps that cadence: each displayed frame
+advances the engine, writes the camera viewBox and updates the moving overlay
+in lockstep, so scrolling stays smooth at any refresh rate. React renders stay
+off the animation path — they fire only for discrete gameplay changes and a
+calm textual-HUD tick — and the engine cadences its tick-proportional traffic
+scans to a fixed 0.1 s of simulation time so faster displays do not multiply
+them.
+
 Classic collision detection used overlapping geometric capsules, a five-car
 self-collision exclusion, frame confirmation and 105.7 metres of turnback grace.
 On the generated graph, tangent capsules falsely hit the parallel return rail

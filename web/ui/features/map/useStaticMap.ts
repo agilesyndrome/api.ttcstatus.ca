@@ -15,13 +15,20 @@ function mapPayload(value: ViewerSource | ViewerData): ViewerData {
 }
 
 /** Map URL parameters to a published map request:
- *   ?map=<name>          — named artifact (streetcar | snake), default streetcar
+ *   ?map=<name>          — named artifact (ttcstatus | streetcar | snake)
  *   ?mapVersion=<tag>    — a published tag (latest, stable, ...) selecting a
  *                          pinned artifact for that name; without it the API
  *                          serves the active pipeline pointer. */
+const MAP_NAMES = ['ttcstatus', 'streetcar', 'snake'] as const;
 export function mapRequestFromSearch(search: string) {
   const params = new URLSearchParams(search);
-  const name = params.get('map') === 'snake' ? 'snake' : 'streetcar';
+  const requested = params.get('map');
+  // The homepage consumes the stable 'ttcstatus' board by default: it is the
+  // published snake-derived map frozen under its own name, so the snake game's
+  // 'snake' artifact can change direction freely without touching this site.
+  const name = (MAP_NAMES as readonly string[]).includes(requested ?? '')
+    ? (requested as (typeof MAP_NAMES)[number])
+    : 'ttcstatus';
   const version = params.get('mapVersion');
   const tag =
     version && /^[\w][\w.-]{0,63}$/.test(version)
@@ -32,10 +39,10 @@ export function mapRequestFromSearch(search: string) {
 }
 
 export function useStaticMap() {
-  // Throwaway experiment (not an API contract): ?map=snake previews the game's
-  // published board — collapsed corridors, rounded corners, no duplicate rails —
-  // as the production explorer map, and ?mapVersion=<tag> pins a published
-  // version. Delete freely if the idea is dumped.
+  // ?map=streetcar or ?map=snake previews the other published boards (the raw
+  // schematic or the game's own artifact), and ?mapVersion=<tag> pins a
+  // published version. The default 'ttcstatus' board is the stable site map,
+  // decoupled from the snake game's 'snake' artifact.
   const [mapRequest] = useState(() => mapRequestFromSearch(window.location.search));
   const [data, setData] = useState<ViewerData>();
   const [error, setError] = useState<string>();
@@ -49,19 +56,40 @@ export function useStaticMap() {
           signal: controller.signal,
           cache: 'no-cache',
         });
-        if (!response.ok)
-          throw new Error(
-            response.status === 503
-              ? english('map.theStreetcarMapIsBeingPreparedPleaseTryAgainShortly')
-              : t('map.mapRequestFailedValue', { value1: response.status }),
-          );
+        if (!response.ok) {
+          if (response.status === 503 || response.status === 404) {
+            // Only 503 'map-generating' means a generation is running right now
+            // and the map really is on its way. Every other 503 ('map-not-ready'
+            // — nothing ever generated, 'map-artifact-incomplete' — a broken
+            // artifact) and the 404 'not-found' / 'map-tag-missing' mean the
+            // map has failed or the pipeline is not running.
+            const cause =
+              response.status === 503
+                ? ((await response
+                    .clone()
+                    .json()
+                    .catch(() => null)) as { error?: string } | null)
+                : null;
+            throw new Error(
+              cause?.error === 'map-generating'
+                ? english('map.theStreetcarMapIsBeingPreparedPleaseTryAgainShortly')
+                : t('map.mapTemporarilyUnavailableWhileWePerformTrackWork'),
+            );
+          }
+          throw new Error(t('map.mapRequestFailedValue', { value1: response.status }));
+        }
         setData(mapPayload((await response.json()) as ViewerSource | ViewerData));
       } catch (error) {
         if (!controller.signal.aborted)
           setError(
-            error instanceof Error
-              ? error.message
-              : english('map.unableToLoadTheStreetcarMap'),
+            // Network-level failures (offline, DNS, connection refused) reject
+            // with a TypeError whose raw message ("Failed to fetch") is noise
+            // for visitors — show the delay message instead.
+            error instanceof TypeError
+              ? t('map.wereExperiencingADelayPleaseTryAgainShortly')
+              : error instanceof Error
+                ? error.message
+                : english('map.unableToLoadTheStreetcarMap'),
           );
       }
     }

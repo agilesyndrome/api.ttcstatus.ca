@@ -2,6 +2,7 @@
 //
 //   ./pre-flight [run] [names…]      full board (checks + builds)
 //   ./pre-flight check [names…]      checks only, or the named routes
+//   ./pre-flight precommit           fix commands (prettier --write), then the board
 //   ./pre-flight status              every route: SKIP/ON/OFF, baseline, tools
 //   ./pre-flight skip <names…>       skip routes on the NEXT run only
 //   ./pre-flight on|off <names…>     flip routes in security.json
@@ -34,6 +35,7 @@ import { Board, PlainLog, createPaint, detectModes, fmtSecs } from './ui.mjs';
 const COMMANDS = [
   'run',
   'check',
+  'precommit',
   'status',
   'list',
   'skip',
@@ -156,6 +158,39 @@ function routeState(check, paint) {
   if (check.skipNext)
     return { text: 'SKIP · next run', style: paint.yellow, bullet: '●' };
   return { text: 'ON', style: paint.green, bullet: '●' };
+}
+
+/**
+ * The pre-commit hook entry point. Runs the auto-fix commands declared in
+ * security.json (`precommit.fix`) — prettier --write and friends — so the
+ * working tree is formatted before the format route checks it, then runs
+ * the full board exactly like `./pre-flight`.
+ */
+async function commandPrecommit(config, flags) {
+  const fixCommands = config.precommit?.fix ?? [];
+  const renderer = createRenderer(flags, config);
+  renderer.phase(
+    fixCommands.length
+      ? `precommit: ${fixCommands.length} fix command(s) from ${CONFIG_NAME}, then the full board`
+      : `precommit: no fix commands in ${CONFIG_NAME}, going straight to the board`,
+  );
+  for (const command of fixCommands) {
+    renderer.phase(`fix: ${command}`);
+    const result = await runCommand(command, {
+      onLine: (line) => renderer.streamLine?.('fix', line),
+    });
+    if (result.code !== 0) {
+      renderer.phase(`fix command failed: ${command}`);
+      renderer.output?.({
+        check: { id: 'fix' },
+        index: 0,
+        code: result.code,
+        output: result.output,
+      });
+      return 1;
+    }
+  }
+  return runBoard({ config, command: 'run', flags });
 }
 
 async function commandStatus(config, flags) {
@@ -328,6 +363,9 @@ async function commandHelp() {
   line(`${'./pre-flight'.padEnd(34)}run the full board (checks + builds)`);
   line(`${'./pre-flight check'.padEnd(34)}run checks only, skipping build routes`);
   line(`${'./pre-flight check lint test'.padEnd(34)}run specific routes by name`);
+  line(
+    `${'./pre-flight precommit'.padEnd(34)}fix commands (prettier --write), then the board`,
+  );
   line(`${'./pre-flight status'.padEnd(34)}each route: SKIP/ON/OFF, baseline and tools`);
   line(
     `${'./pre-flight baseline [routes…]'.padEnd(34)}re-record baseline times on this machine`,
@@ -409,6 +447,8 @@ async function main(argv) {
       });
     case 'install':
       return commandInstall(await loadConfig(), flags.names, flags);
+    case 'precommit':
+      return commandPrecommit(await loadConfig(), flags);
     case 'run':
     case 'check':
     case 'baseline':

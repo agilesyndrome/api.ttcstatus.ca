@@ -1,9 +1,11 @@
 #!/bin/sh
-# Gate commits on pre-flight checks: secret scans (gitleaks over the working
-# tree and git history), boundaries, types, lint, format, tests and builds.
+# Gate commits on the pre-flight board. `./pre-flight precommit` first runs the
+# auto-fix commands from security.json (prettier --write), then every route:
+# secret scans (gitleaks over the working tree and git history), boundaries,
+# types, lint, format, tests and builds.
 # Skip deliberately with: git commit --no-verify
-echo "pre-commit: running npm run pre-flight (skip with --no-verify)"
-if ! npm run pre-flight; then
+echo "pre-commit: fixing format, then running pre-flight (skip with --no-verify)"
+if ! node ./pre-flight precommit; then
   echo "pre-commit: pre-flight failed; commit aborted." >&2
   exit 1
 fi

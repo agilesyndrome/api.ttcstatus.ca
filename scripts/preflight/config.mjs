@@ -71,6 +71,12 @@ export function defaultConfig() {
         },
       },
     },
+    // What `./pre-flight precommit` (the git pre-commit hook) runs before the
+    // board: auto-fix commands that rewrite the working tree, so the format
+    // check passes without a manual `npm run format`.
+    precommit: {
+      fix: ['{bin:prettier} --write .'],
+    },
     checks: {
       secrets: {
         label: 'Secret scan · working tree',
@@ -191,6 +197,7 @@ export function mergeConfig(file) {
   for (const [tool, spec] of Object.entries(merged.tools)) {
     merged.tools[tool] = { ...(defaults.tools[tool] ?? {}), ...spec };
   }
+  merged.precommit = { ...defaults.precommit, ...(file.precommit ?? {}) };
   merged.checks = {};
   for (const id of new Set([
     ...Object.keys(defaults.checks),

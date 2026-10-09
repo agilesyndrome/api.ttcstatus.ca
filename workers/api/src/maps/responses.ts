@@ -101,10 +101,36 @@ export async function mapResponse(
     new URL(request.url).searchParams.get('tag') || undefined,
   );
   if (!resolved) {
+    // Operator diagnostics: the latest streetcar generation job tells the
+    // operator which of the three states the pipeline is in — not yet
+    // started, still working, or started-but-failed. Only the 'running' case
+    // claims the map is being prepared; every other state means the pipeline
+    // needs operator action, and the payload says exactly which.
+    const job = await env.DB.prepare(
+      `SELECT status, started_at, completed_at, error FROM map_generation_jobs
+       WHERE mode = 'streetcar'
+       ORDER BY id DESC LIMIT 1`,
+    ).first<{
+      status: string;
+      started_at: string | null;
+      completed_at: string | null;
+      error: string | null;
+    }>();
+    const phase = job?.status ?? 'not-started';
+    const guidance = !job
+      ? 'Map pipeline: not yet started. Run the sync: POST /api/v1/admin/sync (locally: make dev / make dev/new).'
+      : job.status === 'running'
+        ? `Map pipeline: still working (started ${job.started_at}). Wait for this job to finish; it activates the map when it completes.`
+        : job.status === 'pending'
+          ? 'Map pipeline: job queued but not started. Re-run the sync or check the map-generator Worker.'
+          : job.status === 'failed'
+            ? `Map pipeline: started but failed${job.completed_at ? ` at ${job.completed_at}` : ''}${job.error ? ` — ${job.error}` : ''}. Fix the cause, then re-run the sync.`
+            : `Map pipeline: generation completed at ${job.completed_at ?? job.started_at} but activation never flipped an active artifact. Check for missing/incomplete snake or ttcstatus artifacts, then re-run the sync or npm run map:regenerate:remote to re-activate.`;
     return json(
       {
-        error: 'map-not-ready',
-        message: `No active '${name}' map has been generated yet. Run the first static GTFS sync after provisioning D1/R2.`,
+        error: job?.status === 'running' ? 'map-generating' : 'map-not-ready',
+        phase,
+        guidance,
       },
       503,
       { 'cache-control': 'no-store' },

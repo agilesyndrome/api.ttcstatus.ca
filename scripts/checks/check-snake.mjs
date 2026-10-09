@@ -111,7 +111,7 @@ try {
   await context.route('**/api/v1/auth/config', (route) =>
     route.fulfill({ json: { enabled: false, publishableKey: null } }),
   );
-  await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) => {
+  await context.route('**/api/v1/map/ttcstatus', (route) => {
     mapCalls++;
     return route.fulfill({ json: map });
   });
@@ -278,7 +278,7 @@ try {
   await mobileContext.route('**/api/v1/auth/config', (route) =>
     route.fulfill({ json: { enabled: false } }),
   );
-  await mobileContext.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
+  await mobileContext.route('**/api/v1/map/ttcstatus', (route) =>
     route.fulfill({ json: forkMap }),
   );
   // No published board here: the game must fall back to deriving the board

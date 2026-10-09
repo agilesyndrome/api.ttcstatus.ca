@@ -33,9 +33,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 let calls = 0;
 const errors = [];
 async function fixture(context) {
-  await context.route('**/api/v1/map/streetcar?format=schematic-v1', (route) =>
-    route.fulfill({ json: map }),
-  );
+  await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', (route) => {
     calls++;
     const now = new Date().toISOString();

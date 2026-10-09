@@ -21,6 +21,9 @@
       }
     }
   },
+  "precommit": {
+    "fix": ["{bin:prettier} --write ."]
+  },
   "checks": {
     "secrets": {
       "label": "Secret scan · working tree",
@@ -105,17 +108,17 @@
     }
   },
   "baselines": {
-    "recordedAt": "2026-10-07T21:07:38.852Z",
+    "recordedAt": "2026-10-09T00:37:30.081Z",
     "seconds": {
-      "secrets": 1.7,
-      "secrets-history": 1.9,
-      "boundaries": 1.7,
-      "typecheck": 8.6,
-      "test": 13.4,
-      "build-ui": 1.2,
+      "secrets": 2.1,
+      "secrets-history": 2.1,
+      "boundaries": 2.1,
+      "typecheck": 9.6,
+      "test": 18.4,
+      "build-ui": 2,
       "build-viewer": 0.3,
-      "lint": 5.9,
-      "format": 7.5
+      "lint": 6.8,
+      "format": 8.4
     }
   }
 }

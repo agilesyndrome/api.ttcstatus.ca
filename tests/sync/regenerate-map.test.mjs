@@ -8,6 +8,7 @@ function fixture({
   storageFails = false,
   publishFails = false,
   current = false,
+  incompleteSet = false,
 } = {}) {
   const calls = [];
   let published = false;
@@ -30,6 +31,12 @@ function fixture({
               id: 3,
               generator_version: current ? 'new-generator' : 'old-generator',
             };
+          // The complete published set (schematic + snake + ttcstatus boards,
+          // each with every chunk stored). A current schematic alone is not
+          // enough: a generation that predates a new published name must be
+          // rewritten, not reported "unchanged".
+          if (sql.startsWith('SELECT 1 WHERE (SELECT COUNT(DISTINCT name)'))
+            return incompleteSet ? null : { 1: 1 };
           if (sql.includes('RETURNING id')) return { id: 8 };
           if (sql.startsWith('SELECT active')) return { active: published ? 1 : 0 };
           throw new Error(`Unexpected first: ${sql}`);
@@ -45,6 +52,9 @@ function fixture({
   };
   const modules = {
     GENERATOR_VERSION: 'new-generator',
+    STREETCAR_MAP_NAME: 'streetcar',
+    SNAKE_MAP_NAME: 'snake',
+    TTCSTATUS_MAP_NAME: 'ttcstatus',
     loadMapSourceData: async (_env, version) => {
       assert.equal(version, 7);
       return {};
@@ -56,7 +66,7 @@ function fixture({
     },
     generateStreetcarMap: async () => {
       if (storageFails) throw new Error('chunk write failed');
-      return { artifactId: 9, snakeArtifactId: 10 };
+      return { artifactId: 9, snakeArtifactId: 10, ttcstatusArtifactId: 11 };
     },
   };
   return { db, modules, calls };
@@ -76,17 +86,22 @@ test('regeneration publishes both named maps with guarded statements and release
   assert.equal(result.status, 'updated');
   assert.equal(result.previousArtifactId, 3);
   assert.equal(result.snakeArtifactId, 10);
+  assert.equal(result.ttcstatusArtifactId, 11);
   const publication = f.calls.filter((call) =>
     call.sql.startsWith('UPDATE map_artifacts'),
   );
-  // One guarded flip per published name: the schematic and the snake board.
-  assert.equal(publication.length, 2);
+  // One guarded flip per published name: the schematic, the snake board and
+  // the stable ttcstatus site map.
+  assert.equal(publication.length, 3);
   for (const statement of publication) {
     assert.ok(statement.sql.includes('ready.chunk_count = (SELECT COUNT(*)'));
     assert.ok(statement.sql.includes('network_versions WHERE id = ? AND active = 1'));
   }
   assert.ok(publication.some((call) => call.sql.includes("style = 'snake-v1'")));
   assert.ok(publication.some((call) => call.sql.includes("style = 'snake-board-v1'")));
+  assert.ok(
+    publication.some((call) => call.sql.includes("style = 'ttcstatus-board-v1'")),
+  );
   const release = f.calls.at(-1);
   assert.ok(release.sql.includes('AND lock_until = ?'));
   assert.equal(release.values[1], f.calls[0].values[0]);
@@ -121,4 +136,13 @@ test('an already-current artifact is not rewritten while viewers use it', async 
         call.sql.includes('INSERT') || call.sql.startsWith('UPDATE map_artifacts'),
     ),
   );
+});
+test('a current schematic with an incomplete published set is rewritten, not reported unchanged', async () => {
+  // The ttcstatus stable-site board was added without a GENERATOR_VERSION bump:
+  // local state could carry a current schematic plus snake board and still miss
+  // the ttcstatus artifact. Regeneration must backfill it instead of no-oping.
+  const f = fixture({ current: true, incompleteSet: true });
+  assert.equal((await regenerateMap(f.db, f.modules)).status, 'updated');
+  assert.equal(f.calls[3].values[3], 'ttcstatus');
+  assert.ok(f.calls.some((call) => call.sql.startsWith('UPDATE map_artifacts')));
 });
