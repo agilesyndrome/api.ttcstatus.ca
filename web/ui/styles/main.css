@@ -1183,11 +1183,20 @@ select:focus-visible {
   body:has(.workspace) {
     overflow: hidden;
   }
+  /* The workspace and the nav overlay are siblings of the top bar, so the
+     header height custom property must be declared on a common ancestor —
+     not on .topbar, which they do not inherit from. */
+  :root {
+    --account-header-height: 56px;
+  }
   .topbar {
     height: calc(var(--account-header-height, 120px) + env(safe-area-inset-top));
     padding-top: env(safe-area-inset-top);
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
+    /* Search results must stay above the nav overlay (z 6) so the header
+       search remains usable while the menu is open. */
+    z-index: 7;
   }
   .search input,
   .tool-form input[type='search'],
