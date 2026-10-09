@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import {
   getLanguagePreference,
-  isLanguagePersistent,
   isLanguagePreference,
   locales,
   setLanguagePreference,
@@ -35,14 +34,9 @@ export function LanguageSettings() {
           </option>
         ))}
       </select>
-      <p className="helper">
-        {account.userId
-          ? t('language.yourLanguagePreferenceIsSavedInYourClerkProfile')
-          : t('language.yourLanguagePreferenceIsSavedInThisBrowserNoAccount')}
-      </p>
-      {!isLanguagePersistent() && (
-        <p role="status">
-          {t('language.browserStorageIsUnavailableYourLanguageChoiceWillLastFor')}
+      {account.userId && (
+        <p className="helper">
+          {t('language.yourLanguagePreferenceIsSavedInYourClerkProfile')}
         </p>
       )}
     </section>

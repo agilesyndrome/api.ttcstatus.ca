@@ -2,7 +2,9 @@ import { t, getLocale } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
+import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
 import { formatDistance, nearbyCars } from '../../commute';
+import { StationArrivals } from './StationArrivals';
 interface Props {
   data: ViewerData;
   feature?: Feature;
@@ -13,6 +15,8 @@ interface Props {
   feedLoaded?: boolean;
   liveEnabled?: boolean;
   feedFailed?: boolean;
+  snapshot?: VehicleSnapshot;
+  now?: number;
   journalSaved?: boolean;
   journalFull?: boolean;
   onJournal?(): void;
@@ -33,6 +37,8 @@ export function StopDetails({
   feedLoaded,
   liveEnabled,
   feedFailed,
+  snapshot,
+  now = Date.now(),
   following,
   onFollow,
   journalSaved,
@@ -221,6 +227,17 @@ export function StopDetails({
             : t('viewer.notConfirmedInThisSnapshot')}
         </dd>
       </dl>
+      {feature.boardingPoints > 0 &&
+        feature.routeIds.some((id) => rapidRoutes.has(id)) && (
+          <StationArrivals
+            data={data}
+            feature={feature}
+            snapshot={snapshot}
+            now={now}
+            enabled={liveEnabled}
+            failed={feedFailed}
+          />
+        )}
       {onSelectVehicle &&
         feature.boardingPoints > 0 &&
         feature.routeIds.some((id) => !rapidRoutes.has(id)) && (

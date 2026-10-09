@@ -29,10 +29,11 @@ try {
   );
   const page = await context.newPage();
   for (const failure of ['disabled', 'http', 'network', 'invalid']) {
-    let failed = false;
+    // Fail the first two config fetches: the page loads once for the map and
+    // once more for the profile page where the journal gate is verified.
+    let failuresLeft = 2;
     const configFailure = (route) => {
-      if (failed) return route.fallback();
-      failed = true;
+      if (failuresLeft-- <= 0) return route.fallback();
       if (failure === 'network') return route.abort('failed');
       return route.fulfill({
         status: failure === 'http' ? 503 : 200,
@@ -53,7 +54,9 @@ try {
     } else {
       assert.equal(await page.locator('.affiliation-notice').count(), 0);
     }
-    await page.getByText('Accounts unavailable', { exact: true }).waitFor();
+    // The settings render twice (top bar and nav footer); only the visible
+    // copy is in the accessibility tree, so pin the first text match.
+    await page.getByText('Accounts unavailable', { exact: true }).first().waitFor();
     if (failure === 'disabled') {
       for (const width of [320, 390, 900, 1440]) {
         await page.setViewportSize({ width, height: 960 });
@@ -63,8 +66,12 @@ try {
         );
       }
     }
-    await page.getByRole('tab', { name: 'Journal', exact: true }).click();
-    await page.getByRole('heading', { name: 'Make it your journal.' }).waitFor();
+    // Signed-out visitors only get the Explore tab, so the journal gate is
+    // verified on the profile page, where the account prompt still lives.
+    await page.goto(origin + '/profile');
+    await page
+      .getByRole('heading', { name: 'Make it your journal.', exact: true })
+      .waitFor();
     assert.ok(!(await page.locator('body').innerText()).includes('coming soon'));
     await page.getByRole('button', { name: 'Retry accounts', exact: true }).click();
     await page.getByRole('button', { name: 'Sign in', exact: true }).first().waitFor();
@@ -74,9 +81,9 @@ try {
   await page.locator('#map').waitFor();
   await page.getByRole('button', { name: 'Sign in', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Sign up', exact: true }).waitFor();
-  await page.getByRole('tab', { name: 'Journal', exact: true }).click();
-  await page.getByRole('heading', { name: 'Make it your journal.' }).waitFor();
-  assert.equal(await page.locator('.journal-entry').count(), 0);
+  // Personal tabs are account-gated: signed out, Explore is the only tab.
+  assert.equal(await page.getByRole('tab', { name: 'Journal', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('tab', { name: 'Badges', exact: true }).count(), 0);
   for (const width of [320, 390, 900, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     assert.ok(
@@ -86,7 +93,9 @@ try {
     await page.screenshot({ path: `/tmp/ttc-auth-${width}.png` });
   }
   await page.setViewportSize({ width: 1440, height: 960 });
-  await page.getByRole('button', { name: 'Create an account', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign up', exact: true }).click();
+  await page.getByRole('tab', { name: 'Journal', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Journal', exact: true }).click();
   await page
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();
@@ -130,7 +139,7 @@ try {
   await page
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();
-  assert.equal(journals.get('user_a').entries.length, 1);
+  assert.equal(journals.get('user_a').entries.length, 0);
   await page.evaluate(() => {
     window.__testUser = 'user_b';
     window.dispatchEvent(new Event('fixture-account'));
@@ -142,12 +151,16 @@ try {
     'switching accounts hides previous entries',
   );
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await page.getByRole('heading', { name: 'Make it your journal.' }).waitFor();
+  // Signing out closes the personal tabs with it; the journal is gated again.
+  assert.equal(await page.getByRole('tab', { name: 'Journal', exact: true }).count(), 0);
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
+  // The journal panel was snapped back to Explore on sign-out; reopen it.
+  await page.getByRole('tab', { name: 'Journal', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Journal', exact: true }).click();
   await page
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();
-  assert.equal(await page.locator('.journal-entry').count(), 1);
+  assert.equal(await page.locator('.journal-entry').count(), 0);
   await page.getByRole('link', { name: 'Profile', exact: true }).click();
   await page.getByLabel('Username', { exact: true }).waitFor();
   assert.equal(

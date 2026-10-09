@@ -34,9 +34,17 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
         React.useEffect(() => { const update = () => { setUser(window.__testUser); try { sessionStorage.setItem('fixture-account', window.__testUser ?? 'signed-out'); } catch {} }; window.addEventListener('fixture-account', update); return () => window.removeEventListener('fixture-account', update); }, []);
         return {isLoaded: true, userId, getToken: async () => window.__testUser ? 'fixture:' + window.__testUser : null};
       }
+      export function useUser() {
+        const [userId, setUser] = React.useState(window.__testUser);
+        React.useEffect(() => { const update = () => setUser(window.__testUser); window.addEventListener('fixture-account', update); return () => window.removeEventListener('fixture-account', update); }, []);
+        const store = (window.__fixtureUsers ??= {});
+        const user = userId ? {unsafeMetadata: store[userId] ?? {}, update: async (value) => { store[userId] = {...(store[userId] ?? {}), ...(value.unsafeMetadata ?? {})}; }} : null;
+        return {isLoaded: true, user};
+      }
       const switchAccount = value => { window.__testUser = value; window.dispatchEvent(new Event('fixture-account')); };
       export const useClerk = () => ({openSignIn: () => switchAccount('user_a'), openSignUp: () => switchAccount('user_a')});
       export const UserButton = () => React.createElement('button', {onClick: () => switchAccount(null), 'aria-label': 'Sign out'}, 'Account');
+      export const UserProfile = () => React.createElement('section', null, 'Account settings');
     `,
     });
   });

@@ -8,6 +8,10 @@ interface Props {
   data?: ViewerData;
   cars?: PlottedVehicle[];
   actions?: ReactNode;
+  /** Makes the brand symbol a menu button: on mobile it toggles the nav
+   * panel; the current open state feeds its aria-expanded announcement. */
+  onBrandToggle?(): void;
+  navOpen?: boolean;
   onSelect(feature: Feature): void;
   onSelectVehicle(car: PlottedVehicle): void;
   onReset(): void;
@@ -16,6 +20,8 @@ export function PageHeader({
   data,
   cars = [],
   actions,
+  onBrandToggle,
+  navOpen,
   onSelect,
   onSelectVehicle,
   onReset,
@@ -56,9 +62,35 @@ export function PageHeader({
           onReset();
         }}
       >
-        <span className="brand-symbol" aria-hidden="true">
-          ↔
-        </span>
+        {onBrandToggle ? (
+          <span
+            className="brand-symbol brand-toggle"
+            role="button"
+            tabIndex={0}
+            aria-expanded={navOpen}
+            aria-label={navOpen ? t('header.closeMenu') : t('header.openMenu')}
+            onClick={(event) => {
+              // Keep this press on the symbol: the surrounding brand link
+              // would otherwise reset the view (and navigate).
+              event.stopPropagation();
+              event.preventDefault();
+              onBrandToggle();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                onBrandToggle();
+              }
+            }}
+          >
+            ↔
+          </span>
+        ) : (
+          <span className="brand-symbol" aria-hidden="true">
+            ↔
+          </span>
+        )}
         <span>
           <strong>{t('header.title')}</strong>
           <small>{t('header.tagline')}</small>

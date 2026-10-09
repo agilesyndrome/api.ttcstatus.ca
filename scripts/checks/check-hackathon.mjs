@@ -77,6 +77,20 @@ async function dismissNotice(page) {
   const gotIt = page.getByRole('button', { name: 'Got it', exact: true });
   if (await gotIt.count()) await gotIt.click();
 }
+// The explorer no longer ships a zoom/fit overlay: the camera answers the
+// same wheel and keyboard gestures the map itself handles.
+const zoomIn = async (page, steps = 1) => {
+  await page.locator('#map').hover();
+  for (let i = 0; i < steps; i++) await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(150);
+};
+const fitMap = async (page) => {
+  await page.locator('#map').focus();
+  await page.keyboard.press('Home');
+  await page.waitForTimeout(150);
+};
+const viewWidth = async (page) =>
+  Number((await page.locator('#map').getAttribute('viewBox')).split(' ')[2]);
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 960 },
@@ -115,7 +129,6 @@ try {
       .getAttribute('aria-pressed'),
     'true',
   );
-  assert.equal(await page.locator('.my-stops .list-choice').count(), 1);
   assert.equal(
     await page.locator('.saved-marker').count(),
     1,
@@ -129,14 +142,14 @@ try {
   assert.equal(calls, currentCalls, 'sharing and saving reuse the existing feed');
   await page.getByRole('button', { name: 'Switch to night theme' }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-  await page.getByRole('checkbox', { name: 'More stop labels' }).check();
   await page.reload();
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-  assert.ok(await page.getByRole('checkbox', { name: 'More stop labels' }).isChecked());
   assert.equal(
-    await page.locator('.my-stops .list-choice').count(),
-    1,
+    await page
+      .getByRole('button', { name: '★ Saved stop', exact: true })
+      .getAttribute('aria-pressed'),
+    'true',
     'saved stops survive reload',
   );
   await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
@@ -163,6 +176,14 @@ try {
   await page.getByRole('button', { name: 'Clear location', exact: true }).click();
   assert.equal(await page.locator('.location-marker').count(), 0);
   await context.setGeolocation({ latitude: 45.42, longitude: -75.69, accuracy: 50 });
+  // A plain load (no shared link) reveals the fitted camera width the
+  // out-of-area fallback and shared-link checks compare against.
+  const plain = await context.newPage();
+  await plain.goto(origin);
+  await plain.locator('#map').waitFor();
+  await plain.waitForTimeout(300);
+  const fittedWidth = await viewWidth(plain);
+  await plain.close();
   await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page
     .getByText(
@@ -172,18 +193,29 @@ try {
     .waitFor();
   await page.waitForTimeout(100);
   assert.equal(
-    await page.locator('.map-controls output').innerText(),
-    '100%',
+    await viewWidth(page),
+    fittedWidth,
     'out-of-area locations keep the Toronto map in view',
   );
   await page.getByRole('button', { name: 'Clear location', exact: true }).click();
-  await page.getByRole('button', { name: /501 Queen: 1 fresh, 1 stale/ }).click();
+  // The pulse counts reported cars per route (fresh and stale alike).
+  await page.getByRole('button', { name: /501 Queen: 2 reported, 1 stale/ }).click();
   await page.getByText('18 km/h median reported speed', { exact: true }).waitFor();
-  assert.equal(await page.locator('.route-list button[aria-pressed="true"]').count(), 1);
-  await page.locator('.my-stops .list-choice').click();
+  assert.equal(await page.locator('.pulse-row[aria-pressed="true"]').count(), 1);
+  // Re-inspecting the saved stop keeps its highlighted route.
+  await page
+    .getByRole('searchbox', {
+      name: 'Search stops, stations, routes or vehicle numbers',
+    })
+    .fill(stop.name);
+  await page
+    .locator('.search-results')
+    .getByRole('button', { name: stop.name, exact: false })
+    .first()
+    .click();
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   assert.equal(
-    await page.locator('.route-list button[aria-pressed="true"]').count(),
+    await page.locator('.pulse-row[aria-pressed="true"]').count(),
     1,
     'inspecting a stop preserves its highlighted route',
   );
@@ -192,18 +224,29 @@ try {
   assert.equal(highlightedLink.get('route'), queen.id);
   await page.reload();
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
+  // The pulse bars arrive with the first feed snapshot; wait for the
+  // highlighted route rather than racing the initial fetch.
+  await page.locator('.pulse-row[aria-pressed="true"]').waitFor();
   assert.equal(
-    await page.locator('.route-list button[aria-pressed="true"]').count(),
+    await page.locator('.pulse-row[aria-pressed="true"]').count(),
     1,
     'shared stop links restore route context',
   );
   await page.getByRole('button', { name: '✦ Surprise me', exact: true }).click();
   await page.getByRole('button', { name: '☆ Save stop', exact: true }).waitFor();
-  await page.locator('.my-stops .list-choice').click();
+  await page
+    .getByRole('searchbox', {
+      name: 'Search stops, stations, routes or vehicle numbers',
+    })
+    .fill(stop.name);
+  await page
+    .locator('.search-results')
+    .getByRole('button', { name: stop.name, exact: false })
+    .first()
+    .click();
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   // A routine GPS refresh must not reset the camera of a selected stop.
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await page.waitForTimeout(100);
+  await zoomIn(page, 2);
   const camera = await page.locator('#map').getAttribute('viewBox');
   await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
   await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
@@ -213,12 +256,12 @@ try {
     camera,
     'feed lifecycle does not recenter selected stops',
   );
-  const carZoom = await page.locator('.map-controls output').innerText();
+  const carZoom = await viewWidth(page);
   await page.locator('.stop-cars .list-choice').click();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(500);
   assert.equal(
-    await page.locator('.map-controls output').innerText(),
+    await viewWidth(page),
     carZoom,
     'selecting a car keeps the current zoom level',
   );
@@ -227,12 +270,11 @@ try {
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(500);
   assert.equal(
-    await page.locator('.map-controls output').innerText(),
-    '100%',
+    await viewWidth(page),
+    fittedWidth,
     'streetcar link centers after the feed arrives without zooming',
   );
-  await page.getByRole('button', { name: 'Fit map', exact: true }).click();
-  await page.waitForTimeout(150);
+  await fitMap(page);
   await page.screenshot({ path: '/tmp/ttc-hackathon-night.png' });
   await page.getByRole('button', { name: 'Switch to day theme' }).click();
   await page.screenshot({ path: '/tmp/ttc-hackathon-day.png' });
@@ -259,7 +301,7 @@ try {
   const nightRoute = data.routes.find((route) => route.overnight && route.scheduled);
   assert.ok(nightRoute);
   await page.goto(`${origin}/#route=${encodeURIComponent(nightRoute.id)}`);
-  await page.locator('.route-list button[aria-pressed="true"]').waitFor();
+  await page.locator('.pulse-row[aria-pressed="true"]').waitFor();
   assert.ok(
     await page.getByRole('checkbox', { name: 'Include overnight routes' }).isChecked(),
     'night route links enable overnight layer',
@@ -286,16 +328,24 @@ try {
   await blocked.goto(`${origin}/#stop=${encodeURIComponent(stop.id)}`);
   await blocked.getByRole('heading', { name: stop.name, exact: true }).waitFor();
   await dismissNotice(blocked);
+  // Saving still works without any browser-storage promises in the UI: the
+  // button simply flips to its saved state for this visit.
   await blocked.getByRole('button', { name: '☆ Save stop', exact: true }).click();
-  await blocked
-    .getByText('Browser storage unavailable; saved for this visit.', { exact: true })
-    .waitFor();
+  assert.equal(
+    await blocked
+      .getByRole('button', { name: '★ Saved stop', exact: true })
+      .getAttribute('aria-pressed'),
+    'true',
+  );
   await blocked.getByRole('button', { name: '↗ Share map', exact: true }).click();
   assert.ok(
     (
       await blocked.getByRole('textbox', { name: 'Shareable map link' }).inputValue()
     ).includes('#stop='),
   );
+  // Close the nav overlay (auto-opened by the shared link) so the map's
+  // locate control is reachable again.
+  await blocked.getByRole('button', { name: 'Close menu', exact: true }).click();
   await blocked
     .getByRole('button', { name: 'Locate me & centre map', exact: true })
     .click();
@@ -320,19 +370,12 @@ try {
   await dismissNotice(fullPage);
   assert.ok(
     await fullPage.getByRole('button', { name: '☆ Save stop', exact: true }).isDisabled(),
-    'saved-stop limit is enforced',
-  );
-  await fullPage.locator('.remove-stop').first().click();
-  await fullPage.getByRole('button', { name: '☆ Save stop', exact: true }).click();
-  assert.equal(
-    await fullPage.locator('.my-stops .list-choice').count(),
-    100,
-    'retired bookmarks are removable and make room for a new stop',
+    'the saved-stop limit is enforced',
   );
   await full.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Hackathon UI passed: bookmarks/limits/retired stops, geographic nearby stops, location privacy/out-of-area, nearby cars, route pulse, share/deep links, night theme, persistence, unavailable storage/clipboard/location, mobile layout; no browser errors.',
+    'Hackathon UI passed: bookmarks/limits, geographic nearby stops, location privacy/out-of-area, nearby cars, route pulse, share/deep links, night theme, persistence, unavailable storage/clipboard/location, mobile layout; no browser errors.',
   );
 } finally {
   await browser.close();

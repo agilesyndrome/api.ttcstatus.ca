@@ -30,6 +30,20 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  // The explorer no longer ships a zoom/fit overlay: the camera answers the
+  // same wheel and keyboard gestures the map itself handles.
+  const zoom = async (steps = 1) => {
+    await page.locator('#map').hover();
+    await page.mouse.wheel(0, -240 * steps);
+    await page.waitForTimeout(150);
+  };
+  const fit = async () => {
+    await page.locator('#map').focus();
+    await page.keyboard.press('Home');
+    await page.waitForTimeout(150);
+  };
+  const viewWidth = async () =>
+    Number((await page.locator('#map').getAttribute('viewBox')).split(' ')[2]);
   let mapCalls = 0,
     feedCalls = 0,
     conditional = false;
@@ -59,10 +73,9 @@ try {
   assert.ok(conditional, 'second feed request uses ETag');
   assert.equal(await page.locator('[data-vehicle]').count(), 1, '304 keeps the fleet');
   const before = await page.locator('#map').getAttribute('viewBox');
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await page.waitForTimeout(100);
+  await zoom(2);
   assert.notEqual(await page.locator('#map').getAttribute('viewBox'), before);
-  await page.getByRole('button', { name: 'Fit map', exact: true }).click();
+  await fit();
   const search = page.getByRole('searchbox', {
     name: 'Search stops, stations, routes or vehicle numbers',
     exact: true,
@@ -80,11 +93,11 @@ try {
   assert.equal(await page.locator('[data-vehicle]').count(), 0);
   await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
   await page.locator('[data-vehicle="4400"]').waitFor();
-  const kingRoute = page.locator('.route-list').getByRole('button', { name: /504 King/ });
+  const kingRoute = page.getByRole('button', { name: /504 King/ });
   await kingRoute.click();
   // Let the camera glide to the route before sampling the zoom level.
   await page.waitForTimeout(500);
-  const zoomBeforeSearch = await page.locator('.map-controls output').innerText();
+  const zoomBeforeSearch = await viewWidth();
   await search.fill('4400');
   await page
     .locator('.search-results')
@@ -93,7 +106,7 @@ try {
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(500);
   assert.equal(
-    await page.locator('.map-controls output').innerText(),
+    await viewWidth(),
     zoomBeforeSearch,
     'streetcar search centers without changing the zoom level',
   );
@@ -117,7 +130,8 @@ try {
   );
   // The latest loaded fleet remains searchable with the live layer off.
   await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
-  await page.getByRole('button', { name: 'Fit map', exact: true }).click();
+  await fit();
+  const fittedWidth = await viewWidth();
   await search.fill('#4400');
   await search.press('Enter');
   assert.ok(await page.getByRole('checkbox', { name: 'Show live vehicles' }).isChecked());
@@ -125,12 +139,12 @@ try {
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(100);
   assert.equal(
-    await page.locator('.map-controls output').innerText(),
-    '100%',
+    await viewWidth(),
+    fittedWidth,
     'reselecting the same streetcar centers it without zooming',
   );
   assert.equal(mapCalls, 1, 'filters and selection never reload geometry');
-  await page.getByRole('button', { name: 'Fit map', exact: true }).click();
+  await fit();
   await page.waitForTimeout(100);
   await page.screenshot({ path: '/tmp/ttc-react-homepage.png' });
   await page.setViewportSize({ width: 390, height: 844 });

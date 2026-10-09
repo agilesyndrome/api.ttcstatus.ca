@@ -14,7 +14,6 @@ import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
 
 import type { HomeWorkspaceState } from './useHomeWorkspace';
-import { trackEvent } from '../../analytics';
 
 const SnakeGame = lazy(() =>
   import('../snake/SnakeGame').then((module) => ({ default: module.SnakeGame })),
@@ -32,6 +31,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     exportCars,
     selectedRoute,
     mobilePanelOpen,
+    setMobilePanelOpen,
     following,
     setFollowing,
     snakeOpen,
@@ -54,7 +54,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     requestLocate,
     selectFeature,
     selectVehicle,
-    previewMap,
     changeExportCars,
     closeExport,
     reset,
@@ -116,6 +115,15 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         onSelect={selectFeature}
         onSelectVehicle={(car) => selectVehicle(car, true)}
         onReset={reset}
+        onBrandToggle={() => {
+          // The brand symbol is the mobile menu button: it opens the nav
+          // panel over the map. On desktop it keeps its old meaning — a
+          // reset — because the full menu stays visible beside the map.
+          if (window.matchMedia('(max-width: 640px)').matches)
+            setMobilePanelOpen((open) => !open);
+          else reset();
+        }}
+        navOpen={mobilePanelOpen}
         actions={headerActions}
       />
       {data ? (
@@ -175,10 +183,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             comparisonStops={undefined}
             pickingLabel={undefined}
             onInteract={() => setFollowing(false)}
-            onExport={() => {
-              trackEvent('exported-map');
-              previewMap();
+            onZoomInteract={() => {
+              /* Zooming keeps camera following; only panning takes over. */
             }}
+            mapControls={false}
             savedStopIds={savedStops}
             showLabels={filters.labels}
             includeOvernight={filters.overnight}
@@ -188,7 +196,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             onSelectFeature={selectFeature}
             onSelectVehicle={(car) => selectVehicle(car)}
           />
-          <HomeSidebar workspace={workspace} />
+          <HomeSidebar workspace={workspace} settings={headerActions} />
         </main>
       ) : (
         <main className="loading-page">

@@ -109,6 +109,11 @@ footer .site-version {
   color: var(--muted);
   font-size: 12px;
 }
+footer .site-credit {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
 #details details {
   font-size: 12px;
   line-height: 1.7;
@@ -1084,19 +1089,35 @@ select:focus-visible {
   font-size: 16px;
 }
 @media (max-width: 640px) {
+  /* The header is one compact row — brand menu button, title, search — and
+     the full controls live inside the nav panel instead of stacking rows of
+     header chrome over the map. */
+  .topbar {
+    --account-header-height: 56px;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
   .topbar .header-actions {
-    flex: 1 1 100%;
-    justify-content: flex-end;
+    display: none;
   }
   .topbar .brand {
-    flex: 1 1 100%;
+    flex: 0 1 auto;
+    min-width: 0;
   }
-  .topbar {
-    --account-header-height: 172px;
-    gap: 6px;
+  .topbar .brand strong {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .topbar .search {
-    order: 2;
+    order: 0;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+  }
+  .brand-symbol {
+    cursor: pointer;
   }
   .auth-status {
     margin-left: auto;
@@ -1104,6 +1125,12 @@ select:focus-visible {
   .auth-controls .action-button {
     min-height: 44px;
   }
+}
+/* Header controls render twice: in the top bar on wide screens, at the
+   bottom of the mobile nav on small ones. Only the header copy is shown
+   in each place; the CSS decides which. */
+.nav-settings {
+  display: none;
 }
 .map-export {
   width: min(960px, calc(100vw - 32px));
@@ -1147,9 +1174,6 @@ select:focus-visible {
   overflow-y: auto;
   padding: 22px;
 }
-.mobile-panel-toggle {
-  display: none;
-}
 @media (max-width: 900px) {
   .sidebar-content {
     padding: 20px 16px;
@@ -1176,61 +1200,29 @@ select:focus-visible {
     max-height: min(390px, 50dvh);
   }
   .workspace {
-    height: calc(100dvh - 172px - env(safe-area-inset-top));
-    grid-template-rows: minmax(0, 1fr) auto;
+    height: calc(100dvh - var(--account-header-height, 120px) - env(safe-area-inset-top));
+    grid-template-rows: minmax(0, 1fr);
   }
-  .workspace.mobile-panel-open {
-    grid-template-rows: minmax(0, 1fr) minmax(0, 58%);
-  }
+  /* The sidebar is no longer a bottom sheet with its own handle: it is the
+     nav menu, a full overlay covering the map, opened by the brand symbol.
+     The map keeps every pixel of the header's remaining height. */
   .sidebar {
-    border-radius: 18px 18px 0 0;
-    border: 1px solid var(--border);
-    border-bottom: 0;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: calc(var(--account-header-height, 120px) + env(safe-area-inset-top));
+    z-index: 6;
+    display: none;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
     box-shadow: 0 -4px 20px #25343c0d;
     padding-bottom: env(safe-area-inset-bottom);
+    background: var(--surface);
   }
-  .mobile-panel-toggle {
-    position: relative;
+  .workspace.mobile-panel-open .sidebar {
     display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 72px;
-    padding: 20px 18px 10px;
-    text-align: left;
-    border: 0;
-    border-radius: 18px 18px 0 0;
-  }
-  .panel-handle {
-    position: absolute;
-    top: 7px;
-    left: calc(50% - 18px);
-    width: 36px;
-    height: 4px;
-    border-radius: 4px;
-    background: var(--border);
-  }
-  .mobile-panel-heading {
-    flex: 1;
-    min-width: 0;
-  }
-  .mobile-panel-heading strong {
-    display: block;
-    font-size: 16px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .mobile-panel-heading small {
-    display: block;
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .panel-chevron {
-    font-size: 24px;
-    color: var(--accent);
   }
   .sidebar-tabs {
     padding: 4px 10px 8px;
@@ -1240,14 +1232,11 @@ select:focus-visible {
     font-size: 12px;
   }
   .sidebar-content {
-    display: none;
+    display: flex;
+    flex-direction: column;
     padding: 18px max(18px, env(safe-area-inset-right)) 24px
       max(18px, env(safe-area-inset-left));
     overscroll-behavior-y: contain;
-  }
-  .mobile-panel-open .sidebar-content {
-    display: flex;
-    flex-direction: column;
   }
   .sidebar-content > [role='tabpanel'] {
     order: 1;
@@ -1259,8 +1248,23 @@ select:focus-visible {
   .sidebar-content > footer {
     order: 3;
   }
+  .sidebar-content > .nav-settings {
+    order: 4;
+  }
   .sidebar-content > * {
     flex-shrink: 0;
+  }
+  /* Account, language and theme controls move from the hidden top bar to the
+     bottom of the nav: one menu holds everything on a phone. */
+  .nav-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
   }
   #details h1 {
     font-size: 23px;

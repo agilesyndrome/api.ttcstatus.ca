@@ -97,7 +97,10 @@ op run --env-file=.env.prod -- node -e \
 
 After the next deploy, sign in at https://ttcstatus.ca and confirm nothing
 legitimate is blocked; if a console error appears, widen the affected directive
-in `public/_headers` before redeploying.
+in `public/_headers` before redeploying. Two known browser-native needs are
+already covered: `img-src … blob:` for locally generated map/download previews,
+and `worker-src 'self' blob:` for the bundled snake board worker (`'self'`) and
+Clerk's timer workers, which load from `blob:` URLs.
 
 ## Operational correctness
 

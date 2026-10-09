@@ -7,7 +7,7 @@ const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const compiled = await build({
   stdin: {
-    contents: `export { buildViewerData } from './shared/map/model'; export { mapToGps } from './shared/map/projection';`,
+    contents: `export { buildViewerData } from './shared/map/model'; export { mapToGps, pointAlongEdge } from './shared/map/projection';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -15,7 +15,7 @@ const compiled = await build({
   write: false,
   format: 'esm',
 });
-const { buildViewerData, mapToGps } = await import(
+const { buildViewerData, mapToGps, pointAlongEdge } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
 );
 const data = buildViewerData(map);
@@ -23,6 +23,28 @@ const queen = data.routes.find((route) => route.number === '501');
 const king = data.routes.find((route) => route.number === '504');
 const stop = data.features.find((feature) => feature.boardingPoints > 0);
 const gps = mapToGps(stop.point, data.geographicTransform);
+/** Fresh positions spread along a route, one car per slot. A fixture that
+ * pins every car to one point stacks them on the map, and the browser then
+ * retargets taps on any lower car to whichever car is painted on top. */
+function spreadAlong(routeId, slots) {
+  const edges = data.edges
+    .filter((edge) => edge.routeIds.includes(routeId))
+    .sort((a, b) => b.lengthMetres - a.lengthMetres);
+  const total = edges.reduce((sum, edge) => sum + edge.lengthMetres, 0);
+  return Array.from({ length: slots }, (_, slot) => {
+    let remaining = ((slot + 0.5) / slots) * total;
+    for (const edge of edges) {
+      if (remaining <= edge.lengthMetres) {
+        const point = pointAlongEdge(edge, remaining).point;
+        return mapToGps(point, data.geographicTransform);
+      }
+      remaining -= edge.lengthMetres;
+    }
+    return gps;
+  });
+}
+const queenSlots = spreadAlong(queen.id, 22);
+const kingSlots = spreadAlong(king.id, 8);
 const errors = [];
 let feedCalls = 0;
 let reportTime = Date.now();
@@ -54,28 +76,52 @@ try {
         fetchedAt: new Date(reportTime).toISOString(),
         feedTimestamp: new Date(reportTime).toISOString(),
         invalidPositions: 0,
-        vehicles: Array.from({ length: 26 }, (_, index) => ({
-          id: String(4400 + index),
-          label: index === 7 ? '=1+1' : String(4400 + index),
-          latitude: index === 2 ? 43.75 : index === 0 ? latitude : gps.latitude,
-          longitude: index === 2 ? -79.55 : gps.longitude,
-          routeId: index === 2 ? undefined : index === 3 ? king.id : queen.id,
-          speedMetresPerSecond:
-            index === 1
-              ? 50
-              : index === 25
-                ? 20
-                : index === 0
-                  ? 10
-                  : index === 3
-                    ? 0
-                    : undefined,
-          observedAt: new Date(reportTime - (index === 1 ? 600000 : 0)).toISOString(),
-        })),
+        vehicles: Array.from({ length: 26 }, (_, index) => {
+          // 4400 sits at the movable lead position; the rest spread out so
+          // each car can be tapped without a stacked neighbour intercepting.
+          const slot =
+            index === 0 || index === 2
+              ? undefined
+              : index === 3
+                ? kingSlots[index % kingSlots.length]
+                : queenSlots[(index - 1) % queenSlots.length];
+          return {
+            id: String(4400 + index),
+            label: index === 7 ? '=1+1' : String(4400 + index),
+            latitude:
+              index === 2 ? 43.75 : index === 0 ? latitude : (slot ?? gps).latitude,
+            longitude: index === 2 ? -79.55 : (slot ?? gps).longitude,
+            routeId: index === 2 ? undefined : index === 3 ? king.id : queen.id,
+            speedMetresPerSecond:
+              index === 1
+                ? 50
+                : index === 25
+                  ? 20
+                  : index === 0
+                    ? 10
+                    : index === 3
+                      ? 0
+                      : undefined,
+            observedAt: new Date(reportTime - (index === 1 ? 600000 : 0)).toISOString(),
+          };
+        }),
       },
     });
   });
   const page = await context.newPage();
+  // The explorer no longer ships a zoom/fit overlay: the camera answers the
+  // same keyboard gestures the map itself handles. Keyboard zoom is a manual
+  // interaction — it pauses following exactly like the old buttons did.
+  const zoom = async (target, steps = 1) => {
+    await target.locator('#map').focus();
+    for (let i = 0; i < steps; i++) await target.keyboard.press('+');
+    await target.waitForTimeout(150);
+  };
+  const fit = async (target) => {
+    await target.locator('#map').focus();
+    await target.keyboard.press('Home');
+    await target.waitForTimeout(150);
+  };
   await page.goto(origin);
   await page.locator('[data-vehicle="4400"]').waitFor();
   await dismissNotice(page);
@@ -94,13 +140,13 @@ try {
   await page.locator('[data-vehicle="4400"] .streetcar-body').last().click();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.getByRole('button', { name: '4400 Unfollow', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await zoom(page, 2);
   assert.equal(
     await page.getByRole('button', { name: '4400 Unfollow', exact: true }).count(),
     0,
     'manual zoom pauses following and removes the unfollow control',
   );
-  await page.getByRole('button', { name: 'Fit map', exact: true }).click();
+  await fit(page);
   assert.equal(
     feedCalls,
     startCalls,
@@ -109,7 +155,7 @@ try {
   await page.getByRole('button', { name: 'Close streetcar details' }).click();
 
   // Geolocation places a marker without sharing or persisting coordinates.
-  await context.grant_permissions(['geolocation'], { origin: new URL(origin).origin });
+  await context.grantPermissions(['geolocation'], { origin: new URL(origin).origin });
   await context.setGeolocation({ ...gps, accuracy: 25 });
   await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
@@ -118,7 +164,7 @@ try {
 
   // Letter keys are opt-out and never intercept typing inside tool controls.
   const headerSearch = page.getByRole('searchbox', {
-    name: 'Search stops, stations, routes or streetcar numbers',
+    name: 'Search stops, stations, routes or vehicle numbers',
   });
   await headerSearch.fill('fncrs');
   assert.equal(
@@ -204,7 +250,7 @@ try {
     (previous) => document.querySelector('#map').getAttribute('viewBox') !== previous,
     before,
   );
-  await follower.getByRole('button', { name: 'Fit map', exact: true }).click();
+  await fit(follower);
   const paused = await follower.locator('#map').getAttribute('viewBox');
   latitude += 0.001;
   reportTime += 30000;

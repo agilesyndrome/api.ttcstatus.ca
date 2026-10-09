@@ -3,10 +3,16 @@ import { t, getLocale } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useState } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
-import { JOURNAL_LIMIT, type JournalEntry } from '../../../../shared/accounts/journal';
+import type { Route } from '../../../../shared/map/model';
+import {
+  JOURNAL_LIMIT,
+  journalEntry,
+  type JournalEntry,
+} from '../../../../shared/accounts/journal';
 interface Props {
   entries: JournalEntry[];
   cars: PlottedVehicle[];
+  routes: Route[];
   active: boolean;
   loaded?: boolean;
   failed?: boolean;
@@ -16,6 +22,7 @@ interface Props {
 export function StreetcarJournal({
   entries,
   cars,
+  routes,
   active,
   loaded = true,
   failed = false,
@@ -70,13 +77,27 @@ export function StreetcarJournal({
             setMessage(english('journal.yourJournalIsFullRemoveACarBeforeAddingAnother'));
             return;
           }
-          const entry: JournalEntry = {
-            vehicleId,
-            label: vehicleId,
-            recordedAt: new Date().toISOString(),
-            status: newStatus,
-            note: newNote,
-          };
+          // Typing the number of a car currently in the feed keeps its route
+          // with the entry, so collections from the journal tab still count
+          // toward route badges the way collecting from the map used to.
+          const live =
+            active && loaded
+              ? cars.find(
+                  (car) =>
+                    !car.stale &&
+                    car.match &&
+                    (car.vehicle.id === vehicleId || car.vehicle.label === vehicleId),
+                )
+              : undefined;
+          const entry: JournalEntry = live
+            ? { ...journalEntry(live, routes), status: newStatus, note: newNote }
+            : {
+                vehicleId,
+                label: vehicleId,
+                recordedAt: new Date().toISOString(),
+                status: newStatus,
+                note: newNote,
+              };
           if ((await onChange((current) => [...current, entry])) === false) return;
           setNewCar('');
           setNewNote('');

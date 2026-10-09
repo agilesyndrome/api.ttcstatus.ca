@@ -792,6 +792,7 @@
   "fleetExplorer.valueFromYou": " · {value1} from you",
   "fleetExplorer.valueKmHReported": "{value1} km/h reported",
   "fleetExplorer.valueOfValueReportedCars": "{value1} of {value2} reported cars",
+  "footer.anOpenSourceProjectByDrewEasley": "An open source project by Drew Easley",
   "footer.mapIsSchematicReplacementBusPathsAreExcludedNoLive": "Map is schematic. Replacement-bus paths are excluded. No live arrivals.",
   "footer.mapSources": "Map sources",
   "footer.odbl": "· ODbL.",
@@ -801,6 +802,8 @@
   "footer.source": "source",
   "footer.ttcServiceTorontoGeography": "TTC service & Toronto geography",
   "header.findAStopRouteOrVehicleNumber": "Find a stop, route or vehicle number…",
+  "header.closeMenu": "Close menu",
+  "header.openMenu": "Open menu",
   "header.noMatchingStopsOrVehiclesTryAStopRouteOr": "No matching stops or vehicles. Try a stop, route or vehicle number.",
   "header.physicalTerminal": "Physical terminal",
   "header.routeNotSupplied": "Route not supplied",
@@ -1036,6 +1039,14 @@
   "routeLegend.physicalTrackWithoutScheduledStreetcarService": "Physical track without scheduled streetcar service",
   "routeLegend.showAll": "Show all",
   "routePulse.freshVehicleReportsByRoute": "Fresh vehicle reports by route.",
+
+  "routePulse.notOnRoute": "Not on route",
+
+  "routePulse.carsSeen": "Cars seen",
+
+  "routePulse.reportedVehiclesByRoute": "Reported vehicles by route.",
+
+  "routePulse.valueTotalOnRoutes": "{value1} total on routes",
   "routePulse.refreshUnavailableShowingTheLastSnapshot": "Refresh unavailable. Showing the last snapshot.",
   "routePulse.reported": "reported ·",
   "routePulse.routeActivity": "Route activity",
@@ -1047,6 +1058,8 @@
   "routePulse.valueFreshReports": "{value1} fresh reports",
   "routePulse.valueKmHMedianReportedSpeed": "{value1} km/h median reported speed",
   "routePulse.valueValueValueFreshValueStaleVehicleReports": "{value1} {value2}: {value3} fresh, {value4} stale vehicle reports",
+
+  "routePulse.valueValueValueReportedValueStale": "{value1} {value2}: {value3} reported, {value4} stale vehicle reports",
   "routePulse.vehicleCountsDescribeThisFeedNotServiceFrequencyOrDelays": "Vehicle counts describe this feed, not service frequency or delays.",
   "routePulse.waitingForFeed": "Waiting for feed",
   "saved-comparisons.chooseTwoDifferentStopsAndANameOfUpTo": "Choose two different stops and a name of up to 60 characters.",
@@ -1127,6 +1140,7 @@
   "snake.keyLeft": "Left",
   "snake.keyRight": "Right",
   "snake.keyStraight": "Space",
+  "snake.keyUturn": "U-turn",
   "snake.left": "← Left",
   "snake.liveFeedPausedUsingFreshReportsOnly": "Live feed paused · using fresh reports only",
   "snake.liveRefreshUnavailableUsingFreshReportsOnly": "Live refresh unavailable · using fresh reports only",

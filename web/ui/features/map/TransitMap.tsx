@@ -31,9 +31,10 @@ export const TransitMap = memo(function TransitMap({
   comparisonStops,
   pickingLabel,
   closures = [],
+  zoomLimits,
+  mapControls = true,
   onInteract,
   onZoomInteract,
-  onExport,
   overlay,
   mapTools,
   driving = false,
@@ -65,6 +66,7 @@ export const TransitMap = memo(function TransitMap({
     focusBounds,
     followPoint,
     resetKey,
+    zoomLimits,
     onInteract,
     onZoomInteract,
     driving,
@@ -598,40 +600,37 @@ export const TransitMap = memo(function TransitMap({
           />
         </svg>
       </div>
-      <nav className="map-controls" aria-label={t('transitMap.mapControls')}>
-        <button
-          aria-label={t('transitMap.zoomIn')}
-          onClick={() => {
-            zoomInteract.current?.();
-            zoom(0.7);
-          }}
-        >
-          +
-        </button>
-        <output>{Math.round(level * 100)}%</output>
-        <button
-          aria-label={t('transitMap.zoomOut')}
-          onClick={() => {
-            zoomInteract.current?.();
-            zoom(1 / 0.7);
-          }}
-        >
-          −
-        </button>
-        <button
-          onClick={() => {
-            zoomInteract.current?.();
-            move(initial);
-          }}
-        >
-          {t('transitMap.fitMap')}
-        </button>
-        {onExport && (
-          <button aria-label={t('transitMap.printOrDownloadMap')} onClick={onExport}>
-            {t('map.export')}
+      {mapControls && (
+        <nav className="map-controls" aria-label={t('transitMap.mapControls')}>
+          <button
+            aria-label={t('transitMap.zoomIn')}
+            onClick={() => {
+              zoomInteract.current?.();
+              zoom(0.7);
+            }}
+          >
+            +
           </button>
-        )}
-      </nav>
+          <output>{Math.round(level * 100)}%</output>
+          <button
+            aria-label={t('transitMap.zoomOut')}
+            onClick={() => {
+              zoomInteract.current?.();
+              zoom(1 / 0.7);
+            }}
+          >
+            −
+          </button>
+          <button
+            onClick={() => {
+              zoomInteract.current?.();
+              move(initial);
+            }}
+          >
+            {t('transitMap.fitMap')}
+          </button>
+        </nav>
+      )}
     </section>
   );
 });

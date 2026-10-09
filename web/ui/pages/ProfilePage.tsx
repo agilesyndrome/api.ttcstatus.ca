@@ -19,8 +19,10 @@ export function ProfilePage() {
         <AuthControls />
       </header>
       <main className="profile-page">
+        {/* Language preference is browser-local: the settings' own copy says
+         * no account is required, so it must not sit behind the sign-in. */}
+        <LanguageSettings />
         <AccountRequired>
-          <LanguageSettings />
           <ProfileSettings key={account.userId} />
           {!showClerkSettings && (
             <button

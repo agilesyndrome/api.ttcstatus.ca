@@ -126,6 +126,7 @@
   "fleetExplorer.valueFromYou": " · à {value1} de vous",
   "fleetExplorer.valueKmHReported": "{value1} km/h signalés",
   "fleetExplorer.valueOfValueReportedCars": "{value1} véhicules sur {value2} signalés",
+  "footer.anOpenSourceProjectByDrewEasley": "Un projet open source par Drew Easley",
   "footer.mapIsSchematicReplacementBusPathsAreExcludedNoLive": "Carte schématique. Les trajets d’autobus de remplacement sont exclus. Aucune arrivée en temps réel.",
   "footer.mapSources": "Sources de la carte",
   "footer.openGovernmentLicenceToronto": "· Licence du gouvernement ouvert – Toronto.",
@@ -134,6 +135,8 @@
   "footer.source": "source",
   "footer.ttcServiceTorontoGeography": "Service de la TTC et géographie de Toronto",
   "header.findAStopRouteOrVehicleNumber": "Trouver un arrêt, une ligne ou un numéro de véhicule…",
+  "header.closeMenu": "Fermer le menu",
+  "header.openMenu": "Ouvrir le menu",
   "header.noMatchingStopsOrVehiclesTryAStopRouteOr": "Aucun arrêt ni véhicule correspondant. Essayez un arrêt, une ligne ou un numéro de véhicule.",
   "header.physicalTerminal": "Terminus physique",
   "header.routeNotSupplied": "Ligne non fournie",
@@ -366,6 +369,14 @@
   "routeLegend.physicalTrackWithoutScheduledStreetcarService": "Voies physiques sans service de tramway prévu",
   "routeLegend.showAll": "Tout afficher",
   "routePulse.freshVehicleReportsByRoute": "Rapports récents de véhicules par ligne.",
+
+  "routePulse.notOnRoute": "Hors ligne",
+
+  "routePulse.carsSeen": "Voitures vues",
+
+  "routePulse.reportedVehiclesByRoute": "Véhicules signalés par ligne.",
+
+  "routePulse.valueTotalOnRoutes": "{value1} au total sur les lignes",
   "routePulse.refreshUnavailableShowingTheLastSnapshot": "Actualisation indisponible. Affichage du dernier instantané.",
   "routePulse.reported": "signalés ·",
   "routePulse.routeActivity": "Activité des lignes",
@@ -377,6 +388,8 @@
   "routePulse.valueFreshReports": "{value1} rapports récents",
   "routePulse.valueKmHMedianReportedSpeed": "Vitesse médiane signalée de {value1} km/h",
   "routePulse.valueValueValueFreshValueStaleVehicleReports": "{value1} {value2} : {value3} rapports récents, {value4} rapports périmés",
+
+  "routePulse.valueValueValueReportedValueStale": "{value1} {value2} : {value3} véhicules signalés, {value4} périmés",
   "routePulse.vehicleCountsDescribeThisFeedNotServiceFrequencyOrDelays": "Les nombres de véhicules décrivent ce flux, et non la fréquence du service ou les retards.",
   "routePulse.waitingForFeed": "En attente du flux",
   "saved-comparisons.chooseTwoDifferentStopsAndANameOfUpTo": "Choisissez deux arrêts différents et un nom d’au plus 60 caractères.",
@@ -453,6 +466,7 @@
   "snake.keyLeft": "Gauche",
   "snake.keyRight": "Droite",
   "snake.keyStraight": "Espace",
+  "snake.keyUturn": "Demi-tour",
   "snake.left": "← Gauche",
   "snake.liveFeedPausedUsingFreshReportsOnly": "Flux en direct en pause · rapports récents seulement",
   "snake.liveRefreshUnavailableUsingFreshReportsOnly": "Actualisation indisponible · rapports récents seulement",

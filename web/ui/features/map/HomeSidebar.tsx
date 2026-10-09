@@ -1,35 +1,39 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
+import { type ReactNode } from 'react';
 import { PageFooter } from '../../components/PageFooter';
 import { MapFilters } from '../map/MapFilters';
-import { RouteLegend } from '../map/RouteLegend';
 import { RouteGuide } from './RouteGuide';
 import { LiveFeedStatus } from '../map/LiveFeedStatus';
 
 import { StopDetails } from '../stops/StopDetails';
-import { MyStops } from '../stops/MyStops';
 import { NearbyStops } from '../stops/NearbyStops';
 import { RoutePulse } from '../map/RoutePulse';
 import { ShareMap } from '../export/ShareMap';
 import { SidebarTabs } from '../../components/SidebarTabs';
 import { StreetcarJournal } from '../journal/StreetcarJournal';
 import { Badges } from '../journal/Badges';
-import { JOURNAL_LIMIT } from '../../../../shared/accounts/journal';
 
 import { AccountRequired } from '../accounts/auth';
+import { trackEvent } from '../../analytics';
 
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
-export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
+export function HomeSidebar({
+  workspace,
+  settings,
+}: {
+  workspace: HomeWorkspaceState;
+  /** Header controls (language, theme, account) rendered at the bottom of
+   * the mobile nav; CSS hides them where the topbar already shows them. */
+  settings?: ReactNode;
+}) {
   useLanguage();
   const {
     data,
     filters,
     setFilters,
     savedStops,
-    setSavedStops,
-    savedPersistent,
-    savedSignedIn,
     accountJournal,
     journal,
     setJournal,
@@ -58,43 +62,21 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
     selectRoute,
     surprise,
     toggleSave,
-    collectCar,
+    previewMap,
     shownRoutes,
-    panelTitle,
   } = workspace;
   if (!data) return null;
   const guideRoute = data.routes.find((route) => route.id === selectedRoute);
   return (
-    <aside className="sidebar" aria-label={t('workspace.stopAndRouteDetails')}>
-      <button
-        className="mobile-panel-toggle"
-        aria-expanded={mobilePanelOpen}
-        aria-controls="sidebar-content"
-        aria-label={
-          mobilePanelOpen
-            ? t('workspace.collapseDetails')
-            : t('workspace.showDetailsAndMapTools')
-        }
-        onClick={() => setMobilePanelOpen((open) => !open)}
-      >
-        <span className="panel-handle" aria-hidden="true" />
-        <span className="mobile-panel-heading">
-          <strong>{panelTitle}</strong>
-          <small>
-            {mobilePanelOpen
-              ? t('workspace.collapseToSeeMoreOfTheMap')
-              : t('workspace.tapAStreetcarOrStopOrOpenMapTools')}
-          </small>
-        </span>
-        <span className="panel-chevron" aria-hidden="true">
-          {mobilePanelOpen ? '⌄' : '⌃'}
-        </span>
-      </button>
+    <aside
+      className="sidebar"
+      aria-label={t('workspace.stopAndRouteDetails')}
+      data-open={mobilePanelOpen ? '' : undefined}
+    >
       <SidebarTabs
         value={panel}
         onChange={(next) => {
           setPanel(next);
-          setMobilePanelOpen(true);
           sidebar.current?.scrollTo({ top: 0 });
         }}
       />
@@ -110,6 +92,15 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
               contextRoute={selectedRoute}
               tools={{ panel }}
             />
+            <button
+              className="action-button"
+              onClick={() => {
+                trackEvent('exported-map');
+                previewMap();
+              }}
+            >
+              {t('map.export')}
+            </button>
           </div>
         )}
         <div className="explore-layers" aria-label={t('workspace.exploreRailLayers')}>
@@ -186,12 +177,8 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 liveEnabled={filters.live}
                 feedLoaded={Boolean(feed.snapshot)}
                 feedFailed={feed.failed}
-                onJournal={car && car.vehicle.mode !== 'subway' ? collectCar : undefined}
-                journalSaved={Boolean(
-                  car && journal.some((entry) => entry.vehicleId === car.vehicle.id),
-                )}
-                journalFull={journal.length >= JOURNAL_LIMIT}
-                onOpenJournal={() => setPanel('journal')}
+                snapshot={feed.snapshot}
+                now={feed.now}
                 onToggleSave={feature ? toggleSave : undefined}
                 following={following}
                 onFollow={car && following ? () => setFollowing(false) : undefined}
@@ -208,23 +195,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
               />
             </>
           )}
-          <MyStops
-            data={data}
-            ids={savedStops}
-            persistent={savedPersistent}
-            signedIn={savedSignedIn}
-            onSelect={selectFeature}
-            snapshot={feed.snapshot}
-            cars={cars}
-            now={feed.now}
-            enabled={filters.live}
-            active={feed.active}
-            failed={feed.failed}
-            onRestore={setSavedStops}
-            onRemove={(id) =>
-              setSavedStops((current) => current.filter((stop) => stop !== id))
-            }
-          />
           <NearbyStops
             data={data}
             location={location}
@@ -264,11 +234,6 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
             selectedRoute={selectedRoute}
             onSelect={(id) => selectRoute(selectedRoute === id ? undefined : id)}
           />
-          <RouteLegend
-            routes={shownRoutes}
-            selectedRoute={selectedRoute}
-            onSelect={selectRoute}
-          />
         </div>
         <div
           id="panel-journal"
@@ -298,6 +263,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
                 key={accountJournal.userId}
                 entries={journal}
                 cars={cars}
+                routes={data.routes}
                 active={feed.active}
                 loaded={Boolean(feed.snapshot)}
                 failed={feed.failed}
@@ -321,6 +287,7 @@ export function HomeSidebar({ workspace }: { workspace: HomeWorkspaceState }) {
           </AccountRequired>
         </div>
         <PageFooter />
+        {settings && <div className="nav-settings">{settings}</div>}
       </div>
     </aside>
   );

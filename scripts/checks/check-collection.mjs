@@ -7,7 +7,7 @@ const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const compiled = await build({
   stdin: {
-    contents: `export { buildViewerData } from './shared/map/model'; export { mapToGps } from './shared/map/projection';`,
+    contents: `export { buildViewerData } from './shared/map/model'; export { mapToGps, pointAlongEdge } from './shared/map/projection';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -15,7 +15,7 @@ const compiled = await build({
   write: false,
   format: 'esm',
 });
-const { buildViewerData, mapToGps } = await import(
+const { buildViewerData, mapToGps, pointAlongEdge } = await import(
   'data:text/javascript;base64,' +
     Buffer.from(compiled.outputFiles[0].text).toString('base64')
 );
@@ -26,6 +26,41 @@ const stop = data.features.find(
 const gps = mapToGps(stop.point, data.geographicTransform);
 const day = data.routes.find((route) => route.number === '501');
 const night = data.routes.find((route) => route.overnight && route.scheduled);
+/** Fresh positions spread along a route, one car per slot. A fixture that
+ * pins every car to one point stacks them on the map, and the browser then
+ * retargets taps on any lower car to whichever car is painted on top. */
+function spreadAlong(routeId, slots) {
+  const edges = data.edges
+    .filter((edge) => edge.routeIds.includes(routeId))
+    .sort((a, b) => b.lengthMetres - a.lengthMetres);
+  const total = edges.reduce((sum, edge) => sum + edge.lengthMetres, 0);
+  return Array.from({ length: slots }, (_, slot) => {
+    let remaining = ((slot + 0.5) / slots) * total;
+    for (const edge of edges) {
+      if (remaining <= edge.lengthMetres) {
+        const point = pointAlongEdge(edge, remaining).point;
+        return mapToGps(point, data.geographicTransform);
+      }
+      remaining -= edge.lengthMetres;
+    }
+    return gps;
+  });
+}
+const daySlots = spreadAlong(day.id, 22);
+const nightSlots = spreadAlong(night.id, 4);
+/** Positions within the stop-detail zoom window, along the stop's own track.
+ * The collected cars (4400/4401/4405) must stay near the focused stop to be
+ * tappable after the stop search zooms the camera in. */
+const stopEdge =
+  data.edges.find((edge) => edge.id === stop.edgeId) ??
+  data.edges
+    .filter((edge) => edge.routeIds.includes(day.id))
+    .sort((a, b) => b.lengthMetres - a.lengthMetres)[0];
+const stopDistance = stop.distanceAlongMetres ?? stopEdge.lengthMetres / 2;
+const alongStop = (offset) => {
+  const distance = Math.max(0, Math.min(stopEdge.lengthMetres, stopDistance + offset));
+  return mapToGps(pointAlongEdge(stopEdge, distance).point, data.geographicTransform);
+};
 const errors = [];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 // The first-visit affiliation banner overlays the bottom of the map and the
@@ -55,13 +90,26 @@ try {
         fetchedAt: new Date().toISOString(),
         feedTimestamp: new Date().toISOString(),
         invalidPositions: 0,
-        vehicles: Array.from({ length: 26 }, (_, index) => ({
-          id: String(4400 + index),
-          label: String(4400 + index),
-          ...gps,
-          routeId: index === 5 ? night.id : day.id,
-          observedAt: new Date(Date.now() - (index === 1 ? 600000 : 0)).toISOString(),
-        })),
+        vehicles: Array.from({ length: 26 }, (_, index) => {
+          // The three collected cars sit on the stop's own track just east of
+          // it, inside the tight "locate me" camera frame and spaced far
+          // enough apart to be tapped individually; the rest spread along
+          // their routes so no car is ever stacked under another.
+          const near = { 0: 0, 1: 90, 5: 40 }[index];
+          const slot =
+            near !== undefined
+              ? alongStop(near)
+              : index === 5
+                ? nightSlots[index % nightSlots.length]
+                : daySlots[index % daySlots.length];
+          return {
+            id: String(4400 + index),
+            label: String(4400 + index),
+            ...slot,
+            routeId: index === 5 ? night.id : day.id,
+            observedAt: new Date(Date.now() - (index === 1 ? 600000 : 0)).toISOString(),
+          };
+        }),
       },
     }),
   );
@@ -71,7 +119,7 @@ try {
   await dismissNotice(page);
   // Saving a stop happens from the explore panel's stop details.
   const headerSearch = page.getByRole('searchbox', {
-    name: 'Search stops, stations, routes or streetcar numbers',
+    name: 'Search stops, stations, routes or vehicle numbers',
   });
   await headerSearch.fill(stop.name);
   await page
@@ -87,21 +135,20 @@ try {
   await page.screenshot({ path: '/tmp/ttc-hackathon-explore.png' });
 
   async function collect(id) {
-    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
-    await page.locator(`[data-vehicle="${id}"] .streetcar-body`).last().click();
-    await page.getByRole('heading', { name: `Car ${id}`, exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Add to journal', exact: false }).click();
-    assert.ok(
-      await page
-        .getByRole('button', { name: 'In your journal', exact: false })
-        .isDisabled(),
-    );
-    await page.getByRole('button', { name: 'Close streetcar details' }).click();
+    // Journal actions live in the journal tab only now: the explore panel
+    // no longer carries collect buttons.
+    await page.getByRole('tab', { name: 'Journal', exact: true }).click();
+    await page.getByLabel('Streetcar number', { exact: true }).fill(id);
+    await page.getByRole('button', { name: 'Add car to journal', exact: true }).click();
+    await page
+      .getByRole('article', { name: `Collected car ${id}`, exact: true })
+      .waitFor();
   }
   await collect('4400');
   await collect('4401');
+  // The night car's route is captured from the live feed even though it is
+  // only drawn once the overnight layer is switched on.
   await collect('4405');
-  await page.getByRole('button', { name: 'Open journal', exact: false }).click();
   assert.equal(await page.locator('.journal-entry').count(), 3);
   assert.ok(
     (await page.locator('.journal-badge.earned').allTextContents()).some((text) =>
@@ -145,7 +192,8 @@ try {
   await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
   await page.getByRole('button', { name: 'Switch to night theme' }).click();
-  await page.getByRole('button', { name: 'Print or download map', exact: true }).click();
+  // Save map lives in the sidebar's explore tools now, not a map overlay.
+  await page.getByRole('button', { name: 'Save map', exact: true }).click();
   const dialog = page.getByRole('dialog', {
     name: 'Take this map with you.',
     exact: true,
@@ -230,6 +278,11 @@ try {
   // Phone layouts include all three tabs and the complete print dialog.
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
+    // On phones the tabs and tools live in the nav overlay behind the brand
+    // symbol; start each pass from a closed menu.
+    const closeMenu = page.getByRole('button', { name: 'Close menu', exact: true });
+    if (await closeMenu.count()) await closeMenu.click();
+    await page.getByRole('button', { name: 'Open menu', exact: true }).click();
     for (const name of ['Journal', 'Badges']) {
       await page.getByRole('tab', { name, exact: true }).click();
       assert.ok(
@@ -247,9 +300,9 @@ try {
         'all tab labels fit at ' + width,
       );
     }
-    await page
-      .getByRole('button', { name: 'Print or download map', exact: true })
-      .click();
+    // Save map lives in the explore tools inside the same menu.
+    await page.getByRole('tab', { name: 'Explore', exact: true }).click();
+    await page.getByRole('button', { name: 'Save map', exact: true }).click();
     await dialog.locator('img').waitFor();
     assert.ok(
       await page.evaluate(
@@ -261,6 +314,8 @@ try {
     await page.keyboard.press('Escape');
     await page.screenshot({ path: '/tmp/ttc-hackathon-collection-' + width + '.png' });
   }
+  // Tab keyboard navigation continues from the desktop layout.
+  await page.setViewportSize({ width: 1440, height: 960 });
   await page.getByRole('tab', { name: 'Explore', exact: true }).click();
   await page.getByRole('tab', { name: 'Journal', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
@@ -294,12 +349,15 @@ try {
   await full.goto(origin + '/#car=4400');
   await full.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await dismissNotice(full);
-  assert.ok(
-    await full
-      .getByRole('button', { name: 'Journal full · 500 cars', exact: true })
-      .isDisabled(),
-  );
-  await full.getByRole('button', { name: 'Open journal', exact: false }).click();
+  // The journal is full: the journal tab's add form refuses another car.
+  await full.getByRole('tab', { name: 'Journal', exact: true }).click();
+  await full.getByLabel('Streetcar number', { exact: true }).fill('4599');
+  await full.getByRole('button', { name: 'Add car to journal', exact: true }).click();
+  await full
+    .getByText('Your journal is full. Remove a car before adding another.', {
+      exact: true,
+    })
+    .waitFor();
   assert.equal(await full.locator('.journal-entry').count(), 10);
   assert.ok(
     (await full.locator('#panel-journal .fleet-pagination').innerText()).includes(
@@ -322,8 +380,13 @@ try {
   await privateTab.goto(origin + '/#car=4400');
   await privateTab.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await dismissNotice(privateTab);
-  await privateTab.getByRole('button', { name: 'Add to journal', exact: false }).click();
-  await privateTab.getByRole('button', { name: 'Open journal', exact: false }).click();
+  // Collecting happens in the journal tab; blocked browser storage never
+  // touches the server-owned journal.
+  await privateTab.getByRole('tab', { name: 'Journal', exact: true }).click();
+  await privateTab.getByLabel('Streetcar number', { exact: true }).fill('4400');
+  await privateTab
+    .getByRole('button', { name: 'Add car to journal', exact: true })
+    .click();
   await privateTab
     .getByText('Your journal is saved to your account.', { exact: true })
     .waitFor();

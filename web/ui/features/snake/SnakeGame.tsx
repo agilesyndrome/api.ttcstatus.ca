@@ -2,6 +2,7 @@ import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -15,7 +16,7 @@ import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { TrackClosures } from '../map/TrackClosures';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
-import { SnakeEngine, type Hazard, type Mode, type Turn } from './engine';
+import { CAR_LENGTH, SnakeEngine, type Hazard, type Mode, type Turn } from './engine';
 
 interface Props {
   data: ViewerData;
@@ -262,12 +263,70 @@ const SnakeCockpit = memo(function SnakeCockpit({
   // The game starts zoomed in on the streetcar and zooms out as the train
   // grows (one step per car collected); manual zoom otherwise sticks.
   const grown = useRef(1);
+  const viewportWidth = () => (typeof window === 'undefined' ? 1024 : window.innerWidth);
+  /** A streetcar's length in map units at one pose. The schematic compresses
+   * geography unevenly (a 30 m car is ~1.4 map units in the outer suburbs and
+   * ~4 downtown), so map fractions are the wrong zoom yardstick: they made
+   * cars unreadable dots on the real board and screen-filling on tiny ones.
+   * Sizing the camera in car lengths keeps a consist readable everywhere. */
+  const carMapAt = useCallback(
+    (pose: { source: Point; tangent: Point }) => {
+      const half = CAR_LENGTH / 2;
+      const front = localToMap(
+        [
+          pose.source[0] + pose.tangent[0] * half,
+          pose.source[1] + pose.tangent[1] * half,
+        ],
+        data.geographicTransform,
+      );
+      const back = localToMap(
+        [
+          pose.source[0] - pose.tangent[0] * half,
+          pose.source[1] - pose.tangent[1] * half,
+        ],
+        data.geographicTransform,
+      );
+      const length = Math.hypot(front[0] - back[0], front[1] - back[1]);
+      // Degenerate boards (no measurable track) fall back to the old fraction.
+      return length > 0.01 ? length : data.bounds.width / 12;
+    },
+    [data],
+  );
+  /** Board-average car length in map units, the yardstick for zoom limits and
+   * the growth cap, which have to hold for every neighbourhood at once. */
+  const carMapLength = useMemo(() => {
+    const lengths = data.edges.map((edge) =>
+      carMapAt(
+        engine.pose({
+          edgeId: edge.id,
+          direction: 1,
+          distance: edge.lengthMetres / 2,
+        }),
+      ),
+    );
+    const mean = lengths.reduce((sum, value) => sum + value, 0) / (lengths.length || 1);
+    return mean > 0.01 ? mean : data.bounds.width / 12;
+  }, [engine, data, carMapAt]);
+  /** Camera width (map units) that draws one average streetcar `px` long. */
+  const carView = useCallback(
+    (px: number) =>
+      Math.min(data.bounds.width / 2, (carMapLength * viewportWidth()) / px),
+    [carMapLength, data],
+  );
   const originBounds = useMemo(() => {
-    const point = engine.pose().point,
-      width = data.bounds.width / 12,
+    // Open close enough that the streetcar actually on screen reads at full
+    // length (~64 px), measured where that car is — never wider than half the
+    // board, so a small board still opens as a close-up.
+    const pose = engine.pose(),
+      width = Math.min(data.bounds.width / 2, (carMapAt(pose) * viewportWidth()) / 64),
       height = (width * data.bounds.height) / data.bounds.width;
-    return { x: point[0] - width / 2, y: point[1] - height / 2, width, height };
-  }, [engine, data]);
+    return {
+      x: pose.point[0] - width / 2,
+      y: pose.point[1] - height / 2,
+      width,
+      height,
+    };
+  }, [engine, data, carMapAt]);
 
   function chime() {
     if (soundMuted.current || !audio.current || audio.current.state !== 'running') return;
@@ -400,16 +459,13 @@ const SnakeCockpit = memo(function SnakeCockpit({
           traffic.current,
           heldPedals(),
         );
-        // Each collected car widens the camera one step — but never past a
-        // comfortable driving scale, so long trains never over-zoom-out.
+        // Each collected car widens the camera one step — but never past the
+        // width where a coupled car stops reading as a full-length car, so
+        // the growing consist stays a train instead of bunched dots.
         if (engine.count > grown.current) {
           grown.current = engine.count;
           const controls = mapControls.current;
-          if (
-            controls &&
-            controls.cameraWidth() * 1.18 <=
-              Math.min(data.bounds.width / 3, data.bounds.width)
-          )
+          if (controls && controls.cameraWidth() * 1.18 <= carView(40))
             controls.zoomBy(1.18);
         }
       }
@@ -663,6 +719,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
           showStops={false}
           driving
           focusBounds={originBounds}
+          zoomLimits={{ minWidth: carView(140) }}
           onInteract={() => setFollow(false)}
           onZoomInteract={() => {
             /* Zooming keeps camera following; only panning takes over. */

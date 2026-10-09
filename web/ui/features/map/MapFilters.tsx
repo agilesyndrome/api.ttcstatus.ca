@@ -19,7 +19,6 @@ export function MapFilters({ value, onChange }: Props) {
       {(
         [
           ['live', t('mapFilters.showLiveVehicles')],
-          ['labels', t('mapFilters.moreStopLabels')],
           ['overnight', t('mapFilters.includeOvernightRoutes')],
         ] as const
       ).map(([key, label]) => (

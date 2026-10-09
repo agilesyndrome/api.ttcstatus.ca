@@ -36,12 +36,16 @@ try {
 
   const mapPage = await context.newPage();
   await mapPage.goto(origin);
-  await mapPage.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  // Zoom with the map's own wheel gesture (the explorer has no zoom overlay),
+  // so the camera-preservation assertion below is meaningful.
+  await mapPage.locator('#map').hover();
+  await mapPage.mouse.wheel(0, -240);
   await mapPage.waitForTimeout(250);
   const viewBox = await mapPage.locator('#map').getAttribute('viewBox');
   await mapPage.getByRole('searchbox').fill('Queen');
   await page.getByLabel('Language', { exact: true }).selectOption('fr-CA');
-  await mapPage.getByRole('button', { name: 'Ajuster la carte', exact: true }).waitFor();
+  // The map tools re-render in French; the overnight layer label proves it.
+  await mapPage.getByRole('checkbox', { name: 'Inclure les lignes de nuit' }).waitFor();
   assert.equal(
     await mapPage.getByRole('searchbox').inputValue(),
     'Queen',
@@ -121,11 +125,10 @@ try {
   const blockedPage = await blocked.newPage();
   await blockedPage.goto(`${origin}/profile`);
   await blockedPage.getByLabel('Language', { exact: true }).selectOption('fr-CA');
-  await blockedPage
-    .getByText(
-      'Le stockage du navigateur est indisponible. Votre choix de langue sera conservé pour cet onglet seulement.',
-    )
-    .waitFor();
+  // With storage blocked the preference cannot persist, but the choice still
+  // applies to the session: the page renders in French without the removed
+  // browser-storage warnings.
+  await blockedPage.getByRole('heading', { name: 'Profil du navigateur' }).waitFor();
   assert.equal(await blockedPage.locator('html').getAttribute('lang'), 'fr-CA');
   await blocked.close();
   assert.deepEqual(errors, []);

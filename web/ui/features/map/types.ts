@@ -35,10 +35,16 @@ export interface TransitMapProps {
   pickingLabel?: string;
   /** Closed or obstructed segments, drawn over the tracks (game and app share this). */
   closures?: TrackClosure[];
+  /** Camera width limits in map units, for callers whose zoom should be sized
+   * by something on the map (the game sizes its zoom by streetcar length)
+   * instead of by the map's own bounds. */
+  zoomLimits?: { minWidth?: number; maxWidth?: number };
+  /** Show the zoom/fit control overlay. The explorer hides it (gestures and
+   * keyboard remain); the driving game keeps it as in-viewport HUD. */
+  mapControls?: boolean;
   onInteract?(): void;
   /** Fires instead of onInteract for zoom gestures, so zooming can keep following. */
   onZoomInteract?(): void;
-  onExport?(): void;
   overlay?: ReactNode | ((scale: number) => ReactNode);
   mapTools?: ReactNode;
   driving?: boolean;

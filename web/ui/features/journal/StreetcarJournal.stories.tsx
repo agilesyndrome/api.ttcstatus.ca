@@ -18,6 +18,7 @@ const meta = {
   args: {
     entries,
     cars,
+    routes: demoData.routes,
     active: true,
     onChange: fn(),
     onSelect: fn(),

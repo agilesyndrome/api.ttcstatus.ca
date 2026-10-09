@@ -11,7 +11,10 @@ import type {
 } from '../../../../shared/map/model';
 
 export type Mode = 'arcade' | 'purist';
-export type Turn = 'left' | 'straight' | 'right';
+/** Visual switch directions, from the driver's seat. A `uturn` is a near
+ * reversal onto the opposite rail: it is deliberately not a left or a right,
+ * so the arrow keys never spin the streetcar 180° when a real turn exists. */
+export type Turn = 'left' | 'straight' | 'right' | 'uturn';
 export interface Position extends EdgeRef {
   distance: number;
 }
@@ -50,8 +53,11 @@ export function switchLabel(
       ? t('snake.keyLeft')
       : turn === 'right'
         ? t('snake.keyRight')
-        : t('snake.keyStraight');
-  const arrow = turn === 'left' ? '←' : turn === 'right' ? '→' : '↑';
+        : turn === 'straight'
+          ? t('snake.keyStraight')
+          : t('snake.keyUturn');
+  const arrow =
+    turn === 'left' ? '←' : turn === 'right' ? '→' : turn === 'uturn' ? '↩' : '↑';
   return `${keys ? `[${key}]` : arrow} ${place}`;
 }
 export interface Pedals {
@@ -73,9 +79,11 @@ export interface UpcomingSwitch {
   position: Position;
   nodeId: string;
 }
-const CAR_LENGTH = 30.2,
-  SPACING = CAR_LENGTH + 1.5,
+export const CAR_LENGTH = 30.2;
+const SPACING = CAR_LENGTH + 1.5,
   LANE_OFFSET = 3.2,
+  // A branch within this many degrees of dead reverse is a u-turn, not a turn.
+  UTURN_ANGLE = 168,
   // A busier, faster-paced network: the guaranteed catchable car is placed
   // a few dozen metres to a couple hundred metres ahead (time-based, so it
   // never spawns on top of the player), ambient traffic is denser, and the
@@ -827,7 +835,18 @@ export class SnakeEngine {
           .map((id) => this.infrastructureNames.get(id))
           .filter(Boolean)
           .join(', ');
-        const turn: Turn = angle < -24.1 ? 'left' : angle > 24.1 ? 'right' : 'straight';
+        // Classify from the on-screen (map-space) heading change the driver
+        // actually sees. A near-reversal onto the opposite rail is a u-turn:
+        // calling it "left" made ← sometimes spin the streetcar 180° and, at
+        // forks with a genuine left too, steal the outermost-left pick.
+        const turn: Turn =
+          Math.abs(angle) >= UTURN_ANGLE
+            ? 'uturn'
+            : angle < -24.1
+              ? 'left'
+              : angle > 24.1
+                ? 'right'
+                : 'straight';
         return {
           edgeId: edge.id,
           direction,
@@ -881,8 +900,12 @@ export class SnakeEngine {
 
   private intentChoice(choices: SwitchChoice[], turn: Turn): SwitchChoice {
     // Like the original: left/right pick the outermost available branch;
-    // straight picks the smallest turn, even when every branch curves.
-    return choices
+    // straight picks the smallest turn, even when every branch curves. A
+    // u-turn is none of the three directions, so it only answers a key when
+    // the fork offers nothing else — pressing ← must turn left, not reverse.
+    const genuine = choices.filter((choice) => choice.turn !== 'uturn');
+    const pool = genuine.length ? genuine : choices;
+    return pool
       .slice()
       .sort((a, b) =>
         turn === 'left'

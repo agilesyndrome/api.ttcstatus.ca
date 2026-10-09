@@ -13,6 +13,7 @@ export function useMapCamera({
   focusPointLevel,
   focusBounds,
   resetKey = 0,
+  zoomLimits,
   onInteract,
   onZoomInteract,
   driving = false,
@@ -30,6 +31,7 @@ export function useMapCamera({
   | 'focusPointLevel'
   | 'focusBounds'
   | 'resetKey'
+  | 'zoomLimits'
   | 'onInteract'
   | 'onZoomInteract'
   | 'driving'
@@ -42,8 +44,11 @@ export function useMapCamera({
   const [size, setSize] = useState({ width: 1000, height: 700 });
   const initial = fitCamera(data.bounds, size.width / size.height);
   const [camera, setCamera] = useState<Bounds>(initial);
+  // The ref is the live camera; the state only schedules re-renders. While
+  // driving, followPoint advances the ref imperatively every frame, so a
+  // render must never copy the (older) state back over the ref: that one-frame
+  // snap-back is the zoom-in flicker players see when a car is collected.
   const cameraRef = useRef(camera);
-  cameraRef.current = camera;
   const initialRef = useRef(initial);
   initialRef.current = initial;
   const pointers = useRef(new Map<number, Point>());
@@ -59,8 +64,18 @@ export function useMapCamera({
   zoomInteract.current = onZoomInteract ?? onInteract;
   const sizeRef = useRef(size);
   sizeRef.current = size;
-  const scale = size.width / camera.width;
-  const level = initial.width / camera.width;
+  // Read at gesture time, not render time: the game derives its limits from
+  // the viewport, so they can change without this hook re-rendering.
+  const limitsRef = useRef(zoomLimits);
+  limitsRef.current = zoomLimits;
+  // While driving, follow updates the camera imperatively (viewBox attribute)
+  // without React state; render from the ref so any re-render (HUD, gesture,
+  // resize) sees the live camera instead of snapping back to a stale frame.
+  // scale and level must come from the same view, or the overlay would size
+  // the train for a zoom level the screen no longer shows.
+  const viewCamera = driving ? cameraRef.current : camera;
+  const scale = size.width / viewCamera.width;
+  const level = initial.width / viewCamera.width;
   // At network scale, one compact marker per car leaves the tracks readable.
   // Reveal the full outlined, articulated body once there is room for it.
   const detailedCars = level >= 2.5;
@@ -104,6 +119,12 @@ export function useMapCamera({
     };
     tween.current = requestAnimationFrame(step);
   }
+  // Camera width bounds in map units. Callers that size zoom by something on
+  // the map (the game uses streetcar length) override these; the default keeps
+  // the explorer's fixed stops of headroom beyond the fitted map.
+  const minimumWidth = () =>
+    limitsRef.current?.minWidth ?? initialRef.current.width / (driving ? 18 : 12);
+  const maximumWidth = () => limitsRef.current?.maxWidth ?? initialRef.current.width;
   function zoom(factor: number, anchor?: Point) {
     const current = cameraRef.current;
     move(
@@ -111,10 +132,8 @@ export function useMapCamera({
         current,
         factor,
         anchor ?? [current.x + current.width / 2, current.y + current.height / 2],
-        // The driving game starts close-up and may pinch in below the
-        // explorer's floor; give it one extra stop of headroom.
-        initialRef.current.width / (driving ? 18 : 12),
-        initialRef.current.width,
+        minimumWidth(),
+        maximumWidth(),
       ),
     );
   }
@@ -132,13 +151,12 @@ export function useMapCamera({
       zoomBy: (factor, clientPoint) =>
         zoom(factor, clientPoint ? world(...clientPoint) : undefined),
       followPoint: (point, width) => {
-        const current = cameraRef.current,
-          bounds = initialRef.current;
+        const current = cameraRef.current;
         // Keep the car centered. With an explicit width, also zoom toward it
         // (clamped to the same limits as manual zoom), keeping the aspect.
         const aspect = sizeRef.current.width / sizeRef.current.height;
         const nextWidth = width
-          ? Math.max(bounds.width / (driving ? 18 : 12), Math.min(bounds.width, width))
+          ? Math.max(minimumWidth(), Math.min(maximumWidth(), width))
           : current.width;
         const height = nextWidth / aspect;
         const next = {
@@ -368,9 +386,7 @@ export function useMapCamera({
     },
   };
   // While driving, follow updates the camera imperatively (viewBox attribute)
-  // without React state; render from the ref so any re-render (HUD, gesture,
-  // resize) sees the live camera instead of snapping back to a stale frame.
-  const viewCamera = driving ? cameraRef.current : camera;
+  // without React state; renders read the live ref above.
   return {
     svg,
     camera: viewCamera,

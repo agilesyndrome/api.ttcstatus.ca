@@ -38,10 +38,9 @@ try {
     route.fulfill({ json: snapshot, headers: { 'x-live-update-seconds': '30' } }),
   );
   const page = await context.newPage();
-  const toggle = page.locator('.mobile-panel-toggle');
   const content = page.locator('.sidebar-content');
   const search = page.getByRole('searchbox', {
-    name: 'Search stops, stations, routes or streetcar numbers',
+    name: 'Search stops, stations, routes or vehicle numbers',
   });
   const assertHeadingVisible = async (name) => {
     const heading = page.getByRole('heading', { name, exact: true });
@@ -57,26 +56,41 @@ try {
       `${name} is visible immediately, without scrolling`,
     );
   };
+  // The first-visit affiliation banner overlays the bottom of the map and the
+  // collapsed panel toggle; dismiss it so the checks can reach under it.
+  const dismissNotice = async () => {
+    const gotIt = page.getByRole('button', { name: 'Got it', exact: true });
+    if (await gotIt.count()) await gotIt.tap();
+  };
+  // The brand symbol is the mobile menu button: the nav panel opens as a
+  // full overlay over the map, never as a bottom sheet with a handle.
+  const menu = () => page.getByRole('button', { name: 'Open menu', exact: true });
+  const menuOpen = () => page.getByRole('button', { name: 'Close menu', exact: true });
 
   for (const width of [390, 320, 430]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto(origin);
     await page.locator('[data-vehicle="4400"]').waitFor();
-    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    await dismissNotice();
+    assert.equal(await menu().getAttribute('aria-expanded'), 'false');
     assert.equal(await content.isVisible(), false);
-    assert.equal(
-      await page.getByRole('tab', { name: 'Explore', exact: true }).isVisible(),
-      true,
+    // The header is one compact row: menu button, title, search.
+    const header = await page.locator('.topbar').boundingBox();
+    assert.ok(header && header.height <= 72, `header fits one row at ${width}`);
+    assert.ok(
+      await search.isVisible(),
+      'search stays visible beside the title while the menu is closed',
     );
 
-    // Selecting a search result dismisses the keyboard and opens the details.
+    // Selecting a search result dismisses the keyboard and opens the nav with
+    // the car's details over the map.
     await search.fill('4400');
     await page
       .locator('.search-results')
       .getByRole('button', { name: /Streetcar 4400/ })
       .tap();
     await assertHeadingVisible('Car 4400');
-    assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+    assert.equal(await menuOpen().getAttribute('aria-expanded'), 'true');
     assert.equal(await search.evaluate((node) => node === document.activeElement), false);
     assert.ok(
       await search.evaluate((node) => parseFloat(getComputedStyle(node).fontSize) >= 16),
@@ -87,12 +101,13 @@ try {
     await content.evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });
-    await toggle.tap();
+    await menuOpen().tap();
     await page.locator('[data-vehicle="4400"] .streetcar-body').last().tap();
     await assertHeadingVisible('Car 4400');
     assert.equal(await content.evaluate((node) => node.scrollTop), 0);
     await page.getByRole('button', { name: 'Close streetcar details' }).tap();
-    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    // Closing the details closes the nav with them: the menu button reverts.
+    assert.equal(await menu().getAttribute('aria-expanded'), 'false');
 
     await search.fill('Queen');
     const firstStop = page.locator('.search-results button').first();
@@ -101,18 +116,17 @@ try {
     await assertHeadingVisible(stopName);
     await page.getByRole('button', { name: 'Close stop details' }).tap();
 
-    await toggle.tap();
-    await page.getByRole('checkbox', { name: 'More stop labels', exact: true }).check();
+    // The menu opens on demand and carries the layer toggles with it.
+    await menu().tap();
+    await page.getByRole('checkbox', { name: 'Include overnight routes' }).check();
     assert.equal(
-      await page
-        .getByRole('checkbox', { name: 'More stop labels', exact: true })
-        .isChecked(),
+      await page.getByRole('checkbox', { name: 'Include overnight routes' }).isChecked(),
       true,
     );
 
-    // Collapsing the panel makes room for the map without overflowing the screen.
-    await toggle.tap();
-    assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+    // Closing the menu hands the full screen back to the map, without overflow.
+    await menuOpen().tap();
+    assert.equal(await menu().getAttribute('aria-expanded'), 'false');
     assert.ok(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     );
@@ -136,7 +150,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    'Mobile UI passed: touch selection/reselection, visible car/stop details, collapse/reopen, layers, search keyboard dismissal, shared links, 320/390/430px layouts; no browser errors.',
+    'Mobile UI passed: menu overlay open/close, touch selection/reselection, visible car/stop details, layer toggles in the menu, search keyboard dismissal, shared links, 320/390/430px layouts; no browser errors.',
   );
   await context.close();
 } finally {

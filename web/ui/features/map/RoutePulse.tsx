@@ -24,12 +24,14 @@ export function RoutePulse({
   onSelect,
 }: Props) {
   useLanguage();
-  const entries = routes
-    .filter((route) => route.scheduled)
-    .map((route) => ({ route, ...routeActivity(route, cars) }));
+  const scheduled = routes.filter((route) => route.scheduled);
+  const entries = scheduled.map((route) => ({ route, ...routeActivity(route, cars) }));
   const selected = entries.find((entry) => entry.route.id === selectedRoute);
-  const fresh = cars.filter((car) => !car.stale).length;
-  const peak = Math.max(1, ...entries.map((entry) => entry.fresh));
+  // Only cars actively serving one of the shown scheduled routes count toward
+  // the route totals; everything else the feed has seen is reported separately.
+  const onRoutes = entries.reduce((sum, entry) => sum + entry.reported, 0);
+  const offRoute = cars.length - onRoutes;
+  const peak = Math.max(1, ...entries.map((entry) => entry.reported));
   return (
     <section className="route-pulse" aria-label={t('routePulse.routeActivity')}>
       <p className="eyebrow">{t('routePulse.theCityInMotion')}</p>
@@ -37,7 +39,7 @@ export function RoutePulse({
         <h2>{t('routePulse.routePulse')}</h2>
         <span className="pulse-total">
           {loaded
-            ? t('routePulse.valueFreshReports', { value1: fresh })
+            ? t('routePulse.valueTotalOnRoutes', { value1: onRoutes })
             : t('routePulse.waitingForFeed')}
         </span>
       </div>
@@ -48,7 +50,7 @@ export function RoutePulse({
             ? t('routePulse.updatesPausedShowingTheLastSnapshot')
             : failed
               ? t('routePulse.refreshUnavailableShowingTheLastSnapshot')
-              : t('routePulse.freshVehicleReportsByRoute')}
+              : t('routePulse.reportedVehiclesByRoute')}
       </p>
       {loaded && (
         <div className="pulse-bars">
@@ -58,21 +60,33 @@ export function RoutePulse({
               className="pulse-row"
               style={{ '--route-color': entry.route.color } as CSSProperties}
               aria-pressed={selectedRoute === entry.route.id}
-              aria-label={t('routePulse.valueValueValueFreshValueStaleVehicleReports', {
+              aria-label={t('routePulse.valueValueValueReportedValueStale', {
                 value1: entry.route.number,
                 value2: entry.route.name,
-                value3: entry.fresh,
+                value3: entry.reported,
                 value4: entry.stale,
               })}
               onClick={() => onSelect(entry.route.id)}
             >
               <span>{entry.route.number}</span>
               <span className="pulse-track">
-                <span style={{ width: `${(entry.fresh / peak) * 100}%` }} />
+                <span style={{ width: `${(entry.reported / peak) * 100}%` }} />
               </span>
-              <strong>{entry.fresh}</strong>
+              <strong>{entry.reported}</strong>
             </button>
           ))}
+          <p className="pulse-row pulse-summary">
+            <span>{t('routePulse.notOnRoute')}</span>
+            <span className="pulse-track" aria-hidden="true">
+              <span style={{ width: `${(offRoute / peak) * 100}%` }} />
+            </span>
+            <strong>{offRoute}</strong>
+          </p>
+          <p className="pulse-row pulse-total-row">
+            <span>{t('routePulse.carsSeen')}</span>
+            <span className="pulse-track" aria-hidden="true" />
+            <strong>{cars.length}</strong>
+          </p>
         </div>
       )}
       {selected && loaded && (

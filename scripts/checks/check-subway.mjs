@@ -66,6 +66,11 @@ try {
     await page.locator('#details').innerText(),
     /predicted station, not a GPS position/,
   );
+  // Selecting from search keeps the camera zoom (the explorer contract);
+  // zoom in here so the articulated six-section train body is drawn.
+  await page.locator('#map').hover();
+  for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(150);
   assert.equal(
     await page.locator('[data-vehicle="subway:1:15"] .streetcar-body').count(),
     6,

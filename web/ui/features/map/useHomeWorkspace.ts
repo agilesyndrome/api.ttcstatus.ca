@@ -1,5 +1,4 @@
 import { english } from '../../../../shared/i18n/messages';
-import { t } from '../../i18n';
 import { type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import {
   boundsOf,
@@ -27,11 +26,6 @@ import {
   type Selection,
   type SidebarPanel,
 } from '../../commute';
-import {
-  JOURNAL_LIMIT,
-  journalEntry,
-  validJournal,
-} from '../../../../shared/accounts/journal';
 import { useAccount } from '../accounts/auth';
 import { trackEvent } from '../../analytics';
 import { useAccountJournal } from '../journal/useAccountJournal';
@@ -160,10 +154,23 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   }, [cars]);
   useEffect(() => {
     if (panel === 'explore' && selection) {
-      setMobilePanelOpen(true);
-      sidebar.current?.scrollTo({ top: 0 });
+      // Open on the next animation frame, never inside this effect. A map tap
+      // is followed by the browser's synthesized click; committing the open
+      // before that click reflows the mobile layout — sliding the panel
+      // toggle under the finger — so the click lands on the toggle and
+      // closes the panel the very tap just opened. One frame later the click
+      // has already hit the (unchanged) map harmlessly.
+      const frame = requestAnimationFrame(() => setMobilePanelOpen(true));
+      return () => cancelAnimationFrame(frame);
     }
   }, [selection, panel]);
+  // Scroll a fresh selection to the top only once the panel is displayed:
+  // a hidden (mobile-collapsed) panel ignores scrollTo, so scrolling before
+  // the open commits would leave a stale scroll position on the details.
+  useEffect(() => {
+    if (mobilePanelOpen && panel === 'explore' && selection)
+      sidebar.current?.scrollTo({ top: 0 });
+  }, [mobilePanelOpen, panel, selection]);
   useEffect(() => {
     if (panel !== 'explore') setMobilePanelOpen(true);
     sidebar.current?.scrollTo({ top: 0 });
@@ -266,7 +273,10 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   }
   function selectFeature(next: Feature) {
     if (data) setFilters((current) => revealRoutes(current, data.routes, next.routeIds));
-    setMobilePanelOpen(true);
+    // The [selection, panel] effect below opens the mobile panel. Setting it
+    // here as well would reflow the layout inside the same tap: the browser's
+    // follow-up click then lands on whatever moved under the finger — the
+    // panel toggle — and instantly closes the panel the tap just opened.
     pendingCar.current = undefined;
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
@@ -279,7 +289,10 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       setSelectedRoute(undefined);
   }
   function selectVehicle(next: PlottedVehicle, focus = false) {
-    setMobilePanelOpen(true);
+    // Opening the mobile panel is left to the [selection, panel] effect: a
+    // synchronous open inside the tap handler reflows the layout before the
+    // browser's synthesized click fires, so the click hits the repositioned
+    // panel toggle and closes the panel this very tap opened.
     pendingCar.current = undefined;
     setSelection({ kind: 'car', id: next.vehicle.id });
     setNotice('');
@@ -418,38 +431,6 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
           : current,
     );
   }
-  function collectCar() {
-    if (!account.userId) {
-      setPanel('journal');
-      setMobilePanelOpen(true);
-      return;
-    }
-    if (!accountJournal.ready) {
-      setNotice(english('workspace.waitForYourJournalToLoadOrFinishSavingThen'));
-      return;
-    }
-    if (
-      !car ||
-      journal.length >= JOURNAL_LIMIT ||
-      journal.some((entry) => entry.vehicleId === car.vehicle.id)
-    )
-      return;
-    const entry = journalEntry(car, data?.routes ?? []);
-    if (!validJournal([entry])) {
-      setNotice(english('workspace.thisCarSSuppliedIdentifierCannotBeSavedInThe'));
-      return;
-    }
-    setJournal((current) =>
-      current.some((item) => item.vehicleId === entry.vehicleId) ||
-      current.length >= JOURNAL_LIMIT
-        ? current
-        : [...current, entry],
-    );
-    trackEvent('tracked-streetcar');
-    setNotice(
-      english('journal.car') + car.vehicle.label + english('journal.addedToYourJournal'),
-    );
-  }
   // Covers both the toolbar launch and arriving directly on a snake route.
   useEffect(() => {
     if (snakeOpen) trackEvent('played-snake');
@@ -468,24 +449,6 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     r: reset,
     '?': () => setShortcutHelp(true),
   });
-
-  const panelTitle =
-    panel === 'explore'
-      ? car
-        ? `${car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')} ${car.vehicle.label}`
-        : (feature?.name ??
-          (selection?.kind === 'car'
-            ? t('workspace.carValue', { value1: selection.id })
-            : selection?.kind === 'route'
-              ? t('workspace.valueRouteStops', {
-                  value1:
-                    data?.routes.find((route) => route.id === selection.id)?.number ?? '',
-                })
-              : t('workspace.exploreTorontoRail')))
-      : {
-          journal: t('workspace.streetcarJournal'),
-          badges: t('navigation.badges'),
-        }[panel];
 
   return {
     data,
@@ -544,13 +507,11 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     locateError,
     requestLocate,
     toggleSave,
-    collectCar,
     previewMap,
     changeExportCars,
     closeExport,
     reset,
     shownRoutes,
-    panelTitle,
   };
 }
 
