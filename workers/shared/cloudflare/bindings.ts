@@ -102,6 +102,20 @@ export interface WorkerVersionMetadata {
   timestamp: string;
 }
 
+/** Workers Analytics Engine data point: up to 20 blobs (strings), 20
+ * doubles and 20 indexes (unsigned ints) per sample. */
+export interface AnalyticsEngineDataPoint {
+  blobs?: string[];
+  doubles?: number[];
+  indexes?: number[];
+}
+
+/** Narrow analytics_engine_datasets binding interface. `writeDataPoint` is
+ * fire-and-forget: it buffers in the runtime and never blocks the request. */
+export interface AnalyticsEngineDataset {
+  writeDataPoint(event: AnalyticsEngineDataPoint): void;
+}
+
 export interface ExecutionContextLike {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException?(): void;

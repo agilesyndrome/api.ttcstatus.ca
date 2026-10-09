@@ -14,6 +14,7 @@ import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
 
 import type { HomeWorkspaceState } from './useHomeWorkspace';
+import { trackEvent } from '../../analytics';
 
 const SnakeGame = lazy(() =>
   import('../snake/SnakeGame').then((module) => ({ default: module.SnakeGame })),
@@ -41,6 +42,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     setShortcutsEnabled,
     focusPoint,
     focusPointLevel,
+    focusBounds,
     resetKey,
     theme,
     cars,
@@ -168,12 +170,15 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             selectedVehicleId={car?.vehicle.id}
             focusPoint={focusPoint}
             focusPointLevel={focusPointLevel}
-            focusBounds={undefined}
+            focusBounds={focusBounds}
             locationPoint={locationPoint}
             comparisonStops={undefined}
             pickingLabel={undefined}
             onInteract={() => setFollowing(false)}
-            onExport={previewMap}
+            onExport={() => {
+              trackEvent('exported-map');
+              previewMap();
+            }}
             savedStopIds={savedStops}
             showLabels={filters.labels}
             includeOvernight={filters.overnight}

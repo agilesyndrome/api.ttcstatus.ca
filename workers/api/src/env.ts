@@ -1,4 +1,5 @@
 import type {
+  AnalyticsEngineDataset,
   D1Database,
   Fetcher,
   R2Bucket,
@@ -11,6 +12,7 @@ export interface Env extends SyncEnv, AccountEnv {
   DB: D1Database;
   GTFS_BUCKET: R2Bucket;
   MAP_GENERATOR: Fetcher;
+  ANALYTICS?: AnalyticsEngineDataset;
   CF_VERSION_METADATA?: WorkerVersionMetadata;
   STATIC_GTFS_URL: string;
   SOURCE_ATTRIBUTION: string;

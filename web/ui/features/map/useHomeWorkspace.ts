@@ -1,7 +1,12 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t } from '../../i18n';
 import { type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
-import { type Feature, type Point } from '../../../../shared/map/model';
+import {
+  boundsOf,
+  type Bounds,
+  type Feature,
+  type Point,
+} from '../../../../shared/map/model';
 import { gpsToMap } from '../../../../shared/map/projection';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
 import { useVehicleFeed } from './useVehicleFeed';
@@ -28,6 +33,7 @@ import {
   validJournal,
 } from '../../../../shared/accounts/journal';
 import { useAccount } from '../accounts/auth';
+import { trackEvent } from '../../analytics';
 import { useAccountJournal } from '../journal/useAccountJournal';
 import { useAccountStops } from '../stops/useAccountStops';
 import type { SnakeVersion } from '../../snake-route';
@@ -103,6 +109,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   );
   const [focusPoint, setFocusPoint] = useState<Point>();
   const [focusPointLevel, setFocusPointLevel] = useState<number>();
+  const [focusBounds, setFocusBounds] = useState<Bounds>();
   const [location, setLocation] = useState<Location>();
   const [notice, setNotice] = useState('');
   const [resetKey, setResetKey] = useState(0);
@@ -176,6 +183,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       setNotice('');
       setFocusPoint(undefined);
       setFocusPointLevel(undefined);
+      setFocusBounds(undefined);
       setSelectedRoute(
         link.selection?.kind === 'route' ? link.selection.id : link.contextRoute,
       );
@@ -251,6 +259,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setLocateError('');
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
+    setFocusBounds(undefined);
     setPanel('explore');
     setFollowing(false);
     setResetKey((key) => key + 1);
@@ -261,6 +270,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     pendingCar.current = undefined;
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
+    setFocusBounds(undefined);
     setNotice('');
     setFollowing(false);
     setPanel('explore');
@@ -296,6 +306,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setSelection(id ? { kind: 'route', id } : undefined);
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
+    setFocusBounds(undefined);
     setNotice('');
     setFollowing(false);
   }
@@ -317,15 +328,20 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     if (!data) return;
     setLocation(next);
     setFollowing(false);
-    // Center on the location only when the network is nearby; 2.5× is the zoom
-    // where streetcars gain their detailed bodies. Out-of-area locations keep
-    // the whole Toronto map in view instead of panning to empty space.
-    if (nearbyStops(data, next).length) {
-      setFocusPoint(gpsToMap(next.latitude, next.longitude, data.geographicTransform));
-      setFocusPointLevel(2.5);
+    // Frame the location together with its two nearest stations so the zoom
+    // answers "which stations are closest to me" instead of showing the whole
+    // neighborhood. Out-of-area locations keep the full Toronto map in view
+    // instead of panning to empty space.
+    const here = gpsToMap(next.latitude, next.longitude, data.geographicTransform);
+    const stations = nearbyStops(data, next)
+      .slice(0, 2)
+      .map((stop) => stop.feature.point);
+    setFocusPoint(undefined);
+    setFocusPointLevel(undefined);
+    if (stations.length) {
+      setFocusBounds(boundsOf([here, ...stations], 120));
     } else {
-      setFocusPoint(undefined);
-      setFocusPointLevel(undefined);
+      setFocusBounds(undefined);
       setResetKey((key) => key + 1);
     }
   }
@@ -355,6 +371,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       (position) => {
         if (current !== locateRequest.current) return;
         setLocating(false);
+        trackEvent('located');
         locate({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -381,6 +398,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       setNotice(english('workspace.your100SavedStopsAreFullRemoveAStopTo'));
       return;
     }
+    trackEvent(savedStops.includes(feature.id) ? 'removed-stop' : 'saved-stop');
     setSavedStops((current) =>
       current.includes(feature.id)
         ? current.filter((id) => id !== feature.id)
@@ -416,15 +434,24 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
         ? current
         : [...current, entry],
     );
+    trackEvent('tracked-streetcar');
     setNotice(
       english('journal.car') + car.vehicle.label + english('journal.addedToYourJournal'),
     );
   }
+  // Covers both the toolbar launch and arriving directly on a snake route.
+  useEffect(() => {
+    if (snakeOpen) trackEvent('played-snake');
+  }, [snakeOpen]);
+
   useShortcuts(shortcutsEnabled && !snakeOpen, {
     '/': () => document.querySelector<HTMLInputElement>('.search input')?.focus(),
     e: () => setPanel('explore'),
     j: () => setPanel('journal'),
-    p: previewMap,
+    p: () => {
+      trackEvent('exported-map');
+      previewMap();
+    },
     s: toggleSave,
     n: theme.toggle,
     r: reset,
@@ -483,6 +510,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setShortcutsEnabled,
     focusPoint,
     focusPointLevel,
+    focusBounds,
     setFocusPoint,
     location,
     setLocation,

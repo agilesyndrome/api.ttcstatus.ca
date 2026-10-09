@@ -11,6 +11,7 @@ import { mapResponse, networkResponse } from '../maps/responses';
 import { debugMapResponse } from '../maps/debug';
 import { vehicleResponse } from '../realtime/response';
 import { feedStatusResponse } from '../diagnostics/feed-status';
+import { analyticsEventResponse } from '../diagnostics/analytics';
 import { versionResponse } from '../diagnostics/version';
 import { manualSyncResponse } from '../sync/manual-sync';
 
@@ -61,6 +62,10 @@ export async function routeRequest(
 
   if (request.method === 'GET' && url.pathname === '/api/v1/version') {
     return versionResponse(env);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/event') {
+    return analyticsEventResponse(request, env);
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/vehicles/streetcar') {
