@@ -313,7 +313,7 @@ try {
   await cockpit.getByRole('button', { name: 'Resume driving', exact: true }).tap();
   assert.equal(
     await cockpit
-      .getByRole('button', { name: '↑ 501', exact: true })
+      .getByRole('button', { name: '↑ 501 Queen', exact: true })
       .getAttribute('data-selection'),
     'automatic',
   );
@@ -341,7 +341,7 @@ try {
   });
   await mobile.waitForTimeout(80);
   await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  const left = cockpit.getByRole('button', { name: '← 501', exact: true });
+  const left = cockpit.getByRole('button', { name: '← 501 Queen', exact: true });
   assert.equal(
     await left.getAttribute('aria-pressed'),
     'true',
@@ -371,7 +371,7 @@ try {
   await mobile.keyboard.press('ArrowRight');
   assert.equal(
     await cockpit
-      .getByRole('button', { name: '→ 504', exact: true })
+      .getByRole('button', { name: '→ 504 King', exact: true })
       .getAttribute('aria-pressed'),
     'true',
   );
@@ -386,7 +386,7 @@ try {
   await mobile.keyboard.press('Space');
   assert.equal(
     await cockpit
-      .getByRole('button', { name: '↑ 501', exact: true })
+      .getByRole('button', { name: '↑ 501 Queen', exact: true })
       .getAttribute('data-selection'),
     'manual',
   );

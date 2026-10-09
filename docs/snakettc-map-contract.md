@@ -87,7 +87,11 @@ departures reverse the ordered path even when extra branches are present.
 
 An amber ring marks the next fork. The green path and arrow show the train's
 actual departure, dashed for automatic routing and solid for a manual selection.
-Switch labels name the branch direction and service or infrastructure. Preview,
+Switch labels name the branch direction and its place: the daytime route number
+plus street ("501 Queen"; overnight 3xx services never appear) or the short
+infrastructure word ("Ossington", "Humber Loop"). Subway branches read like the
+platform sign ("Line 2"). See [the intersection review](./snake-intersection-review.md)
+for the full switch-audit contract. Preview,
 next-stop guidance and movement use the same routing and mission rejoin rules.
 Automatic free-play routing prefers service continuity and avoids yard/diversion
 tracks; explicit switches override it. Left/right select the outermost available

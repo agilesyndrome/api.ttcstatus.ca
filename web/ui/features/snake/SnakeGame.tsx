@@ -583,14 +583,20 @@ const SnakeCockpit = memo(function SnakeCockpit({
     nextStop = engine.nextStop();
   const held = heldPedals();
   // Memoized per inputs: the visible fleet changes when the live feed, the
-  // ambient traffic or the collected set changes — not on every frame.
+  // ambient traffic or the collected set changes — not on every frame. Game
+  // cars are deliberately NOT passed to the map: they are food, and food gets
+  // the classic red-and-halo treatment in the game overlay instead.
   const visibleCars = useMemo(() => {
     const collected = engine.collected;
-    const fresh = cars.filter(
+    return cars.filter(
       (car) => !car.stale && car.match && !collected.has(car.vehicle.id),
     );
-    return [...fresh, ...engine.gameCars.filter((car) => !collected.has(car.vehicle.id))];
-  }, [cars, engine, engine.gameCars, engine.collected.size, redraw]);
+  }, [cars, engine, engine.collected.size, redraw]);
+  const foodCars = useMemo(
+    () =>
+      engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
+    [engine, engine.gameCars, engine.collected.size, redraw],
+  );
   const switchArrow = useMemo(() => {
     if (!upcoming) return undefined;
     const edge = data.edges.find(
@@ -731,6 +737,15 @@ const SnakeCockpit = memo(function SnakeCockpit({
             // updates: car rect lengths and arrow thickness are zoom-driven,
             // so they only change when this overlay re-renders.
             trainRefs.current.scale = scale;
+            // The head wears the colour of the line it is driving — the same
+            // route-coloured livery as streetcars on the ttcstatus.ca map.
+            const headEdge = engine.edges.get(engine.position.edgeId);
+            const headColor =
+              (headEdge &&
+                data.routes.find(
+                  (route) => route.id === headEdge.routeIds[0],
+                )?.color) ||
+              '#b4393f';
             return (
               <g className="snake-train" pointerEvents="none">
                 {engine.hazard?.edgeId && engine.hazard.kind !== 'slow' && (
@@ -782,13 +797,53 @@ const SnakeCockpit = memo(function SnakeCockpit({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
+                {/* "Food" parked across the map: the exact ttcstatus.ca map
+                 * streetcar — cream halo, pointed cab, red livery — plus a
+                 * pulsing halo so a waiting car reads at any zoom. They never
+                 * move, so transforms are render-driven. */}
+                {foodCars.map((car) => {
+                  const length = Math.max(10, CAR_LENGTH * scale);
+                  return (
+                    <g
+                      key={car.vehicle.id}
+                      className="snake-food"
+                      transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
+                    >
+                      <circle className="snake-food-halo" r={13} />
+                      <path
+                        className="streetcar-halo"
+                        d={`M${-length / 2} -3H${length / 2 - 5}L${length / 2 + 1} 0L${length / 2 - 5} 3H${-length / 2}Z`}
+                        fill="#fffdf7"
+                        stroke="#fffdf7"
+                        strokeWidth={3.5}
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        className="streetcar-body"
+                        d={`M${-length / 2} -3H${length / 2 - 5}L${length / 2 + 1} 0L${length / 2 - 5} 3H${-length / 2}Z`}
+                        fill="#b4393f"
+                        stroke="#25343c"
+                        strokeWidth={1}
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d={`M${length / 2 - 6} -2.2L${length / 2 - 3.4} 0L${length / 2 - 6} 2.2`}
+                        fill="none"
+                        stroke="#fffdf7"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </g>
+                  );
+                })}
                 <polyline
                   ref={(element) => {
                     trainRefs.current.body[0] = element;
                   }}
                   points={body.map((sample) => sample.point.join(',')).join(' ')}
                   fill="none"
-                  stroke="var(--surface)"
+                  stroke="#fffdf7"
                   strokeWidth={9}
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -799,7 +854,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                   }}
                   points={body.map((sample) => sample.point.join(',')).join(' ')}
                   fill="none"
-                  stroke="#278f91"
+                  stroke={headColor}
                   strokeWidth={5}
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -840,6 +895,9 @@ const SnakeCockpit = memo(function SnakeCockpit({
                     8,
                     Math.hypot(front[0] - back[0], front[1] - back[1]) * scale,
                   );
+                  // The pointed cab profile (like the map's streetcar),
+                  // stretched to this car's true on-screen length.
+                  const nose = `M${-length / 2} -5H${length / 2 - 7}L${length / 2 + 1} 0L${length / 2 - 7} 5H${-length / 2}Z`;
                   return (
                     <g
                       key={index}
@@ -849,37 +907,98 @@ const SnakeCockpit = memo(function SnakeCockpit({
                       }}
                       transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
                     >
-                      <rect
-                        x={-length / 2}
-                        y={-5}
-                        width={length}
-                        height={10}
-                        rx={3}
-                        fill="var(--surface)"
-                        stroke={index === 0 ? '#278f91' : '#25343c'}
-                        strokeWidth={index === 0 ? 2.5 : 1}
-                      />
-                      <rect
-                        x={-length / 2 + 2}
-                        y={-2.5}
-                        width={length - 4}
-                        height={5}
-                        rx={1}
-                        fill="#d71920"
-                      />
-                      {[0.25, 0.5, 0.75].map((fraction) => (
-                        <path
-                          key={fraction}
-                          d={`M${-length / 2 + length * fraction} -4V4`}
-                          stroke="var(--surface)"
-                          strokeWidth={1}
-                        />
-                      ))}
-                      {index === 0 && (
-                        <path
-                          d={`M${length / 2 - 5} -2L${length / 2 - 1} 0L${length / 2 - 5} 2Z`}
-                          fill="white"
-                        />
+                      {index === 0 ? (
+                        <>
+                          {/* The map's pointed cab, scaled to a lead car: cream
+                           * halo, route-coloured body, white chevron — and a
+                           * pair of eyes, because this one is alive. */}
+                          <path
+                            className="streetcar-halo"
+                            d={nose}
+                            fill="#fffdf7"
+                            stroke="#fffdf7"
+                            strokeWidth={3.5}
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            className="streetcar-body"
+                            d={nose}
+                            fill={headColor}
+                            stroke="#25343c"
+                            strokeWidth={1.2}
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={`M${length / 2 - 8} -2.5L${length / 2 - 5} 0L${length / 2 - 8} 2.5`}
+                            fill="none"
+                            stroke="#fffdf7"
+                            strokeWidth={1.8}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx={length / 2 - 11}
+                            cy={-3.1}
+                            r={1.7}
+                            fill="#fffdf7"
+                          />
+                          <circle cx={length / 2 - 11} cy={3.1} r={1.7} fill="#fffdf7" />
+                          <circle
+                            cx={length / 2 - 10.4}
+                            cy={-3.1}
+                            r={0.85}
+                            fill="#25343c"
+                          />
+                          <circle
+                            cx={length / 2 - 10.4}
+                            cy={3.1}
+                            r={0.85}
+                            fill="#25343c"
+                          />
+                          {/* A little yellow crest for panache. */}
+                          <rect
+                            x={-length / 2 + 1.5}
+                            y={-5}
+                            width={length - 3}
+                            height={1.7}
+                            rx={0.85}
+                            fill="#ffd43b"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          {/* Trailing sections: the map's cream streetcar body
+                           * with a route-coloured centre stripe. */}
+                          <rect
+                            className="streetcar-halo"
+                            x={-length / 2}
+                            y={-4}
+                            width={length}
+                            height={8}
+                            rx={1.6}
+                            fill="#fffdf7"
+                            stroke="#fffdf7"
+                            strokeWidth={3.5}
+                          />
+                          <rect
+                            className="streetcar-body"
+                            x={-length / 2}
+                            y={-4}
+                            width={length}
+                            height={8}
+                            rx={1.6}
+                            fill="#fffdf7"
+                            stroke="#25343c"
+                            strokeWidth={1.2}
+                          />
+                          <path
+                            d={`M${-length / 2 + 3} 0H${length / 2 - 3}`}
+                            fill="none"
+                            stroke={headColor}
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                          />
+                        </>
                       )}
                     </g>
                   );
@@ -911,6 +1030,14 @@ const SnakeCockpit = memo(function SnakeCockpit({
         <span>
           <b data-snake-speed>{Math.round(engine.speed)}</b> {t('snake.kmH')}
         </span>
+        {engine.multiplier > 1 && (
+          <span className="snake-multiplier" data-multiplier={engine.multiplier}>
+            {t('snake.multiplierValueValueSeconds', {
+              value1: engine.multiplier,
+              value2: engine.multiplierRemaining,
+            })}
+          </span>
+        )}
         <span>
           {engine.trips ? t('snake.valueTrips', { value1: engine.trips }) : ''}
           {t('snake.best')} {best}
@@ -1003,9 +1130,15 @@ const SnakeCockpit = memo(function SnakeCockpit({
               <button onClick={pause}>{t('snake.resumeDriving')}</button>
             </div>
           )}
-          {/* No switch nearby: no directional indicators. */}
+          {/* Classic v1 track-switcher panel: dark pill at the bottom centre,
+           * a small uppercase meta line, and one button per direction with a
+           * green selected state. */}
           {upcoming && (
             <div className="snake-switches" aria-label={t('snake.switchControls')}>
+              <small>
+                {t('snake.queueTheNextSwitch')} · {Math.round(upcoming.distance)}{' '}
+                {t('snake.m')}
+              </small>
               <div>
                 {upcoming.choices.map((choice) => (
                   <button

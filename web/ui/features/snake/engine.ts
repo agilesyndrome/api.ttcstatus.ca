@@ -36,18 +36,12 @@ export interface SwitchChoice extends EdgeRef {
 }
 
 /**
- * A switch button names the control that throws it plus the street and route
- * number, e.g. "[Left] Carlton · 505". Touch devices have no keyboard, so
- * there the button shows a direction arrow instead of a key hint.
+ * A switch button names the control that throws it plus the branch place:
+ * streetcars read "501 Queen" (number first), subway lines read like the
+ * platform sign ("Line 2"). Touch devices have no keyboard, so there the
+ * button shows a direction arrow instead of a key hint.
  */
-export function switchLabel(
-  turn: Turn,
-  street: string,
-  routes: string,
-  keys = true,
-): string {
-  const place =
-    street && routes ? `${street} · ${routes}` : street || routes || t('snake.track');
+export function switchLabel(turn: Turn, place: string, keys = true): string {
   const key =
     turn === 'left'
       ? t('snake.keyLeft')
@@ -58,7 +52,7 @@ export function switchLabel(
           : t('snake.keyUturn');
   const arrow =
     turn === 'left' ? '←' : turn === 'right' ? '→' : turn === 'uturn' ? '↩' : '↑';
-  return `${keys ? `[${key}]` : arrow} ${place}`;
+  return `${keys ? `[${key}]` : arrow} ${place || t('snake.track')}`;
 }
 export interface Pedals {
   accelerator: boolean;
@@ -81,14 +75,16 @@ export interface UpcomingSwitch {
 }
 export const CAR_LENGTH = 30.2;
 const SPACING = CAR_LENGTH + 1.5,
-  LANE_OFFSET = 3.2,
+  // Trains ride the centre of the track; the lane offset only shapes terminal
+  // turnback loops so the car swings wide of the station it bounces back at.
+  LOOP_WIDTH = 6.4,
   // A branch within this many degrees of dead reverse is a u-turn, not a turn.
   UTURN_ANGLE = 168,
   // A busier, faster-paced network: the guaranteed catchable car is placed
   // a few dozen metres to a couple hundred metres ahead (time-based, so it
   // never spawns on top of the player), ambient traffic is denser, and the
   // respawn cadence keeps a target in front of the player within ~6 s.
-  GAME_TRAFFIC_COUNT = 10,
+  GAME_TRAFFIC_COUNT = 26,
   GAME_TARGET_SECONDS = 4,
   GAME_TARGET_MIN_DISTANCE = 60,
   GAME_TARGET_MAX_DISTANCE = 240,
@@ -101,7 +97,7 @@ const SPACING = CAR_LENGTH + 1.5,
   // multiply these scans.
   GAME_TRAFFIC_SCAN_SECONDS = 0.1,
   GAME_RANDOM_MIN_AHEAD = 260,
-  GAME_RANDOM_MIN_SPACING = 250,
+  GAME_RANDOM_MIN_SPACING = 180,
   GAME_CAR_PREFIX = 'snake-v2-',
   // Overdrive: the arcade governor, pedal rates and braking are deliberately
   // absurd; the fun is surviving a 3000 km/h streetcar that stops fast.
@@ -109,6 +105,15 @@ const SPACING = CAR_LENGTH + 1.5,
   ARCADE_ACCELERATION = 600,
   ARCADE_BRAKING = 900,
   PURIST_MAX_SPEED = 50,
+  // Classic Snake pressure, arcade edition: once the consist reaches
+  // ARCADE_RAMP_START_CARS, coasting pulls the speedometer up to a cruise
+  // floor that climbs with every coupled car, so a long train is a fast
+  // train and the run earns its own difficulty curve. Braking always wins —
+  // the floor never fights the brake pedal, only the release of both.
+  ARCADE_RAMP_START_CARS = 6,
+  ARCADE_RAMP_PER_CAR = 40,
+  ARCADE_RAMP_CAP = 900,
+  ARCADE_COAST_RATE = 120,
   // Transit Control disruptions (classic-game chaos).
   SLOW_ORDER_SECONDS = 12,
   SLOW_ORDER_CAP_ARCADE = 600,
@@ -118,9 +123,16 @@ const SPACING = CAR_LENGTH + 1.5,
   HAZARD_FIRST_MIN = 20,
   HAZARD_FIRST_EXTRA = 15,
   HAZARD_GAP_MIN = 30,
-  HAZARD_GAP_EXTRA = 25;
+  HAZARD_GAP_EXTRA = 25,
+  // Bonus section: a pickup during a calamity multiplies every pickup's cars.
+  MULTIPLIER_SECONDS = 30,
+  MULTIPLIER_RARE_CHANCE = 0.1;
 const deltaAngle = (angle: number) => ((angle + 540) % 360) - 180;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const unique = <T>(items: T[]) => [...new Set(items)];
+/** Night routes (301, 310, …) never appear on switch labels: the branch is
+ * named by its daytime number ("501 Queen", never "301/501"). */
+const isRapidNumber = (number: string) => /^[1-6]$/.test(number);
 
 interface RailSpan extends EdgeRef {
   from: number;
@@ -152,6 +164,9 @@ export class SnakeEngine {
   readonly sourceLengths = new Map<string, number[]>();
   readonly terminals = new Map<string, { name: string; radius: number }>();
   readonly routeNumbers: Map<string, string>;
+  readonly routeNames: Map<string, string>;
+  /** Route IDs that never appear on switch labels (night 3xx services). */
+  readonly overnightRoutes: Set<string>;
   readonly infrastructureNames: Map<string, string>;
   status: 'ready' | 'running' | 'paused' | 'over' = 'ready';
   position: Position;
@@ -183,6 +198,10 @@ export class SnakeEngine {
   private nextHazardAt = Infinity;
   private hazardUntil = 0;
   private activeHazard?: Hazard;
+  /** Bonus-section multiplier (classic-game carry-over): collecting a streetcar
+   * during an active calamity arms ×2 (rarely ×3) for every pickup for 30 s. */
+  private pickupMultiplier = 1;
+  private multiplierUntil = 0;
   private turnGraceUntil = 0;
   private lastRecorded = -Infinity;
   private turnback?: Turnback;
@@ -213,6 +232,10 @@ export class SnakeEngine {
     } = {},
   ) {
     this.routeNumbers = new Map(data.routes.map((route) => [route.id, route.number]));
+    this.routeNames = new Map(data.routes.map((route) => [route.id, route.name]));
+    this.overnightRoutes = new Set(
+      data.routes.filter((route) => route.overnight).map((route) => route.id),
+    );
     this.infrastructureNames = new Map(
       data.infrastructure.map((item) => [item.id, item.name]),
     );
@@ -299,8 +322,8 @@ export class SnakeEngine {
       ((b[1] - a[1]) / (length || 1)) * position.direction,
     ];
     const source: Point = [
-      a[0] + (b[0] - a[0]) * t + tangent[1] * LANE_OFFSET,
-      a[1] + (b[1] - a[1]) * t - tangent[0] * LANE_OFFSET,
+      a[0] + (b[0] - a[0]) * t,
+      a[1] + (b[1] - a[1]) * t,
     ];
     const plotted = pointAlongEdge(edge, position.distance);
     return {
@@ -370,6 +393,15 @@ export class SnakeEngine {
     return Math.max(
       GAME_TARGET_MIN_DISTANCE,
       Math.min(GAME_TARGET_MAX_DISTANCE, (this.speed / 3.6) * GAME_TARGET_SECONDS),
+    );
+  }
+
+  /** The arcade cruise floor for the current consist (0 when not applicable). */
+  private cruiseFloor() {
+    if (this.mode !== 'arcade' || this.count <= ARCADE_RAMP_START_CARS) return 0;
+    return Math.min(
+      ARCADE_RAMP_CAP,
+      180 + (this.count - ARCADE_RAMP_START_CARS) * ARCADE_RAMP_PER_CAR,
     );
   }
 
@@ -475,7 +507,11 @@ export class SnakeEngine {
     const pose = this.pose(position),
       gps = mapToGps(pose.point, this.data.geographicTransform),
       edge = this.edges.get(position.edgeId)!,
-      number = edge.routeIds.map((id) => this.routeNumbers.get(id) ?? id)[0] ?? 'TTC',
+      scheduledId = edge.routeIds.find((id) => !this.overnightRoutes.has(id)),
+      number =
+        (scheduledId && this.routeNumbers.get(scheduledId)) ??
+        edge.routeIds.map((id) => this.routeNumbers.get(id) ?? id)[0] ??
+        'TTC',
       id = `${GAME_CAR_PREFIX}${++this.gameCarSerial}`;
     return {
       vehicle: {
@@ -561,8 +597,10 @@ export class SnakeEngine {
           distance: edge.lengthMetres * (0.1 + this.random() * 0.8),
         },
         pose = this.pose(position);
-      if (distance(player.source, pose.source) < 180 && sameRail(position, this.position))
-        continue;
+      // Ambient cars never materialize near the player on ANY rail: discovering
+      // a parked streetcar further down the line is the classic-game feel;
+      // one blinking into existence beside the cab is a jump scare.
+      if (distance(player.source, pose.source) < 400) continue;
       if (this.gamePositionSafe(position)) return position;
     }
     // Never fall back to the first edge: doing so used to spawn eight cars on
@@ -628,6 +666,16 @@ export class SnakeEngine {
     return this.activeHazard;
   }
 
+  /** Armed pickup multiplier from the bonus section (1 when not armed). */
+  get multiplier(): number {
+    return this.pickupMultiplier;
+  }
+
+  /** Whole seconds left on the armed multiplier, 0 when not armed. */
+  get multiplierRemaining(): number {
+    return Math.max(0, Math.ceil(this.multiplierUntil - this.hazardClock));
+  }
+
   /**
    * The slow-order speed cap in km/h for the current mode. 0 when no slow
    * order is active.
@@ -642,12 +690,14 @@ export class SnakeEngine {
 
   /** A human name for a stretch of track: street names beat route numbers. */
   private edgeName(edge: Edge): string {
-    const streets = edge.infrastructureIds
-      .map((id) => this.infrastructureNames.get(id))
-      .filter(Boolean)
-      .join(', ');
+    const streets = unique(
+      edge.infrastructureIds
+        .map((id) => this.infrastructureNames.get(id))
+        .filter(Boolean),
+    ).join(', ');
     if (streets) return streets;
     const routes = edge.routeIds
+      .filter((id) => !this.overnightRoutes.has(id))
       .map((id) => this.routeNumbers.get(id))
       .filter(Boolean)
       .join('/');
@@ -725,6 +775,8 @@ export class SnakeEngine {
     this.gameOverKind = undefined;
     this.activeHazard = undefined;
     this.hazardClock = 0;
+    this.pickupMultiplier = 1;
+    this.multiplierUntil = 0;
     this.nextHazardAt = HAZARD_FIRST_MIN + random() * HAZARD_FIRST_EXTRA;
     this.invalidateTraffic();
     // Free play starts anywhere on a scheduled corridor; quiet rails still work.
@@ -806,6 +858,32 @@ export class SnakeEngine {
     return choices;
   }
 
+  /** The readable place a switch button names: a short street or loop word
+   * plus the branch's daytime route number, e.g. "501 Queen" or "511
+   * Bathurst". Subway lines read like platform signage: "Line 2". Night
+   * routes (3xx) never appear; their daytime number already names the track. */
+  private branchPlace(edge: Edge): string {
+    const word = unique(
+      edge.infrastructureIds
+        .map((id) => this.infrastructureNames.get(id))
+        .filter(Boolean),
+    ).join(' ');
+    const scheduledIds = edge.routeIds.filter((id) => !this.overnightRoutes.has(id));
+    const numbers = unique(
+      scheduledIds.map((id) => this.routeNumbers.get(id)).filter(Boolean),
+    ).join('/');
+    const routeWord = scheduledIds.length
+      ? (this.routeNames.get(scheduledIds[0]) ?? '')
+      : '';
+    const name = word || routeWord;
+    if (!numbers) return name;
+    if (isRapidNumber(numbers.split('/')[0])) {
+      const line = name && !isRapidNumber(name) ? name : `Line ${numbers}`;
+      return line.includes(numbers) ? line : `${line} ${numbers}`;
+    }
+    return name ? `${numbers} ${name}` : numbers;
+  }
+
   private buildChoices(position: Position): SwitchChoice[] {
     const current = this.edges.get(position.edgeId)!;
     const node = position.direction === 1 ? current.b : current.a;
@@ -813,7 +891,7 @@ export class SnakeEngine {
       ...position,
       distance: position.direction === 1 ? current.lengthMetres : 0,
     }).angle;
-    return (this.adjacent.get(node) ?? [])
+    const mapped = (this.adjacent.get(node) ?? [])
       .filter((edge) => edge.id !== current.id || edge.a === edge.b)
       .map((edge) => {
         // A closed edge returns to its own node on the same rail. Continuing it
@@ -827,14 +905,6 @@ export class SnakeEngine {
             distance: direction === 1 ? 0 : edge.lengthMetres,
           }).angle - arrival,
         );
-        const routes = edge.routeIds
-          .map((id) => this.routeNumbers.get(id))
-          .filter(Boolean)
-          .join('/');
-        const name = edge.infrastructureIds
-          .map((id) => this.infrastructureNames.get(id))
-          .filter(Boolean)
-          .join(', ');
         // Classify from the on-screen (map-space) heading change the driver
         // actually sees. A near-reversal onto the opposite rail is a u-turn:
         // calling it "left" made ← sometimes spin the streetcar 180° and, at
@@ -852,10 +922,69 @@ export class SnakeEngine {
           direction,
           angle,
           turn,
-          label: switchLabel(turn, name, routes, this.options.keyHints ?? true),
+          label: switchLabel(turn, this.branchPlace(edge), this.options.keyHints ?? true),
         };
       })
       .sort((a, b) => a.angle - b.angle);
+    // A u-turn only answers a key when the fork offers nothing else, so it is
+    // never offered while a real branch exists. Coincident duplicate rails of
+    // the same corridor otherwise render identical twin branches — two lefts,
+    // two straights or a bogus four-way turnout. One visible direction is one
+    // choice: merge twins (same angle within 2.5° AND a shared route — the
+    // same corridor's duplicate edge, never a distinct spur like a yard),
+    // keeping the richer label and all routes.
+    const genuine = mapped.filter((choice) => choice.turn !== 'uturn');
+    const pool = genuine.length ? genuine : mapped;
+    const choices: SwitchChoice[] = [];
+    for (const choice of pool) {
+      const twin = choices.find((existing) => {
+        if (
+          existing.edgeId === choice.edgeId ||
+          Math.abs(existing.angle - choice.angle) >= 2.5
+        )
+          return false;
+        const twinEdge = this.edges.get(existing.edgeId)!;
+        return this.edges
+          .get(choice.edgeId)!
+          .routeIds.some((id) => twinEdge.routeIds.includes(id));
+      });
+      if (twin) {
+        const twinEdge = this.edges.get(twin.edgeId)!,
+          choiceEdge = this.edges.get(choice.edgeId)!;
+        if (choiceEdge.routeIds.some((id) => !twinEdge.routeIds.includes(id))) {
+          twinEdge.routeIds = unique([...twinEdge.routeIds, ...choiceEdge.routeIds]);
+          this.routeKeyCache.delete(twin.edgeId);
+        }
+        if (choice.label.length > twin.label.length) twin.label = choice.label;
+        continue;
+      }
+      choices.push(choice);
+    }
+    // Hard gate: a switch never offers two rights, two lefts or two straights.
+    // Coincident rails that survived the twin merge (different routes, or a
+    // few degrees apart) would render as duplicate arrows pointing the same
+    // way. Keep the branch that continues a current route (by normalized key,
+    // so suffix and overnight variants count); without one, the gentlest
+    // version of that turn wins.
+    const keys = this.routeKeys(current);
+    const byTurn = new Map<Turn, SwitchChoice>();
+    for (const choice of choices) {
+      const incumbent = byTurn.get(choice.turn);
+      if (!incumbent) {
+        byTurn.set(choice.turn, choice);
+        continue;
+      }
+      const continuesRoute = (candidate: SwitchChoice) =>
+        [...this.routeKeys(this.edges.get(candidate.edgeId)!)].some((routeKey) =>
+          keys.has(routeKey),
+        );
+      const better =
+        continuesRoute(choice) !== continuesRoute(incumbent)
+          ? continuesRoute(choice)
+          : Math.abs(choice.angle) < Math.abs(incumbent.angle);
+      if (better) byTurn.set(choice.turn, choice);
+    }
+    return [...byTurn.values()];
   }
 
   upcoming(): UpcomingSwitch | undefined {
@@ -961,7 +1090,11 @@ export class SnakeEngine {
         const infrastructure = next.infrastructureIds
           .map((id) => this.infrastructureNames.get(id) ?? id)
           .join(' ');
-        const yard = /yard|carhouse|barns|hillcrest|shop/i.test(infrastructure);
+        // Shortened arcade names drop the word "barns", so the spur's own id
+        // (snake:barn-access:…) still flags yard tracks for route scoring.
+        const yard = /yard|carhouse|barns?|hillcrest|shop/i.test(
+          `${next.infrastructureIds.join(' ')} ${infrastructure}`,
+        );
         const diversion = !next.routeIds.length && current.routeIds.length > 0;
         return (
           -Math.cos((choice.angle * Math.PI) / 180) -
@@ -1080,15 +1213,24 @@ export class SnakeEngine {
     const edge = this.edges.get(incoming.edgeId)!,
       node = incoming.direction === 1 ? edge.b : edge.a;
     const radius = this.terminals.get(node)?.radius ?? 10;
+    // The running pose is centred on the track, so the loop starts and ends at
+    // that centre point (no jump when the head enters or leaves the loop) and
+    // bulges to one side like a real streetcar balloon loop, clearing the
+    // station by LOOP_WIDTH at its widest.
     const p0 = start.source,
       p3 = end.source;
+    const forward = radius * 2;
     const p1: Point = [
-      p0[0] + start.tangent[0] * radius * 2,
-      p0[1] + start.tangent[1] * radius * 2,
+      p0[0] +
+        start.tangent[0] * (forward + 4) +
+        start.tangent[1] * LOOP_WIDTH,
+      p0[1] +
+        start.tangent[1] * (forward + 4) -
+        start.tangent[0] * LOOP_WIDTH,
     ];
     const p2: Point = [
-      p3[0] + start.tangent[0] * radius * 2,
-      p3[1] + start.tangent[1] * radius * 2,
+      p3[0] + start.tangent[0] * (forward - 4) + start.tangent[1] * LOOP_WIDTH,
+      p3[1] + start.tangent[1] * (forward - 4) - start.tangent[0] * LOOP_WIDTH,
     ];
     const samples: Turnback['samples'] = [];
     for (let i = 0; i <= 48; i++) {
@@ -1381,6 +1523,10 @@ export class SnakeEngine {
     this.gameTrafficCooldown = Math.max(0, this.gameTrafficCooldown - dt);
     this.hazardClock += dt;
     this.updateHazards();
+    // The armed multiplier counts game time, not wall-clock, so pausing the
+    // run never burns the bonus.
+    if (this.pickupMultiplier > 1 && this.hazardClock >= this.multiplierUntil)
+      this.pickupMultiplier = 1;
     const input =
       typeof pedal === 'number' ? { accelerator: pedal > 0, brake: pedal < 0 } : pedal;
     const acceleration = this.mode === 'purist' ? 34 : ARCADE_ACCELERATION,
@@ -1393,6 +1539,12 @@ export class SnakeEngine {
           ((input.accelerator ? acceleration : 0) - (input.brake ? braking : 0)) * dt,
       ),
     );
+    // The classic cruise floor: releasing the pedals eases an arcade train
+    // with a consist up to its rising cruise speed (see ARCADE_RAMP_*). The
+    // brake pedal always overrides it, so precise slow driving stays possible.
+    const cruiseFloor = this.cruiseFloor();
+    if (!input.brake && cruiseFloor > this.speed)
+      this.speed = Math.min(cruiseFloor, this.speed + ARCADE_COAST_RATE * dt);
     // Transit Control's slow order overrides the pedal box.
     if (this.activeHazard?.kind === 'slow')
       this.speed = Math.min(this.speed, this.slowCapKph);
@@ -1454,11 +1606,23 @@ export class SnakeEngine {
             GAME_TRAFFIC_RESPAWN_DELAY,
           );
         }
-        this.count++;
+        // An armed bonus-section multiplier pays out several cars per pickup.
+        this.count += this.pickupMultiplier;
         this.message = t('snake.coupledStreetcarValueValueCars', {
           value1: other.car.vehicle.label,
           value2: this.count,
         });
+        // The calamity is the bonus section: coupling a car while a
+        // disruption is active arms the classic multiplier for 30 s.
+        if (this.activeHazard) {
+          this.pickupMultiplier =
+            this.random() < MULTIPLIER_RARE_CHANCE ? 3 : 2;
+          this.multiplierUntil = this.hazardClock + MULTIPLIER_SECONDS;
+          this.message = t('snake.bonusSectionPickupsWorthValueForValueSeconds', {
+            value1: this.pickupMultiplier,
+            value2: MULTIPLIER_SECONDS,
+          });
+        }
       }
       if (
         this.mode === 'arcade' &&

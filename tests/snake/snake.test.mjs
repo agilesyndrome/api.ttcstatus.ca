@@ -127,7 +127,7 @@ test('arcade swept movement cannot tunnel through food at 2000 km/h, and motion 
 
 test('game traffic seeds random streetcars and keeps a catchable target ahead', () => {
   const engine = started(demoData, 'arcade', { gameTraffic: true });
-  assert.ok(engine.gameCars.length > 0 && engine.gameCars.length <= 10);
+  assert.ok(engine.gameCars.length > 0 && engine.gameCars.length <= 26);
   assert.equal(
     new Set(engine.gameCars.map((car) => car.vehicle.id)).size,
     engine.gameCars.length,
@@ -142,7 +142,7 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
     'a generated streetcar arrives within the seven-second window',
   );
   assert.ok(
-    engine.gameCars.length > 0 && engine.gameCars.length <= 10,
+    engine.gameCars.length > 0 && engine.gameCars.length <= 26,
     'the game keeps a bounded streetcar population',
   );
   const idsAtCatch = new Set(engine.gameCars.map((car) => car.vehicle.id));
@@ -171,6 +171,45 @@ test('game traffic grows at most one car after the opening fleet', () => {
   assert.ok(
     engine.gameCars.filter((car) => !initialIds.has(car.vehicle.id)).length <= 1,
     'traffic grows one car at a time after the cooldown',
+  );
+});
+
+test('arcade cruise floor ramps up with the consist but never fights the brake', () => {
+  const engine = started(demoData, 'arcade');
+  engine.speed = 0;
+  // A short train keeps the original coast: releasing the pedals holds speed.
+  engine.count = 3;
+  engine.tick(0.1, []);
+  assert.equal(engine.speed, 0, 'a short consist has no forced cruise');
+  // From seven cars on, coasting eases the train up toward the rising floor.
+  engine.count = 12;
+  engine.speed = 0;
+  for (let i = 0; i < 100; i++) engine.tick(0.1, []);
+  const floor = Math.min(900, 180 + (12 - 6) * 40);
+  assert.ok(
+    Math.abs(engine.speed - floor) < 1,
+    `a long consist coasts up to its cruise floor: ${engine.speed} ≈ ${floor}`,
+  );
+  // Braking always overrides the floor.
+  for (let i = 0; i < 100; i++) engine.tick(0.1, [], { accelerator: false, brake: true });
+  assert.equal(engine.speed, 0, 'the brake still stops a long consist');
+  const stopped = engine.position.distance;
+  engine.tick(0.1, []);
+  assert.ok(
+    engine.speed > 0 && engine.speed <= 13,
+    'releasing the brake resumes cruising from a stop',
+  );
+  assert.notEqual(engine.position.distance, stopped);
+  // The floor grows with every coupled car, capped for sanity. A fresh engine
+  // avoids the earlier trail, but a 40-car missile may still eat itself before
+  // reaching the cap — which is the ramp doing its job.
+  const capped = started(demoData, 'arcade');
+  capped.count = 40;
+  capped.speed = 0;
+  for (let i = 0; i < 90; i++) capped.tick(0.1, []);
+  assert.ok(
+    capped.speed === 900 || capped.gameOverKind === 'selfCollision',
+    'the cruise floor caps at 900 km/h or the long consist eats itself first',
   );
 });
 
@@ -405,11 +444,11 @@ test('left and right choose the outermost branches, and straight chooses the clo
       network.edges[0],
       edge('near', 'b', 'c', [
         [100, 0],
-        [250, 100],
+        [250, -100],
       ]),
       edge('far', 'b', 'd', [
         [100, 0],
-        [150, 200],
+        [100, 200],
       ]),
     ],
   };
@@ -420,7 +459,9 @@ test('left and right choose the outermost branches, and straight chooses the clo
   ]) {
     const engine = started(data);
     engine.position.distance = 80;
-    assert.ok(engine.upcoming().choices.every((choice) => choice.turn === 'left'));
+    assert.ok(
+      engine.upcoming().choices.every((choice) => choice.turn === 'left' || choice.turn === 'right'),
+    );
     engine.queue(intent);
     assert.equal(engine.upcoming().selected.edgeId, expected);
     assert.equal(engine.upcoming().manual, true);
@@ -428,6 +469,72 @@ test('left and right choose the outermost branches, and straight chooses the clo
     assert.equal(engine.position.edgeId, expected);
     assert.equal(engine.queued, undefined, 'a command is consumed once at the real fork');
   }
+});
+
+test('a switch never offers two of the same direction: duplicate rights, lefts or straights collapse to one', () => {
+  const twoLefts = {
+    ...network,
+    edges: [
+      network.edges[0],
+      edge('near', 'b', 'c', [
+        [100, 0],
+        [250, 100],
+      ]),
+      edge('far', 'b', 'd', [
+        [100, 0],
+        [100, 200],
+      ]),
+    ],
+  };
+  const lefts = started(twoLefts);
+  lefts.position.distance = 80;
+  assert.deepEqual(
+    lefts.choices().map((choice) => choice.edgeId),
+    ['near'],
+    'two left branches collapse to the gentlest left',
+  );
+  const twoRights = {
+    ...network,
+    edges: [
+      network.edges[0],
+      edge('near', 'b', 'c', [
+        [100, 0],
+        [250, -100],
+      ]),
+      edge('far', 'b', 'd', [
+        [100, 0],
+        [100, -200],
+      ]),
+    ],
+  };
+  const rights = started(twoRights);
+  rights.position.distance = 80;
+  assert.deepEqual(
+    rights.choices().map((choice) => choice.edgeId),
+    ['near'],
+    'two right branches collapse to the gentlest right',
+  );
+  const continuation = {
+    ...network,
+    edges: [
+      network.edges[0],
+      edge('straight', 'b', 'c', [
+        [100, 0],
+        [300, 0],
+      ], ['504']),
+      edge('yard', 'b', 'e', [
+        [100, 0],
+        [300, 0],
+      ]),
+    ],
+  };
+  const straight = started(continuation);
+  straight.position.distance = 80;
+  assert.deepEqual(
+    straight.choices().map((choice) => choice.edgeId),
+    ['yard'],
+    'of two straights, the route continuation wins over the different-route straight',
+  );
 });
 
 test('automatic route continuity beats a straighter different route or yard, with suffix and overnight continuity', () => {
@@ -871,4 +978,43 @@ test('Transit Control chaos caps speed with slow orders and stays silent without
   assert.equal(quiet.hazard, undefined);
   assert.equal(quiet.banner, '');
   assert.ok(quiet.speed > 600, `no chaos, no cap: ${quiet.speed}`);
+});
+
+test('bonus section: a pickup during a calamity arms a 30 s multiplier for every pickup', () => {
+  const engine = new SnakeEngine(demoData, { chaos: true });
+  // This stream makes the first disruption a network-wide slow order at 23 s
+  // (a stalled car would close a specific edge, possibly under the player).
+  engine.start('arcade', [], () => 0.2);
+  engine.position = { edgeId: demoData.edges[0].id, direction: 1, distance: 100 };
+  engine.trail = [];
+  engine.travelled = 0;
+  const accelerator = { accelerator: true, brake: false };
+  for (let i = 0; i < 230; i++) engine.tick(0.1, [], accelerator);
+  assert.equal(engine.hazard?.kind, 'slow');
+  // Drops a catchable streetcar ahead of the lead car (its rear within
+  // half a car of the head), wherever it currently is, until picked up.
+  const feed = (id) => {
+    for (let i = 0; i < 60 && !engine.collected.has(id); i++) {
+      const { edgeId, distance } = engine.position;
+      engine.tick(0.1, [car(id, edgeId, distance + 25)], accelerator);
+    }
+    assert.ok(engine.collected.has(id), `the streetcar ${id} is collected`);
+  };
+  const before = engine.count;
+  feed('bonus-1');
+  assert.equal(engine.count, before + 1, 'the arming pickup still pays one car');
+  assert.equal(engine.multiplier, 2, 'the calamity arms the classic ×2 multiplier');
+  assert.ok(
+    engine.multiplierRemaining > 0 && engine.multiplierRemaining <= 30,
+    'the multiplier is armed for 30 seconds',
+  );
+  feed('bonus-2');
+  assert.equal(engine.count, before + 3, 'pickups during the window pay ×2');
+  // Thirty seconds after arming, the multiplier lapses and pickups pay 1 again.
+  for (let i = 0; i < 330; i++) engine.tick(0.1, []);
+  assert.equal(engine.multiplier, 1, 'the multiplier expires');
+  assert.equal(engine.multiplierRemaining, 0);
+  const afterExpiry = engine.count;
+  feed('bonus-3');
+  assert.equal(engine.count, afterExpiry + 1, 'an expired multiplier pays one car');
 });

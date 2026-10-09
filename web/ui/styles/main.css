@@ -1635,6 +1635,15 @@ select:focus-visible {
 .snake-event[data-hazard='stalled'] {
   background: #e8927c;
 }
+/* Bonus-section multiplier badge (classic-game carry-over): gold for ×2,
+   purple for the rare ×3. */
+.snake-multiplier {
+  color: #b06800;
+  font-weight: 750;
+}
+.snake-multiplier[data-multiplier='3'] {
+  color: #7c3aed;
+}
 /* Shared closure language (Snake disruptions and, later, real TTC closures):
    dashed over the closed segment with a slow pulse so it reads at any zoom. */
 .track-closures polyline {
@@ -1689,24 +1698,41 @@ select:focus-visible {
   bottom: calc(95px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  max-width: calc(100% - 24px);
+  width: min(390px, calc(100% - 24px));
+  padding: 9px;
+  border-radius: 14px;
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 0.26);
   text-align: center;
 }
+.snake-switches small {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  color: #c8ccd2;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
 .snake-switches > div {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   max-width: 100%;
-  overflow: auto;
-  padding: 4px;
-  background: var(--surface);
-  border-radius: 8px;
 }
 .snake-switches button {
   min-height: 44px;
-  min-width: 70px;
-  padding: 6px 10px;
+  min-width: 0;
+  padding: 8px 5px;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  background: #2a2e34;
+  touch-action: none;
 }
 .snake-pedals {
   position: absolute;
@@ -1835,11 +1861,32 @@ select:focus-visible {
 }
 .snake-switches button[data-selection='automatic'] {
   border: 2px dashed #087f5b;
-  background: var(--soft);
+  background: #2a2e34;
+  color: #fff;
 }
 .snake-switches button[data-selection='manual'] {
-  border: 2px solid #087f5b;
-  background: var(--soft);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #087f5b;
+  color: #fff;
+}
+/* Classic parked-streetcar "food": a soft pulsing halo makes waiting cars
+   readable at any zoom without shouting over the track work. */
+.snake-food-halo {
+  fill: rgba(255, 255, 252, 0.6);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: snake-food-pulse 1.6s ease-in-out infinite;
+}
+@keyframes snake-food-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.3);
+  }
 }
 
 .language-settings {

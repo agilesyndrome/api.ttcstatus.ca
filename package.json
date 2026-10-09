@@ -42,6 +42,7 @@
     "map:regenerate:local": "node scripts/operations/regenerate-map.mjs --local",
     "map:tag": "node scripts/operations/tag-map.mjs",
     "test:snake": "node scripts/checks/check-snake.mjs",
+    "test:snake:intersections": "node scripts/checks/check-snake-intersections.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

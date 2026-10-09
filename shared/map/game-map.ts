@@ -399,6 +399,18 @@ const BARN_ACCESS: BarnAccess[] = [
   },
 ];
 
+/** Arcade switch labels need one scannable word per branch ("Bathurst",
+ * "Humber Loop"), not the explorer's descriptive infrastructure sentences
+ * ("Bathurst physical connection to St Clair"). */
+function shortGameName(name: string): string {
+  return name
+    .replace(/\s+(mapped\s+)?physical.*$/i, '')
+    .replace(/\s+diversion\s+track$/i, '')
+    .replace(/\s+terminal\s+loop$/i, ' Loop')
+    .replace(/\s+(avenue|street|tunnel)$/i, '')
+    .trim();
+}
+
 function localGpsPoint(latitude: number, longitude: number, data: ViewerData): Point {
   const p = data.geographicTransform.projection;
   return [
@@ -459,6 +471,9 @@ function addBarnAccess(data: ViewerData): number {
     }
 
     const terminalNode = `snake:barn:${barn.id}`;
+    // One short word per branch: the switch reads "Roncesvalles", not a
+    // generated sentence about game access tracks.
+    const accessInfrastructure = `snake:barn-access:${barn.id}`;
     const approach: Point = [(anchor[0] + point[0]) / 2, (anchor[1] + point[1]) / 2];
     const branch = gameGeometry(
       {
@@ -466,7 +481,7 @@ function addBarnAccess(data: ViewerData): number {
         a: node,
         b: terminalNode,
         routeIds: hit.edge.routeIds.slice(),
-        infrastructureIds: ['snake:barn-access'],
+        infrastructureIds: [accessInfrastructure],
       } as Edge,
       [anchor, approach, point],
       data,
@@ -484,10 +499,10 @@ function addBarnAccess(data: ViewerData): number {
       destinations: {},
       replacementRouteIds: [],
     });
-    if (!data.infrastructure.some((item) => item.id === 'snake:barn-access'))
+    if (!data.infrastructure.some((item) => item.id === accessInfrastructure))
       data.infrastructure.push({
-        id: 'snake:barn-access',
-        name: 'Simple game access to TTC barns',
+        id: accessInfrastructure,
+        name: barn.name.split(/\s+/)[0],
       });
     added++;
   }
@@ -575,6 +590,12 @@ export interface SnakeMap {
 export function buildSnakeMap(input: ViewerData): SnakeMap {
   const data = structuredClone(input);
   clearFeatureAttachments(data);
+  // Switch labels name the branch in a word or two; the explorer's long
+  // descriptive infrastructure sentences stay in the explorer bundle only.
+  data.infrastructure = data.infrastructure.map((item) => ({
+    ...item,
+    name: shortGameName(item.name),
+  }));
   // Some decorative terminal labels are approximate. Prefer the actual named
   // boarding record before simplifying its loop (not a nearby unrelated rail).
   // Matches are measured in true source metres, not warped display space, and
