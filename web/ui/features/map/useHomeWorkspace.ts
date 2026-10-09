@@ -339,7 +339,18 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
     if (stations.length) {
-      setFocusBounds(boundsOf([here, ...stations], 120));
+      // Frame exactly this position and the two nearest stations. Padding
+      // grows with the span (15%, at least 10 map units ≈ 140 m) instead of
+      // a fixed inset, so the zoom answers "which stations are closest to
+      // me" at any station density without pulling in the wider network.
+      const box = boundsOf([here, ...stations], 0);
+      const pad = Math.max(10, 0.15 * Math.max(box.width, box.height));
+      setFocusBounds({
+        x: box.x - pad,
+        y: box.y - pad,
+        width: box.width + 2 * pad,
+        height: box.height + 2 * pad,
+      });
     } else {
       setFocusBounds(undefined);
       setResetKey((key) => key + 1);
