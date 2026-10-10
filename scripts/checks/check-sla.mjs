@@ -58,6 +58,11 @@ try {
     assert.match(headline, /met the SLA/);
     await page.locator('.sla-banner__metric').waitFor();
 
+    // The beta warning is on the page, ahead of the report.
+    const betaWarning = await page.locator('.sla-beta-warning').innerText();
+    assert.match(betaWarning, /Beta/i);
+    assert.match(betaWarning, /may not be accurate/i);
+
     // Route rows: every fixture route, in numeric order.
     const numbers = await page.locator('.sla-route__number').allInnerTexts();
     assert.deepEqual(

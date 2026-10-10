@@ -2136,6 +2136,16 @@ select:focus-visible {
 .sla-empty {
   color: var(--muted);
 }
+.sla-beta-warning {
+  margin: 0 0 16px;
+  padding: 8px 14px;
+  border: 1px solid #e0a63c;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
 .sla-banner {
   border: 1px solid var(--border);
   border-left-width: 6px;

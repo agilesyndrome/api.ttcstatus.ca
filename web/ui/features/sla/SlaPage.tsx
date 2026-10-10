@@ -55,6 +55,9 @@ export function SlaPage() {
       </header>
       <main className="sla-page">
         <h1>{t('sla.reportTitle')}</h1>
+        <p className="sla-beta-warning" role="note">
+          {t('sla.betaWarning')}
+        </p>
         {failed && <p className="sla-failed">{t('sla.reportFailed')}</p>}
         {!failed && !report && <p className="sla-loading">{t('sla.noDataYet')}</p>}
         {!failed && report && (

@@ -1099,6 +1099,7 @@
   "sla.bannerAllMet": "All {value1} routes met the SLA on {value2}",
   "sla.bannerCollecting": "Collecting — the first full days of delivered service are still being recorded.",
   "sla.bannerSomeMet": "{value1} of {value2} routes met the SLA on {value3}",
+  "sla.betaWarning": "Beta — SLA data may not be accurate",
   "sla.dataThrough": "Data through {value1}",
   "sla.filterNoMatches": "Nothing matches that filter.",
   "sla.filterRoutesAndStops": "Filter routes and stops…",

@@ -429,6 +429,7 @@
   "sla.bannerAllMet": "Les {value1} lignes ont respecté l’engagement de service le {value2}",
   "sla.bannerCollecting": "Collecte en cours — les premières journées complètes de service livré sont encore en cours d’enregistrement.",
   "sla.bannerSomeMet": "{value1} des {value2} lignes ont respecté l’engagement de service le {value3}",
+  "sla.betaWarning": "Bêta — les données SLA peuvent être inexactes",
   "sla.dataThrough": "Données jusqu’au {value1}",
   "sla.filterNoMatches": "Aucun résultat pour ce filtre.",
   "sla.filterRoutesAndStops": "Filtrer les lignes et les arrêts…",
