@@ -229,11 +229,16 @@ export interface SlaEntitySummary {
 }
 
 /** The published schedule promise, as compact hour bands (the schedule is
- * banded; the page states it in words, it does not draw a second chart). */
+ * banded; the page states it in words, it does not draw a second chart).
+ * Each class scores and displays on its own: weekends and holidays are
+ * judged against the schedules the TTC publishes for them. */
 export interface SlaPublishedSchedule {
   weekday: ScheduledBand[] | null;
   saturday: ScheduledBand[] | null;
   sunday: ScheduledBand[] | null;
+  /** Present only when the feed publishes a distinct holiday schedule
+   * (e.g., the Thanksgiving Monday class). */
+  holiday: ScheduledBand[] | null;
 }
 
 export interface SlaRouteReport {

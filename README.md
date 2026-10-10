@@ -247,11 +247,16 @@ tables: `ETag` / `If-None-Match` with a ~5-minute edge cache, CORS, and an
 honest "collecting" payload on a fresh deploy — never a fabricated green.
 
 - `/api/v1/sla/report` — per streetcar route: the published schedule (the
-  SLA the TTC indicates, compacted into hour bands), the current status, the
-  overall compliance, and one tick per recorded day and week. Each tick is
-  green (≥ met threshold), yellow, red, or hollow no-data; today's tick is
-  marked partial ("so far"). `?route=` adds that route's directional stops
-  with their own strips.
+  SLA the TTC indicates, compacted into hour bands **on the TTC's advertised
+  5-minute grid — floored at 10 minutes; they never advertise better**), the
+  current status, the overall compliance, and one tick per recorded day and
+  week. Each tick is green (≥ met threshold), yellow, red, or hollow
+  no-data; today's tick is marked partial ("so far"). `?route=` adds that
+  route's directional stops with their own strips.
+- **Weekends and holidays score against their own published schedules** —
+  every date folds against its exact calendar class (weekday, Saturday,
+  Sunday, and the holiday class the feed publishes, e.g. Thanksgiving), and
+  the page renders one schedule line per distinct class.
 - Compliance is time-weighted: the share of monitored wait time within the
   scheduled headway × tolerance, estimated from mergeable gamma moments and
   labelled an approximation everywhere. Hours with no scheduled service carry

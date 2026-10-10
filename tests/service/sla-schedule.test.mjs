@@ -172,22 +172,24 @@ test('the schedule the TTC publishes becomes the promise, per class', async () =
   assert.equal(stopA.headways['5'][10], 900);
   assert.equal(stopA.headways['2'][8], null);
 
-  // Stop B: weekday 5-minute headways (08:00, 08:05, 08:10 → band 8 = 300).
+  // Stop B: real 5-minute headways (08:00, 08:05, 08:10) publish as the
+  // advertised 10-minute promise — the TTC never advertises better than 10.
   const stopB = targets.stops.find((stop) => stop.stopId === 'st_b');
   assert.ok(stopB, 'stop B present');
-  assert.equal(stopB.headways['1'][8], 300);
+  assert.equal(stopB.headways['1'][8], 600);
   assert.equal(stopB.headways['2'], undefined);
 
   // The 506's own published promise is the median across its stops of ITS OWN
-  // departures: hour 8 weekday = median(600, 300) = 450 — and hour 20 is
-  // null, because the 506's own weekday service ends long before 20:00.
+  // departures, on the advertised grid: hour 8 weekday = median(600, 600) =
+  // 600 — and hour 20 is null, because the 506's own weekday service ends
+  // long before 20:00.
   const route = targets.routes.find((entry) => entry.routeId === '506');
   assert.ok(route, 'route present');
   assert.equal(route.number, '506');
   assert.equal(route.name, 'Carlton');
   assert.equal(route.overnight, false);
   assert.deepEqual(route.stopIds, ['st_a', 'st_b']);
-  assert.equal(route.headways['1'][8], 450);
+  assert.equal(route.headways['1'][8], 600);
   assert.equal(route.headways['1'][20], null);
   assert.equal(route.headways['2'][9], 1200);
 

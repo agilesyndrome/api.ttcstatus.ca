@@ -126,6 +126,18 @@ export function slaBandFor(
 // Scheduled headway derivation from GTFS departures (Epic 8, story E8S1)
 // ---------------------------------------------------------------------------
 
+/** The TTC's advertised grid (user steer, 2026-10-10; recorded in sla.md §9):
+ * headways publish as multiples of five minutes from ten upward — the TTC
+ * never advertises better than 10 minutes, even where the schedule offers
+ * it. A 5-minute corridor publishes "every 10 min"; 8–12 publishes 10,
+ * 13–17 publishes 15, 18–22 publishes 20. Scoring uses the same advertised
+ * target, so the published promise and θ can never disagree. */
+export function advertisedHeadwaySeconds(scheduledSeconds: number): number {
+  const minutes = scheduledSeconds / 60;
+  if (!(minutes > 0)) return scheduledSeconds;
+  return Math.max(10, Math.round(minutes / 5) * 5) * 60;
+}
+
 /** Scheduled headway per hour-of-day band, from one service class's pooled
  * departure times (seconds since noon-minus-12h, GTFS convention — values may
  * exceed 24 h for overnight trips; hour 25 is next day's hour 1).
@@ -134,7 +146,9 @@ export function slaBandFor(
  * band's promise is "a car came at h:mm — the next is scheduled θ later."
  * Hours with no scheduled departures carry no promise and report null.
  * Gaps are rounded to whole seconds for determinism; medians (not means)
- * because one inserted tripper must not move a corridor's published promise. */
+ * because one inserted tripper must not move a corridor's published promise;
+ * and the median lands on the advertised grid (see above), because the
+ * promise we publish is the promise the TTC itself advertises. */
 export function hourlyScheduledHeadways(
   departureSeconds: number[],
 ): Array<number | null> {
@@ -148,7 +162,7 @@ export function hourlyScheduledHeadways(
   }
   return byBand.map((gaps) => {
     const value = median(gaps);
-    return value === null ? null : Math.round(value);
+    return value === null ? null : advertisedHeadwaySeconds(value);
   });
 }
 
@@ -170,7 +184,14 @@ export function scheduledBands(
     const headway = hourly[hour];
     if (headway === null || headway <= 0) continue;
     const previous = bands.at(-1);
-    if (previous && Math.abs(previous.headwaySeconds - headway) <= toleranceSeconds) {
+    // Extend only across ADJACENT hours with a (near-)equal promise — the
+    // advertised grid makes equal values common, and merging across a
+    // service gap would claim service the schedule does not publish.
+    if (
+      previous &&
+      previous.toHour === hour &&
+      Math.abs(previous.headwaySeconds - headway) <= toleranceSeconds
+    ) {
       previous.toHour = hour + 1;
     } else {
       bands.push({ fromHour: hour, toHour: hour + 1, headwaySeconds: headway });

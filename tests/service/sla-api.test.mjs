@@ -217,11 +217,16 @@ test('the report serves precomputed rows only, with the /service family conventi
   assert.equal(route506.name, 'Carlton');
   assert.equal(route506.overnight, false);
 
-  // The published schedule compacted into bands — the SLA the TTC indicates.
+  // The published schedule compacted into bands — the SLA the TTC indicates,
+  // on the advertised grid (the 5-minute band is quantized to 10 at serve time).
   assert.deepEqual(route506.published.weekday, [
-    { fromHour: 6, toHour: 7, headwaySeconds: 300 },
+    { fromHour: 6, toHour: 7, headwaySeconds: 600 },
     { fromHour: 19, toHour: 20, headwaySeconds: 600 },
   ]);
+  // No holiday class in the seeded feed: a holiday is a date whose class
+  // differs from the most recent same-weekday date's, and the seed has one
+  // date per weekday — so the holiday line is honestly absent.
+  assert.equal(route506.published.holiday, null);
 
   // Ticks: exactly the segments with data; a no-data day carries null
   // compliance, never a fabricated number.

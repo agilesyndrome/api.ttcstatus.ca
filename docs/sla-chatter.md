@@ -789,3 +789,42 @@ cadence env (CLOUDFLARE_INCLUDE_PROCESS_ENV=false,
 REALTIME_UPDATE_SECONDS=30) — the E7S5 lesson applied. Both `/sla` pages
 serve; the fold refreshes today's partial at every :41 cron (triggerable
 immediately via `curl 'http://localhost:8787/__scheduled?cron=41+*+*+*+*'`).
+
+### 2026-10-10 — Epic 8 amendment: the advertised grid + class-visible
+
+### schedules (user steer)
+
+Two steers, both shipped same-session and verified against the real feed:
+
+1. **"Do SLA pages understand weekend and holidays?"** — the scoring always
+   has (every date folds against its exact calendar class; Thanksgiving
+   Oct 12 has its own class '5' in the seeded schedule). What was missing
+   was VISIBILITY: the published line rendered only the weekday bands. Now
+   the endpoint serves weekday / Saturday / Sunday / holiday bands
+   (holidays detected as dates whose class differs from the most recent
+   same-weekday date's), the page renders one line per distinct class,
+   and identical class lines collapse into one labelled group — the 506
+   reads "Weekday / Saturday / Holiday: every 10 min (…) · Sunday: every
+   10 min (…)" and its genuinely-later Sunday start stays visible.
+2. **The advertised 5-minute grid, floored at 10** — targets publish and
+   score at the TTC's advertised granularity: 8–12 min is "10", 13–17 is
+   "15", and nothing ever advertises better than 10 minutes even where
+   the schedule offers it (a 5-min corridor publishes 10). Implemented
+   as `advertisedHeadwaySeconds` in sla-metrics, applied at derivation
+   AND at both read paths (the fold's θ and the endpoint's published
+   bands), so legacy pre-grid rows score identically to fresh ones and
+   display can never disagree with θ.
+
+The grid change exposed a real display bug: `scheduledBands` merged
+equal-value bands across service gaps (the 506's 0:00–3:00 and 4:00–24:00
+runs merged into one all-day band claiming 3:00–4:00 service). Fixed with
+an adjacency check and pinned by a hand-derived test.
+
+Local stack re-synced: re-derived the real feed through the quantizer
+(506 weekday = "every 10 min (0:00–3:00) · every 10 min (4:00–24:00)",
+306 = "10 / 15 / 20 min overnight"), re-seeded local D1, refreshed today's
+partial through the fold (overall compliance moved 73.0% → 78.2% under
+the advertised 10-min × 1.5 rule — the honest consequence of a floor at
+10). Suite 306/306 (+2 tests: the quantizer grid, the non-adjacent-merge
+pin); board 9/9; check-sla PASS; both LAN stacks re-verified with zero
+console errors.

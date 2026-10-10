@@ -233,13 +233,16 @@ function previewSlaReport(math, routeFilter) {
       overnight: false,
       seed: 0,
       published: {
+        // Advertised-grid numbers (the TTC's 5-minute grid, floored at 10),
+        // with a holiday class so the dev fixture renders every class line.
         weekday: [
-          { fromHour: 5, toHour: 6, headwaySeconds: 600 },
-          { fromHour: 6, toHour: 21, headwaySeconds: 300 },
-          { fromHour: 21, toHour: 24, headwaySeconds: 420 },
+          { fromHour: 5, toHour: 6, headwaySeconds: 900 },
+          { fromHour: 6, toHour: 21, headwaySeconds: 600 },
+          { fromHour: 21, toHour: 24, headwaySeconds: 900 },
         ],
-        saturday: [{ fromHour: 6, toHour: 23, headwaySeconds: 480 }],
-        sunday: [{ fromHour: 6, toHour: 23, headwaySeconds: 540 }],
+        saturday: [{ fromHour: 6, toHour: 23, headwaySeconds: 900 }],
+        sunday: [{ fromHour: 6, toHour: 23, headwaySeconds: 900 }],
+        holiday: [{ fromHour: 10, toHour: 14, headwaySeconds: 900 }],
       },
     },
     {
@@ -249,9 +252,10 @@ function previewSlaReport(math, routeFilter) {
       overnight: false,
       seed: 1,
       published: {
-        weekday: [{ fromHour: 5, toHour: 24, headwaySeconds: 330 }],
-        saturday: [{ fromHour: 6, toHour: 24, headwaySeconds: 420 }],
+        weekday: [{ fromHour: 5, toHour: 24, headwaySeconds: 600 }],
+        saturday: [{ fromHour: 6, toHour: 24, headwaySeconds: 900 }],
         sunday: null,
+        holiday: null,
       },
     },
     {
@@ -264,6 +268,7 @@ function previewSlaReport(math, routeFilter) {
         weekday: [{ fromHour: 20, toHour: 24, headwaySeconds: 900 }],
         saturday: null,
         sunday: null,
+        holiday: null,
       },
     },
   ];

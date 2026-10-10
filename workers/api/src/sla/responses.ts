@@ -27,7 +27,11 @@ import type {
   SlaTick,
 } from '../../../../shared/service/contracts';
 import type { ScheduledBand } from '../../../../shared/service/sla-metrics';
-import { scheduledBands, slaBandFor } from '../../../../shared/service/sla-metrics';
+import {
+  advertisedHeadwaySeconds,
+  scheduledBands,
+  slaBandFor,
+} from '../../../../shared/service/sla-metrics';
 import { SOURCE_KEY } from '../sync/sync-common';
 
 const REPORT_CACHE_SECONDS = 300;
@@ -197,8 +201,17 @@ async function loadRouteMetadata(
   let weekdayClass: string | null = null;
   let saturdayClass: string | null = null;
   let sundayClass: string | null = null;
+  let holidayClass: string | null = null;
+  // A holiday is a date whose class differs from the most recent same-weekday
+  // date's class — Thanksgiving Monday against the Mondays around it. This
+  // catches holidays on any weekday and never fires on school-day layers
+  // (they leave the streetcar class untouched).
+  const lastClassByWeekday: Array<string | null> = Array.from({ length: 7 }, () => null);
   for (const entry of dates) {
     const weekday = new Date(`${entry.date_key}T00:00:00Z`).getUTCDay();
+    const expected = lastClassByWeekday[weekday];
+    if (expected !== null && entry.class_key !== expected) holidayClass = entry.class_key;
+    lastClassByWeekday[weekday] = entry.class_key;
     if (weekday === 3) weekdayClass = entry.class_key;
     if (weekday === 6) saturdayClass = entry.class_key;
     if (weekday === 0) sundayClass = entry.class_key;
@@ -236,8 +249,16 @@ async function loadRouteMetadata(
       string,
       Array<number | null>
     >;
-    const bandsFor = (classKey: string | null): ScheduledBand[] | null =>
-      classKey && headways[classKey] ? scheduledBands(headways[classKey]) : null;
+    const bandsFor = (classKey: string | null): ScheduledBand[] | null => {
+      if (!classKey || !headways[classKey]) return null;
+      // Published on the TTC's advertised grid (5-minute multiples, floored
+      // at 10) — quantized at read time so legacy pre-grid rows publish
+      // exactly like freshly derived ones.
+      const quantized = headways[classKey].map((value) =>
+        value === null ? null : advertisedHeadwaySeconds(value),
+      );
+      return scheduledBands(quantized);
+    };
     map.set(route.route_id, {
       number: route.number,
       name: route.name,
@@ -247,6 +268,7 @@ async function loadRouteMetadata(
         weekday: bandsFor(weekdayClass),
         saturday: bandsFor(saturdayClass),
         sunday: bandsFor(sundayClass),
+        holiday: bandsFor(holidayClass),
       },
     });
   }

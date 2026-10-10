@@ -33,6 +33,7 @@ import {
   torontoDayKey,
   torontoDayStartMs,
   torontoWeekKey,
+  advertisedHeadwaySeconds,
   type SlaComplianceParts,
 } from '../../../../shared/service/sla-metrics';
 
@@ -343,7 +344,11 @@ async function foldDay(
       const wallHour = Math.floor((groupStart + offsets.at(groupStart)) / 3_600_000) % 24;
       const scheduled = bands[wallHour];
       if (scheduled === null || scheduled === undefined || scheduled <= 0) continue;
-      const threshold = slaThresholdSeconds(scheduled, tolerance);
+      // θ is the ADVERTISED target (the TTC's 5-minute grid, floored at 10) —
+      // the same number the page publishes, quantized here so legacy
+      // pre-grid rows score identically to freshly derived ones.
+      const advertised = advertisedHeadwaySeconds(scheduled);
+      const threshold = slaThresholdSeconds(advertised, tolerance);
       const part = slaComplianceParts(
         { n: group.n, sum: group.sum, sumSq: group.sumSq },
         threshold,

@@ -70,11 +70,15 @@ try {
       report.routes.map((route) => route.number),
     );
 
-    // The published schedule line states the TTC's own promise.
+    // The published schedule line states the TTC's own promise, per calendar
+    // class — weekends and holidays visible in the rendering itself. Classes
+    // that publish identical bands share one label group ("Saturday / Sunday").
     const published = await page
       .locator('.sla-route[data-route="506"] .sla-route__published')
       .innerText();
-    assert.match(published, /every ~\d+ min/);
+    assert.match(published, /Weekday( \/ [A-Za-z]+)*: every \d+ min/);
+    assert.match(published, /Saturday( \/ [A-Za-z]+)*: every \d+ min/);
+    assert.match(published, /Holiday: every \d+ min/);
 
     // Daily strips: exactly the recorded segments, one box each, with an
     // accessible label for every box.

@@ -1,7 +1,14 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import type { SlaRouteReport } from '../../../../shared/service/contracts';
-import { formatPercent, publishedFragments } from './sla-view';
+import { formatPercent, publishedClasses, type PublishedClass } from './sla-view';
+
+const PUBLISHED_CLASS_LABELS: Record<PublishedClass, string> = {
+  weekday: 'sla.publishedWeekday',
+  saturday: 'sla.publishedSaturday',
+  sunday: 'sla.publishedSunday',
+  holiday: 'sla.publishedHoliday',
+};
 import { useSlaStops } from './useSlaReport';
 import { SlaTickStrip } from './SlaTickStrip';
 import { SlaStopRow } from './SlaStopRow';
@@ -35,18 +42,35 @@ export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props)
           : 'sla.routeStatusMissed';
   const bandClass = route.overall.latestBand ?? 'no-data';
 
-  const fragments = publishedFragments(route.published, ['weekday']);
-  const publishedText = fragments
-    ? fragments
-        .map((fragment) =>
-          t('sla.publishedEvery', {
-            value1: fragment.minutes,
-            value2: fragment.from,
-            value3: fragment.to,
-          }),
-        )
-        .join(' · ')
-    : t('sla.publishedNoSchedule');
+  const publishedGroups = publishedClasses(route.published);
+  // Group the class lines by their rendered text: with the advertised grid,
+  // most routes publish the same promise for every class — one unlabeled line
+  // reads cleaner than four identical labelled ones. Differing classes keep
+  // their labels, so weekend and holiday schedules stay visible when they
+  // actually differ.
+  const byText = new Map<string, string[]>();
+  for (const group of publishedGroups) {
+    const text = group.bands
+      .map((fragment) =>
+        t('sla.publishedEvery', {
+          value1: fragment.minutes,
+          value2: fragment.from,
+          value3: fragment.to,
+        }),
+      )
+      .join(' · ');
+    const labels = byText.get(text) ?? [];
+    labels.push(t(PUBLISHED_CLASS_LABELS[group.class]));
+    byText.set(text, labels);
+  }
+  const publishedText =
+    publishedGroups.length === 0
+      ? t('sla.publishedNoSchedule')
+      : byText.size === 1
+        ? [...byText.keys()][0]
+        : [...byText.entries()]
+            .map(([text, labels]) => `${labels.join(' / ')}: ${text}`)
+            .join(' · ');
 
   const visibleStops = (stops ?? []).filter((stop) => {
     const text = `${stop.name} ${stop.headsign}`.toLowerCase();

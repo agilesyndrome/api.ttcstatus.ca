@@ -46,32 +46,50 @@ export function formatDurationShort(seconds: number): string {
   return `${Math.round(minutes)} min`;
 }
 
-function hourLabel(hour: number): string {
-  return `${hour}:00`;
-}
-
-/** The published schedule as display fragments: contiguous bands of
- * (minutes, from, to) — the component composes them with
- * t('sla.publishedEvery') and joins with ' · '. Null when the feed publishes
- * nothing for the class. */
+/** One band of a compacted published schedule, as display fragments. */
 export interface PublishedBandFragment {
   minutes: number;
   from: string;
   to: string;
 }
 
-export function publishedFragments(
+function hourLabel(hour: number): string {
+  return `${hour}:00`;
+}
+
+/** The published schedule as display fragments per calendar class: contiguous
+ * bands of (minutes, from, to) — the component composes each class with its
+ * label and t('sla.publishedEvery'), and joins bands and classes with ' · '.
+ * The class list answers "does the page understand weekends and holidays?"
+ * in the rendering itself: a route shows the lines its schedule publishes. */
+export type PublishedClass = 'weekday' | 'saturday' | 'sunday' | 'holiday';
+
+export interface PublishedClassFragments {
+  class: PublishedClass;
+  bands: PublishedBandFragment[];
+}
+
+const PUBLISHED_CLASS_ORDER: readonly PublishedClass[] = [
+  'weekday',
+  'saturday',
+  'sunday',
+  'holiday',
+];
+
+export function publishedClasses(
   schedule: SlaPublishedSchedule | null,
-  classes: Array<'weekday' | 'saturday' | 'sunday'> = ['weekday'],
-): PublishedBandFragment[] | null {
-  if (!schedule) return null;
-  const fragments: PublishedBandFragment[] = [];
-  for (const key of classes) {
+): PublishedClassFragments[] {
+  if (!schedule) return [];
+  const out: PublishedClassFragments[] = [];
+  for (const key of PUBLISHED_CLASS_ORDER) {
     const bands = schedule[key];
-    if (!bands) continue;
-    for (const band of bands) fragments.push(bandToFragments(band));
+    if (!bands || bands.length === 0) continue;
+    out.push({
+      class: key,
+      bands: bands.map(bandToFragments),
+    });
   }
-  return fragments.length > 0 ? fragments : null;
+  return out;
 }
 
 function bandToFragments(band: ScheduledBand): PublishedBandFragment {

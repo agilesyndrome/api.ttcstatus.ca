@@ -13,6 +13,7 @@ const {
   slaBandFor,
   hourlyScheduledHeadways,
   scheduledBands,
+  advertisedHeadwaySeconds,
   torontoDayKey,
   torontoDayStartMs,
   torontoWeekKey,
@@ -25,6 +26,7 @@ const {
     slaBandFor,
     hourlyScheduledHeadways,
     scheduledBands,
+    advertisedHeadwaySeconds,
     torontoDayKey,
     torontoDayStartMs,
     torontoWeekKey,
@@ -120,9 +122,25 @@ test('hourly scheduled headways: overnight trips fold into the next day hour', (
 
 test('hourly scheduled headways use the median, so one tripper cannot move the promise', () => {
   // Departures 08:00, 08:05, 08:10, 08:15, 08:30 → gaps 300, 300, 300, 900
-  // (an inserted school tripper). Median 300, not the mean 450.
+  // (an inserted school tripper). Median 300 — and the advertised floor
+  // lifts it to the 10-minute promise the TTC would publish for it.
   const bands = hourlyScheduledHeadways([28_800, 29_100, 29_400, 29_700, 30_600]);
-  assert.equal(bands[8], 300);
+  assert.equal(bands[8], 600);
+});
+
+test("targets publish on the TTC's advertised 5-minute grid, floored at 10", () => {
+  // The TTC never advertises better than 10 minutes, even where the schedule
+  // offers it: 8–12 publishes 10, 13–17 publishes 15, 18–22 publishes 20.
+  assert.equal(advertisedHeadwaySeconds(300), 600); // 5 min → 10
+  assert.equal(advertisedHeadwaySeconds(480), 600); // 8 min → 10
+  assert.equal(advertisedHeadwaySeconds(570), 600); // 9.5 min → 10
+  assert.equal(advertisedHeadwaySeconds(660), 600); // 11 min → 10
+  assert.equal(advertisedHeadwaySeconds(720), 600); // 12 min → 10
+  assert.equal(advertisedHeadwaySeconds(780), 900); // 13 min → 15
+  assert.equal(advertisedHeadwaySeconds(900), 900); // 15 min stays 15
+  assert.equal(advertisedHeadwaySeconds(1020), 900); // 17 min → 15
+  assert.equal(advertisedHeadwaySeconds(1080), 1200); // 18 min → 20
+  assert.equal(advertisedHeadwaySeconds(1800), 1800); // 30 min stays 30
 });
 
 test('scheduled bands merge adjacent hours into published runs', () => {
@@ -137,6 +155,20 @@ test('scheduled bands merge adjacent hours into published runs', () => {
     { fromHour: 8, toHour: 10, headwaySeconds: 900 },
   ]);
   assert.deepEqual(scheduledBands(Array.from({ length: 24 }, () => null)), []);
+  // Equal advertised values must NOT merge across a service gap: the 506's
+  // real weekday grid runs 0:00–3:00 and 4:00–24:00 with a dead third hour —
+  // two honest bands, never one all-day band claiming 3:00–4:00 service.
+  const withGap = Array.from({ length: 24 }, () => null);
+  withGap[0] = 600;
+  withGap[1] = 600;
+  withGap[2] = 600;
+  withGap[4] = 600;
+  withGap[23] = 600;
+  assert.deepEqual(scheduledBands(withGap), [
+    { fromHour: 0, toHour: 3, headwaySeconds: 600 },
+    { fromHour: 4, toHour: 5, headwaySeconds: 600 },
+    { fromHour: 23, toHour: 24, headwaySeconds: 600 },
+  ]);
 });
 
 test('Toronto day keys: DST-safe boundaries in both directions', () => {
