@@ -47,7 +47,7 @@ export const UnreportedStreetcar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(canvas.getByRole('searchbox'), '4663');
-    await expect(canvas.getByText(/No matching stops or streetcars/)).toBeVisible();
+    await expect(canvas.getByText(/No matching stops or vehicles/)).toBeVisible();
   },
 };
 export const StaleStreetcar: Story = {
