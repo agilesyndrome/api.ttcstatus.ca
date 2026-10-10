@@ -218,6 +218,20 @@ export function torontoDayKey(epochMs: number): string {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+/** The Toronto wall-clock hour (0–23) containing this instant — the live
+ * segment's θ lookup: a 5-minute live bucket is judged against the hour it
+ * ends in, exactly like the fold does. */
+const TORONTO_HOUR_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Toronto',
+  hour: 'numeric',
+  hour12: false,
+});
+
+export function torontoWallHour(epochMs: number): number {
+  const hour = Number(TORONTO_HOUR_FORMATTER.format(new Date(epochMs)));
+  return ((hour % 24) + 24) % 24;
+}
+
 /** The epoch-ms instant Toronto's wall clock hit 00:00 on this day. Converges
  * with hourly steps so DST folds (23 h / 25 h days) land on the true boundary;
  * the 02:00 shift never touches midnight, so the loop is short. */

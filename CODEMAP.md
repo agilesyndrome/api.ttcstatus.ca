@@ -74,8 +74,12 @@ stylesheet.
 
 `features/sla/` is the non-map SLA status page: `useSlaReport.ts` (one cached
 fetch per session, plus the per-route stop detail), the pure view helpers in
-`sla-view.ts`, and the tick-strip components. Every number comes from
-`GET /api/v1/sla/report`; the page never computes or polls.
+`sla-view.ts`, and the tick-strip components. Every daily/weekly number comes
+from `GET /api/v1/sla/report`; the page never computes or polls. The live
+tier (`sla-live.ts` + `useSlaLive.ts`) polls the recorder's existing
+`/service/stops` (30 s) and `/service/wave` (5 min) surfaces and renders the
+last 30 minutes as thin 5-minute slivers at each strip's right edge — the
+sliver math runs in the browser, never at request time.
 
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
 selection focus, gestures and camera controls. `TrackLayer.tsx` renders fixed

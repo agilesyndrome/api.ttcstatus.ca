@@ -31,6 +31,7 @@ import {
   advertisedHeadwaySeconds,
   scheduledBands,
   slaBandFor,
+  torontoDayKey,
 } from '../../../../shared/service/sla-metrics';
 import { SOURCE_KEY } from '../sync/sync-common';
 
@@ -180,8 +181,8 @@ async function loadRows(
 async function loadRouteMetadata(
   db: D1Database,
   versionId: number,
-): Promise<
-  Map<
+): Promise<{
+  routes: Map<
     string,
     {
       number: string;
@@ -189,15 +190,18 @@ async function loadRouteMetadata(
       overnight: boolean;
       stopIds: string[];
       published: SlaPublishedSchedule;
+      todayHeadways: Array<number | null> | null;
     }
-  >
-> {
+  >;
+  todayClass: string | null;
+}> {
   const dates = (
     await db
       .prepare(`SELECT date_key, class_key FROM sla_schedule_dates WHERE version_id = ?`)
       .bind(versionId)
       .all<{ date_key: string; class_key: string }>()
   ).results;
+  const datesByKey = new Map(dates.map((entry) => [entry.date_key, entry.class_key]));
   let weekdayClass: string | null = null;
   let saturdayClass: string | null = null;
   let sundayClass: string | null = null;
@@ -216,6 +220,7 @@ async function loadRouteMetadata(
     if (weekday === 6) saturdayClass = entry.class_key;
     if (weekday === 0) sundayClass = entry.class_key;
   }
+  const todayClass = datesByKey.get(torontoDayKey(Date.now())) ?? null;
 
   const routes = (
     await db
@@ -242,6 +247,7 @@ async function loadRouteMetadata(
       overnight: boolean;
       stopIds: string[];
       published: SlaPublishedSchedule;
+      todayHeadways: Array<number | null> | null;
     }
   >();
   for (const route of routes) {
@@ -270,9 +276,10 @@ async function loadRouteMetadata(
         sunday: bandsFor(sundayClass),
         holiday: bandsFor(holidayClass),
       },
+      todayHeadways: todayClass && headways[todayClass] ? headways[todayClass] : null,
     });
   }
-  return map;
+  return { routes: map, todayClass };
 }
 
 async function loadStopMetadata(
@@ -350,6 +357,7 @@ export async function slaReportResponse(
       toleranceRatio: config.slaToleranceRatio,
       metRatio,
       degradedRatio,
+      todayClass: null,
     },
     overall: summaryFromRows([], metRatio, degradedRatio),
     routes: [],
@@ -359,27 +367,29 @@ export async function slaReportResponse(
     return finish(request, ctx, cache, key, collecting);
   }
 
-  const [routeMetadata, routeDaily, routeWeekly] = await Promise.all([
+  const [metadata, routeDaily, routeWeekly] = await Promise.all([
     loadRouteMetadata(env.DB, versionId),
     loadRows(env.DB, 'sla_daily', 'route'),
     loadRows(env.DB, 'sla_weekly', 'route'),
   ]);
+  const routeMetadata = metadata.routes;
   const routeDays = groupRows(routeDaily);
   const routeWeeks = groupRows(routeWeekly);
 
   const routes: SlaRouteReport[] = [];
   const overallRows: RawRow[] = [];
-  for (const [routeId, metadata] of [...routeMetadata.entries()].sort((a, b) =>
+  for (const [routeId, route] of [...routeMetadata.entries()].sort((a, b) =>
     a[1].number.localeCompare(b[1].number, undefined, { numeric: true }),
   )) {
     const days = routeDays.get(routeId) ?? [];
     const weeks = routeWeeks.get(routeId) ?? [];
     routes.push({
       routeId,
-      number: metadata.number,
-      name: metadata.name,
-      overnight: metadata.overnight,
-      published: metadata.published,
+      number: route.number,
+      name: route.name,
+      overnight: route.overnight,
+      published: route.published,
+      todayHeadways: route.todayHeadways,
       overall: summaryFromRows(days, metRatio, degradedRatio),
       days: days.map((row) => tickFromRow(row, metRatio, degradedRatio)),
       weeks: weeks.map((row) => tickFromRow(row, metRatio, degradedRatio)),
@@ -403,6 +413,7 @@ export async function slaReportResponse(
       toleranceRatio: config.slaToleranceRatio,
       metRatio,
       degradedRatio,
+      todayClass: metadata.todayClass,
     },
     overall: summaryFromRows(overallRows, metRatio, degradedRatio),
     routes,

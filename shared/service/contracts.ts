@@ -248,6 +248,10 @@ export interface SlaRouteReport {
   /** 3xx night routes stay distinct identities (sla.md §3.4). */
   overnight: boolean;
   published: SlaPublishedSchedule;
+  /** Today's advertised targets per hour-of-day (Toronto), on the advertised
+   * grid — the θ the live segment judges the last 30 minutes against. Null
+   * when today's calendar class publishes no service for the route. */
+  todayHeadways: Array<number | null> | null;
   overall: SlaEntitySummary;
   days: SlaTick[];
   weeks: SlaTick[];
@@ -276,6 +280,9 @@ export interface SlaReportResponse {
     toleranceRatio: number;
     metRatio: number;
     degradedRatio: number;
+    /** The exact calendar class active today (weekday/Saturday/Sunday/holiday
+     * set — '2' for a Saturday, the holiday class on Thanksgiving…). */
+    todayClass: string | null;
   };
   /** Whole-report roll-up (merged over the route rows — corridor-shared
    * stops contribute to each route they serve; documented on the page). */

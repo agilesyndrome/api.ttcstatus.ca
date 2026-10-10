@@ -11,6 +11,7 @@ import {
   formatPercent,
 } from './sla-view';
 import { useSlaReport, loadedStopsByRoute } from './useSlaReport';
+import { useSlaLive } from './useSlaLive';
 import { SlaRouteRow } from './SlaRouteRow';
 
 type Grain = 'day' | 'week';
@@ -18,14 +19,18 @@ type Grain = 'day' | 'week';
 /** The /sla page (docs/sla-stories.md Epic 8, E8S5): a USA-status.com-style
  * status page for delivered service — a filterable list of streetcar routes
  * (expandable to their stops), each with little green/yellow/red boxes, one
- * per recorded day (or wider boxes per week). Every number is precomputed;
- * the page makes exactly one fetch, never polls, never computes. */
+ * per recorded day (or wider boxes per week) — plus the live tier: thin
+ * slivers for the recorder's rolling 30-minute window at each strip's right
+ * edge. The report is precomputed (one fetch); the live tier reads the
+ * recorder's already-published live state and does its math in the
+ * browser — the server never computes an SLA number at request time. */
 export function SlaPage() {
   useLanguage();
   useEffect(() => {
     document.title = t('sla.pageTitle');
   });
   const { report, failed } = useSlaReport();
+  const live = useSlaLive(report);
   const [grain, setGrain] = useState<Grain>('day');
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -71,6 +76,7 @@ export function SlaPage() {
             expanded={expanded}
             toggle={toggle}
             filteredRoutes={filtered.routes}
+            live={live}
           />
         )}
       </main>
@@ -88,6 +94,9 @@ interface BodyProps {
   expanded: Set<string>;
   toggle(routeId: string): void;
   filteredRoutes: SlaReportResponse['routes'];
+  /** The live tier (slivers per route, keyed by routeId; stop slivers keyed
+   * `${routeId}|${stopId}`) — see useSlaLive. */
+  live: ReturnType<typeof useSlaLive>;
 }
 
 function ReportBody({
@@ -100,6 +109,7 @@ function ReportBody({
   expanded,
   toggle,
   filteredRoutes,
+  live,
 }: BodyProps) {
   useLanguage();
   const counts = bannerCounts(report.routes);
@@ -204,6 +214,10 @@ function ReportBody({
           <span className="sla-tick sla-tick--met sla-tick--partial" aria-hidden="true" />{' '}
           {t('sla.legendToday')}
         </span>
+        <span className="sla-legend__item">
+          <span className="sla-tick sla-tick--met sla-tick--live" aria-hidden="true" />{' '}
+          {t('sla.legendLive')}
+        </span>
       </section>
 
       {filteredRoutes.length === 0 && (
@@ -219,6 +233,8 @@ function ReportBody({
               expanded={expanded.has(route.routeId)}
               onToggle={toggle}
               needle={needle}
+              live={live.byRoute.get(route.routeId)}
+              liveByStop={live.byStop}
             />
           ))}
         </ol>

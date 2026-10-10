@@ -2,6 +2,7 @@ import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import type { SlaRouteReport } from '../../../../shared/service/contracts';
 import { formatPercent, publishedClasses, type PublishedClass } from './sla-view';
+import type { SlaLiveBucket } from './sla-live';
 
 const PUBLISHED_CLASS_LABELS: Record<PublishedClass, string> = {
   weekday: 'sla.publishedWeekday',
@@ -21,13 +22,25 @@ interface Props {
   onToggle(routeId: string): void;
   /** The live filter; expanded rows also filter their loaded stop list. */
   needle: string;
+  /** The live tier's slivers for this route, oldest → newest. */
+  live?: SlaLiveBucket[] | null;
+  /** Live slivers for the route's stops, keyed `${routeId}|${stopId}`. */
+  liveByStop?: Map<string, SlaLiveBucket[]>;
 }
 
 /** One route row: number, name, the SLA the TTC's own schedule indicates, the
  * current status, the overall compliance, and the tick strip. Expanding shows
  * the route's directional stops with their own strips (one lazy fetch,
  * session-cached). */
-export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props) {
+export function SlaRouteRow({
+  route,
+  grain,
+  expanded,
+  onToggle,
+  needle,
+  live,
+  liveByStop,
+}: Props) {
   useLanguage();
   const wantsStops = expanded;
   const { stops, failed: stopsFailed } = useSlaStops(wantsStops ? route.routeId : null);
@@ -101,7 +114,11 @@ export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props)
           {percent === null ? '—' : t('sla.tickWithin', { value1: percent })}
         </span>
       </div>
-      <SlaTickStrip ticks={grain === 'day' ? route.days : route.weeks} grain={grain} />
+      <SlaTickStrip
+        ticks={grain === 'day' ? route.days : route.weeks}
+        grain={grain}
+        live={live}
+      />
       {expanded && (
         <div className="sla-route__stops">
           <p className="sla-route__published">
@@ -119,7 +136,12 @@ export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props)
           {visibleStops.length > 0 && (
             <ol className="sla-stops">
               {visibleStops.map((stop) => (
-                <SlaStopRow key={stop.stopId} stop={stop} grain={grain} />
+                <SlaStopRow
+                  key={stop.stopId}
+                  stop={stop}
+                  grain={grain}
+                  live={liveByStop?.get(`${route.routeId}|${stop.stopId}`)}
+                />
               ))}
             </ol>
           )}

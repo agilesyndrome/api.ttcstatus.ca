@@ -273,6 +273,14 @@ function previewSlaReport(math, routeFilter) {
     },
   ];
 
+  // Today's advertised targets (all 24 hours for the demo, so the live tier
+  // computes against the corpus wave whatever wall hour it is set to).
+  const todayHeadwaysFor = (overnight) => {
+    const bands = Array.from({ length: 24 }, () => (overnight ? null : 600));
+    if (overnight) for (let hour = 20; hour < 24; hour += 1) bands[hour] = 900;
+    return bands;
+  };
+
   const routes = routeFixtures.map((fixture) => {
     const days = stripFor(fixture.seed);
     return {
@@ -281,6 +289,7 @@ function previewSlaReport(math, routeFilter) {
       name: fixture.name,
       overnight: fixture.overnight,
       published: fixture.published,
+      todayHeadways: todayHeadwaysFor(fixture.overnight),
       overall: overallFor(days),
       days,
       weeks: weeklyFor(days),
@@ -291,7 +300,13 @@ function previewSlaReport(math, routeFilter) {
     schemaVersion: 1,
     generatedAt: Date.now(),
     dataThrough: todayKey,
-    targets: { versionId: 42, toleranceRatio: 1.5, metRatio, degradedRatio },
+    targets: {
+      versionId: 42,
+      toleranceRatio: 1.5,
+      metRatio,
+      degradedRatio,
+      todayClass: 'w',
+    },
     overall: overallFor(routes.flatMap((route) => route.days)),
     routes,
   };

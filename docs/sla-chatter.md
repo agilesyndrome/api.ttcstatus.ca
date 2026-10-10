@@ -840,3 +840,45 @@ readers); and "within SLA" is gone from every percentage — route, stop,
 banner, and tooltips now read "74.8%". check-sla extended: the published
 line must be ABSENT while collapsed, appear on expand with every class
 label, and the toggle's aria-expanded must flip.
+
+### 2026-10-10 — The live tier: thin slivers for the last 30 minutes
+
+### (user steer)
+
+"I was hoping a tiny bar would be at the right side of the chart
+representing real time and last 30 minutes… instant realtime should be
+easier to distinguish in this chart from thicker dailys." Shipped as the
+chart's third grain: a dashed divider, then six 3px slivers (one per
+completed 5-minute bucket of the recorder's rolling window) at each
+strip's right edge — visually distinct from the 12px daily bars and the
+34px weekly boxes, in both grains. The strip's right edge label reads
+"now" when the live tier is present.
+
+Honesty preserved end-to-end: the report gains `targets.todayClass` and
+per-route `todayHeadways` (today's advertised targets — pure table
+reads, still no request-time SLA computation); the page polls the
+recorder's EXISTING live surfaces — /api/v1/service/stops every 30 s
+(retained ETag, the recorder computed the states on its own tick) and
+/api/v1/service/wave every 5 minutes for the 30-minute backfill — and
+the sliver math runs in the browser (sla-live.ts, the map overlay's
+wave-field pattern): a stop is within the promise at a bucket's end when
+elapsed-since-last-touch ≤ today's target × tolerance, the same θ the
+fold uses. Dry stops are judged from the live states' lastTouchAt (a
+corridor silent for the whole window is red, never excluded); a bucket
+inside a feed outage renders grey, unmonitored; unpromised hours are
+hollow; the oldest sliver is often honestly thin (the states only
+remember each stop's LATEST touch, so pre-window touches inside the
+oldest bucket are unknowable — no-data, never guessed).
+
+Verified: 7 hand-derived brain tests (grid alignment, clockwork
+all-green, dry-corridor red via states, 3-of-4 = degraded banding,
+outage grey vs clean, stop-level against its route's target, Toronto
+wall-hour); endpoint tests for todayClass/todayHeadways (adaptive to
+the run day); check-sla extended (six slivers on the 506, thin widths,
+aria labels, legend, and the daily-strip assertions scoped to exclude
+slivers). Live against the real recorder: the 506's slivers read
+85.7% / 96.9% / 100% with the oldest honestly no-data; zero console
+errors. One transient to know about: during wrangler's hot reload of
+the DO the wave patterns can be briefly empty — the brain's
+states-fallback keeps the slivers honest (computed from live states
+alone) until the window refills. Suite 313/313; board 9/9.

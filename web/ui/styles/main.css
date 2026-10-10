@@ -2232,6 +2232,9 @@ select:focus-visible {
   height: 12px;
   cursor: default;
 }
+.sla-legend .sla-tick--live {
+  width: 3px;
+}
 .sla-routes {
   list-style: none;
   margin: 0;
@@ -2415,6 +2418,24 @@ select:focus-visible {
 .sla-tick--no-data.sla-tick--partial {
   border-style: dashed;
 }
+/* --- The live tier: thin slivers at the strip's right edge, one per
+ * completed 5-minute bucket of the recorder's rolling window. Distinct at
+ * a glance from the 12px daily bars and the 34px weekly boxes. --- */
+.sla-strip__live {
+  display: flex;
+  gap: 2px;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px dashed var(--border);
+}
+.sla-tick--live {
+  width: 3px;
+  border-radius: 1px;
+}
+.sla-tick--unmonitored {
+  background: #8a8f98;
+  opacity: 0.55;
+}
 .sla-strip__edges {
   display: flex;
   justify-content: space-between;
@@ -2446,6 +2467,9 @@ select:focus-visible {
   .sla-tick {
     width: 10px;
     height: 22px;
+  }
+  .sla-tick--live {
+    width: 2px;
   }
   .sla-strip__row--week .sla-tick {
     width: 28px;

@@ -86,12 +86,14 @@ try {
     // accessible label for every box.
     for (const route of report.routes) {
       const count = await page
-        .locator(`.sla-route[data-route="${route.routeId}"] .sla-tick`)
+        .locator(
+          `.sla-route[data-route="${route.routeId}"] .sla-tick:not(.sla-tick--live)`,
+        )
         .count();
       assert.equal(count, route.days.length, `${route.routeId} day strip length`);
     }
     const labels = await page
-      .locator('.sla-route[data-route="506"] .sla-tick')
+      .locator('.sla-route[data-route="506"] .sla-tick:not(.sla-tick--live)')
       .evaluateAll((ticks) => ticks.map((tick) => tick.getAttribute('aria-label')));
     assert.ok(labels.length > 0);
     assert.ok(labels.every((label) => label && label.length > 4));
@@ -106,11 +108,36 @@ try {
     // Today's partial box is marked.
     assert.ok((await page.locator(`${mixed} .sla-tick--partial`).count()) >= 1);
 
+    // The live tier: a divider, then six thin slivers at the strip's right —
+    // the recorder's 30-minute window in 5-minute buckets, visually distinct
+    // from the thicker daily boxes, each with an accessible label. The 506's
+    // corridor is the corpus scenario, so it has real live data; the night
+    // route's daytime hours publish no promise, so its slivers are honestly
+    // hollow.
+    const live506 = await page
+      .locator('.sla-route[data-route="506"] .sla-strip__live .sla-tick--live')
+      .count();
+    assert.equal(live506, 6, 'the 506 live segment has six slivers');
+    const liveLabels = await page
+      .locator('.sla-route[data-route="506"] .sla-strip__live .sla-tick')
+      .evaluateAll((ticks) => ticks.map((tick) => tick.getAttribute('aria-label')));
+    assert.ok(
+      liveLabels.every((label) => label && label.includes('Live')),
+      'every live sliver carries its label',
+    );
+    const liveWidths = await page
+      .locator('.sla-route[data-route="506"] .sla-strip__live .sla-tick')
+      .first()
+      .boundingBox();
+    assert.ok(liveWidths && liveWidths.width <= 4, 'the live slivers are thin');
+    const legendLive = await page.locator('.sla-legend').innerText();
+    assert.match(legendLive, /Live/);
+
     // The weekly grain: wider boxes, fewer of them.
     await page.getByRole('button', { name: 'Weekly' }).click();
     await page.locator('.sla-strip__row--week').first().waitFor();
     const weekTicks = await page
-      .locator(`.sla-route[data-route="506"] .sla-tick`)
+      .locator(`.sla-route[data-route="506"] .sla-tick:not(.sla-tick--live)`)
       .count();
     const week506 = report.routes.find((route) => route.routeId === '506');
     assert.equal(weekTicks, week506.weeks.length);

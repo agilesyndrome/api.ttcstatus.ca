@@ -257,6 +257,13 @@ honest "collecting" payload on a fresh deploy — never a fabricated green.
   every date folds against its exact calendar class (weekday, Saturday,
   Sunday, and the holiday class the feed publishes, e.g. Thanksgiving), and
   the page renders one schedule line per distinct class.
+- **The live tier** — the report serves `targets.todayClass` and per-route
+  `todayHeadways` (today's advertised targets — table reads, no computation);
+  the page polls the recorder's existing live surfaces (`/service/stops`
+  every 30 s, `/service/wave` every 5 min) and renders the last 30 minutes
+  as thin 5-minute slivers at each strip's right edge. The sliver math runs
+  in the browser; the server still never computes an SLA number at request
+  time.
 - Compliance is time-weighted: the share of monitored wait time within the
   scheduled headway × tolerance, estimated from mergeable gamma moments and
   labelled an approximation everywhere. Hours with no scheduled service carry

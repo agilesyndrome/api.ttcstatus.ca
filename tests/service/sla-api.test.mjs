@@ -33,6 +33,18 @@ async function freshSeededDb() {
   return db;
 }
 
+/** Today's class follows whichever class the seed assigns to today's date —
+ * deterministic on every run day (the seed maps the fixed demo dates and
+ * defaults any other day to the weekday class). */
+function seededTodayClass(dayKey) {
+  const seededClasses = new Map([
+    ['2026-10-07', 'w'],
+    ['2026-10-10', 'sat'],
+    ['2026-10-11', 'sun'],
+  ]);
+  return seededClasses.get(dayKey) ?? 'w';
+}
+
 async function seedReport(db) {
   const versionId = 1;
   await db
@@ -41,12 +53,18 @@ async function seedReport(db) {
     )
     .run();
   // Dates carrying the three display classes (2026-10-07 is a Wednesday,
-  // 2026-10-10 a Saturday, 2026-10-11 a Sunday).
-  for (const [dateKey, classKey] of [
+  // 2026-10-10 a Saturday, 2026-10-11 a Sunday) — plus today under the
+  // weekday class when today isn't already one of the above (the seed stays
+  // deterministic no matter which day the suite runs on).
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayClass = seededTodayClass(todayKey);
+  const dateRows = [
     ['2026-10-07', 'w'],
     ['2026-10-10', 'sat'],
     ['2026-10-11', 'sun'],
-  ]) {
+  ];
+  if (!dateRows.some(([key]) => key === todayKey)) dateRows.push([todayKey, todayClass]);
+  for (const [dateKey, classKey] of dateRows) {
     await db
       .prepare(
         `INSERT INTO sla_schedule_dates (version_id, date_key, class_key) VALUES (?, ?, ?)`,
@@ -190,6 +208,7 @@ const get = async (path, env, headers = {}) => {
 };
 
 test('the report serves precomputed rows only, with the /service family conventions', async () => {
+  const todayKey = new Date().toISOString().slice(0, 10);
   const db = await freshSeededDb();
   await seedReport(db);
   const response = await get('/api/v1/sla/report', envFor(db));
@@ -227,6 +246,23 @@ test('the report serves precomputed rows only, with the /service family conventi
   // differs from the most recent same-weekday date's, and the seed has one
   // date per weekday — so the holiday line is honestly absent.
   assert.equal(route506.published.holiday, null);
+  // Today's class and per-route advertised targets are served for the live
+  // tier — a pure table read, still no request-time computation. Expected
+  // values follow whichever class the seed assigned to today.
+  assert.equal(report.targets.todayClass, seededTodayClass(todayKey));
+  const hourly = (entries) => {
+    const bands = Array.from({ length: 24 }, () => null);
+    for (const [hour, headway] of Object.entries(entries)) bands[Number(hour)] = headway;
+    return bands;
+  };
+  assert.deepEqual(
+    route506.todayHeadways,
+    seededTodayClass(todayKey) === 'sat'
+      ? hourly({ 8: 480 })
+      : seededTodayClass(todayKey) === 'sun'
+        ? null
+        : hourly({ 6: 300, 19: 600 }),
+  );
 
   // Ticks: exactly the segments with data; a no-data day carries null
   // compliance, never a fabricated number.
