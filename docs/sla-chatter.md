@@ -882,3 +882,21 @@ errors. One transient to know about: during wrangler's hot reload of
 the DO the wave patterns can be briefly empty — the brain's
 states-fallback keeps the slivers honest (computed from live states
 alone) until the window refills. Suite 313/313; board 9/9.
+
+### 2026-10-10 — The local-cron question, answered definitively
+
+The earlier watcher on "does wrangler dev fire the hourly fold cron?"
+was a FALSE POSITIVE: its grep found my own manual `/__scheduled`
+trigger from ~15:58 UTC, not an automatic fire. The log is unambiguous —
+exactly one "SLA rollup result" entry, immediately followed by `GET
+/__scheduled 200 OK`, and no second entry at 16:41 or 17:41.
+**wrangler dev does not fire crons on schedule** (--test-scheduled only
+exposes the trigger endpoint). Consequences, recorded plainly:
+
+- On the local stack, today's bar only refreshes when the fold is
+  triggered. `make sla/fold` now does it (the admin/sync precedent):
+  `curl '$(API_LOCAL)/__scheduled?cron=41+*+*+*+*'`.
+- In production the real cron fires hourly at :41 UTC — no nudge needed.
+- A stale today-bar on :8787 means "the fold hasn't been nudged," never
+  "the recorder stopped" — the live slivers prove the recorder is
+  ticking (they read the recorder's live state directly, not the fold).

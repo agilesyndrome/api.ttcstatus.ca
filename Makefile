@@ -59,6 +59,12 @@ dev/new:
 admin/sync:
 	op run --env-file=.env.prod -- ./bin/api POST /api/v1/admin/sync
 
+# Dev-stack convenience: `wrangler dev` does NOT fire crons on schedule
+# (--test-scheduled only exposes the trigger endpoint), so the hourly SLA
+# fold needs a manual nudge to refresh the today-so-far bars.
+sla/fold:
+	@curl -s '$(API_LOCAL)/__scheduled?cron=41+*+*+*+*' ; echo ""
+
 admin/sync/status:
 	op run --env-file=.env.prod -- ./bin/api GET /api/v1/feed/status | jq
 
