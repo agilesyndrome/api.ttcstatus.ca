@@ -13,6 +13,8 @@ const {
   drynessColor,
   edgeServiceSegments,
   carTrailSegments,
+  isSubwayOnlyStop,
+  surfaceStatesByStop,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
   export { serviceStatesAt } from './shared/service/wait-metrics';
@@ -320,6 +322,35 @@ test('the sentences say the numbers — grandma reads the truth', () => {
     stopSentence(silentStates.get('st_silent'), 'Silent'),
     /can't see this stop/,
   );
+});
+
+test('subways are disabled: subway-only stops never anchor anything (E7S7)', () => {
+  const subway = (stopId) => stopState(stopId, 2.6, 'void', { routeIds: ['2'] });
+  const bloorYonge = stopState('st_by', 2.6, 'void', { routeIds: ['2', '506'] });
+  const surface = new Map([
+    ['st_a', stopState('st_a', 0.1, 'fresh')],
+    ['st_sub', subway('st_sub')],
+    ['st_sub2', stopState('st_sub2', 3, 'void', { routeIds: ['1', '2'] })],
+  ]);
+  const filtered = surfaceStatesByStop(surface);
+  assert.ok(!filtered.has('st_sub'), 'a subway-only stop drops');
+  assert.ok(!filtered.has('st_sub2'), 'two subway routes still drop');
+  assert.ok(filtered.has('st_a'), 'a streetcar stop stays');
+  // A shared stop (streetcar + subway) keeps its truth.
+  const shared = new Map([
+    ['st_by', bloorYonge],
+    ['st_a', stopState('st_a', 0.1, 'fresh')],
+  ]);
+  assert.ok(surfaceStatesByStop(shared).has('st_by'));
+  // And with subway anchors gone, their edges paint nothing: an edge whose
+  // only stops are subway-only yields no segments in either direction.
+  const states = new Map([['st_sub', subway('st_sub')]]);
+  const features = [featureAt('st_sub', 100)];
+  assert.equal(edgeServiceSegments(edge, features, states, config, 0).length, 0);
+  // No routeIds = not classified as subway-only (unknown keeps showing —
+  // the recorder serves routeIds, but a defensive default keeps honesty).
+  const unknown = stopState('st_x', 2.6, 'void', { routeIds: [] });
+  assert.equal(isSubwayOnlyStop(unknown), false);
 });
 
 test('the state ramp keeps fresh and void distinct beyond hue alone', () => {

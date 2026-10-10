@@ -62,8 +62,9 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   } = workspace;
   // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
   // flag off or signed out → nothing renders and no /service/* requests are
-  // made. Tapping a map stop now also selects its delivered-service story.
-  const service = useServiceOverlay(data, cars);
+  // made. Hard-suspended while the snake game is open (E7S7) — the game
+  // renders its own map with no service props, and the base layer sleeps.
+  const service = useServiceOverlay(data, cars, snakeOpen);
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
     selectFeature(feature);
     service.onFeatureSelectForService(feature);

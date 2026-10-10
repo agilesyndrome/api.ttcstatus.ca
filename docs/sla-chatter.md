@@ -82,6 +82,7 @@ is authoritative for this work.
 | E7S4 | Thin dual-direction streams on the track; direction + speed as honesty | done                                           |
 | E7S5 | The 5-minute cadence fix (dev env)                                     | done                                           |
 | E7S6 | The snail slime + gradient softening (polish epic)                     | done                                           |
+| E7S7 | Subways disabled; snake game hard-suspend (polish epic)                | done                                           |
 
 Status legend: ⬜ todo · 🔨 in progress · ✅ done (see log) · ⏸ blocked
 
@@ -517,3 +518,27 @@ gradienting."
   check now also asserts the phase custom property on every flow line and
   that any rendered trail is fresh green. 279/279 suite, board 9/9 (two
   checks slower than baseline — the suite grew).
+
+### 2026-10-10 — E7S7: subways off, snake game guaranteed clean
+
+User steer: disable the void overlay for all subways; ensure it is not on
+in the snake game.
+
+- **Subways off, enforced in the brain:** `isSubwayOnlyStop()` (a stop whose
+  routes are all 1/2/4/5/6) is filtered inside `anchorsOfEdge` itself, so
+  subway stops can never anchor the field, tint, or trail — no caller can
+  forget the filter. `surfaceStatesByStop()` additionally filters the live
+  layer, so subway stops open no card either (a shared stop like a
+  streetcar-route platform keeps its truth). Subway cars return no tint
+  explicitly (belt and braces; their edges anchor nothing anyway).
+- **Snake game guaranteed clean:** the layer is hard-suspended while the
+  game is open (`suspended` flag → enabled=false → the feed makes zero
+  requests; underlay/overlay/card all null). The game also renders its own
+  TransitMap with no service props, so it is structurally clean AND
+  enforced.
+- Tests: unit (subway-only drops, shared stops stay, empty-routeIds stay,
+  subway-only edge paints nothing); browser check extended — a subway stop
+  in full void paints nothing, selects to no card, and the snake game shows
+  no field/marker/card with ZERO /service/* requests while open (the
+  wake-up refetch after closing is legitimate and excluded from the count).
+  280/280, board 9/9.

@@ -169,12 +169,16 @@ function anchorsOfEdge(
   for (const feature of features) {
     if (feature.edgeId !== edge.id || feature.distanceAlongMetres === undefined) continue;
     // This direction's stops only: nearside platforms stop lying for each
-    // other — a one-way void paints one stream, never both.
+    // other — a one-way void paints one stream, never both. Subway-only
+    // stops never anchor (E7S7): the overlay is surface-only, enforced here
+    // so no caller can forget the filter.
     const states = (feature.stopIds ?? [])
       .map((stopId) => statesByStop.get(stopId))
       .filter(
         (state): state is StopServiceState =>
-          state !== undefined && state.directionId === directionId,
+          state !== undefined &&
+          state.directionId === directionId &&
+          !isSubwayOnlyStop(state),
       );
     if (states.length === 0) continue;
     // Only finite dryness paints — anything else (missing, NaN) degrades to
@@ -332,6 +336,29 @@ export function edgeServiceSegments(
     }
   }
   return segments;
+}
+
+/** Route numbers of the subway lines (the live-status idiom). */
+const RAPID_ROUTE = /^(1|2|4|5|6)$/;
+
+/** A stop served ONLY by subway lines: the void overlay is disabled for all
+ * subways (user decision, E7S7) — their states never anchor the field, so
+ * subway tracks paint nothing, subway cars carry no tint, and selecting one
+ * opens no card. A stop shared with a streetcar route still shows. */
+export function isSubwayOnlyStop(state: StopServiceState): boolean {
+  const routes = state.routeIds ?? [];
+  return routes.length > 0 && routes.every((route) => RAPID_ROUTE.test(route));
+}
+
+/** The surface truth only: subway-only stops filtered out of the live map. */
+export function surfaceStatesByStop(
+  states: ReadonlyMap<string, StopServiceState>,
+): Map<string, StopServiceState> {
+  const surface = new Map<string, StopServiceState>();
+  for (const [stopId, state] of states) {
+    if (!isSubwayOnlyStop(state)) surface.set(stopId, state);
+  }
+  return surface;
 }
 
 /** The snail slime (E7S6): the green trail a matched, non-stale car drags

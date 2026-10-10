@@ -1457,6 +1457,12 @@ recorded. The release is done.
 
 ---
 
+### E7S7 — Subways disabled; snake game hard-suspend [DONE]
+
+**Status:** Done — 2026-10-10 · Subway-only stops (routes 1/2/4/5/6) never anchor the field, tint, or trail — the filter lives inside the brain's anchorsOfEdge so no caller can bypass it; shared streetcar platforms keep their truth; subway cars carry no tint; subway stops open no card. The snake game is guaranteed clean by construction (its own TransitMap has no service props) and by enforcement (the layer is hard-suspended while the game is open — zero /service/* requests). Unit + browser tested. Notes in docs/sla-chatter.md.
+
+---
+
 ## Appendix: source-story ledger
 
 How every story in this file maps back to sla.md §5 and sla-epics.md. Every split

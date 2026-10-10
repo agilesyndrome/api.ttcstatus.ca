@@ -121,6 +121,32 @@ states.push(
     coverage: { kind: 'outage', unmonitoredSeconds: 720, since: null },
   }),
 );
+// A subway stop in full void on a subway-route edge (E7S7): subways are
+// disabled — it must not paint a single piece anywhere.
+const subwayEdge = viewer.edges.find(
+  (edge) =>
+    edge.routeIds.length > 0 &&
+    edge.routeIds.every((routeId) =>
+      /^(1|2|4|5|6)$/.test(
+        viewer.routes.find((route) => route.id === routeId)?.number ?? '',
+      ),
+    ),
+);
+const subwayFeature = subwayEdge
+  ? viewer.features.find(
+      (feature) =>
+        feature.edgeId === subwayEdge.id && feature.distanceAlongMetres !== undefined,
+    )
+  : undefined;
+if (subwayFeature) {
+  const subwayNumber =
+    viewer.routes.find((route) => route.id === subwayEdge.routeIds[0])?.number ?? '2';
+  states.push(
+    stateFor(subwayFeature.stopIds[0], 'void', 30, {
+      routeIds: [subwayNumber],
+    }),
+  );
+}
 const stopsPayload = { schemaVersion: 1, at: now, states };
 const statesByStop = new Map(states.map((state) => [state.stopId, state]));
 const voidStopId = states.find((state) => state.state === 'void').stopId;
@@ -161,6 +187,13 @@ assert.ok(
 // beside a healthy twin stream.
 assert.ok(expectedBand.some((piece) => piece.direction === 0 && piece.state === 'void'));
 assert.ok(expectedBand.some((piece) => piece.direction === 1 && piece.state === 'fresh'));
+// The subway stop in full void paints NOTHING (E7S7) — the band is proof.
+if (subwayFeature) {
+  assert.ok(
+    expectedBand.every((piece) => piece.edge !== subwayFeature.edgeId),
+    'a subway-only edge must not appear in the painted band',
+  );
+}
 
 const historyBuckets = Array.from({ length: 18 }, (_, index) => ({
   bucketStart: now - (18 - index) * 300_000,
@@ -397,6 +430,64 @@ try {
       elements.map((element) => element.getAttribute('stroke')),
     );
     for (const stroke of trails) assert.equal(stroke, '#2f9e6e');
+
+    // ——— 6b. Subways are disabled (E7S7): selecting the subway stop in
+    // full void opens NO card and paints no marker — not even a blind one.
+    if (subwayFeature) {
+      await page
+        .locator('.void-marker')
+        .click()
+        .catch(() => {});
+      await page.locator(`[data-feature="${subwayFeature.id}"]`).focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(400);
+      assert.equal(
+        await page.locator('.void-marker').count(),
+        0,
+        'a subway stop never gets a service marker',
+      );
+      assert.equal(
+        await page.locator('.service-popover').count(),
+        0,
+        'a subway stop never opens a story card',
+      );
+    }
+
+    // ——— 6c. The snake game never shows the overlay (E7S7): the game
+    // renders its own map with no service props, and the base layer is
+    // hard-suspended while it is open — no field, no marker, no card, and
+    // not one extra /service/* request while playing.
+    let requestsWhileSnake = 0;
+    const snakeListener = (request) => {
+      if (request.url().includes('/api/v1/service/')) requestsWhileSnake += 1;
+    };
+    page.on('request', snakeListener);
+    // The independent-site notice can cover the map tools — dismiss it.
+    const notice = page.locator('.affiliation-notice .action-button');
+    if (await notice.count()) await notice.click();
+    await page.locator('.snake-launch').click();
+    await page.waitForTimeout(1_500);
+    assert.equal(await page.locator('.service-track').count(), 0, 'no field in the game');
+    assert.equal(await page.locator('.void-marker').count(), 0, 'no marker in the game');
+    assert.equal(
+      await page.locator('.service-popover').count(),
+      0,
+      'no card in the game',
+    );
+    // Stop counting BEFORE closing: after the game, the layer legitimately
+    // wakes and refetches — while the game was open, zero is the rule.
+    page.off('request', snakeListener);
+    const duringSnake = requestsWhileSnake;
+    await page
+      .getByRole('button', { name: 'Close Streetcar Snake' })
+      .click({ timeout: 10_000 });
+    await page.waitForTimeout(800);
+    assert.equal(duringSnake, 0, 'zero /service/* requests while the game was open');
+    // Back on the map, the service returns.
+    await page
+      .locator('.service-track')
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 });
 
     // ——— 7. The map still behaves: zoom works with the field painted. ———
     await page.locator('#map').hover();

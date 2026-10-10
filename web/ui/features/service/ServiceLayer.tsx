@@ -9,7 +9,12 @@ import { useServiceFeed } from './useServiceFeed';
 import { TrackService } from './TrackService';
 import { SelectedStopMarker } from './SelectedStopMarker';
 import { SelectedStopCard } from './SelectedStopCard';
-import { advanceStopState, directionColorAlong, trackFieldSignature } from './wave-field';
+import {
+  advanceStopState,
+  directionColorAlong,
+  surfaceStatesByStop,
+  trackFieldSignature,
+} from './wave-field';
 import { readDevOverlayBypass } from './useDevOverlayBypass';
 
 export interface ServiceOverlay {
@@ -53,13 +58,17 @@ function useNow(enabled: boolean): number {
 export function useServiceOverlay(
   data: ViewerData | undefined,
   cars?: PlottedVehicle[],
+  /** Hard suspend: nothing renders, nothing is fetched — the snake game
+   * (E7S7). The overlay never appears over the game, by construction. */
+  suspended = false,
 ): ServiceOverlay {
   const flags = useFeatureFlags();
   const account = useAccount();
   // Local-dev bypass: only consulted when the site itself runs without auth
   // (production always has Clerk configured, so this can never fire).
   const devBypass = account.loaded && !account.enabled ? readDevOverlayBypass() : false;
-  const enabled = Boolean(data) && (devBypass || (flags.loaded && flags.overlayEnabled));
+  const enabled =
+    !suspended && Boolean(data) && (devBypass || (flags.loaded && flags.overlayEnabled));
   const feed = useServiceFeed(enabled);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -80,13 +89,20 @@ export function useServiceOverlay(
   // uses — a stop crosses fresh → due → void at the true moment, not the
   // next tick. Estimates and coverage stay tick-fresh; a blind spot never
   // advances into a verdict.
+  // The heartbeat: advance every stop between ticks (elapsed since its last
+  // touch grows in real time), scored with the same shared machine the API
+  // uses — a stop crosses fresh → due → void at the true moment, not the
+  // next tick. Subway-only stops are filtered out entirely (E7S7): no
+  // fields, no tints, no trails, no cards on the subway network.
   const statesByStop = useMemo(() => {
     const byMs = feed.at === null ? 0 : now - feed.at;
-    return new Map(
-      feed.states.map((state) => [
-        state.stopId,
-        byMs > 0 ? advanceStopState(state, byMs) : state,
-      ]),
+    return surfaceStatesByStop(
+      new Map(
+        feed.states.map((state) => [
+          state.stopId,
+          byMs > 0 ? advanceStopState(state, byMs) : state,
+        ]),
+      ),
     );
   }, [feed.states, feed.at, now]);
   /** Stop names from the map's own features — the map already knows these. */
@@ -124,6 +140,9 @@ export function useServiceOverlay(
     const edges = data?.edges ?? [];
     const features = data?.features ?? [];
     return (car: PlottedVehicle): string | null => {
+      // Subway cars never carry the field (E7S7) — the overlay is
+      // surface-only, and their stops no longer anchor anything anyway.
+      if (car.vehicle.mode === 'subway') return null;
       if (!car.match || car.stale) return null;
       const edge = edges.find((entry) => entry.id === car.match?.edgeId);
       if (!edge) return null;

@@ -56,7 +56,6 @@ export const TrackService = memo(function TrackService({
     }
     return byEdge;
     // Repaints gate on the field's quantised signature, not the 1 Hz map.
-    // eslint-disable-next-line
   }, [edges, features, signature]);
   const trails = useMemo(() => {
     if (!cars || cars.length === 0) return [];
