@@ -1139,7 +1139,7 @@
   "sla.tickServices": "{value1} services",
   "sla.tickTodayPartial": "today, so far — the segment is still being recorded",
   "sla.tickWeekOf": "Week of {value1}",
-  "sla.tickWithin": "{value1}% within SLA",
+  "sla.tickWithin": "{value1}%",
   "sla.today": "today, so far",
   "snake.aTorontoPlaygroundWithSimplerJunctionsAndAutomaticTerminalTurns": "A Toronto playground with simpler junctions and automatic terminal turns. Pick your next switch early — it stays selected until you reach it.",
   "snake.absolutelyNot": "Absolutely not.",

@@ -469,7 +469,7 @@
   "sla.tickServices": "{value1} services",
   "sla.tickTodayPartial": "aujourd’hui, pour l’instant — le segment est encore en cours d’enregistrement",
   "sla.tickWeekOf": "Semaine du {value1}",
-  "sla.tickWithin": "{value1}% dans l’engagement",
+  "sla.tickWithin": "{value1} %",
   "sla.today": "aujourd’hui, pour l’instant",
   "snake.aTorontoPlaygroundWithSimplerJunctionsAndAutomaticTerminalTurns": "Un terrain de jeu torontois avec des jonctions simplifiées et des demi-tours automatiques. Choisissez votre prochain aiguillage tôt : il reste sélectionné jusqu’à votre arrivée.",
   "snake.absolutelyNot": "Absolument pas.",

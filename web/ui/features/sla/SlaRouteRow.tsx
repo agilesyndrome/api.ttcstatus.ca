@@ -79,7 +79,19 @@ export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props)
 
   return (
     <li className={`sla-route sla-route--${bandClass}`} data-route={route.routeId}>
+      {/* The card reads as two lines: the title row (arrow, route, status,
+       * percent) and the chart (the tick strip). The full published schedule
+       * lives inside the collapsible — detail on demand, clean by default. */}
       <div className="sla-route__head">
+        <button
+          type="button"
+          className="sla-route__toggle"
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'sla.hideStops' : 'sla.showStops')}
+          onClick={() => onToggle(route.routeId)}
+        >
+          {expanded ? '▾' : '▸'}
+        </button>
         <span className="sla-route__number">{route.number}</span>
         <span className="sla-route__name">{route.name}</span>
         <span className={`sla-route__status sla-route__status--${bandClass}`}>
@@ -88,21 +100,13 @@ export function SlaRouteRow({ route, grain, expanded, onToggle, needle }: Props)
         <span className="sla-route__percent">
           {percent === null ? '—' : t('sla.tickWithin', { value1: percent })}
         </span>
-        <button
-          type="button"
-          className="sla-route__toggle"
-          aria-expanded={expanded}
-          onClick={() => onToggle(route.routeId)}
-        >
-          {t(expanded ? 'sla.hideStops' : 'sla.showStops')}
-        </button>
       </div>
-      <p className="sla-route__published">
-        {t('sla.publishedSchedule', { value1: publishedText })}
-      </p>
       <SlaTickStrip ticks={grain === 'day' ? route.days : route.weeks} grain={grain} />
       {expanded && (
         <div className="sla-route__stops">
+          <p className="sla-route__published">
+            {t('sla.publishedSchedule', { value1: publishedText })}
+          </p>
           <h3 className="sla-route__stops-title">
             {t('sla.stopsFor', { value1: route.number, value2: route.name })}
           </h3>

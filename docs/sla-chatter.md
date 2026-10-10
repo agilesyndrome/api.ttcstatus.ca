@@ -828,3 +828,15 @@ the advertised 10-min × 1.5 rule — the honest consequence of a floor at
 10). Suite 306/306 (+2 tests: the quantizer grid, the non-adjacent-merge
 pin); board 9/9; check-sla PASS; both LAN stacks re-verified with zero
 console errors.
+
+### 2026-10-10 — /sla card cleanup (user steer)
+
+Three readability changes, all on the route card: the full "Scheduled:"
+class lines moved into the collapsible (detail on demand — the collapsed
+card is exactly two lines: title row and tick strip); the "Show stops"
+pill became a small ▸/▾ arrow left of the route number (same
+aria-expanded semantics, keyboard-reachable, labels retained for screen
+readers); and "within SLA" is gone from every percentage — route, stop,
+banner, and tooltips now read "74.8%". check-sla extended: the published
+line must be ABSENT while collapsed, appear on expand with every class
+label, and the toggle's aria-expanded must flip.

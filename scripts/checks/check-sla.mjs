@@ -70,15 +70,17 @@ try {
       report.routes.map((route) => route.number),
     );
 
-    // The published schedule line states the TTC's own promise, per calendar
-    // class — weekends and holidays visible in the rendering itself. Classes
-    // that publish identical bands share one label group ("Saturday / Sunday").
-    const published = await page
-      .locator('.sla-route[data-route="506"] .sla-route__published')
-      .innerText();
-    assert.match(published, /Weekday( \/ [A-Za-z]+)*: every \d+ min/);
-    assert.match(published, /Saturday( \/ [A-Za-z]+)*: every \d+ min/);
-    assert.match(published, /Holiday: every \d+ min/);
+    // The card reads clean by default: the full published schedule lives in
+    // the collapsible, absent until the arrow is pressed.
+    assert.equal(
+      await page.locator('.sla-route[data-route="506"] .sla-route__published').count(),
+      0,
+      'the published line must be hidden until stops are shown',
+    );
+    const collapsedToggle = await page
+      .locator('.sla-route[data-route="506"] .sla-route__toggle')
+      .getAttribute('aria-expanded');
+    assert.equal(collapsedToggle, 'false');
 
     // Daily strips: exactly the recorded segments, one box each, with an
     // accessible label for every box.
@@ -124,9 +126,20 @@ try {
       .first()
       .waitFor();
 
-    // Expand the 506: its directional stops with their own strips.
+    // Expand the 506: its directional stops with their own strips — and the
+    // full published schedule, now that the collapsible is open.
     await page.locator('.sla-route[data-route="506"] .sla-route__toggle').click();
     await page.locator('.sla-route[data-route="506"] .sla-stop').first().waitFor();
+    const expandedToggle = await page
+      .locator('.sla-route[data-route="506"] .sla-route__toggle')
+      .getAttribute('aria-expanded');
+    assert.equal(expandedToggle, 'true');
+    const published = await page
+      .locator('.sla-route[data-route="506"] .sla-route__published')
+      .innerText();
+    assert.match(published, /Weekday( \/ [A-Za-z]+)*: every \d+ min/);
+    assert.match(published, /Saturday( \/ [A-Za-z]+)*: every \d+ min/);
+    assert.match(published, /Holiday: every \d+ min/);
     const stopRows = await page.locator('.sla-route[data-route="506"] .sla-stop').count();
     assert.equal(stopRows, stops506.stops.length);
     assert.ok(routeRequests >= 1, 'the expand fetches the route detail once');
