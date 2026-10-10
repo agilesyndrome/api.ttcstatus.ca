@@ -63,7 +63,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
   // flag off or signed out → nothing renders and no /service/* requests are
   // made. Tapping a map stop now also selects its delivered-service story.
-  const service = useServiceOverlay(data);
+  const service = useServiceOverlay(data, cars);
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
     selectFeature(feature);
     service.onFeatureSelectForService(feature);

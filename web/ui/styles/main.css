@@ -1916,41 +1916,51 @@ select:focus-visible {
 .service-track {
   pointer-events: none;
 }
-.service-track-seg {
+.service-track-seg,
+.service-trail-seg {
   transition:
     stroke 1200ms ease,
     opacity 1200ms ease;
 }
 /* The flow IS the service: dashes drift in this direction's travel
-   direction, at a speed set per piece (fresh brisk, void slow). The dash
-   cycle matches the dash pattern so the loop is seamless. */
+   direction, at a speed set per piece (fresh brisk, void slow). Each piece
+   carries a --dash-start phase so a whole route flows as ONE current — the
+   gradient can subdivide without seams. */
 @keyframes service-flow-fwd {
   from {
-    stroke-dashoffset: 0;
+    stroke-dashoffset: var(--dash-start, 0px);
   }
   to {
-    stroke-dashoffset: -28;
+    stroke-dashoffset: calc(var(--dash-start, 0px) - 28px);
   }
 }
 @keyframes service-flow-rev {
   from {
-    stroke-dashoffset: 0;
+    stroke-dashoffset: var(--dash-start, 0px);
   }
   to {
-    stroke-dashoffset: 28;
+    stroke-dashoffset: calc(var(--dash-start, 0px) + 28px);
   }
 }
-.service-track-flow--fwd {
+.service-track-flow,
+.service-trail-flow {
+  stroke-dasharray: 3 11;
+}
+.service-flow--fwd {
   animation: service-flow-fwd 1.6s linear infinite;
 }
-.service-track-flow--rev {
+.service-flow--rev {
   animation: service-flow-rev 1.6s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .service-track-flow {
+  .service-track-flow,
+  .service-trail-flow,
+  .service-flow--fwd,
+  .service-flow--rev {
     animation: none;
   }
-  .service-track-seg {
+  .service-track-seg,
+  .service-trail-seg {
     transition: none;
   }
   .void-marker--pulse {

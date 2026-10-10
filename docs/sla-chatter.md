@@ -81,6 +81,7 @@ is authoritative for this work.
 | E7S3 | Local-dev overlay bypass (polish epic, dev UX)                         | done                                           |
 | E7S4 | Thin dual-direction streams on the track; direction + speed as honesty | done                                           |
 | E7S5 | The 5-minute cadence fix (dev env)                                     | done                                           |
+| E7S6 | The snail slime + gradient softening (polish epic)                     | done                                           |
 
 Status legend: ⬜ todo · 🔨 in progress · ✅ done (see log) · ⏸ blocked
 
@@ -487,3 +488,32 @@ make dev at the 5-minute pace deliberately, that stays the user's call.
 
 All green: wave-field tests 8/8, browser check PASS, 277/277, board 9/9.
 The stack is live on 0.0.0.0:8787 with the 30 s cadence.
+
+### 2026-10-10 — E7S6: the snail slime, and the softened gradient
+
+User steer: "from the head of the streetcar backwards to the last stop
+should be green (like the streetcar leaves a green trail of snail slime?)
+this should help show the clear indicator of which streetcar is clearing
+the delay; also soften the transition between colours with more
+gradienting."
+
+- **The slime (honest math):** a matched, non-stale car drags a green trail
+  on ITS direction's stream from its head back to the last stop it passed —
+  true because a car that just passed those stops has just serviced them;
+  the recorder concludes the same next tick. carTrailSegments() clips the
+  edge's polyline to [last stop, car] with dash-phase continuity; the
+  clearing car is now visible — advancing into the red with fresh green
+  behind it. Live-verified: 166 trail pieces behind real cars, all green.
+- **The softening:** (1) long polyline pieces subdivide at ~24 display
+  units (cap 8/piece) so the colour bends along the stretch instead of one
+  flat colour vertex-to-vertex — the live map now paints ~1,136 graded
+  pieces; (2) the between-stops interpolation eases with smoothstep, so
+  transitions spend their change slowly near stops; (3) every flow dash
+  carries a --dash-start phase (distance mod the 28-unit cycle) and the
+  keyframes shift by exactly one cycle, so the whole route flows as ONE
+  continuous current — no seams where the gradient subdivides.
+- Unit tests 10/10 (subdivision counts, bending colours, phase advance,
+  trail fwd/rev/before-first-stop/unmatched/stale/other-edge); the browser
+  check now also asserts the phase custom property on every flow line and
+  that any rendered trail is fresh green. 279/279 suite, board 9/9 (two
+  checks slower than baseline — the suite grew).

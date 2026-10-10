@@ -1451,6 +1451,12 @@ recorded. The release is done.
 
 ---
 
+### E7S6 — The snail slime + gradient softening [DONE]
+
+**Status:** Done — 2026-10-10 · A matched, non-stale car drags a green trail from its head back to the last stop it passed on its direction's stream — honest, because it just serviced those stops (the recorder says so next tick); the clearing car is now visible advancing into the red with fresh green behind it. Softening: long pieces subdivide (~24 units, cap 8) so the gradient bends along the stretch; smoothstep eases the between-stops interpolation; every flow dash carries a --dash-start phase so the whole route flows as one continuous current. Live-verified (166 trail pieces behind real cars, ~1,136 graded field pieces, animation moving, zero errors). Notes in docs/sla-chatter.md.
+
+---
+
 ## Appendix: source-story ledger
 
 How every story in this file maps back to sla.md §5 and sla-epics.md. Every split

@@ -283,11 +283,17 @@ try {
     // in its own travel direction at the speed its state earns.
     const domFlow = await page.$$eval('.service-track-flow', (elements) =>
       elements.map((element) => ({
-        direction: element.getAttribute('data-state') ? undefined : undefined,
-        fwd: element.classList.contains('service-track-flow--fwd'),
-        rev: element.classList.contains('service-track-flow--rev'),
+        fwd: element.classList.contains('service-flow--fwd'),
+        rev: element.classList.contains('service-flow--rev'),
         seconds: element.style.animationDuration,
+        phase: element.style.getPropertyValue('--dash-start'),
       })),
+    );
+    // The dash phase rides every flow line as a custom property — the whole
+    // route flows as one continuous current, no seams at the subdivisions.
+    assert.ok(
+      domFlow.every((piece) => piece.phase !== ''),
+      'every flow line carries its dash phase',
     );
     const flowPieces = expectedBand.filter((piece) => piece.state !== 'unmonitored');
     assert.equal(domFlow.length, flowPieces.length, 'every visible piece flows');
@@ -383,7 +389,16 @@ try {
       /you've waited/,
     );
 
-    // ——— 6. The map still behaves: zoom works with the field painted. ———
+    // ——— 6. The snail slime, when a live car cooperates: any trail that
+    // renders must be fresh green behind the car (the preview serves real
+    // vehicles, so a car on a scripted edge is not guaranteed — the trail
+    // math itself is unit-tested; here we verify what renders is honest).
+    const trails = await page.$$eval('.service-trail-seg', (elements) =>
+      elements.map((element) => element.getAttribute('stroke')),
+    );
+    for (const stroke of trails) assert.equal(stroke, '#2f9e6e');
+
+    // ——— 7. The map still behaves: zoom works with the field painted. ———
     await page.locator('#map').hover();
     await page.mouse.wheel(0, -240);
     await page.waitForTimeout(250);

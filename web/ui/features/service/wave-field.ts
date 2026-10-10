@@ -113,6 +113,10 @@ export interface TrackSegment {
   /** Dash-flow period, seconds: brisk when cars come quickly, a slow drift
    * through the void. Infinity = no flow (blind). */
   flowSeconds: number;
+  /** The dash pattern's starting phase (display units, mod the pattern
+   * cycle) so a subdivided stream flows as ONE continuous current — no
+   * seams where the gradient steps. */
+  phase: number;
 }
 
 /** How far each stream sits from the track centreline, in map units — thin
@@ -120,6 +124,14 @@ export interface TrackSegment {
 export const STREAM_OFFSET = 1.15;
 /** Stream stroke width (the base track is 4.5). */
 export const STREAM_WIDTH = 1.8;
+/** Long pieces subdivide at this many display units so the colour gradient
+ * bends along the stretch instead of one flat colour vertex-to-vertex. */
+export const SUBDIVIDE_UNITS = 24;
+/** Subdivision cap per polyline piece — bounds element counts. */
+export const MAX_SUBPIECES = 8;
+/** The flow dash pattern's travel per animation cycle (display units); the
+ * CSS keyframes shift by exactly this so the phase stays continuous. */
+export const DASH_CYCLE = 28;
 
 /** The travel-direction assumption (recorded honestly): the published edges
  * inherit their point order from the route's first — direction-0 — pattern,
@@ -215,8 +227,11 @@ function sampleAt(
   if (lower.blind && high.blind) return { dryness: null, blind: true };
   if (lower.blind) return { dryness: high.dryness, blind: false };
   if (high.blind) return { dryness: lower.dryness, blind: false };
+  // Smoothstep: the transition spends its change slowly near each stop, so
+  // neighbouring colours blend instead of stepping (the softer gradient).
+  const eased = u * u * (3 - 2 * u);
   return {
-    dryness: (lower.dryness ?? 0) * (1 - u) + (high.dryness ?? 0) * u,
+    dryness: (lower.dryness ?? 0) * (1 - eased) + (high.dryness ?? 0) * eased,
     blind: false,
   };
 }
@@ -268,34 +283,118 @@ export function edgeServiceSegments(
   features: Feature[],
   statesByStop: ReadonlyMap<string, StopServiceState>,
   config: ServiceConfig = serviceConfig(),
+  maxPieceUnits: number = SUBDIVIDE_UNITS,
 ): TrackSegment[] {
   const points = edge.points;
   if (points.length < 2) return [];
-  // Cumulative metres along the polyline, matching the display points.
+  // Metres along the source polyline (field sampling)…
   const distances =
     edge.sourceDistances.length === points.length
       ? edge.sourceDistances
       : cumulative(edge.sourcePoints);
+  // …and display units along the drawn polyline (subdivision + dash phase).
+  const display = cumulative(points);
   const segments: TrackSegment[] = [];
   for (const directionId of [0, 1] as const) {
     const anchors = anchorsOfEdge(edge, features, statesByStop, directionId);
     if (anchors.length === 0) continue;
     for (let index = 1; index < points.length; index += 1) {
-      const midpoint = (distances[index - 1] + distances[index]) / 2;
-      const sample = sampleAt(anchors, midpoint);
-      const state = stateOf(sample.dryness, sample.blind, config);
-      segments.push({
-        directionId,
-        x1: points[index - 1][0],
-        y1: points[index - 1][1],
-        x2: points[index][0],
-        y2: points[index][1],
-        dryness: sample.blind ? null : sample.dryness,
-        state,
-        flowsForward: DIRECTION_TRAVEL[directionId],
-        flowSeconds: FLOW_SECONDS[state],
-      });
+      const pieceDisplay = display[index] - display[index - 1];
+      if (!(pieceDisplay > 0)) continue;
+      const pieceMetres = distances[index] - distances[index - 1];
+      const subPieces =
+        maxPieceUnits > 0
+          ? Math.min(MAX_SUBPIECES, Math.max(1, Math.ceil(pieceDisplay / maxPieceUnits)))
+          : 1;
+      const [ax, ay] = points[index - 1];
+      const [bx, by] = points[index];
+      for (let sub = 0; sub < subPieces; sub += 1) {
+        const u0 = sub / subPieces;
+        const u1 = (sub + 1) / subPieces;
+        // Sample the field at the SUB-PIECE's midpoint (in metres), so the
+        // gradient bends along the stretch instead of one colour per piece.
+        const midMetres = distances[index - 1] + pieceMetres * ((u0 + u1) / 2);
+        const sample = sampleAt(anchors, midMetres);
+        const state = stateOf(sample.dryness, sample.blind, config);
+        segments.push({
+          directionId,
+          x1: ax + (bx - ax) * u0,
+          y1: ay + (by - ay) * u0,
+          x2: ax + (bx - ax) * u1,
+          y2: ay + (by - ay) * u1,
+          dryness: sample.blind ? null : sample.dryness,
+          state,
+          flowsForward: DIRECTION_TRAVEL[directionId],
+          flowSeconds: FLOW_SECONDS[state],
+          phase: (display[index - 1] + pieceDisplay * u0) % DASH_CYCLE,
+        });
+      }
     }
+  }
+  return segments;
+}
+
+/** The snail slime (E7S6): the green trail a matched, non-stale car drags
+ * from its head back to the last stop it passed on ITS direction — honest,
+ * because a car that just passed those stops has just serviced them; the
+ * recorder will say the same next tick. This is what makes the clearing car
+ * visible: it advances into the red with fresh green behind it. */
+export function carTrailSegments(
+  edge: Edge,
+  car: {
+    match?: { edgeId: string; direction: 1 | -1; distanceAlongMetres: number };
+    stale: boolean;
+  },
+  features: Feature[],
+  statesByStop: ReadonlyMap<string, StopServiceState>,
+): TrackSegment[] {
+  const match = car.match;
+  if (!match || car.stale || match.edgeId !== edge.id) return [];
+  const directionId: 0 | 1 = match.direction === 1 ? 0 : 1;
+  const anchors = anchorsOfEdge(edge, features, statesByStop, directionId);
+  if (anchors.length === 0) return [];
+  const forward = DIRECTION_TRAVEL[directionId];
+  const carAt = match.distanceAlongMetres;
+  // The last stop BEHIND the car on its travel: smaller distances for a
+  // forward car, larger for a reversed one.
+  const behind = forward
+    ? [...anchors].reverse().find((anchor) => anchor.distance < carAt)
+    : anchors.find((anchor) => anchor.distance > carAt);
+  if (!behind) return [];
+  const from = forward ? behind.distance : carAt;
+  const to = forward ? carAt : behind.distance;
+  const points = edge.points;
+  if (points.length < 2) return [];
+  const distances =
+    edge.sourceDistances.length === points.length
+      ? edge.sourceDistances
+      : cumulative(edge.sourcePoints);
+  const display = cumulative(points);
+  const segments: TrackSegment[] = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const m0 = distances[index - 1];
+    const m1 = distances[index];
+    if (!(m1 > m0)) continue;
+    const lo = Math.max(m0, from);
+    const hi = Math.min(m1, to);
+    if (!(hi > lo)) continue;
+    const u0 = (lo - m0) / (m1 - m0);
+    const u1 = (hi - m0) / (m1 - m0);
+    const pieceDisplay = display[index] - display[index - 1];
+    const [ax, ay] = points[index - 1];
+    const [bx, by] = points[index];
+    segments.push({
+      directionId,
+      x1: ax + (bx - ax) * u0,
+      y1: ay + (by - ay) * u0,
+      x2: ax + (bx - ax) * u1,
+      y2: ay + (by - ay) * u1,
+      dryness: 0,
+      state: 'fresh',
+      flowsForward: forward,
+      flowSeconds: FLOW_SECONDS.fresh,
+      phase: (display[index - 1] + pieceDisplay * u0) % DASH_CYCLE,
+    });
   }
   return segments;
 }

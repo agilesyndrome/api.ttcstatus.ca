@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
+import type { StopServiceState } from '../../../../shared/service/contracts';
 import { useAccount } from '../accounts/auth';
 import { useFeatureFlags } from './useFeatureFlags';
 import { useServiceFeed } from './useServiceFeed';
@@ -49,7 +50,10 @@ function useNow(enabled: boolean): number {
  * own stops become the tap targets, and a selected stop gets one marker plus
  * a story card. Without the flag — or signed out — nothing renders and no
  * /service/* requests are made at all. */
-export function useServiceOverlay(data: ViewerData | undefined): ServiceOverlay {
+export function useServiceOverlay(
+  data: ViewerData | undefined,
+  cars?: PlottedVehicle[],
+): ServiceOverlay {
   const flags = useFeatureFlags();
   const account = useAccount();
   // Local-dev bypass: only consulted when the site itself runs without auth
@@ -104,10 +108,7 @@ export function useServiceOverlay(data: ViewerData | undefined): ServiceOverlay 
   const statesRef = useRef(statesByStop);
   statesRef.current = statesByStop;
   const tintStates = useMemo(() => {
-    const rounded = new Map<
-      string,
-      import('../../../../shared/service/contracts').StopServiceState
-    >();
+    const rounded = new Map<string, StopServiceState>();
     for (const [stopId, state] of statesRef.current) {
       rounded.set(
         stopId,
@@ -165,6 +166,7 @@ export function useServiceOverlay(data: ViewerData | undefined): ServiceOverlay 
         edges={data.edges}
         features={data.features}
         statesByStop={statesByStop}
+        cars={cars}
       />
     ),
     overlay: selectedStop

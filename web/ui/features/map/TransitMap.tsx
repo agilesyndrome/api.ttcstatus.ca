@@ -2,7 +2,7 @@ import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { memo, useMemo } from 'react';
 import type { Feature, Point } from '../../../../shared/map/model';
-import { streetcarBody, type PlottedVehicle } from '../../../../shared/map/live-status';
+import { streetcarBody } from '../../../../shared/map/live-status';
 import { STREAM_OFFSET } from '../service/wave-field';
 import type { TransitMapProps } from './types';
 export type { TransitMapControls } from './types';

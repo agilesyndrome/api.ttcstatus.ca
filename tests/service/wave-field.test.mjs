@@ -12,6 +12,7 @@ const {
   advanceStopState,
   drynessColor,
   edgeServiceSegments,
+  carTrailSegments,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
   export { serviceStatesAt } from './shared/service/wait-metrics';
@@ -93,7 +94,7 @@ test('the field grades the track between stop anchors', () => {
     ['st_b', stopState('st_b', 2.6, 'void')],
   ]);
   const features = [featureAt('st_a', 50), featureAt('st_b', 150)];
-  const segments = edgeServiceSegments(edge, features, states, config);
+  const segments = edgeServiceSegments(edge, features, states, config, 0);
   assert.equal(segments.length, 2);
   // Midpoint of piece [0,100] is 50 m → the fresh anchor: green-ish.
   assert.equal(segments[0].state, 'fresh');
@@ -121,7 +122,7 @@ test('blind stretches grey out per direction and never fabricate', () => {
     ],
   ]);
   const features = [featureAt('st_fresh', 40), featureAt('st_blind', 160)];
-  const segments = edgeServiceSegments(edge, features, states, config);
+  const segments = edgeServiceSegments(edge, features, states, config, 0);
   assert.equal(segments.length, 2);
   // Piece [100,200] midpoint 150 sits between fresh(40) and blind(160):
   // the visible side holds — never a fabricated verdict.
@@ -150,7 +151,7 @@ test('blind stretches grey out per direction and never fabricate', () => {
 
 test('edges without service anchors paint nothing (no data, no opinion)', () => {
   assert.equal(
-    edgeServiceSegments(edge, [featureAt('st_none', 50)], new Map(), config).length,
+    edgeServiceSegments(edge, [featureAt('st_none', 50)], new Map(), config, 0).length,
     0,
   );
   const noAnchor = { ...featureAt('st_a', 50) };
@@ -161,9 +162,87 @@ test('edges without service anchors paint nothing (no data, no opinion)', () => 
       [noAnchor],
       new Map([['st_a', stopState('st_a', 1, 'due')]]),
       config,
+      0,
     ).length,
     0,
   );
+});
+
+test('long stretches subdivide so the gradient bends along the track', () => {
+  const states = new Map([
+    ['st_a', stopState('st_a', 0.1, 'fresh')],
+    ['st_b', stopState('st_b', 2.6, 'void')],
+  ]);
+  const features = [featureAt('st_a', 50), featureAt('st_b', 150)];
+  // Subdivision ON (the default): the 100-unit pieces split at 24 units, so
+  // each direction paints ~10 pieces whose colours step smoothly from the
+  // fresh anchor to the void anchor.
+  const segments = edgeServiceSegments(edge, features, states, config);
+  const east = segments.filter((segment) => segment.directionId === 0);
+  assert.ok(east.length > 4, `expected subdivided pieces, got ${east.length}`);
+  const strokes = new Set(
+    east.map((segment) => drynessColor(segment.dryness, segment.state)),
+  );
+  assert.ok(
+    strokes.size >= 3,
+    `expected a bending gradient, got ${strokes.size} colours`,
+  );
+  // The dash phase advances with distance so the flow has no seams: phases
+  // are non-negative and below the cycle, and they vary along the stretch.
+  const phases = east.map((segment) => segment.phase);
+  assert.ok(phases.every((phase) => phase >= 0 && phase < 28));
+  assert.ok(new Set(phases).size > 1, 'phases advance along the route');
+});
+
+test('the snail slime: a car drags fresh green from its head back to the last stop', () => {
+  const states = new Map([
+    ['st_a', stopState('st_a', 0.1, 'fresh')],
+    ['st_b', stopState('st_b', 2.6, 'void')],
+    ['st_b_w', stopState('st_b_w', 0.3, 'fresh', { directionId: 1 })],
+  ]);
+  const features = [
+    featureAt('st_a', 50),
+    { ...featureAt('st_b', 150), stopIds: ['st_b', 'st_b_w'] },
+  ];
+  const carAt = (direction, distanceAlongMetres, stale = false) => ({
+    vehicle: { id: '4410' },
+    point: [distanceAlongMetres, 0],
+    angle: 0,
+    stale,
+    match: { edgeId: edge.id, direction, distanceAlongMetres },
+  });
+  // A forward car at 120 m: the last stop behind it is st_a at 50 — the
+  // slime covers [50, 120] on the direction-0 stream, fresh and brisk.
+  const trail = carTrailSegments(edge, carAt(1, 120), features, states);
+  assert.equal(trail.length, 2); // [50,100] and [100,120]
+  assert.ok(trail.every((segment) => segment.state === 'fresh' && segment.dryness === 0));
+  assert.ok(trail.every((segment) => segment.flowsForward));
+  assert.equal(trail[0].flowSeconds, 1.6);
+  // The trail rides the direction-0 side of the rail (same offset sign as
+  // the field's direction-0 stream).
+  assert.ok(trail.every((segment) => segment.directionId === 0));
+  // A reversed car at 120 m on direction 1: the last stop behind it is
+  // st_b_w at 150 — the slime covers [120, 150], flowing backwards.
+  const rev = carTrailSegments(edge, carAt(-1, 120), features, states);
+  assert.equal(rev.length, 1); // [120,150]
+  assert.ok(rev.every((segment) => segment.state === 'fresh'));
+  assert.ok(rev.every((segment) => !segment.flowsForward));
+  assert.ok(rev.every((segment) => segment.directionId === 1));
+  // Before the first stop: no slime (nothing serviced behind it yet).
+  assert.equal(carTrailSegments(edge, carAt(1, 30), features, states).length, 0);
+  // Unmatched or stale cars leave nothing; other edges leave nothing.
+  assert.equal(
+    carTrailSegments(
+      edge,
+      { vehicle: { id: 'x' }, point: [0, 0], angle: 0, stale: false },
+      features,
+      states,
+    ).length,
+    0,
+  );
+  assert.equal(carTrailSegments(edge, carAt(1, 120, true), features, states).length, 0);
+  const otherEdge = { ...edge, id: 'edge:other' };
+  assert.equal(carTrailSegments(otherEdge, carAt(1, 120), features, states).length, 0);
 });
 
 test('the colour ramp: fresh at 0, amber at 1, full red at the void horizon, grey when blind', () => {
