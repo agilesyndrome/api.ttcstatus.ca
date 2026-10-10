@@ -9,6 +9,7 @@ import { PageFooter } from '../../components/PageFooter';
 import { TransitMap } from '../map/TransitMap';
 
 import { KeyboardHelp } from '../../components/KeyboardHelp';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
@@ -90,15 +91,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
       >
         ?
       </button>
-      <button
-        className="theme-toggle"
-        aria-label={
-          theme.dark ? t('workspace.switchToDayTheme') : t('workspace.switchToNightTheme')
-        }
-        onClick={theme.toggle}
-      >
-        {theme.dark ? t('workspace.day') : t('workspace.night')}
-      </button>
+      <ThemeToggle dark={theme.dark} onToggle={theme.toggle} />
       <AuthControls />
     </div>
   );

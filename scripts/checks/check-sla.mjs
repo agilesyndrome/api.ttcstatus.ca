@@ -92,6 +92,36 @@ try {
       ],
       'signed out, the public nav items render with the current page marked',
     );
+    // Header parity with the map's top bar: the same brand lockup (symbol,
+    // title, tagline) and the same day/night control — the page reads as
+    // the same site, and the stored theme preference applies here too.
+    assert.equal(
+      await page.locator('.site-header__brand strong').innerText(),
+      'Unofficial TTCStatus Map',
+    );
+    assert.equal(
+      await page.locator('.site-header__brand small').innerText(),
+      'A city on rails',
+    );
+    assert.ok(
+      await page
+        .getByRole('link', { name: 'Language settings', exact: true })
+        .isVisible(),
+    );
+    const themeButton = page.getByRole('button', {
+      name: /Switch to (day|night) theme/,
+    });
+    const before = await page.locator('html').getAttribute('data-theme');
+    await themeButton.click();
+    const after = await page.locator('html').getAttribute('data-theme');
+    assert.ok(['light', 'dark'].includes(after), 'the control sets a real theme');
+    assert.notEqual(after, before, 'the day/night control switches the page theme');
+    await page.getByRole('button', { name: /Switch to (day|night) theme/ }).click();
+    assert.equal(
+      await page.locator('html').getAttribute('data-theme'),
+      before,
+      'the day/night control switches back',
+    );
     // The gate signs in — the report renders behind the same page load.
     // (The header's account controls carry their own Sign in; the gate's
     // does the same thing, so the first match is used.)
