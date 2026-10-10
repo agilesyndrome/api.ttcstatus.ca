@@ -126,3 +126,44 @@ export interface ScheduledControllerLike {
   cron: string;
   noRetry(): void;
 }
+
+/** Narrow durable_objects binding interfaces (house style: hand-written,
+ * structurally compatible with the runtime). */
+export interface DurableObjectIdLike {
+  name?: string;
+  toString(): string;
+}
+
+export interface DurableObjectStubLike {
+  fetch(input: string | Request): Promise<Response>;
+}
+
+export interface DurableObjectNamespaceLike {
+  idFromName(name: string): DurableObjectIdLike;
+  get(id: DurableObjectIdLike): DurableObjectStubLike;
+}
+
+/** SQLite-backed DO storage — the subset the ServiceRecorder uses (the window
+ * store runs on SQL so an isolate eviction can't hole the window, sla.md §4.5). */
+export interface DurableObjectSqlResultLike {
+  rows(): unknown[];
+  toArray(): unknown[];
+}
+
+export interface DurableObjectSqlLike {
+  exec(query: string, ...bindings: unknown[]): DurableObjectSqlResultLike;
+}
+
+export interface DurableObjectStorageLike {
+  get(key: string): Promise<unknown>;
+  put(key: string, value: unknown): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  setAlarm(scheduledTime: number): Promise<void>;
+  getAlarm(): Promise<number | null>;
+  deleteAlarm(): Promise<void>;
+  sql: DurableObjectSqlLike;
+}
+
+export interface DurableObjectStateLike {
+  storage: DurableObjectStorageLike;
+}

@@ -6,6 +6,9 @@ import type {
 import { routeRequest } from './http/router';
 import { json } from './http/responses';
 import { syncStaticGtfs } from './sync/sync';
+// The recorder singleton Durable Object (docs/sla.md §4.4) — exported so the
+// wrangler binding can instantiate it.
+export { ServiceRecorder } from './service/service-recorder';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContextLike): Promise<Response> {

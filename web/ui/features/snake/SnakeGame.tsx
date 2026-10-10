@@ -593,8 +593,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
     );
   }, [cars, engine, engine.collected.size, redraw]);
   const foodCars = useMemo(
-    () =>
-      engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
+    () => engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
     [engine, engine.gameCars, engine.collected.size, redraw],
   );
   const switchArrow = useMemo(() => {
@@ -742,9 +741,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
             const headEdge = engine.edges.get(engine.position.edgeId);
             const headColor =
               (headEdge &&
-                data.routes.find(
-                  (route) => route.id === headEdge.routeIds[0],
-                )?.color) ||
+                data.routes.find((route) => route.id === headEdge.routeIds[0])?.color) ||
               '#b4393f';
             return (
               <g className="snake-train" pointerEvents="none">
@@ -936,12 +933,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
-                          <circle
-                            cx={length / 2 - 11}
-                            cy={-3.1}
-                            r={1.7}
-                            fill="#fffdf7"
-                          />
+                          <circle cx={length / 2 - 11} cy={-3.1} r={1.7} fill="#fffdf7" />
                           <circle cx={length / 2 - 11} cy={3.1} r={1.7} fill="#fffdf7" />
                           <circle
                             cx={length / 2 - 10.4}

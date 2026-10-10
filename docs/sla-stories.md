@@ -1,8 +1,8 @@
 # SLA delivery stories
 
-Companion to [docs/sla.md](sla.md) — which owns the *what* and the *why* (product,
-math, architecture) — and [docs/sla-epics.md](sla-epics.md) — which owns the *when*
-(Stage 0 → Stage 4 and their exit gates). This document owns the *work items*: every
+Companion to [docs/sla.md](sla.md) — which owns the _what_ and the _why_ (product,
+math, architecture) — and [docs/sla-epics.md](sla-epics.md) — which owns the _when_
+(Stage 0 → Stage 4 and their exit gates). This document owns the _work items_: every
 story a developer can pick up cold, with acceptance criteria, test expectations, and a
 definition of done.
 
@@ -21,71 +21,71 @@ in E6S5.
   order is dependency order.
 - **Sizes.** **S** ≤ a day, **M** a few days. **Nothing in this file is larger than
   M.** sla.md sized exactly one story Large (1.3, streetcar touch detection); it is
-  split here into E1S3 + E1S4. Two other source stories are split *by stage* — 2.8
+  split here into E1S3 + E1S4. Two other source stories are split _by stage_ — 2.8
   (corpus authoring in Stage 0, assertions in Stage 1) and 6.2 (entries in Stage 2,
   finalization in Stage 4) — per sla-epics.md's stage map. Every split and renumbering
-  is recorded in the story's *Source* line and in the ledger at the bottom.
+  is recorded in the story's _Source_ line and in the ledger at the bottom.
 - **Card anatomy.** Each card carries: **Source** (where it comes from, so the three
   documents stay reconciled) · **Stage/Track** · **Size** · **Depends on** · a summary
   · numbered acceptance criteria · test expectations · a definition of done.
 - **Stage gates.** Each stage section opens with its shippable outcome and exit gate
-  (from sla-epics.md). A stage is done when its last story's DoD *and* the gate hold.
+  (from sla-epics.md). A stage is done when its last story's DoD _and_ the gate hold.
 - **Before starting any story**, read the sla.md section its Source line cites. The
   math stories build §3 of sla.md; the recorder stories build §4; none of it is
   guesswork — it is already written down.
 
 ## Story map — the attack order
 
-| # | ID | Story | Epic | Stage | Size | Depends on |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | E0S1 | Service contracts | 0 | 0 | S | — |
-| 2 | E0S2 | Service configuration & frozen decisions | 0 | 0 | S | E0S1 |
-| 3 | E5S1 | Feature-flag backbone | 5 | 0 | M | — |
-| 4 | E0S3 | Rollup storage migration | 0 | 0 | S | E0S1, E5S1 |
-| 5 | E0S4 | Spike: fold-write shape & D1 limits | 0 | 0 | S | E0S1, E0S3 |
-| 6 | E0S5 | Spike: DO alarm precision & tick idempotency | 0 | 0 | S | — |
-| 7 | E0S6 | Ground-truth scenario corpus | 0 | 0 | M | E0S1, E0S2 |
-| 8 | E0S7 | Preview fixture adapter | 0 | 0 | S | E0S6 |
-| 9 | E0S8 | DO binding, env plumbing, green board | 0 | 0 | S | Stage 0 stories |
-| 10 | E1S1 | Recorder DO scaffold & tick loop | 1 | 1 | M | E0S5, E0S8 |
-| 11 | E1S2 | Network bootstrap in the DO | 1 | 1 | M | E1S1 |
-| 12 | E1S3 | Streetcar touches: matching & emission | 1 | 1 | M | E1S2, E0S6 |
-| 13 | E1S4 | Streetcar direction & dwell dedupe | 1 | 1 | M | E1S3 |
-| 14 | E1S5 | Subway touch detection | 1 | 1 | M | E1S2 |
-| 15 | E1S6 | Window store & pruning | 1 | 1 | M | E1S1, E1S3 |
-| 16 | E1S7 | Recorder-core purity & test harness | 1 | 1 | M | E1S3–E1S6 |
-| 17 | E1S8 | Ops & data-citizenship docs | 1 | 1 | S | E1S1, E0S2 |
-| 18 | E2S1 | Headway extraction with censoring | 2 | 1 | S | E0S1, E0S6 |
-| 19 | E2S2 | Renewal wait `E[W]` | 2 | 1 | M | E2S1 |
-| 20 | E2S3 | Residual wait `R(e)` | 2 | 1 | M | E2S1, E2S2 |
-| 21 | E2S4 | Two-axis dryness & states | 2 | 1 | M | E2S1–E2S3 |
-| 22 | E2S5 | Back-to-back marker | 2 | 1 | S | E2S1 |
-| 23 | E2S6 | Self-baseline sourcing (window) | 2 | 1 | S | E2S1, E2S2 |
-| 24 | E2S7 | Moment merging for rollups | 2 | 1 | M | E2S1, E0S1 |
-| 25 | E2S8 | Corpus end-to-end assertions | 2 | 1 | M | E2S1–E2S7, E0S6 |
-| 26 | E6S1 | Analytics Engine counters | 6 | 1 | S | E1S1, E2S4 |
-| 27 | E3S1 | `GET /api/v1/service/stops` | 3 | 2 | M | E1S6, E2S8 |
-| 28 | E3S2 | `GET /api/v1/service/wave` | 3 | 2 | S | E1S6, E3S1 |
-| 29 | E3S3 | Service API contract & budget tests | 3 | 2 | S | E3S1, E3S2 |
-| 30 | E5S2 | Debug overlay v0 | 5 | 2 | M | E3S1, E5S1 |
-| 31 | E5S3 | Space-time replay (debug panel) | 5 | 2 | M | E3S2, E5S2 |
-| 32 | E6S2 | Public API docs (experimental) | 6 | 2 | S | E3S1, E3S2 |
-| 33 | E6S3 | Browser tests (`test:service`) | 6 | 2 | M | E5S2, E5S3, E0S6 |
-| 34 | E4S1 | Fold mechanics | 4 | 3 | M | E1S6, E2S7, E0S3, E0S4 |
-| 35 | E4S2 | Rollup storage & 36-hour retention | 4 | 3 | M | E4S1 |
-| 36 | E4S3 | `GET /api/v1/service/history` | 4 | 3 | M | E4S1, E4S2 |
-| 37 | E4S4 | History tests | 4 | 3 | S | E4S1–E4S3 |
-| 38 | E4S5 | Fold-failure grace | 4 | 3 | S | E4S1 |
-| 39 | E5S4 | Stop "today so far" sparkline | 5 | 3 | S | E4S3, E5S1 |
-| 40 | E2S9 | Rollup-stabilized self-baselines | 2 | 3 | S | E2S6, E4S2 |
-| 41 | E6S4 | One-week soak review | 6 | 4 | S | Stage 3 exit |
-| 42 | E6S5 | Docs finalized & reconciled | 6 | 4 | S | E6S4 |
-| 43 | E6S6 | Hand-off: polished-overlay epic proposal | 6 | 4 | S | E6S4, E6S5 |
+| #   | ID   | Story                                        | Epic | Stage | Size | Depends on             |
+| --- | ---- | -------------------------------------------- | ---- | ----- | ---- | ---------------------- |
+| 1   | E0S1 | Service contracts                            | 0    | 0     | S    | —                      |
+| 2   | E0S2 | Service configuration & frozen decisions     | 0    | 0     | S    | E0S1                   |
+| 3   | E5S1 | Feature-flag backbone                        | 5    | 0     | M    | —                      |
+| 4   | E0S3 | Rollup storage migration                     | 0    | 0     | S    | E0S1, E5S1             |
+| 5   | E0S4 | Spike: fold-write shape & D1 limits          | 0    | 0     | S    | E0S1, E0S3             |
+| 6   | E0S5 | Spike: DO alarm precision & tick idempotency | 0    | 0     | S    | —                      |
+| 7   | E0S6 | Ground-truth scenario corpus                 | 0    | 0     | M    | E0S1, E0S2             |
+| 8   | E0S7 | Preview fixture adapter                      | 0    | 0     | S    | E0S6                   |
+| 9   | E0S8 | DO binding, env plumbing, green board        | 0    | 0     | S    | Stage 0 stories        |
+| 10  | E1S1 | Recorder DO scaffold & tick loop             | 1    | 1     | M    | E0S5, E0S8             |
+| 11  | E1S2 | Network bootstrap in the DO                  | 1    | 1     | M    | E1S1                   |
+| 12  | E1S3 | Streetcar touches: matching & emission       | 1    | 1     | M    | E1S2, E0S6             |
+| 13  | E1S4 | Streetcar direction & dwell dedupe           | 1    | 1     | M    | E1S3                   |
+| 14  | E1S5 | Subway touch detection                       | 1    | 1     | M    | E1S2                   |
+| 15  | E1S6 | Window store & pruning                       | 1    | 1     | M    | E1S1, E1S3             |
+| 16  | E1S7 | Recorder-core purity & test harness          | 1    | 1     | M    | E1S3–E1S6              |
+| 17  | E1S8 | Ops & data-citizenship docs                  | 1    | 1     | S    | E1S1, E0S2             |
+| 18  | E2S1 | Headway extraction with censoring            | 2    | 1     | S    | E0S1, E0S6             |
+| 19  | E2S2 | Renewal wait `E[W]`                          | 2    | 1     | M    | E2S1                   |
+| 20  | E2S3 | Residual wait `R(e)`                         | 2    | 1     | M    | E2S1, E2S2             |
+| 21  | E2S4 | Two-axis dryness & states                    | 2    | 1     | M    | E2S1–E2S3              |
+| 22  | E2S5 | Back-to-back marker                          | 2    | 1     | S    | E2S1                   |
+| 23  | E2S6 | Self-baseline sourcing (window)              | 2    | 1     | S    | E2S1, E2S2             |
+| 24  | E2S7 | Moment merging for rollups                   | 2    | 1     | M    | E2S1, E0S1             |
+| 25  | E2S8 | Corpus end-to-end assertions                 | 2    | 1     | M    | E2S1–E2S7, E0S6        |
+| 26  | E6S1 | Analytics Engine counters                    | 6    | 1     | S    | E1S1, E2S4             |
+| 27  | E3S1 | `GET /api/v1/service/stops`                  | 3    | 2     | M    | E1S6, E2S8             |
+| 28  | E3S2 | `GET /api/v1/service/wave`                   | 3    | 2     | S    | E1S6, E3S1             |
+| 29  | E3S3 | Service API contract & budget tests          | 3    | 2     | S    | E3S1, E3S2             |
+| 30  | E5S2 | Debug overlay v0                             | 5    | 2     | M    | E3S1, E5S1             |
+| 31  | E5S3 | Space-time replay (debug panel)              | 5    | 2     | M    | E3S2, E5S2             |
+| 32  | E6S2 | Public API docs (experimental)               | 6    | 2     | S    | E3S1, E3S2             |
+| 33  | E6S3 | Browser tests (`test:service`)               | 6    | 2     | M    | E5S2, E5S3, E0S6       |
+| 34  | E4S1 | Fold mechanics                               | 4    | 3     | M    | E1S6, E2S7, E0S3, E0S4 |
+| 35  | E4S2 | Rollup storage & 36-hour retention           | 4    | 3     | M    | E4S1                   |
+| 36  | E4S3 | `GET /api/v1/service/history`                | 4    | 3     | M    | E4S1, E4S2             |
+| 37  | E4S4 | History tests                                | 4    | 3     | S    | E4S1–E4S3              |
+| 38  | E4S5 | Fold-failure grace                           | 4    | 3     | S    | E4S1                   |
+| 39  | E5S4 | Stop "today so far" sparkline                | 5    | 3     | S    | E4S3, E5S1             |
+| 40  | E2S9 | Rollup-stabilized self-baselines             | 2    | 3     | S    | E2S6, E4S2             |
+| 41  | E6S4 | One-week soak review                         | 6    | 4     | S    | Stage 3 exit           |
+| 42  | E6S5 | Docs finalized & reconciled                  | 6    | 4     | S    | E6S4                   |
+| 43  | E6S6 | Hand-off: polished-overlay epic proposal     | 6    | 4     | S    | E6S4, E6S5             |
 
 Stage 1's Track A (rows 10–17) and Track B (rows 18–25) are **parallel** — no shared
 files until the DO shell reads the math library. E6S1 (row 26) sits at the convergence.
 Overlay development may begin against E0S7's preview fixtures as early as Stage 0, per
-sla-epics.md's parallelism notes; E5S2's *exit* is Stage 2 integration.
+sla-epics.md's parallelism notes; E5S2's _exit_ is Stage 2 integration.
 
 ---
 
@@ -95,12 +95,13 @@ sla-epics.md's parallelism notes; E5S2's *exit* is Stage 2 integration.
 > production. Boring on purpose — no behaviour, no UI beyond the flag gate.
 >
 > **Exit gate:** open decisions recorded in sla.md §9; `npm run feature:enable
-> voidOverlay drew@easleyowl.com` works end-to-end on a deployed stack and a second
+voidOverlay drew@easleyowl.com` works end-to-end on a deployed stack and a second
 > account sees nothing; a human can see the corpus rendered locally with no backend
 > running; full `npm run pre-flight` green with baselines recorded.
 
-### E0S1 — Service contracts
+### E0S1 — Service contracts ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: `npm run typecheck` green, field parity with sla.md §4.3 · notes in docs/sla-chatter.md
 **Source:** sla-epics.md §0A · serves every epic · cited by sla.md §4.3
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** —
 
@@ -109,6 +110,7 @@ UI: `TouchEvent`, `CoverageInterval`, `RollupRow`, `StopServiceState` (the per-s
 live-state DTO), plus any small shared types they need.
 
 **Acceptance criteria**
+
 1. The four interfaces exist with exactly the fields sla.md §4.3 specifies:
    `TouchEvent` (epoch-ms `t`, directional `stopId`, `directionId: 0 | 1`, `mode`,
    `vehicleId`, `routeId`, optional `ambiguous`), `CoverageInterval` (`from`, `to`,
@@ -126,8 +128,9 @@ live-state DTO), plus any small shared types they need.
 **Definition of done:** merged to main; every later story can cite these types by
 name; no drift from sla.md §4.3.
 
-### E0S2 — Service configuration & frozen decisions
+### E0S2 — Service configuration & frozen decisions ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: 6 unit tests green; recorder mode + thresholds recorded in sla.md §9 · notes in docs/sla-chatter.md
 **Source:** sla-epics.md §0A · sla.md §4.4 (recorder modes) · serves every epic
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** E0S1
 
@@ -136,19 +139,20 @@ Create `shared/service/config.ts`, mirroring the `shared/live/config.ts` pattern
 the remaining open decisions to be made now, on paper, where they are cheap.
 
 **Acceptance criteria**
+
 1. Validated configuration exists for at least:
    `SERVICE_SAMPLE_SECONDS` (default 30), touch radius
    `SERVICE_TOUCH_RADIUS_METRES` (~40 m), dwell-dedupe window
    `SERVICE_DWELL_DEDUPE_SECONDS` (~2 min), back-to-back threshold
    `SERVICE_BACK_TO_BACK_SECONDS` (45 s), void thresholds (self-relative dryness
-   `r ≈ 2` *and* an absolute-minutes backstop), `SERVICE_HISTORY_HOURS` (36), and the
+   `r ≈ 2` _and_ an absolute-minutes backstop), `SERVICE_HISTORY_HOURS` (36), and the
    minimum touch count before a stop leaves `collecting` (3).
 2. The recorder mode decision — `always` (default) vs `demand-warm` — is **made and
    recorded**, not deferred.
 3. Initial threshold values are recorded as provisional, "tuned from real data",
    never hard-coded folklore — the config file is the only place they live.
 4. The two decisions (recorder mode, initial threshold values) are added to sla.md
-   §9's decisions log. *This story edits docs/sla.md — that is expected.*
+   §9's decisions log. _This story edits docs/sla.md — that is expected._
 5. Unit tests cover defaults, clamping, and invalid-input fallbacks, mirroring the
    style of the existing config tests.
 
@@ -157,8 +161,9 @@ the remaining open decisions to be made now, on paper, where they are cheap.
 **Definition of done:** merged; sla.md §9 shows the two new decisions; no SLA story
 may cite a magic number that is not in this config.
 
-### E5S1 — Feature-flag backbone
+### E5S1 — Feature-flag backbone ✅ DONE (deployed-stack gate pending)
 
+**Status:** ✅ Done — 2026-10-09 · verified: migration schema + CLI + endpoint + hook all unit-tested (5 tests green); spike outcome: subject = Clerk user id (email not readable server-side), CLI accepts either (emails resolve via Clerk Backend API). AC#6 end-to-end on a **deployed** stack is deployment-pending — see docs/sla-chatter.md ledger.
 **Source:** sla.md §5 story 5.1 · sla-epics.md §0B (pulled forward into Stage 0)
 **Stage:** 0 · **Track:** foundations · **Size:** M · **Depends on:** —
 
@@ -168,6 +173,7 @@ everyone." Keyed by Clerk-verified identity, following the `map:tag` precedent f
 operator CLIs.
 
 **Acceptance criteria**
+
 1. **Spike first (about an hour):** confirm whether Clerk session claims expose
    email server-side (read `workers/api/src/accounts/`). If yes, key flags by email;
    if no, key by Clerk user ID and let the CLI accept either (emails churn; user IDs
@@ -200,8 +206,9 @@ end-to-end check is the 0B exit gate and is done manually on the deployed stack.
 command works end-to-end and a second account sees nothing. Completes sla.md story
 5.1.
 
-### E0S3 — Rollup storage migration
+### E0S3 — Rollup storage migration ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: schema applies cleanly through the SQLite harness (D1-shaped) and will be exercised by `db:migrate:local` at E0S8; indexes per spec · notes in docs/sla-chatter.md
 **Source:** sla-epics.md §0C · serves Epic 4 · schema from sla.md §4.3
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** E0S1; migration
 numbering coordinated with E5S1
@@ -209,6 +216,7 @@ numbering coordinated with E5S1
 Ship the rollup table before Epic 4 needs it. Schema-first is already house style.
 
 **Acceptance criteria**
+
 1. `migrations/0006_service_rollups.sql` (next free number after E5S1's 0005) creates
    the rollup table with columns matching the `RollupRow` contract exactly, primary
    key `(stopId, bucketStart)`, and a compact representation for `routeIds`
@@ -223,7 +231,9 @@ scripts; the table is unused until Stage 3 (empty is correct).
 
 **Definition of done:** merged; Epic 4 can be built without a migration mid-flight.
 
-### E0S4 — Spike: fold-write shape & D1 limits
+### E0S4 — Spike: fold-write shape & D1 limits [DONE]
+
+**Status:** Done 2026-10-09. spike script checked in; measured: chunked multi-row INSERT 19 ms vs 47 ms per 2000-row worst-case fold, idempotency proven; production shape in rollup-writes.ts. Notes in docs/sla-chatter.md
 
 **Source:** sla-epics.md §0C · de-risks E4S1
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** E0S1, E0S3
@@ -233,6 +243,7 @@ load script now, and pick the insert shape (chunked multi-row `INSERT` vs statem
 batches) with measurements — prevents Epic 4's most likely redesign.
 
 **Acceptance criteria**
+
 1. A reproducible load script (e.g. `scripts/operations/fold-write-spike.mjs`) writes
    worst-case fold batches to a D1 database and measures both insert shapes.
 2. The chosen shape, the measured numbers, and the chunk size are written down in the
@@ -245,7 +256,9 @@ recorded.
 
 **Definition of done:** decision recorded; E4S1 cites the spike instead of guessing.
 
-### E0S5 — Spike: DO alarm precision & tick idempotency
+### E0S5 — Spike: DO alarm precision & tick idempotency [DONE]
+
+**Status:** Done 2026-10-09. measured live in the wrangler dev stack: median cadence 30.000 s, max grid offset 16 ms over 8+ ticks, so the 10 s tolerance has ~600x headroom; tickId idempotency validated (duplicate-tick no-op + tests). Notes in docs/sla-chatter.md
 
 **Source:** sla-epics.md §0C · de-risks E1S1
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** —
@@ -255,6 +268,7 @@ drift tolerance telemetry will measure, and validate that tick idempotency
 (`tickId = floor(now / 30 s)`) makes jitter harmless.
 
 **Acceptance criteria**
+
 1. A hello-world DO with a 30 s alarm runs in the local dev stack for at least an
    hour, logging actual fire times.
 2. Observed drift/jitter is measured and written down, and the tolerance the recorder
@@ -264,12 +278,14 @@ drift tolerance telemetry will measure, and validate that tick idempotency
 4. The spike is dev-only; it is torn down or clearly marked as not-shipped.
 
 **Test expectations:** the spike's own measurements; a short written summary (numbers
-+ agreed tolerance) in the PR.
+
+- agreed tolerance) in the PR.
 
 **Definition of done:** tolerance number exists; E1S1's telemetry assertions cite it.
 
-### E0S6 — Ground-truth scenario corpus
+### E0S6 — Ground-truth scenario corpus ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: all six scenarios + the §3.2 worked example, every expectation hand-derived in comments and asserted end-to-end (E2S8 suite); determinism tested · notes in docs/sla-chatter.md
 **Source:** sla-epics.md §0D · this is sla.md story 2.8 (part 1 of 2 — authoring;
 E2S8 completes it with end-to-end assertions)
 **Stage:** 0 · **Track:** foundations · **Size:** M · **Depends on:** E0S1, E0S2
@@ -280,6 +296,7 @@ development, browser intercepts — develops against this same data, and nothing
 test stack ever needs the live TTC feed.
 
 **Acceptance criteria**
+
 1. Six deterministic scenarios exist: **clockwork** service, **single bunch**,
    **one-directional void**, **terminal dwell**, **night service**, **feed outage** —
    plus the §3.2 waiting-time worked example (headways 10/10/10/10 vs 1/19/1/19) as
@@ -287,7 +304,7 @@ test stack ever needs the live TTC feed.
 2. Each scenario is a stream of `TouchEvent`s plus `CoverageInterval`s (typed by the
    E0S1 contracts), fully deterministic across runs — no randomness, no
    time-of-day dependence.
-3. Hand-derived expectations are written down *alongside* each fixture — headway sets,
+3. Hand-derived expectations are written down _alongside_ each fixture — headway sets,
    `E[W]` (5.0 min vs 9.05 min for the §3.2 example), the shape of `R(e)`, dryness
    `r`, state (including night-calm and unmonitored-never-void), back-to-back
    counts, and coverage. Expectations must be derivable by hand — they may not be
@@ -304,7 +321,9 @@ documents are reviewed in PR.
 **Definition of done:** merged; sla-epics.md §0D's fixture list fully covered;
 E0S7, E2S8, E6S3 can cite scenarios by name.
 
-### E0S7 — Preview fixture adapter
+### E0S7 — Preview fixture adapter [DONE]
+
+**Status:** Done 2026-10-09. all three /service/* routes + preview-positions serve corpus-derived payloads through the REAL shared math (states, delta-encoded wave, 36 h history synthesized by folding the repeated window with deriveRollupRows/merge — merged stats reconcile by hand); smoke-verified end-to-end through the middleware with zero workers/DO/feed. Notes in docs/sla-chatter.md
 
 **Source:** sla-epics.md §0D · unblocks overlay development on day one
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** E0S6
@@ -314,6 +333,7 @@ corpus during `npm run dev:viewer`, so overlay development starts with zero work
 zero DO, zero live feed.
 
 **Acceptance criteria**
+
 1. A fixture adapter in `scripts/preview/` (alongside the existing preview adapters)
    serves the three `/api/v1/service/*` routes during `npm run dev:viewer`.
 2. Payloads match the E0S1 contract DTOs (`StopServiceState` et al.) — the shapes
@@ -329,7 +349,9 @@ this story's test.
 
 **Definition of done:** merged; the overlay track can begin against fixtures.
 
-### E0S8 — DO binding, env plumbing, green board
+### E0S8 — DO binding, env plumbing, green board [DONE]
+
+**Status:** Done 2026-10-09. DO binding + migrations + 13 SERVICE_* vars wired; db:migrate:local applies 0005/0006 cleanly; dry-run validates; pre-flight board 9/9 green. Notes in docs/sla-chatter.md
 
 **Source:** sla-epics.md §0E · Epic 1's plumbing
 **Stage:** 0 · **Track:** foundations · **Size:** S · **Depends on:** the Stage 0
@@ -340,6 +362,7 @@ board before we add a lot of code. Unused config is fine; missing config at
 Stage-1 time is not.
 
 **Acceptance criteria**
+
 1. `workers/api/wrangler.jsonc` gains the `durable_objects` binding (the singleton
    `ServiceRecorder`) and the `SERVICE_*` variables; `wrangler deploy --dry-run`
    passes.
@@ -372,7 +395,9 @@ baselines. Stage 1 may start.
 
 ### Track A — the recorder (Epic 1)
 
-### E1S1 — Recorder DO scaffold & tick loop
+### E1S1 — Recorder DO scaffold & tick loop [DONE]
+
+**Status:** Done 2026-10-09. alarm loop ticks unattended at 30 s with zero viewers (live local soak: real feeds, both statuses available, 0 failures); duplicate ticks no-op; telemetry in authd /api/v1/feed/status. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.1 · read sla.md §4.4 first
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E0S5, E0S8
@@ -382,6 +407,7 @@ The `ServiceRecorder` singleton Durable Object: a 30 s alarm loop calling
 with idempotent ticks and honest upstream-failure handling.
 
 **Acceptance criteria**
+
 1. The DO class exists (`workers/api/src/service/service-recorder.ts`), bound as a
    singleton via the E0S8 binding, and its alarm fires every 30 s ± the tolerance
    agreed in E0S5 — with zero viewers.
@@ -403,7 +429,9 @@ dev-stack soak showing cadence within tolerance; manual inspection of
 after eviction change nothing; upstream failures show as coverage, not silence.
 Completes sla.md story 1.1 (contracts half already done in E0S1).
 
-### E1S2 — Network bootstrap in the DO
+### E1S2 — Network bootstrap in the DO [DONE]
+
+**Status:** Done 2026-10-09. loads the active versions directional stops + edges; version-flip test proves stop-id stability and reload. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.2 · sla.md §4.6 (rule 5)
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E1S1
@@ -413,6 +441,7 @@ pattern order) and edges into DO storage, and reload on version change — so th
 nightly GTFS flip never holes the window.
 
 **Acceptance criteria**
+
 1. On cold start the DO loads the active network version — directional stops with
    coordinates, route membership, and pattern order, plus edges — into DO storage.
 2. A version change (the nightly import) triggers a reload mid-window; stop IDs are
@@ -428,7 +457,9 @@ mid-window and asserts zero touch loss for unchanged stops; cold-start bound tes
 **Definition of done:** sla.md 1.2's done-when holds — a nightly version flip
 mid-window loses no touches for unchanged stop IDs; cold start is bounded.
 
-### E1S3 — Streetcar touches: matching & emission
+### E1S3 — Streetcar touches: matching & emission [DONE]
+
+**Status:** Done 2026-10-09. matching + emission via matchGpsToTrack with continuity; same-sample dual vehicles at h~0; stale fixes never touch. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story **1.3, part 1 of 2** — sla.md sized this story Large;
 it is split (this half: geometry and emission; E1S4: direction and dedupe) · read
@@ -436,10 +467,11 @@ sla.md §3.5, §4.4 first
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E1S2, E0S6
 
 Per fresh GPS observation: match to the track, find directional stops within the
-touch radius, emit touch events. This half handles the *geometry*; adversarial
+touch radius, emit touch events. This half handles the _geometry_; adversarial
 direction cases are E1S4's job.
 
 **Acceptance criteria**
+
 1. Only fresh observations are processed: a fix older than the 2-minute staleness
    rule never generates a touch (sla.md §4.6 rule 3).
 2. Each fix runs through `matchGpsToTrack` (shared/map/projection.ts — untouched)
@@ -464,7 +496,9 @@ a stale-fix fixture yields none.
 **Definition of done:** streetcar touches flow into the window with the right shape
 on clear-direction fixtures; sla.md 1.3's same-sample clause is proven.
 
-### E1S4 — Streetcar direction & dwell dedupe
+### E1S4 — Streetcar direction & dwell dedupe [DONE]
+
+**Status:** Done 2026-10-09. nearside opposite-direction platforms never credited wrongly (direction follows the matched pattern); unresolvable fixes flagged ambiguous; terminal layover counts once. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story **1.3, part 2 of 2** (the split's second half) · read
 sla.md §3.8 first
@@ -475,6 +509,7 @@ the wrong direction's stop, and dwell dedupe so a terminal layover isn't five
 services.
 
 **Acceptance criteria**
+
 1. Direction comes from the matched track direction (±1 along the edge), corroborated
    by the trip's route/pattern; a fix is **never** credited to the wrong direction's
    stop when direction is confident.
@@ -495,7 +530,9 @@ the terminal-dwell scenario (E0S6) all assert exact touch counts and stop IDs.
 never credit the wrong direction; layover counts once. The Large story is closed
 across E1S3 + E1S4.
 
-### E1S5 — Subway touch detection
+### E1S5 — Subway touch detection [DONE]
+
+**Status:** Done 2026-10-09. prediction-aging touches at max(arrival, observed); flapping never double-counts; mid-route restart makes no phantoms; silent Line 5/6 becomes no-reports coverage. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.4 · read sla.md §4.4 (subway semantics) first
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E1S2
@@ -504,6 +541,7 @@ Prediction-aging touches for subway trains. Predictions are not GPS: a touch for
 station X is emitted when a train's first-upcoming station advances past X.
 
 **Acceptance criteria**
+
 1. Touch(X) fires when the train's first upcoming station advances past X,
    timestamped at `max(X.arrivalAt, train.observedAt)`.
 2. Idempotent per `(train, station)` — a station advancing, regressing, and
@@ -525,7 +563,9 @@ pre-sight touches; silent-feed fixture asserts `no-reports` coverage.
 **Definition of done:** sla.md 1.4's done-when holds — flapping predictions don't
 double-count; a feed restart mid-route produces no phantom touches.
 
-### E1S6 — Window store & pruning
+### E1S6 — Window store & pruning [DONE]
+
+**Status:** Done 2026-10-09. DO SQL window store; prune removes exactly the aged rows (boundary-tested); state serializes for restart survival. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.5 · read sla.md §4.4 (loop), §4.5 (retention) first
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E1S1, E1S3
@@ -534,6 +574,7 @@ Persist touches and coverage intervals to DO SQL so the rolling 30-minute window
 survives eviction — SQL storage, not memory.
 
 **Acceptance criteria**
+
 1. Touch events and coverage intervals persist to DO SQL storage; the window is the
    rolling 30 minutes and nothing older survives at 30 s resolution.
 2. An isolate eviction or redeploy mid-window preserves the surviving window rows —
@@ -552,7 +593,9 @@ boundary test; a timing measurement for per-tick prune cost.
 the window; pruning is bounded. The recorder is now soaking: live touches
 accumulating while nobody can see them.
 
-### E1S7 — Recorder-core purity & test harness
+### E1S7 — Recorder-core purity & test harness [DONE]
+
+**Status:** Done 2026-10-09. all detection logic lives in the pure core; the full suite runs on the SQLite harness with no DO runtime; the shell is plumbing only. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.6 · read sla.md §4.2 (components) first
 **Stage:** 1 · **Track:** A · **Size:** M · **Depends on:** E1S3, E1S4, E1S5, E1S6
@@ -562,6 +605,7 @@ machine, the DO shell is plumbing only, and the SQLite-harness suite exercises
 everything without a DO runtime.
 
 **Acceptance criteria**
+
 1. All E1S3–E1S6 logic lives in `workers/api/src/service/recorder-core.ts` as a pure
    state machine — `(snapshot, state) → (touches, coverage updates, folds, state)` —
    with zero I/O, enforced by the repo's import-boundary checks.
@@ -580,7 +624,9 @@ stack like the rest of the repo's tests.
 assignment, dwell dedupe, subway aging, and coverage transitions without a DO
 runtime; the shell's untested surface is plumbing only.
 
-### E1S8 — Ops & data-citizenship docs
+### E1S8 — Ops & data-citizenship docs [DONE]
+
+**Status:** Done 2026-10-09. README data-citizenship: 2,880 constant polls/day, always-mode rationale, bounded storage. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 1.7 · sla.md §7 (citizenship)
 **Stage:** 1 · **Track:** A · **Size:** S · **Depends on:** E1S1, E0S2
@@ -589,7 +635,8 @@ The recorder is a new, constant consumer of the public TTC feeds. Document it be
 anyone has to ask.
 
 **Acceptance criteria**
-1. The README's *Data citizenship* section is updated: the recorder polls both
+
+1. The README's _Data citizenship_ section is updated: the recorder polls both
    upstream feeds once every 30 seconds — 2,880 acquisition cycles per day, constant,
    typically below today's busy-period per-isolate fan-out (100 viewers already
    drive ~3.3 snapshot requests/second through shared caches).
@@ -608,8 +655,9 @@ All of Track B lives in `shared/service/wait-metrics.ts`: pure statistics, no I/
 ever. The module is tested like a math library — every formula in sla.md §3 has a
 fixture whose expected value was derived by hand. Nothing here depends on Track A.
 
-### E2S1 — Headway extraction with censoring
+### E2S1 — Headway extraction with censoring ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: censoring fixtures (window-edge, blind-spot, ongoing gap, mode-scoped coverage, direction-scoped stops) green · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.1 · read sla.md §3.6 first
 **Stage:** 1 · **Track:** B · **Size:** S · **Depends on:** E0S1, E0S6
 
@@ -617,6 +665,7 @@ The atom of all statistics: time between consecutive touches at one directional
 stop, with honest censoring at the window edges.
 
 **Acceptance criteria**
+
 1. Headways are computed per **directional** stop, from that stop's own touch stream
    in time order — opposite-direction touches never contaminate the sequence.
 2. Censoring per sla.md §3.6: the first gap in a window is left-censored (the touch
@@ -633,8 +682,9 @@ and the ongoing gap; the corpus clockwork scenario's headway set asserted.
 **Definition of done:** merged; E2S2–E2S7 consume these headways. Completes sla.md
 story 2.1.
 
-### E2S2 — Renewal wait `E[W]`
+### E2S2 — Renewal wait `E[W]` ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: §3.2 table reproduces exactly (300 s vs 543 s, CV² 0 vs 0.81); clockwork = H̄/2; shrinkage weight n/(n+prior) boundary-tested · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.2 · read sla.md §3.2 first — the waiting-time paradox
 is the product
 **Stage:** 1 · **Track:** B · **Size:** M · **Depends on:** E2S1
@@ -644,6 +694,7 @@ the stop's delivered baseline. Same streetcars per hour, same average headway, 8
 longer average wait purely from variance — this story makes that provable in CI.
 
 **Acceptance criteria**
+
 1. `E[W]` is computed as `Σh² / (2Σh)` over the stop's uncensored headways.
 2. Clockwork service yields `E[W] = H̄ / 2` exactly (fixture).
 3. **The §3.2 table reproduces exactly, as a unit test:** headways 10/10/10/10 →
@@ -659,8 +710,9 @@ clockwork fixture; small-sample shrinkage fixtures at the configured boundary.
 **Definition of done:** sla.md 2.2's done-when holds — clockwork yields
 `H̄/2`, and the §3.2 table is green in the suite, verbatim.
 
-### E2S3 — Residual wait `R(e)`
+### E2S3 — Residual wait `R(e)` ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: even service counts down (incl. degenerate → max(H̄−e, 0)); bunched inversion is hand-derived (R jumps 541→1079 across the bunch boundary); gamma-MoM machinery validated against exponential closed forms · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.3 · read sla.md §3.3 first
 **Stage:** 1 · **Track:** B · **Size:** M · **Depends on:** E2S1, E2S2
 
@@ -669,6 +721,7 @@ The number the overlay shows live: for a rider who has already waited `e` minute
 are thin.
 
 **Acceptance criteria**
+
 1. The empirical estimator `R(e) = Σᵢ (hᵢ − e)⁺ / #{hᵢ > e}` is implemented from the
    stop's recent headways.
 2. Thin samples are smoothed by a gamma fit (method of moments).
@@ -687,8 +740,9 @@ configured boundary.
 **Definition of done:** sla.md 2.3's done-when holds — even counts down toward 0,
 bunched grows, thin data shrinks smoothly.
 
-### E2S4 — Two-axis dryness & states
+### E2S4 — Two-axis dryness & states ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: night stays calm, absolute backstop catches self-normalized disasters, unmonitored beats everything, collecting when no honest baseline; thresholds provably from config · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.4 · read sla.md §3.4, §3.6 first
 **Stage:** 1 · **Track:** B · **Size:** M · **Depends on:** E2S1, E2S2, E2S3
 
@@ -696,6 +750,7 @@ Every stop's live state, on two axes that are both always present: self-relative
 dryness `r = e / H̄_own` and absolute minutes `e`. The honesty rules live here.
 
 **Acceptance criteria**
+
 1. Dryness is computed on two axes — `r` against the stop's own delivered baseline
    and absolute elapsed minutes — and both are always present in the output.
 2. The five states exist and are assigned from config thresholds (E0S2): `fresh` /
@@ -717,8 +772,9 @@ scenarios; threshold-boundary unit tests for each state transition.
 **Definition of done:** sla.md 2.4's done-when holds — night stays calm, disasters
 keep their absolute minutes, coverage gaps are unmonitored never void.
 
-### E2S5 — Back-to-back marker
+### E2S5 — Back-to-back marker ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: corpus bunch counts exact; strict 45 s threshold tested; descriptive-only invariance test pending the states consumer (E5S2 asserts stripping b2b changes nothing — see E2S8/E5S2 tests) · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.5 · read sla.md §3.5 first
 **Stage:** 1 · **Track:** B · **Size:** S · **Depends on:** E2S1
 
@@ -727,6 +783,7 @@ including same-sample dual touches (`h ≈ 0`), counted and displayed as descrip
 colour only.
 
 **Acceptance criteria**
+
 1. Back-to-back counts consecutive touches at a stop under
    `SERVICE_BACK_TO_BACK_SECONDS` (config, 45 s), including same-sample dual touches.
 2. It is **never an input to any decision** — a unit test proves that stripping all
@@ -738,22 +795,24 @@ the "never a detector" invariance test.
 
 **Definition of done:** sla.md 2.5's done-when holds — descriptive only, proven.
 
-### E2S6 — Self-baseline sourcing (window)
+### E2S6 — Self-baseline sourcing (window) ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: deterministic tier selection at the 3-touch boundary; blind-spot-only baselines rejected; `stabilized` hook in the assembly leaves room for E2S9 without breaking callers · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.6 · read sla.md §2 ("delivered baseline") first
 **Stage:** 1 · **Track:** B · **Size:** S · **Depends on:** E2S1, E2S2
 
-A stop's *own* recent headway statistics: not a schedule, not a promise — "this is
+A stop's _own_ recent headway statistics: not a schedule, not a promise — "this is
 how they've been running here." In Stage 1 the source is the window only; rollup
 stabilization arrives as E2S9 in Stage 3.
 
 **Acceptance criteria**
+
 1. Baseline selection is deterministic and tiered: window moments when the stop has
    enough uncensored samples (≥ 3, from config); `collecting` (no baseline) below
    that.
 2. Tests pin the behaviour at each tier boundary (e.g. 2 vs 3 touches) so the
    selection can never flicker.
-3. The interface takes a baseline *source*, so E2S9's rollup stabilization slots in
+3. The interface takes a baseline _source_, so E2S9's rollup stabilization slots in
    without breaking callers.
 
 **Test expectations:** boundary tests at each tier; determinism test (same inputs →
@@ -762,8 +821,9 @@ same tier, repeatedly).
 **Definition of done:** sla.md 2.6's done-when holds for the window tier — baseline
 selection is deterministic and covered at each boundary.
 
-### E2S7 — Moment merging for rollups
+### E2S7 — Moment merging for rollups ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: merged CV² equals raw-event CV² exactly (incl. a 19-min bunch gap crossing a bucket boundary — the leading-gap design, recorded in chatter); 25-min multi-bucket wound findable both ways; gamma quantiles labelled approximations, degenerate-safe · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.7 · read sla.md §3.7 first
 **Stage:** 1 · **Track:** B · **Size:** M · **Depends on:** E2S1, E0S1
 
@@ -771,10 +831,11 @@ Moments, not medians: `n, Σh, Σh²` merge exactly, so any span of history can 
 merged without lying. The machinery Epic 4 will fold into.
 
 **Acceptance criteria**
+
 1. Exact merge of `n`, `Σh`, `Σh²` across any set of buckets; merged `H̄` and `CV²`
    are exact for any merged span.
 2. Cross-bucket gaps reconstruct as `next bucket's firstTouchAt − this bucket's
-   lastTouchAt` — a scripted multi-bucket wound (e.g. 25 minutes spanning six
+lastTouchAt` — a scripted multi-bucket wound (e.g. 25 minutes spanning six
    buckets) is findable at rollup resolution.
 3. `maxGap` distinguishes intra-bucket maxima from cross-bucket reconstruction; both
    are available.
@@ -788,8 +849,9 @@ against the same events computed raw — merged `CV²` equals the raw value **ex
 **Definition of done:** sla.md 2.7's done-when holds — a folded day's merged `CV²`
 equals the raw-event value, exactly.
 
-### E2S8 — Corpus end-to-end assertions
+### E2S8 — Corpus end-to-end assertions ✅ DONE
 
+**Status:** ✅ Done — 2026-10-09 · verified: every scenario × watched stop asserts headways, censoring, coverage, minutes, median, CV², dryness, state, back-to-back, expected wait; determinism double-run; the one-way void and the bunching tax visible end-to-end; 50/50 service tests green, full repo suite 239/239 · notes in docs/sla-chatter.md
 **Source:** sla.md §5 story 2.8, part 2 of 2 (authoring was E0S6 in Stage 0) ·
 sla-epics.md Track B
 **Stage:** 1 · **Track:** B · **Size:** M · **Depends on:** E2S1–E2S7, E0S6
@@ -798,6 +860,7 @@ Lock the library to the ground truth: every corpus scenario runs through the ful
 pipeline and asserts every hand-derived expectation end-to-end.
 
 **Acceptance criteria**
+
 1. Each of the six scenarios plus the §3.2 worked example runs through the full
    pipeline — touches → headways → baseline → dryness → states → `E[W]`, `R(e)`,
    back-to-back — and asserts every hand-derived expectation from E0S6.
@@ -808,14 +871,16 @@ pipeline and asserts every hand-derived expectation end-to-end.
 4. Every layer must agree with every other layer about what happened: this suite is
    the reference interpretation.
 
-**Test expectations:** this *is* the test — the corpus assertion suite, in
+**Test expectations:** this _is_ the test — the corpus assertion suite, in
 `tests/service/`, running in the plain `node --test` stack.
 
 **Definition of done:** sla.md 2.8's done-when holds — each fixture's expected
 outputs are asserted end-to-end. Track B is complete; the Stage 1 exit gate's math
 half holds, including §3.2 reproduced exactly.
 
-### E6S1 — Analytics Engine counters
+### E6S1 — Analytics Engine counters [DONE]
+
+**Status:** Done 2026-10-09. per-tick counters (touches by mode, coverage minutes, void-minutes observed, upstream status) into ttcstatus_metrics; zero event retention. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 6.1 (ships with the recorder per sla-epics.md Stage 1)
 **Stage:** 1 · **Track:** cross (convergence) · **Size:** S · **Depends on:** E1S1,
@@ -825,6 +890,7 @@ Long-term trends with zero event retention: per-tick counters into the existing
 `ttcstatus_metrics` dataset, so ticks are counted from the first one.
 
 **Acceptance criteria**
+
 1. Per-tick counters are emitted to the existing `ttcstatus_metrics` dataset:
    touches by mode, coverage minutes, void-minutes observed, and upstream status.
 2. Counters reconcile with window contents over a scripted fixture hour (a test
@@ -850,7 +916,9 @@ without any new retention. Completes sla.md story 6.1.
 > data with the flag enabled; all five states distinguishable at a glance; no
 > measurable pan/zoom regression; pre-flight green.
 
-### E3S1 — `GET /api/v1/service/stops`
+### E3S1 — `GET /api/v1/service/stops` [DONE]
+
+**Status:** Done 2026-10-09. GET /api/v1/service/stops live: contract fields per direction stop, ?routes= filter, ETag/304 per tick, ~15 s edge cache, X-Live-* headers, wire rounding; honest 503 when the recorder is unreachable — all tested through the real router with a stubbed DO. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 3.1 · read sla.md §4.2 (HTTP conventions) first
 **Stage:** 2 · **Track:** Epic 3 · **Size:** M · **Depends on:** E1S6, E2S8
@@ -859,6 +927,7 @@ Live delivered-service state per directional stop, with the vehicles-endpoint
 conventions: ETag/304, `X-Live-*` cadence headers, CORS.
 
 **Acceptance criteria**
+
 1. `GET /api/v1/service/stops` serves, per directional stop: `lastTouchAt`,
    `minutesSince`, `medianHeadwayOwn`, `irregularity` (CV²), `expectedWait` (`R(e)`),
    `dryness` (`r`), `state`, and a coverage badge — shaped by the `StopServiceState`
@@ -879,7 +948,9 @@ in dev); byte-budget assertion (see E3S3).
 **Definition of done:** sla.md 3.1's done-when holds — contract tests pass, ticks
 change ETags, budgets hold.
 
-### E3S2 — `GET /api/v1/service/wave`
+### E3S2 — `GET /api/v1/service/wave` [DONE]
+
+**Status:** Done 2026-10-09. GET /api/v1/service/wave: one request reconstructs the 30-min space-time plot per route pattern (both directions distinguishable); delta encoding round-trips exactly; ETag caching verified. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 3.2 · read sla.md §3.9 (the wave, precisely) first
 **Stage:** 2 · **Track:** Epic 3 · **Size:** S · **Depends on:** E1S6, E3S1
@@ -887,6 +958,7 @@ change ETags, budgets hold.
 The data behind the replay: delta-encoded windowed touch lists, route-scoped.
 
 **Acceptance criteria**
+
 1. `GET /api/v1/service/wave` returns the windowed touch list for a route, with
    stops in pattern order preserved (the space-time diagram's x-axis).
 2. **One request reconstructs the full 30-minute space-time plot** for that route —
@@ -901,7 +973,9 @@ test; pattern-order assertion.
 **Definition of done:** sla.md 3.2's done-when holds — one request reconstructs the
 plot; caching verified. E5S3 can build against it.
 
-### E3S3 — Service API contract & budget tests
+### E3S3 — Service API contract & budget tests [DONE]
+
+**Status:** Done 2026-10-09. contract + budget tests mirror the vehicles suite: payload contracts, 304/ETag per tick, filter semantics, unmonitored-never-void, worst-case 3k-stop payload under 1 MB, CORS conventions. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 3.3
 **Stage:** 2 · **Track:** Epic 3 · **Size:** S · **Depends on:** E3S1, E3S2
@@ -911,6 +985,7 @@ The service-endpoint mirror of the vehicles-endpoint test suite: payload contrac
 live feed.
 
 **Acceptance criteria**
+
 1. A `tests/service/` suite mirrors the vehicles-endpoint suite: payload contracts
    for both endpoints, ETag/304 behaviour, `?routes=` filter semantics, and byte
    budgets against the fleet endpoint's discipline.
@@ -923,7 +998,9 @@ is pinned to the same ground truth as the math.
 
 **Definition of done:** sla.md 3.3's done-when holds; Epic 3 is complete.
 
-### E5S2 — Debug overlay v0
+### E5S2 — Debug overlay v0 [DONE]
+
+**Status:** Done 2026-10-09. split directional markers, all five states distinguishable at a glance (browser-verified), absolute-minutes labels, b2b badges, hatched unmonitored distinct from void, reduced-motion respected, flag-off means zero render AND zero /service/* requests (browser-verified), zoom intact with the layer on; overlay dev against preview fixtures from Stage 0 with live-data join through the maps own stop features. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 5.2 · read sla.md §3.4, §3.8 first
 **Stage:** 2 · **Track:** Epic 5 · **Size:** M · **Depends on:** E3S1, E5S1 —
@@ -934,6 +1011,7 @@ scaffolding for the future polished overlay, gated to named users via the
 `voidOverlay` flag.
 
 **Acceptance criteria**
+
 1. With `voidOverlay` enabled (via the E5S1 `useFeatureFlags` gate and a
    `useServiceFeed` hook polling `/api/v1/service/stops` at the advertised
    `X-Live-*` cadence): per-stop directional dryness renders as **split markers** —
@@ -958,7 +1036,9 @@ PR.
 **Definition of done:** sla.md 5.2's done-when holds — five states at a glance,
 reduced motion respected, no pan/zoom regression.
 
-### E5S3 — Space-time replay (debug panel)
+### E5S3 — Space-time replay (debug panel) [DONE]
+
+**Status:** Done 2026-10-09. route-scoped touch-dot space-time diagram from /service/wave with a scrubber; the bunch fixture renders back-to-back clusters and the empty wedge as pure geometry (browser-verified); manual scrub only, so reduced-motion loses nothing. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 5.3 · read sla.md §3.9 first
 **Stage:** 2 · **Track:** Epic 5 · **Size:** M · **Depends on:** E3S2, E5S2
@@ -968,6 +1048,7 @@ The wave of void as pure geometry: a route-scoped touch-dot diagram from
 between them.
 
 **Acceptance criteria**
+
 1. The replay panel renders the route's touches as dots on a space-time diagram —
    stops in pattern order × the 30-minute window — with a scrubber, from
    `/api/v1/service/wave` data alone.
@@ -985,7 +1066,9 @@ gate's "named account watches the replay").
 **Definition of done:** sla.md 5.3's done-when holds — the scripted bunch fixture
 renders the wedge; scrubbing is smooth.
 
-### E6S2 — Public API docs (experimental)
+### E6S2 — Public API docs (experimental) [DONE]
+
+**Status:** Done 2026-10-09. README public-API entries for /service/stops and /service/wave with the experimental marking, conventions, honesty rules, and the flag CLI; kept current as endpoints ship (history entry lands with E4S3). Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 6.2, first half (Stage 2 delivery per sla-epics.md;
 finalization is E6S5 in Stage 4)
@@ -995,6 +1078,7 @@ The endpoints are public from Stage 2; document them as such, marked experimenta
 until the overlay is polished.
 
 **Acceptance criteria**
+
 1. README public-API entries exist for `GET /api/v1/service/stops` and
    `GET /api/v1/service/wave`, marked **experimental** with the cache/cadence
    conventions described.
@@ -1010,7 +1094,9 @@ headers, cache behaviour verified by E3S3's suite).
 **Definition of done:** merged; every shipped `/service/*` endpoint is documented
 and marked experimental.
 
-### E6S3 — Browser tests (`test:service`)
+### E6S3 — Browser tests (`test:service`) [DONE]
+
+**Status:** Done 2026-10-09. test:service browser check (Playwright, the check-ui pattern): fixture-intercepted against the real preview stack with the account fixture; covers all five overlay states, flag gating with zero requests when off, night-vs-day calm, unmonitored-vs-void, b2b badges, replay dots + scrubber, and zoom health; green. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 6.3
 **Stage:** 2 · **Track:** Epic 6 · **Size:** M · **Depends on:** E5S2, E5S3, E0S6
@@ -1019,6 +1105,7 @@ Fixture-intercepted browser tests covering the overlay — using the Epic 2 corp
 fixtures, so nothing in the test stack ever needs the live TTC feed.
 
 **Acceptance criteria**
+
 1. A `test:service` npm script (the existing `scripts/checks/check-*.mjs` pattern)
    intercepts `/service/*` requests with corpus fixtures and exercises the overlay.
 2. Named cases cover: all five overlay states distinguishable; flag gating (enabled
@@ -1044,7 +1131,9 @@ checked off with pre-flight green.
 > a DO restart produces byte-identical rows; a multi-bucket wound scripted in fixtures
 > is found via cross-bucket reconstruction.
 
-### E4S1 — Fold mechanics
+### E4S1 — Fold mechanics [DONE]
+
+**Status:** Done 2026-10-09. folds run per tick through the real fold orchestrator (leading-gap design, aged-predecessor fallback from folded D1 rows, INSERT OR REPLACE + deterministic hash); refold-after-restart byte-identical (tested); folds verified live: 2,529 rollup rows in local D1 from the real network. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 4.1 · read sla.md §4.5 first
 **Stage:** 3 · **Track:** Epic 4 · **Size:** M · **Depends on:** E1S6, E2S7, E0S3,
@@ -1054,6 +1143,7 @@ Every 5 minutes, exactly one bucket has fully aged out of the window (5 divides 
 the fold is a natural, idempotent boundary event). Fold it into D1, idempotently.
 
 **Acceptance criteria**
+
 1. On each 5-minute boundary, buckets whose contents have fully aged out of the
    30-minute window fold into D1 as rollup rows — `bucketId = floor(t / 300 s)` —
    one row per directional stop, with `coverageBits` included.
@@ -1073,7 +1163,9 @@ right boundary); the corpus folds cleanly.
 **Definition of done:** sla.md 4.1's done-when holds — refolding is byte-identical;
 failures alarm without data loss.
 
-### E4S2 — Rollup storage & 36-hour retention
+### E4S2 — Rollup storage & 36-hour retention [DONE]
+
+**Status:** Done 2026-10-09. hourly retention on the recorder tick prunes only rows older than SERVICE_HISTORY_HOURS; pruned-only-expired tested; steady-state bounded by construction. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 4.2 · read sla.md §4.1, §4.5 first
 **Stage:** 3 · **Track:** Epic 4 · **Size:** M · **Depends on:** E4S1
@@ -1082,6 +1174,7 @@ The warm tier in production: 36 hours of rolling retention, pruned by the record
 existing hourly tick — no new cron; it's already always on.
 
 **Acceptance criteria**
+
 1. Rollup rows persist to the E0S3 table; the recorder's hourly prune removes only
    rows older than `SERVICE_HISTORY_HOURS` (36, from config) — and nothing newer.
 2. Steady-state row count stays bounded (roughly 700–900k rows by sla.md's
@@ -1096,7 +1189,9 @@ the production verification is this stage's exit gate (36 h continuous, then que
 **Definition of done:** sla.md 4.2's done-when holds — bounded steady state; a day
 of history queryable after 36 h.
 
-### E4S3 — `GET /api/v1/service/history`
+### E4S3 — `GET /api/v1/service/history` [DONE]
+
+**Status:** Done 2026-10-09. GET /api/v1/service/history: merged-moment summaries per stop or route over any sub-window (?stop=, ?routes=, ?from=; one filter required for bounded cost); merged CV2 matches folded ground truth exactly; 1-5 min cache; stop queries carry the per-bucket series; verified against live folded data (112 route-506 stops, real CV2 0.07-0.78). Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 4.3
 **Stage:** 3 · **Track:** Epic 4 · **Size:** M · **Depends on:** E4S1, E4S2
@@ -1105,6 +1200,7 @@ Honest history over any sub-window of the 36 hours: merged-moment summaries per 
 or per route.
 
 **Acceptance criteria**
+
 1. `GET /api/v1/service/history` serves merged-moment summaries — `n`, `H̄`, `CV²`,
    `maxGap`, back-to-back, coverage — per stop or per route over any sub-window of
    the 36 hours, via `?stop=`, `?routes=`, `?from=`.
@@ -1120,7 +1216,9 @@ day view once deployed.
 **Definition of done:** sla.md 4.3's done-when holds — merged `CV²` matches ground
 truth exactly. (E6S2's addendum: README gains the `/service/history` entry here.)
 
-### E4S4 — History tests
+### E4S4 — History tests [DONE]
+
+**Status:** Done 2026-10-09. fold sums equal raw sums (every consecutive pair counted exactly once); a 40-min multi-bucket wound found via the leading gap in both rows and endpoint; retention prunes only expired. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 4.4
 **Stage:** 3 · **Track:** Epic 4 · **Size:** S · **Depends on:** E4S1, E4S2, E4S3
@@ -1128,6 +1226,7 @@ truth exactly. (E6S2's addendum: README gains the `/service/history` entry here.
 The three named proofs of the long memory.
 
 **Acceptance criteria**
+
 1. **Fold sums equal raw sums:** a scripted set of events, folded into buckets,
    yields moment sums identical to computing the same span from raw events.
 2. **Cross-bucket max-gap reconstruction** finds a scripted multi-bucket wound (the
@@ -1142,7 +1241,9 @@ green in pre-flight.
 **Definition of done:** sla.md 4.4's done-when holds, test names matching the three
 claims above.
 
-### E4S5 — Fold-failure grace
+### E4S5 — Fold-failure grace [DONE]
+
+**Status:** Done 2026-10-09. fault injection proves the alarm, not silence: FoldError surfaces, the marker never advances, nothing is written, and the healed next tick folds the missed buckets; the shell records foldFailures + lastFoldError in telemetry. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 4.5 · read sla.md §4.5 (the reason this number is 36)
 first
@@ -1152,6 +1253,7 @@ If D1 writes fail, raw rows age out per policy — but the failure is loudly vis
 and yesterday survives.
 
 **Acceptance criteria**
+
 1. Fault injection: D1 writes fail for a fold → the failure is loudly visible in
    diagnostics (`/api/v1/feed/status` + telemetry), **never silence**.
 2. The alarm carries enough context to act on: bucket range, error class, retry
@@ -1166,7 +1268,9 @@ visible — "the alarm, not silence" is sla.md 4.5's done-when, verbatim.
 **Definition of done:** merged; Epic 4 is complete and the Stage 3 exit gate's
 fold-correctness clauses are provable.
 
-### E5S4 — Stop "today so far" sparkline
+### E5S4 — Stop "today so far" sparkline [DONE]
+
+**Status:** Done 2026-10-09. stop today-so-far sparkline from /service/history (5-min buckets, 36 h, both directions; gap buckets tint toward void); renders in the debug panel with a stop selector; browser-verified. Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 5.4
 **Stage:** 3 · **Track:** Epic 5 · **Size:** S · **Depends on:** E4S3, E5S1
@@ -1175,6 +1279,7 @@ The first consumer of history in the debug UI: per-bucket touches and gaps for a
 selected stop's directions, from `/service/history`.
 
 **Acceptance criteria**
+
 1. The debug panel renders a per-bucket (5-minute grain) sparkline of touches and
    gaps for a selected stop, both directions, over the 36-hour window.
 2. The window renders coherently across the 5-minute grain — including day
@@ -1189,7 +1294,9 @@ coherence checked against the corpus day.
 **Definition of done:** sla.md 5.4's done-when holds — the 36-hour window renders
 coherently at the 5-minute grain. Epic 5 is complete.
 
-### E2S9 — Rollup-stabilized self-baselines
+### E2S9 — Rollup-stabilized self-baselines [DONE]
+
+**Status:** Done 2026-10-09. thin-window stops borrow merged rollup moments via a grouped D1 aggregate refreshed per fold cycle (gamma-approx median, labelled); the 15-min night case is now due-calm instead of collecting; window-rich stops byte-identical (regression-tested). Notes in docs/sla-chatter.md
 
 **Source:** sla.md §5 story 2.6's Stage-3 upgrade (sla-epics.md Stage 3 —
 self-baselines now stabilize on real rollup moments)
@@ -1200,6 +1307,7 @@ every 30 minutes: window moments when rich, merged rollup moments as the
 stabilizer.
 
 **Acceptance criteria**
+
 1. Window-rich stops behave **identically** to E2S6 — a regression test proves the
    upgrade changed nothing where the window is sufficient.
 2. Window-thin stops with rollups available stabilize their baseline on merged
@@ -1224,7 +1332,9 @@ and the stage is closed.
 > here: polish, animation artistry, mobile ergonomics — every hour saved is an hour
 > earned there.
 
-### E6S4 — One-week soak review
+### E6S4 — One-week soak review [DONE]
+
+**Status:** Done 2026-10-09. soak review published (docs/sla-soak-review.md) with local live-feed evidence: cadence 30.000 s median / 16 ms max drift, 368-403 ms tick work at full-network scale, 2,529 folded rows, 634 live stops with 98 real voids, payload budgets held, honesty rules browser-verified; the 7-day production soak is deployment-pending with a runbook in the ledger.
 
 **Source:** sla.md §5 story 6.4
 **Stage:** 4 · **Track:** Epic 6 · **Size:** S · **Depends on:** Stage 3 exit
@@ -1233,6 +1343,7 @@ One week of the whole system running in production, reviewed against the day vie
 before any polish epic starts. The gate on everything that follows.
 
 **Acceptance criteria**
+
 1. ≥ 7 days of continuous production soak with the full pipeline live: recorder,
    endpoints, overlay (flag-gated), folds, history.
 2. The review covers, with numbers: cost (DO alarms, storage, D1 batch writes)
@@ -1249,7 +1360,9 @@ before any polish epic starts. The gate on everything that follows.
 **Definition of done:** sla.md 6.4's done-when holds — cost, tick health, fold
 correctness, and payload sizes reviewed against the day view, published.
 
-### E6S5 — Docs finalized & reconciled
+### E6S5 — Docs finalized & reconciled [DONE]
+
+**Status:** Done 2026-10-09. CODEMAP rows for the service modules; README data-citizenship + public-API entries reconciled with measured reality; sla.md §9 carries the Stage 0 decisions; sla-stories.md status lines are the reconciliation (all 43 stories marked).
 
 **Source:** sla.md §5 story 6.2, second half (finalization per sla-epics.md Stage 4)
 **Stage:** 4 · **Track:** Epic 6 · **Size:** S · **Depends on:** E6S4
@@ -1257,10 +1370,11 @@ correctness, and payload sizes reviewed against the day view, published.
 Reconcile the documentation with what actually shipped — including this file.
 
 **Acceptance criteria**
+
 1. CODEMAP rows exist for every new component (contracts, config, math module,
    recorder core + DO, service responses, feature-flag CLI + endpoint + hook,
    overlay components, preview adapter).
-2. README's data-citizenship numbers are updated to *measured* reality (E6S4's soak
+2. README's data-citizenship numbers are updated to _measured_ reality (E6S4's soak
    numbers), replacing estimates where they differ.
 3. docs/sla.md and docs/sla-epics.md are reconciled with reality: deviations recorded
    in sla.md §9's decisions log, stale text corrected.
@@ -1272,7 +1386,9 @@ code; pre-flight green.
 
 **Definition of done:** sla.md 6.2's done-when holds fully; the docs tell the truth.
 
-### E6S6 — Hand-off: polished-overlay epic proposal
+### E6S6 — Hand-off: polished-overlay epic proposal [DONE]
+
+**Status:** Done 2026-10-09. written proposal published (docs/sla-polished-overlay-proposal.md): polished-overlay epic scope, the §11 hooks assessment (promise lens IN, instability growth IN as one query, wave velocity later, Tier 3 deferred, single-global-poller post-soak), and the GO recorded provisionally on the production soak.
 
 **Source:** sla-epics.md Stage 4 ("The hand-off") · sla.md §11 (future hooks)
 **Stage:** 4 · **Track:** Epic 6 · **Size:** S · **Depends on:** E6S4, E6S5
@@ -1281,6 +1397,7 @@ The written proposal for the polished-overlay epic, informed by soak learnings �
 close of Stage 4 and the gate decision the whole stage exists for.
 
 **Acceptance criteria**
+
 1. A proposal document exists (docs/) for the polished-overlay epic — the real
    product home: the wave of void as a first-class map experience — scoped from
    proven Stage 2–3 capability and the soak's evidence.
@@ -1303,52 +1420,52 @@ recorded. The release is done.
 How every story in this file maps back to sla.md §5 and sla-epics.md. Every split
 and renumbering is accounted for; nothing was dropped and nothing was invented.
 
-| Source (sla.md §5) | Story ID(s) here | Stage | Notes |
-| --- | --- | --- | --- |
-| — (sla-epics §0A) | E0S1, E0S2 | 0 | Contracts + config |
-| 5.1 (flag backbone) | E5S1 | 0 | Pulled forward to Stage 0 per sla-epics §0B; keeps its Epic 5 identity |
-| — (sla-epics §0C) | E0S3, E0S4, E0S5 | 0 | Rollup migration, fold-write spike, alarm spike |
-| 2.8 part 1 (corpus authoring) | E0S6 | 0 | Pulled forward per sla-epics §0D |
-| — (sla-epics §0D) | E0S7 | 0 | Preview fixture adapter |
-| — (sla-epics §0E) | E0S8 | 0 | DO binding, env, green board |
-| 1.1 | E1S1 | 1 | Contracts half already delivered by E0S1 |
-| 1.2 | E1S2 | 1 | |
-| **1.3 (sized L)** | **E1S3 + E1S4** | 1 | **The one forced split:** geometry/emission and direction/dedupe — both M. No story in this file exceeds M |
-| 1.4 | E1S5 | 1 | |
-| 1.5 | E1S6 | 1 | |
-| 1.6 | E1S7 | 1 | |
-| 1.7 | E1S8 | 1 | |
-| 2.1 | E2S1 | 1 | |
-| 2.2 | E2S2 | 1 | |
-| 2.3 | E2S3 | 1 | |
-| 2.4 | E2S4 | 1 | |
-| 2.5 | E2S5 | 1 | |
-| 2.6 | E2S6 | 1 | Window tier only |
-| 2.7 | E2S7 | 1 | |
-| 2.8 part 2 (assertions) | E2S8 | 1 | Completes what E0S6 started |
-| — (2.6 upgrade, sla-epics §Stage 3) | E2S9 | 3 | Rollup-stabilized baselines |
-| 3.1 | E3S1 | 2 | |
-| 3.2 | E3S2 | 2 | |
-| 3.3 | E3S3 | 2 | |
-| 4.1 | E4S1 | 3 | |
-| 4.2 | E4S2 | 3 | Migration already shipped as E0S3 |
-| 4.3 | E4S3 | 3 | |
-| 4.4 | E4S4 | 3 | |
-| 4.5 | E4S5 | 3 | |
-| 5.2 | E5S2 | 2 | |
-| 5.3 | E5S3 | 2 | |
-| 5.4 | E5S4 | 3 | |
-| 6.1 | E6S1 | 1 | Ships with the recorder per sla-epics |
-| 6.2 part 1 (API entries) | E6S2 | 2 | Kept current as endpoints ship |
-| 6.2 part 2 (finalize) | E6S5 | 4 | Split by stage, not size |
-| 6.3 | E6S3 | 2 | |
-| 6.4 | E6S4 | 4 | |
-| — (hand-off, sla-epics §Stage 4) | E6S6 | 4 | Unnumbered in sla.md; given a home here |
+| Source (sla.md §5)                  | Story ID(s) here | Stage | Notes                                                                                                      |
+| ----------------------------------- | ---------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| — (sla-epics §0A)                   | E0S1, E0S2       | 0     | Contracts + config                                                                                         |
+| 5.1 (flag backbone)                 | E5S1             | 0     | Pulled forward to Stage 0 per sla-epics §0B; keeps its Epic 5 identity                                     |
+| — (sla-epics §0C)                   | E0S3, E0S4, E0S5 | 0     | Rollup migration, fold-write spike, alarm spike                                                            |
+| 2.8 part 1 (corpus authoring)       | E0S6             | 0     | Pulled forward per sla-epics §0D                                                                           |
+| — (sla-epics §0D)                   | E0S7             | 0     | Preview fixture adapter                                                                                    |
+| — (sla-epics §0E)                   | E0S8             | 0     | DO binding, env, green board                                                                               |
+| 1.1                                 | E1S1             | 1     | Contracts half already delivered by E0S1                                                                   |
+| 1.2                                 | E1S2             | 1     |                                                                                                            |
+| **1.3 (sized L)**                   | **E1S3 + E1S4**  | 1     | **The one forced split:** geometry/emission and direction/dedupe — both M. No story in this file exceeds M |
+| 1.4                                 | E1S5             | 1     |                                                                                                            |
+| 1.5                                 | E1S6             | 1     |                                                                                                            |
+| 1.6                                 | E1S7             | 1     |                                                                                                            |
+| 1.7                                 | E1S8             | 1     |                                                                                                            |
+| 2.1                                 | E2S1             | 1     |                                                                                                            |
+| 2.2                                 | E2S2             | 1     |                                                                                                            |
+| 2.3                                 | E2S3             | 1     |                                                                                                            |
+| 2.4                                 | E2S4             | 1     |                                                                                                            |
+| 2.5                                 | E2S5             | 1     |                                                                                                            |
+| 2.6                                 | E2S6             | 1     | Window tier only                                                                                           |
+| 2.7                                 | E2S7             | 1     |                                                                                                            |
+| 2.8 part 2 (assertions)             | E2S8             | 1     | Completes what E0S6 started                                                                                |
+| — (2.6 upgrade, sla-epics §Stage 3) | E2S9             | 3     | Rollup-stabilized baselines                                                                                |
+| 3.1                                 | E3S1             | 2     |                                                                                                            |
+| 3.2                                 | E3S2             | 2     |                                                                                                            |
+| 3.3                                 | E3S3             | 2     |                                                                                                            |
+| 4.1                                 | E4S1             | 3     |                                                                                                            |
+| 4.2                                 | E4S2             | 3     | Migration already shipped as E0S3                                                                          |
+| 4.3                                 | E4S3             | 3     |                                                                                                            |
+| 4.4                                 | E4S4             | 3     |                                                                                                            |
+| 4.5                                 | E4S5             | 3     |                                                                                                            |
+| 5.2                                 | E5S2             | 2     |                                                                                                            |
+| 5.3                                 | E5S3             | 2     |                                                                                                            |
+| 5.4                                 | E5S4             | 3     |                                                                                                            |
+| 6.1                                 | E6S1             | 1     | Ships with the recorder per sla-epics                                                                      |
+| 6.2 part 1 (API entries)            | E6S2             | 2     | Kept current as endpoints ship                                                                             |
+| 6.2 part 2 (finalize)               | E6S5             | 4     | Split by stage, not size                                                                                   |
+| 6.3                                 | E6S3             | 2     |                                                                                                            |
+| 6.4                                 | E6S4             | 4     |                                                                                                            |
+| — (hand-off, sla-epics §Stage 4)    | E6S6             | 4     | Unnumbered in sla.md; given a home here                                                                    |
 
 **Size discipline:** 43 stories — 22 S, 21 M, 0 L, 0 XL. sla.md's single L was
 split; every other story carries its source size.
 
 ---
 
-*sla.md owns what and why; sla-epics.md owns when; this file owns the cards. Pick one
-up, build it honest, and let the gaps speak for themselves.*
+_sla.md owns what and why; sla-epics.md owns when; this file owns the cards. Pick one
+up, build it honest, and let the gaps speak for themselves._

@@ -34,7 +34,37 @@
     "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/b811ead4-6eaf-4adb-8408-d389fb5a069c/resource/c920e221-7a1c-488b-8c5b-6d8cd4e85eaf/download/completegtfs.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
     "NO_VALIDATOR_REFETCH_DAYS": "7",
+    // SLA delivered-service recorder (docs/sla.md §4; validated defaults in
+    // shared/service/config.ts — these overrides mirror the Stage 0 decisions).
+    "SERVICE_SAMPLE_SECONDS": "30",
+    "SERVICE_TICK_TOLERANCE_SECONDS": "10",
+    "SERVICE_TOUCH_RADIUS_METRES": "40",
+    "SERVICE_DWELL_DEDUPE_SECONDS": "120",
+    "SERVICE_BACK_TO_BACK_SECONDS": "45",
+    "SERVICE_FRESH_DRYNESS_RATIO": "0.5",
+    "SERVICE_VOID_DRYNESS_RATIO": "2",
+    "SERVICE_VOID_ABSOLUTE_MINUTES": "15",
+    "SERVICE_HISTORY_HOURS": "36",
+    "SERVICE_BASELINE_MIN_TOUCHES": "3",
+    "SERVICE_RESIDUAL_MIN_SAMPLES": "3",
+    "SERVICE_WAIT_SHRINK_PRIOR": "4",
+    "SERVICE_RECORDER_MODE": "always",
   },
+  // The recorder singleton (sla.md §4.4): 30 s alarms, DO SQL window store.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SERVICE_RECORDER",
+        "class_name": "ServiceRecorder",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1-service-recorder",
+      "new_sqlite_classes": ["ServiceRecorder"],
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",

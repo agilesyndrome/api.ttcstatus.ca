@@ -3,6 +3,7 @@ import { accountReply } from '../http/responses';
 import { ownedProfileResponse } from './profiles';
 import { ownedJournalResponse } from './journal';
 import { ownedSavedStopsResponse } from './saved-stops';
+import { ownedFeaturesResponse } from './features';
 export { authenticateAccount, authConfig } from './auth';
 export { publicProfileResponse } from './profiles';
 export { validUsername } from '../../../../shared/accounts/profile';
@@ -21,6 +22,8 @@ export async function ownedAccountResponse(
       return ownedJournalResponse(request, env, userId);
     case '/api/v1/me/stops':
       return ownedSavedStopsResponse(request, env, userId);
+    case '/api/v1/me/features':
+      return ownedFeaturesResponse(request, env, userId);
     default:
       return accountReply({ error: 'not-found' }, 404);
   }

@@ -10,14 +10,15 @@ source file locations.
 `workers/api/src/index.ts` supplies the HTTP and scheduled entrypoints.
 `http/router.ts` dispatches existing API paths without importing GTFS data itself.
 
-| Directory      | Responsibility                                                                 |
-| -------------- | ------------------------------------------------------------------------------ |
-| `http/`        | Routing and public/private JSON response helpers                               |
-| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations |
-| `maps/`        | Map/network reads, map caching and protected debug forwarding                  |
-| `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response        |
-| `sync/`        | Static download, import, map generation, delta, publication and retention      |
-| `diagnostics/` | Existing public feed-status response and deployed-version reporting            |
+| Directory      | Responsibility                                                                  |
+| -------------- | ------------------------------------------------------------------------------- |
+| `http/`        | Routing and public/private JSON response helpers                                |
+| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations  |
+| `maps/`        | Map/network reads, map caching and protected debug forwarding                   |
+| `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response         |
+| `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints |
+| `sync/`        | Static download, import, map generation, delta, publication and retention       |
+| `diagnostics/` | Existing public feed-status response and deployed-version reporting             |
 
 Only `sync/sync.ts` contacts the static GTFS source. Import reads the cached R2
 archive. Public map requests read materialized data; live requests use the bounded
@@ -43,15 +44,16 @@ map schema are unchanged by source reorganization.
 
 ## Shared modules
 
-| Directory                    | Responsibility                                                                    |
-| ---------------------------- | --------------------------------------------------------------------------------- |
-| `shared/accounts/`           | Journal validation, backup/merge rules, badges and username validation            |
-| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette |
-| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                        |
-| `shared/http/`               | HTTP validator comparison                                                         |
-| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                              |
-| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, canonical records and input budgets                       |
-| `workers/shared/http/`       | Bounded byte streams and admin authorization                                      |
+| Directory                    | Responsibility                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `shared/accounts/`           | Journal validation, backup/merge rules, badges and username validation             |
+| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette  |
+| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                         |
+| `shared/service/`            | Delivered-service contracts, config, pure wait metrics and the ground-truth corpus |
+| `shared/http/`               | HTTP validator comparison                                                          |
+| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                               |
+| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, canonical records and input budgets                        |
+| `workers/shared/http/`       | Bounded byte streams and admin authorization                                       |
 
 `shared/` imports neither application. Workers never import browser implementation
 files, and browser modules never import Worker implementation files. Run

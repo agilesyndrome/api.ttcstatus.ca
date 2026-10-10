@@ -460,7 +460,9 @@ test('left and right choose the outermost branches, and straight chooses the clo
     const engine = started(data);
     engine.position.distance = 80;
     assert.ok(
-      engine.upcoming().choices.every((choice) => choice.turn === 'left' || choice.turn === 'right'),
+      engine
+        .upcoming()
+        .choices.every((choice) => choice.turn === 'left' || choice.turn === 'right'),
     );
     engine.queue(intent);
     assert.equal(engine.upcoming().selected.edgeId, expected);
@@ -518,10 +520,16 @@ test('a switch never offers two of the same direction: duplicate rights, lefts o
     ...network,
     edges: [
       network.edges[0],
-      edge('straight', 'b', 'c', [
-        [100, 0],
-        [300, 0],
-      ], ['504']),
+      edge(
+        'straight',
+        'b',
+        'c',
+        [
+          [100, 0],
+          [300, 0],
+        ],
+        ['504'],
+      ),
       edge('yard', 'b', 'e', [
         [100, 0],
         [300, 0],

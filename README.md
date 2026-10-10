@@ -113,6 +113,7 @@ The importer is deliberately stingy with Toronto Open Data bandwidth.
 5. The raw ZIP is streamed once into R2 and all parsing happens from that local copy.
 6. At steady state R2 stores **at most the current and immediately-previous changed ZIP**, not one snapshot per night. This gives us cheap rollback/diff reproducibility without accumulating raw history.
 7. Historical tracking is stored as compact D1 metadata/change summaries instead of duplicated raw feeds.
+8. The delivered-service recorder (`ServiceRecorder`, a singleton Durable Object) polls both live feeds once every 30 seconds — 2,880 acquisition cycles per day, constant. It runs in `always` mode (decided in docs/sla.md §9): it measures delivery nobody is watching, which is the entire point. That constant rate is typically below today's busy-period per-isolate fan-out (100 page viewers already drive ~3.3 snapshot requests/second through the shared caches), and off-peak it is new but trivial, constant traffic to the same public feeds, attributed exactly as everything else here. Its storage is bounded by construction: raw touch events live 30 minutes inside the Durable Object; rollups are one small D1 row per directional stop per 5 minutes with 36-hour retention; nothing else persists.
 
 The source URL is the TTC Surface GTFS resource published through Toronto Open Data and paired with the TTC GTFS-Realtime surface feed.
 
@@ -198,6 +199,40 @@ Requests are demand-driven, so an unused map causes no background TTC downloads.
 Acquisition/decoding failures return an uncached `503 vehicles-unavailable` with
 `Retry-After`; the isolate throttles repeated upstream failures for the configured
 interval. No vehicle history is persisted.
+
+### `GET /api/v1/service/stops` · `GET /api/v1/service/wave` (experimental)
+
+Delivered-service analytics (docs/sla.md): what the streetcars and trains
+**actually did**, not what they promised. Both endpoints read the recorder
+singleton — a Durable Object sampling both live feeds once every 30 seconds —
+and follow the vehicles-endpoint conventions: `ETag` / `If-None-Match` return an
+empty `304` between 30-second ticks, `X-Live-Update-Seconds` /
+`X-Live-Next-Update-At` advertise the cadence, responses are CORS-exposed with a
+~15 s edge cache, and an unreachable recorder returns an uncached
+`503 service-unavailable` with `Retry-After`. **Experimental until the overlay
+is polished.** Nothing existing routes through these endpoints.
+
+- `/api/v1/service/stops` — per **directional** stop: `lastTouchAt`,
+  `minutesSince` (the absolute axis), `medianHeadwayOwnSeconds` (the stop's own
+  delivered baseline), `irregularity` (CV², the bunching tax),
+  `expectedWaitSeconds` (the residual R(e) for a rider who has already waited),
+  `dryness` (the self-relative axis), `state` (`fresh` / `due` / `void` /
+  `unmonitored` / `collecting`), a coverage badge, and `routeIds` for
+  `?routes=` filtering. Unmonitored time is never rendered as a void — a feed
+  outage is a blind spot, not evidence of anything.
+- `/api/v1/service/wave` — delta-encoded windowed touch lists per route
+  pattern; one request reconstructs the full 30-minute space-time plot for the
+  replay view (the wave of void as pure geometry — no detection step).
+- `/api/v1/service/history` — merged-moment summaries (`n`, mean headway,
+  `CV²`, worst wound, back-to-back, coverage ratio) per stop or per route over
+  any sub-window of the rolling 36 hours, via `?stop=`, `?routes=`, `?from=`
+  (one narrowing filter required; stop-scoped queries also return the
+  5-minute per-bucket series for the sparkline). Moments merge exactly;
+  quantiles are gamma approximations, labelled as such. Cached 1–5 minutes.
+
+The browser surface is a per-user-gated debug overlay: grant it with
+`npm run feature:enable -- voidOverlay <clerk-user-or-email>` and it appears on
+the map for that account only; signed-out visitors see nothing.
 
 ### `GET /api/v1/feed/status`
 

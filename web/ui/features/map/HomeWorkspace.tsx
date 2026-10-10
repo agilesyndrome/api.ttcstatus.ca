@@ -13,6 +13,8 @@ import { KeyboardHelp } from '../../components/KeyboardHelp';
 import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
 
+import { useServiceOverlay } from '../service/ServiceLayer';
+
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
 const SnakeGame = lazy(() =>
@@ -58,6 +60,9 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     closeExport,
     reset,
   } = workspace;
+  // The per-user-gated debug overlay (docs/sla.md §5.2): flag off or signed
+  // out → nothing renders and no /service/* requests are made.
+  const service = useServiceOverlay(data);
   const headerActions = (
     <div className="header-actions">
       <a
@@ -195,7 +200,9 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             resetKey={resetKey}
             onSelectFeature={selectFeature}
             onSelectVehicle={(car) => selectVehicle(car)}
+            overlay={service.overlay ?? undefined}
           />
+          {service.panel}
           <HomeSidebar workspace={workspace} settings={headerActions} />
         </main>
       ) : (

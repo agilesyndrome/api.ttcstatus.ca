@@ -1,7 +1,7 @@
 # SLA delivery stages
 
-Companion to [docs/sla.md](sla.md), which owns the *what* and the *why* (product, math,
-architecture, epics and stories). This document owns the *when* and the *in-what-order*:
+Companion to [docs/sla.md](sla.md), which owns the _what_ and the _why_ (product, math,
+architecture, epics and stories). This document owns the _when_ and the _in-what-order_:
 Stage 0 through Stage 4, each a deployable, demonstrable unit with a hard exit gate.
 Story numbers refer to sla.md §5.
 
@@ -10,13 +10,13 @@ Story numbers refer to sla.md §5.
 
 ## The stage map
 
-| Stage | Name | Contains | Shippable outcome |
-| --- | --- | --- | --- |
-| 0 | Foundations & decisions | contracts, config, flags backbone, migrations, spikes, corpus, plumbing | Interfaces every epic needs; `npm run feature:enable` works against production |
-| 1 | The tape deck & the math | Epics 1 + 2 in parallel | Recorder deployed and quietly soaking live data; math library proven on the corpus |
-| 2 | First light | Epic 3 + overlay v0 + replay | Named users watch the wave of void on real data, on the map |
-| 3 | The long memory | Epic 4 + stop sparkline | 36 hours of exactly-mergeable delivered-service history |
-| 4 | Soak & hand-off | Epic 6 remainder | Soak review published; go/no-go for the future polished-overlay epic |
+| Stage | Name                     | Contains                                                                | Shippable outcome                                                                  |
+| ----- | ------------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 0     | Foundations & decisions  | contracts, config, flags backbone, migrations, spikes, corpus, plumbing | Interfaces every epic needs; `npm run feature:enable` works against production     |
+| 1     | The tape deck & the math | Epics 1 + 2 in parallel                                                 | Recorder deployed and quietly soaking live data; math library proven on the corpus |
+| 2     | First light              | Epic 3 + overlay v0 + replay                                            | Named users watch the wave of void on real data, on the map                        |
+| 3     | The long memory          | Epic 4 + stop sparkline                                                 | 36 hours of exactly-mergeable delivered-service history                            |
+| 4     | Soak & hand-off          | Epic 6 remainder                                                        | Soak review published; go/no-go for the future polished-overlay epic               |
 
 Epic 6 is distributed by design: its analytics counters ship with the recorder
 (Stage 1), its browser tests with the overlay (Stage 2), its docs continuously, and its
@@ -50,7 +50,7 @@ compile with clean import-boundary checks.
   accept either (emails churn; user IDs don't). One hour of reading; it decides the
   table's primary key.
 - Migration `0005_feature_flags.sql` — `feature_flags(flag, subject, granted_at,
-  granted_by)`. Ships early: deploys auto-apply migrations and a failed migration halts
+granted_by)`. Ships early: deploys auto-apply migrations and a failed migration halts
   the deploy, so schema-first is already house style.
 - CLI: `scripts/operations/feature-flags.ts` + `npm run feature:enable|disable|list`
   via remote D1 binding, `map:tag` as the template.
@@ -141,7 +141,7 @@ The first user-visible moment of the product.
 - 3.2 `GET /api/v1/service/wave` — delta-encoded windowed touch lists.
 - 3.3 contract + payload budget tests.
 - 5.2 debug overlay v0 — per-stop directional dryness, absolute-minutes labels,
-  back-to-back badges, hatched *unmonitored* styling distinct from void; flag-gated.
+  back-to-back badges, hatched _unmonitored_ styling distinct from void; flag-gated.
 - 5.3 space-time replay panel — the touch-dot diagram with scrubber: back-to-back
   clusters and the empty wedge, the wave of void as pure geometry.
 - 6.3 browser tests (fixture-intercepted `test:service`) and 6.2's README/API entries
@@ -202,14 +202,14 @@ hour saved is an hour earned there.
 
 ## Stage / epic matrix
 
-| Epic | Stage 0 | Stage 1 | Stage 2 | Stage 3 | Stage 4 |
-| --- | --- | --- | --- | --- | --- |
-| 1 Recorder | plumbing (0E) | 1.1–1.7 | — | — | — |
-| 2 Math | contracts, corpus (0A, 0D) | 2.1–2.8 | — | 2.6 upgrade | — |
-| 3 Service API | fixture adapter (0D) | — | 3.1–3.3 | — | — |
-| 4 Rollups | migration, fold spike (0C) | — | — | 4.1–4.5 | — |
-| 5 Overlay | flags, corpus, adapter (0B, 0D) | — | 5.2, 5.3 | 5.4 | polish-epic proposal |
-| 6 Hardening | green board (0E) | 6.1 | 6.2, 6.3 | 6.2 | 6.2, 6.4 |
+| Epic          | Stage 0                         | Stage 1 | Stage 2  | Stage 3     | Stage 4              |
+| ------------- | ------------------------------- | ------- | -------- | ----------- | -------------------- |
+| 1 Recorder    | plumbing (0E)                   | 1.1–1.7 | —        | —           | —                    |
+| 2 Math        | contracts, corpus (0A, 0D)      | 2.1–2.8 | —        | 2.6 upgrade | —                    |
+| 3 Service API | fixture adapter (0D)            | —       | 3.1–3.3  | —           | —                    |
+| 4 Rollups     | migration, fold spike (0C)      | —       | —        | 4.1–4.5     | —                    |
+| 5 Overlay     | flags, corpus, adapter (0B, 0D) | —       | 5.2, 5.3 | 5.4         | polish-epic proposal |
+| 6 Hardening   | green board (0E)                | 6.1     | 6.2, 6.3 | 6.2         | 6.2, 6.4             |
 
 ## Parallelism
 
@@ -236,5 +236,5 @@ hour saved is an hour earned there.
 
 ---
 
-*Stage 0 makes the interfaces; Stage 1 makes them true; Stage 2 makes them visible;
-Stage 3 makes them remember; Stage 4 decides what they deserve to become.*
+_Stage 0 makes the interfaces; Stage 1 makes them true; Stage 2 makes them visible;
+Stage 3 makes them remember; Stage 4 decides what they deserve to become._

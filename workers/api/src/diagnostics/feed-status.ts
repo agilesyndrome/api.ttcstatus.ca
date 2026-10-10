@@ -27,5 +27,21 @@ export async function feedStatusResponse(request: Request, env: Env): Promise<Re
     ).all<Record<string, unknown>>()
   ).results;
 
-  return json({ state, recentVersions: recent }, 200, { 'cache-control': 'no-store' });
+  // The recorder singleton's telemetry (sla.md story 1.1): last tick, cadence,
+  // drift evidence, upstream status. A recorder that cannot be reached is its
+  // own diagnostic — reported, never hidden — and never breaks feed status.
+  let recorder: Record<string, unknown> | null = null;
+  try {
+    const id = env.SERVICE_RECORDER.idFromName('service-recorder');
+    const response = await env.SERVICE_RECORDER.get(id).fetch(
+      'https://internal/service-recorder/status',
+    );
+    if (response.ok) recorder = (await response.json()) as Record<string, unknown>;
+  } catch {
+    recorder = null;
+  }
+
+  return json({ state, recentVersions: recent, recorder }, 200, {
+    'cache-control': 'no-store',
+  });
 }

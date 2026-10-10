@@ -321,10 +321,7 @@ export class SnakeEngine {
       ((b[0] - a[0]) / (length || 1)) * position.direction,
       ((b[1] - a[1]) / (length || 1)) * position.direction,
     ];
-    const source: Point = [
-      a[0] + (b[0] - a[0]) * t,
-      a[1] + (b[1] - a[1]) * t,
-    ];
+    const source: Point = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
     const plotted = pointAlongEdge(edge, position.distance);
     return {
       position: { ...position },
@@ -1221,12 +1218,8 @@ export class SnakeEngine {
       p3 = end.source;
     const forward = radius * 2;
     const p1: Point = [
-      p0[0] +
-        start.tangent[0] * (forward + 4) +
-        start.tangent[1] * LOOP_WIDTH,
-      p0[1] +
-        start.tangent[1] * (forward + 4) -
-        start.tangent[0] * LOOP_WIDTH,
+      p0[0] + start.tangent[0] * (forward + 4) + start.tangent[1] * LOOP_WIDTH,
+      p0[1] + start.tangent[1] * (forward + 4) - start.tangent[0] * LOOP_WIDTH,
     ];
     const p2: Point = [
       p3[0] + start.tangent[0] * (forward - 4) + start.tangent[1] * LOOP_WIDTH,
@@ -1615,8 +1608,7 @@ export class SnakeEngine {
         // The calamity is the bonus section: coupling a car while a
         // disruption is active arms the classic multiplier for 30 s.
         if (this.activeHazard) {
-          this.pickupMultiplier =
-            this.random() < MULTIPLIER_RARE_CHANCE ? 3 : 2;
+          this.pickupMultiplier = this.random() < MULTIPLIER_RARE_CHANCE ? 3 : 2;
           this.multiplierUntil = this.hazardClock + MULTIPLIER_SECONDS;
           this.message = t('snake.bonusSectionPickupsWorthValueForValueSeconds', {
             value1: this.pickupMultiplier,

@@ -10,6 +10,11 @@ import {
 import { mapResponse, networkResponse } from '../maps/responses';
 import { debugMapResponse } from '../maps/debug';
 import { vehicleResponse } from '../realtime/response';
+import {
+  serviceStopsResponse,
+  serviceWaveResponse,
+  serviceHistoryResponse,
+} from '../service/responses';
 import { feedStatusResponse } from '../diagnostics/feed-status';
 import { analyticsEventResponse } from '../diagnostics/analytics';
 import { versionResponse } from '../diagnostics/version';
@@ -70,6 +75,18 @@ export async function routeRequest(
 
   if (request.method === 'GET' && url.pathname === '/api/v1/vehicles/streetcar') {
     return vehicleResponse(request, env, ctx);
+  }
+
+  // Delivered-service endpoints (docs/sla.md stories 3.1/3.2): additive,
+  // marked experimental in the README until the overlay is polished.
+  if (request.method === 'GET' && url.pathname === '/api/v1/service/stops') {
+    return serviceStopsResponse(request, env, ctx);
+  }
+  if (request.method === 'GET' && url.pathname === '/api/v1/service/wave') {
+    return serviceWaveResponse(request, env, ctx);
+  }
+  if (request.method === 'GET' && url.pathname === '/api/v1/service/history') {
+    return serviceHistoryResponse(request, env, ctx);
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/feed/status') {
