@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 // The /sla page's browser check (docs/sla-stories.md Epic 8, E8S5): run
 // against `npm run dev:viewer`. The report is intercepted with the preview
 // fixture — deterministic, zero workers, zero D1, zero live feed. Covers the
 // USA-status anatomy: banner, tick strips in every band, the weekly grain's
 // wider boxes, the expandable stop detail, the filter, and the load-time
-// discipline (zero /sla requests when the page is not opened).
+// discipline (zero /sla requests when the page is not opened). Since nav-v2
+// the page is members-only (the router gates GET /api/v1/sla/report behind
+// the verified session): the signed-out page is a sign-in gate that makes
+// zero report requests, and the report itself is checked signed in. The one
+// main nav is checked on both surfaces — the map sidebar strip and the
+// standalone pages' header.
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 
 // The fixture the preview middleware serves (its builder is the same one the
@@ -21,7 +27,8 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
 });
 try {
-  // ——— 1. Not on the page: zero /sla requests, ever. ———
+  // ——— 1. Not on the page: zero /sla requests, ever — and the nav strip
+  //         carries the SLA and Settings destinations beside the tabs. ———
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
     let slaRequests = 0;
@@ -33,12 +40,71 @@ try {
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForTimeout(300);
     assert.equal(slaRequests, 0, 'the map page must not touch the SLA report');
+    const navLinks = await page.locator('.main-nav a').evaluateAll((links) =>
+      links.map((link) => ({
+        href: link.getAttribute('href'),
+        current: link.getAttribute('aria-current'),
+      })),
+    );
+    assert.deepEqual(
+      navLinks,
+      [
+        { href: '/sla', current: null },
+        { href: '/profile', current: null },
+      ],
+      'the sidebar strip carries SLA and Settings as its page destinations',
+    );
     await context.close();
   }
 
-  // ——— 2. The page: banner, strips, grain, expand, filter. ———
+  // ——— 2. Signed out: the page is a sign-in gate, and no report request
+  //         leaves the browser. The one main nav still renders. ———
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+    let slaRequests = 0;
+    await context.route('**/api/v1/sla/**', (route) => {
+      slaRequests += 1;
+      return route.fulfill({ json: report });
+    });
+    await installAccountFixture(context);
+    const page = await context.newPage();
+    await page.goto(`${origin}/sla`, { waitUntil: 'networkidle' });
+    await page
+      .getByRole('heading', {
+        name: 'Sign in to read the delivered service report',
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(slaRequests, 0, 'a signed-out visitor fetches no report');
+    assert.equal(await page.locator('.sla-banner').count(), 0);
+    const navLinks = await page.locator('.main-nav a').evaluateAll((links) =>
+      links.map((link) => ({
+        href: link.getAttribute('href'),
+        current: link.getAttribute('aria-current'),
+      })),
+    );
+    assert.deepEqual(
+      navLinks,
+      [
+        { href: '/', current: null },
+        { href: '/sla', current: 'page' },
+        { href: '/profile', current: null },
+      ],
+      'signed out, the public nav items render with the current page marked',
+    );
+    // The gate signs in — the report renders behind the same page load.
+    // (The header's account controls carry their own Sign in; the gate's
+    // does the same thing, so the first match is used.)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
+    await page.locator('.sla-banner__headline').waitFor();
+    assert.ok(slaRequests >= 1, 'signing in fetches the report');
+    await context.close();
+  }
+
+  // ——— 3. The page signed in: banner, strips, grain, expand, filter. ———
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+    await installAccountFixture(context, { signedIn: true });
     let routeRequests = 0;
     await context.route('**/api/v1/sla/report*', (route) => {
       const url = new URL(route.request().url());
@@ -57,6 +123,26 @@ try {
     const headline = await page.locator('.sla-banner__headline').innerText();
     assert.match(headline, /met the SLA/);
     await page.locator('.sla-banner__metric').waitFor();
+
+    // The one main nav, signed in: every destination in order, the page's
+    // own item marked current — the same strip the map sidebar carries.
+    const navLinks = await page.locator('.main-nav a').evaluateAll((links) =>
+      links.map((link) => ({
+        href: link.getAttribute('href'),
+        current: link.getAttribute('aria-current'),
+      })),
+    );
+    assert.deepEqual(
+      navLinks,
+      [
+        { href: '/', current: null },
+        { href: '/#view=journal', current: null },
+        { href: '/#view=badges', current: null },
+        { href: '/sla', current: 'page' },
+        { href: '/profile', current: null },
+      ],
+      'the signed-in nav carries all five destinations',
+    );
 
     // The beta warning is on the page, ahead of the report.
     const betaWarning = await page.locator('.sla-beta-warning').innerText();

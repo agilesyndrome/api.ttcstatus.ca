@@ -293,7 +293,7 @@ try {
       );
       assert.ok(
         await page.evaluate(() =>
-          [...document.querySelectorAll('.sidebar-tabs button')].every(
+          [...document.querySelectorAll('.main-nav button')].every(
             (button) => button.scrollWidth <= button.clientWidth,
           ),
         ),

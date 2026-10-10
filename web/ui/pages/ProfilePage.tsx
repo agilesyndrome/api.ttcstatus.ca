@@ -3,7 +3,8 @@ import { LanguageSettings } from '../components/LanguageSettings';
 import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
-import { AccountRequired, AuthControls, useAccount } from '../features/accounts/auth';
+import { AccountRequired, useAccount } from '../features/accounts/auth';
+import { SiteHeader } from '../components/SiteHeader';
 import { UserProfile } from '@clerk/react';
 
 export function ProfilePage() {
@@ -12,12 +13,7 @@ export function ProfilePage() {
   const [showClerkSettings, setShowClerkSettings] = useState(false);
   return (
     <>
-      <header className="account-header">
-        <a className="account-link" href="/">
-          {t('profile.ttcStatus')}
-        </a>
-        <AuthControls />
-      </header>
+      <SiteHeader current="settings" />
       <main className="profile-page">
         {/* Language preference is browser-local: the settings' own copy says
          * no account is required, so it must not sit behind the sign-in. */}
@@ -212,12 +208,7 @@ export function PublicProfilePage({ username }: { username: string }) {
   }, [username]);
   return (
     <>
-      <header className="account-header">
-        <a className="account-link" href="/">
-          {t('profile.ttcStatus')}
-        </a>
-        <AuthControls />
-      </header>
+      <SiteHeader />
       <main className="profile-page">
         {profile ? (
           <>

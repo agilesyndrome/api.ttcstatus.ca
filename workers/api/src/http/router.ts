@@ -91,8 +91,14 @@ export async function routeRequest(
   }
 
   // The SLA report (docs/sla-stories.md Epic 8, E8S4): precomputed-only —
-  // additive, marked experimental in the README.
+  // additive, marked experimental in the README. The report is a
+  // members-only surface while it is in beta: the router places it behind
+  // the same verified-session gate as /me/*, so neither the report nor its
+  // edge cache entry is reachable signed out. The page mirrors this with its
+  // own sign-in gate.
   if (request.method === 'GET' && url.pathname === '/api/v1/sla/report') {
+    const identity = await authenticateAccount(request, env);
+    if (identity instanceof Response) return identity;
     return slaReportResponse(request, env, ctx);
   }
 

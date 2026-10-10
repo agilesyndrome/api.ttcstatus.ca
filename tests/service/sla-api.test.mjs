@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { after } from 'node:test';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { compileModules } from '../helpers/compile.mjs';
 import { createDatabase } from '../helpers/database.mjs';
@@ -7,6 +8,10 @@ import { createDatabase } from '../helpers/database.mjs';
 // Epic 8, E8S4: `GET /api/v1/sla/report` through the real router — the
 // precomputed-only contract, with E3S3's endpoint-test discipline: payload
 // contract, ETag/304, filter semantics, and the honest collecting report.
+// Since nav-v2 the report is members-only: the router places it behind the
+// same Clerk-verified session gate as /me/*, so these requests carry a real
+// RSA-signed session token (accounts.test.mjs's fixture) and the gate itself
+// is asserted: 401 without a session, 503 without Clerk configured.
 const { api } = await compileModules(
   `export { default as api } from './workers/api/src/index';`,
 );
@@ -17,6 +22,65 @@ const { api } = await compileModules(
 // keys and theirs into ours. The ETag/304 behaviour is exercised through the
 // fresh-response conditional path.
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+
+// The Clerk JWKS fixture (accounts.test.mjs's pattern), installed for the
+// same reason: every authed router call verifies a real signed session
+// token. Non-Clerk URLs pass through to the real fetch.
+const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+});
+const clerkKey = {
+  ...publicKey.export({ format: 'jwk' }),
+  // A distinct kid from accounts.test.mjs's fixture: the compiled Clerk
+  // instance caches JWKS by kid, so two files signing with different keys
+  // must not share one kid (their key would verify our tokens, and fail).
+  kid: 'sla-test-key',
+  alg: 'RS256',
+  use: 'sig',
+};
+const clerkEnv = {
+  // A distinct domain from accounts.test.mjs's fixture: the compiled Clerk
+  // instance caches JWKS per API URL, so two files signing with different
+  // keys must not share one jwks endpoint.
+  CLERK_PUBLISHABLE_KEY: `pk_test_${Buffer.from('sla.test$').toString('base64')}`,
+  CLERK_SECRET_KEY: 'sk_test_fake',
+};
+const sessionToken = () => {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: clerkKey.kid }),
+  ).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({
+      sub: 'user_signed',
+      sid: 'sess_test',
+      iss: 'https://sla.test',
+      azp: 'https://ttcstatus.ca',
+      iat: now,
+      nbf: now - 1,
+      exp: now + 60,
+    }),
+  ).toString('base64url');
+  const contents = `${header}.${payload}`;
+  return `${contents}.${sign('RSA-SHA256', Buffer.from(contents), privateKey).toString('base64url')}`;
+};
+const sessionHeaders = () => ({ authorization: `Bearer ${sessionToken()}` });
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input) => {
+  const url = input instanceof Request ? input.url : String(input);
+  if (url.includes('/jwks')) return Response.json({ keys: [clerkKey] });
+  return originalFetch(input);
+};
+// Clerk's dev keys ('sk_test_…') need a named environment before the
+// backend will verify against them (accounts.test.mjs's pattern); both the
+// override and the mock are scoped to this file's tests.
+const originalEnvironment = process.env.NODE_ENV;
+process.env.NODE_ENV = 'test';
+after(() => {
+  globalThis.fetch = originalFetch;
+  if (originalEnvironment === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = originalEnvironment;
+});
 
 async function freshSeededDb() {
   const schedule = await readFile('migrations/0007_sla_schedule.sql', 'utf8');
@@ -190,22 +254,45 @@ async function seedReport(db) {
   return versionId;
 }
 
-const envFor = (db) => ({ DB: db });
+const envFor = (db) => ({ DB: db, ...clerkEnv });
 const ctx = () => {
   const pending = [];
   return { waitUntil: (promise) => pending.push(promise), pending };
 };
 const flush = async (context) => Promise.all(context.pending);
-const get = async (path, env, headers = {}) => {
+/** Authed by default (the report is members-only); `auth: false` makes the
+ * signed-out requests. Extra headers merge over the session's. */
+const get = async (path, env, headers = {}, { auth = true } = {}) => {
   const context = ctx();
   const response = await api.fetch(
-    new Request(`https://ttcstatus.ca${path}`, { headers }),
+    new Request(`https://ttcstatus.ca${path}`, {
+      headers: auth ? { ...sessionHeaders(), ...headers } : headers,
+    }),
     env,
     context,
   );
   await flush(context);
   return response;
 };
+
+test('the report is members-only: no session is 401, no Clerk config is 503, tampering is 401', async () => {
+  const db = await freshSeededDb();
+  await seedReport(db);
+  // A Worker without Clerk configured keeps public transit usable but holds
+  // the members-only surface closed — same shape as /me/*.
+  const bare = await get('/api/v1/sla/report', { DB: db }, {}, { auth: false });
+  assert.equal(bare.status, 503);
+  // Signed out: no session, no report.
+  const signedOut = await get('/api/v1/sla/report', envFor(db), {}, { auth: false });
+  assert.equal(signedOut.status, 401);
+  assert.equal(signedOut.headers.get('cache-control'), 'no-store');
+  // A tampered token is rejected by real verification, not a pattern match.
+  const tampered = sessionToken().replace(/.$/, '!');
+  const forged = await get('/api/v1/sla/report', envFor(db), {
+    authorization: `Bearer ${tampered}`,
+  });
+  assert.equal(forged.status, 401);
+});
 
 test('the report serves precomputed rows only, with the /service family conventions', async () => {
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -214,7 +301,9 @@ test('the report serves precomputed rows only, with the /service family conventi
   const response = await get('/api/v1/sla/report', envFor(db));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), '*');
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
+  // An authorized surface never teaches a shared cache to serve it: the
+  // client envelope stays private (the edge's storage copy is internal).
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=300');
   const etag = response.headers.get('etag');
   assert.ok(etag?.startsWith('"sla-'), 'etag prefix');
 

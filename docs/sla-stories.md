@@ -1599,6 +1599,7 @@ long-term SLA record is complete; the page's every number is a table read.
 ### E8S4 — `GET /api/v1/sla/report` (precomputed-only serving) [DONE]
 
 **Status:** Done — 2026-10-10 · precomputed-only serving (never derives, never touches the recorder, never scans the rollup tier): routes with published-SLA bands + day/week tick strips; `?route=` stop detail; ETag/304 stable between folds (generatedAt = newest fold, not the wall clock); honest collecting payload on a fresh deploy; unknown route = empty detail. Endpoint tests through the real router; worst-case 17×(90d+14w) payload under the byte budget. Notes in docs/sla-chatter.md.
+**Amended — nav-v2 (branch):** while the report is in beta it is members-only — the router places it behind the same Clerk-verified session gate as `/me/*` (401 without a session, 503 without Clerk configured, tampered tokens rejected by real verification); clients receive a `Cache-Control: private` envelope (an authorized surface never teaches a shared cache to serve it), and the edge keeps a minutes-scale storage copy reachable only behind the gate. The report itself stays user-agnostic, so one shared edge entry serves every signed-in visitor.
 
 **Source:** Objective 2 (chatter) · "fast to load and not suddenly ask the server
 to calculate SLA metrics"
@@ -1636,6 +1637,7 @@ endpoint's cost profile is a bounded table read.
 ### E8S5 — The /sla page (USA-status-style status page) [DONE]
 
 **Status:** Done — 2026-10-10 · public, non-map (no map stack loaded): banner, filterable route rows (number, name, published SLA line, status, overall %, day strip of 12×26 px boxes; weekly grain 34 px boxes — wider, as asked), expandable directional-stop detail with headsigns (one cached fetch per route), banding/legend/methodology footnote (tolerance + gamma approximation + unmonitored rules stated), i18n en-CA/fr-CA, reduced-motion safe, single fetch on load, zero /sla requests when not on the page. Playwright check `test:sla` green through the preview fixture; rendering audited programmatically (bands distinct, grain widths, no overflow). Notes in docs/sla-chatter.md.
+**Amended — nav-v2 (branch):** the page is now members-only, mirroring the endpoint: signed-out visitors meet a sign-in gate and no report request leaves the browser; the page's own fetches carry the session bearer token. The page also moved to the one main nav (nav-v2): the standalone pages' header renders the same five-item strip the map sidebar carries — Explore, Journal, Badges, SLA, Settings — for desktop and mobile alike.
 
 **Source:** Objective 2 (chatter) — the user's headline ask
 **Stage:** 8 · **Size:** M · **Depends on:** E8S4 (data), E8S1 (published SLA)

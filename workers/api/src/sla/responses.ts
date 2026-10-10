@@ -6,8 +6,14 @@
  * read; the data's freshness is the fold cadence, not the visitor.
  *
  * Conventions match the /service/* family: CORS, ETag/304, minutes-scale edge
- * cache. The strip contains exactly the segments with data — "as many tick
- * marks as you have data segments for" — with no fabricated pre-history. */
+ * cache — with one difference: while the report is in beta it is a
+ * members-only surface. The router places this handler behind the same
+ * Clerk-verified session gate as `/me/*` (see http/router.ts), so the report
+ * and its edge entry are unreachable signed out. Clients receive a `private`
+ * envelope (never a shared-cacheable one); the edge keeps a storage-only copy
+ * under a cacheable envelope so the read path stays minutes-scale. The strip
+ * contains exactly the segments with data — "as many tick marks as you have
+ * data segments for" — with no fabricated pre-history. */
 
 import type { Env } from '../env';
 import type {
@@ -36,6 +42,17 @@ import {
 import { SOURCE_KEY } from '../sync/sync-common';
 
 const REPORT_CACHE_SECONDS = 300;
+
+/** The envelope every client receives: an authorized surface never teaches
+ * a shared cache (browser, corporate proxy) to serve it without a session,
+ * so the report stays `private` — browser-only. */
+const clientHeaders = (etag: string) => ({
+  'cache-control': `private, max-age=${REPORT_CACHE_SECONDS}`,
+  etag,
+});
+
+const slaEtag = async (report: SlaReportResponse) =>
+  `"sla-${await sha256Hex(JSON.stringify(report))}"`;
 
 const conditional = (request: Request, response: Response): Response =>
   ifNoneMatchMatches(request.headers.get('if-none-match'), response.headers.get('etag'))
@@ -337,7 +354,16 @@ export async function slaReportResponse(
     `https://ttcstatus-cache.invalid/api/v1/sla/report?route=${encodeURIComponent(routeFilter ?? '')}`,
   );
   const cached = await cache.match(key);
-  if (cached) return conditional(request, cached);
+  if (cached) {
+    // The edge copy is a storage-only duplicate under a cacheable envelope;
+    // rebuild the client's private envelope around its body. The entry is
+    // reachable only through this handler, which the router keeps behind
+    // Clerk verification — and the report itself is user-agnostic (no
+    // personal data), so one shared entry serves every signed-in visitor.
+    const report = (await cached.json()) as SlaReportResponse;
+    const etag = cached.headers.get('etag') ?? (await slaEtag(report));
+    return conditional(request, json(report, 200, clientHeaders(etag)));
+  }
 
   const versionId = await activeVersionId(env.DB);
   // generatedAt is the newest fold underneath the payload, not the wall
@@ -470,12 +496,19 @@ function finish(
   report: SlaReportResponse,
 ): Promise<Response> {
   return (async () => {
-    const etag = `"sla-${await sha256Hex(JSON.stringify(report))}"`;
-    const response = json(report, 200, {
-      'cache-control': `public, max-age=${REPORT_CACHE_SECONDS}`,
-      etag,
-    });
-    ctx.waitUntil(cache.put(key, response.clone()));
-    return conditional(request, response);
+    const etag = await slaEtag(report);
+    // The edge copy carries a cacheable envelope — `cache.put` declines
+    // responses it cannot cache, and the storage entry is only ever served
+    // through the private envelope above.
+    ctx.waitUntil(
+      cache.put(
+        key,
+        json(report, 200, {
+          'cache-control': `public, max-age=${REPORT_CACHE_SECONDS}`,
+          etag,
+        }),
+      ),
+    );
+    return conditional(request, json(report, 200, clientHeaders(etag)));
   })();
 }

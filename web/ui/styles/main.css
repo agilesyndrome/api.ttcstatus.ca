@@ -599,26 +599,58 @@ input:focus-visible,
   height: 32px;
   font-size: 14px;
 }
-.sidebar-tabs {
+.main-nav {
   position: sticky;
   top: -22px;
   z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   background: var(--surface);
   margin: -22px -22px 20px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-tabs [role='tablist'] {
+.main-nav [role='tablist'] {
   display: flex;
   gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.sidebar-tabs button {
+.main-nav button {
   flex: 1;
   padding: 9px 8px;
   border-color: transparent;
   font-size: 12px;
+  white-space: nowrap;
 }
-.sidebar-tabs button[aria-selected='true'] {
+.main-nav button[aria-selected='true'] {
+  background: var(--soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 650;
+}
+.main-nav__pages {
+  display: flex;
+  gap: 5px;
+}
+/* Page links read exactly like the tabs beside them — one strip, one look. */
+.main-nav__link {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--muted);
+}
+.main-nav__link:hover {
+  background: var(--soft);
+  color: var(--text);
+}
+.main-nav__link[aria-current='page'] {
   background: var(--soft);
   border-color: var(--accent);
   color: var(--accent);
@@ -827,13 +859,13 @@ kbd {
     monospace;
 }
 @media (max-width: 900px) {
-  .sidebar-tabs {
+  .main-nav {
     top: -20px;
     margin: -20px -16px 18px;
   }
 }
 @media (max-width: 640px) {
-  .sidebar-tabs {
+  .main-nav {
     margin: -20px -20px 18px;
   }
   .picking-hint {
@@ -863,7 +895,8 @@ kbd {
   }
 }
 
-.sidebar-tabs button {
+.main-nav button,
+.main-nav__link {
   padding: 9px 5px;
   font-size: 11px;
   min-width: 0;
@@ -1038,14 +1071,74 @@ select:focus-visible {
   color: var(--accent);
   font-size: 13px;
 }
-.account-header {
+/* The standalone pages' header (nav-v2): brand, the one main nav and the
+   account controls. The nav strip shares the sidebar's item styles, so the
+   menu reads identically wherever it renders; it drops the strip's own
+   padding/border here and wraps to its own full-width row on phones. */
+.site-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 24px;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+.site-header__brand {
+  flex-shrink: 0;
+}
+.site-header__brand .brand-symbol {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  font-size: 19px;
+}
+.site-header__brand strong {
+  font-size: 18px;
+}
+.site-header .main-nav {
+  position: static;
+  flex: 1 1 auto;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+.site-header .auth-controls {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .site-header {
+    padding: 12px 16px;
+    gap: 8px 12px;
+  }
+  /* Keep the account controls beside the brand on one row: the wordmark
+     yields (ellipsized) before it ever stacks a third header row. */
+  .site-header__brand {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .site-header__brand strong {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The page's own sign-in gate offers both actions; the compact header row
+     keeps just the one. */
+  .site-header .signup-button {
+    display: none;
+  }
+  .site-header .main-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+  .site-header .auth-controls {
+    margin-left: auto;
+  }
 }
 .profile-page {
   max-width: 620px;
@@ -1163,7 +1256,7 @@ select:focus-visible {
   padding: 0;
   overflow: hidden;
 }
-.sidebar-tabs {
+.main-nav {
   position: static;
   flex-shrink: 0;
   margin: 0;
@@ -1233,12 +1326,16 @@ select:focus-visible {
   .workspace.mobile-panel-open .sidebar {
     display: flex;
   }
-  .sidebar-tabs {
+  .main-nav {
     padding: 4px 10px 8px;
   }
-  .sidebar-tabs button {
+  .main-nav button,
+  .main-nav__link {
     min-height: 44px;
     font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .sidebar-content {
     display: flex;
@@ -1317,7 +1414,8 @@ select:focus-visible {
   }
 }
 @media (max-width: 360px) {
-  .sidebar-tabs button {
+  .main-nav button,
+  .main-nav__link {
     padding-inline: 4px;
     font-size: 11px;
   }

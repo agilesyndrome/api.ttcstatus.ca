@@ -185,16 +185,28 @@ export function AuthControls() {
   );
 }
 
-export function AccountRequired({ children }: { children: ReactNode }) {
+export function AccountRequired({
+  children,
+  heading,
+  helper,
+}: {
+  children?: ReactNode;
+  /** Copy overrides for non-journal gates (the /sla sign-in). A custom
+   * heading brings its own framing, so the journal eyebrow stays home. */
+  heading?: string;
+  helper?: string;
+}) {
   useLanguage();
   const account = useAccount();
-  if (account.loaded && account.userId) return children;
+  if (account.loaded && account.userId) return <>{children}</>;
   return (
     <section className="account-required">
-      <p className="eyebrow">{t('account.yourPersonalCollection')}</p>
-      <h1>{t('account.makeItYourJournal')}</h1>
+      {heading === undefined && (
+        <p className="eyebrow">{t('account.yourPersonalCollection')}</p>
+      )}
+      <h1>{heading ?? t('account.makeItYourJournal')}</h1>
       <p className="helper">
-        {t('account.signInToCollectStreetcarsKeepRideNotesAndEarn')}
+        {helper ?? t('account.signInToCollectStreetcarsKeepRideNotesAndEarn')}
       </p>
       {!account.loaded ? (
         <p role="status">{t('account.loadingAccount')}</p>

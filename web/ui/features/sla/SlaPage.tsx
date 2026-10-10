@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { AuthControls } from '../accounts/auth';
+import { AccountRequired, useAccount } from '../accounts/auth';
 import type { SlaReportResponse } from '../../../../shared/service/contracts';
 import { torontoDayKey } from '../../../../shared/service/sla-metrics';
 import {
@@ -13,6 +13,7 @@ import {
 import { useSlaReport, loadedStopsByRoute } from './useSlaReport';
 import { useSlaLive } from './useSlaLive';
 import { SlaRouteRow } from './SlaRouteRow';
+import { SiteHeader } from '../../components/SiteHeader';
 
 type Grain = 'day' | 'week';
 
@@ -23,12 +24,41 @@ type Grain = 'day' | 'week';
  * slivers for the recorder's rolling 30-minute window at each strip's right
  * edge. The report is precomputed (one fetch); the live tier reads the
  * recorder's already-published live state and does its math in the
- * browser — the server never computes an SLA number at request time. */
+ * browser — the server never computes an SLA number at request time.
+ *
+ * The page is members-only while it is in beta (nav-v2): the router gates
+ * `GET /api/v1/sla/report` behind the verified session, and the page mirrors
+ * it with its own sign-in gate — no session, no report request at all. */
 export function SlaPage() {
   useLanguage();
   useEffect(() => {
     document.title = t('sla.pageTitle');
   });
+  const account = useAccount();
+  return (
+    <>
+      <SiteHeader current="sla" />
+      <main className="sla-page">
+        <h1>{t('sla.reportTitle')}</h1>
+        <p className="sla-beta-warning" role="note">
+          {t('sla.betaWarning')}
+        </p>
+        {!account.loaded || !account.userId ? (
+          <AccountRequired
+            heading={t('sla.signInHeading')}
+            helper={t('sla.signInBody')}
+          />
+        ) : (
+          <SlaReport />
+        )}
+      </main>
+    </>
+  );
+}
+
+/** The report itself, mounted only for a signed-in session — its hooks fetch
+ * with the session bearer token and would only ever run behind the gate. */
+function SlaReport() {
   const { report, failed } = useSlaReport();
   const live = useSlaLive(report);
   const [grain, setGrain] = useState<Grain>('day');
@@ -52,34 +82,22 @@ export function SlaPage() {
 
   return (
     <>
-      <header className="account-header">
-        <a className="account-link" href="/">
-          {t('profile.ttcStatus')}
-        </a>
-        <AuthControls />
-      </header>
-      <main className="sla-page">
-        <h1>{t('sla.reportTitle')}</h1>
-        <p className="sla-beta-warning" role="note">
-          {t('sla.betaWarning')}
-        </p>
-        {failed && <p className="sla-failed">{t('sla.reportFailed')}</p>}
-        {!failed && !report && <p className="sla-loading">{t('sla.noDataYet')}</p>}
-        {!failed && report && (
-          <ReportBody
-            report={report}
-            grain={grain}
-            setGrain={setGrain}
-            needle={needle}
-            query={query}
-            setQuery={setQuery}
-            expanded={expanded}
-            toggle={toggle}
-            filteredRoutes={filtered.routes}
-            live={live}
-          />
-        )}
-      </main>
+      {failed && <p className="sla-failed">{t('sla.reportFailed')}</p>}
+      {!failed && !report && <p className="sla-loading">{t('sla.noDataYet')}</p>}
+      {!failed && report && (
+        <ReportBody
+          report={report}
+          grain={grain}
+          setGrain={setGrain}
+          needle={needle}
+          query={query}
+          setQuery={setQuery}
+          expanded={expanded}
+          toggle={toggle}
+          filteredRoutes={filtered.routes}
+          live={live}
+        />
+      )}
     </>
   );
 }

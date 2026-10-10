@@ -10,7 +10,7 @@ import { StopDetails } from '../stops/StopDetails';
 import { NearbyStops } from '../stops/NearbyStops';
 import { RoutePulse } from '../map/RoutePulse';
 import { ShareMap } from '../export/ShareMap';
-import { SidebarTabs } from '../../components/SidebarTabs';
+import { MainNav } from '../../components/MainNav';
 import { StreetcarJournal } from '../journal/StreetcarJournal';
 import { Badges } from '../journal/Badges';
 
@@ -73,9 +73,9 @@ export function HomeSidebar({
       aria-label={t('workspace.stopAndRouteDetails')}
       data-open={mobilePanelOpen ? '' : undefined}
     >
-      <SidebarTabs
-        value={panel}
-        onChange={(next) => {
+      <MainNav
+        panel={panel}
+        onPanel={(next) => {
           setPanel(next);
           sidebar.current?.scrollTo({ top: 0 });
         }}
