@@ -38,4 +38,8 @@ export interface Env extends SyncEnv, AccountEnv {
   SERVICE_RESIDUAL_MIN_SAMPLES?: string;
   SERVICE_WAIT_SHRINK_PRIOR?: string;
   SERVICE_RECORDER_MODE?: string;
+  // Promise-lens configuration (shared/service/config.ts validates; Epic 8).
+  SLA_TOLERANCE_RATIO?: string;
+  SLA_MET_RATIO?: string;
+  SLA_DEGRADED_RATIO?: string;
 }

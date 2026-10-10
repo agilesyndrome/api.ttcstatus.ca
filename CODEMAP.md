@@ -17,6 +17,7 @@ source file locations.
 | `maps/`        | Map/network reads, map caching and protected debug forwarding                   |
 | `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response         |
 | `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints |
+| `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report  |
 | `sync/`        | Static download, import, map generation, delta, publication and retention       |
 | `diagnostics/` | Existing public feed-status response and deployed-version reporting             |
 
@@ -44,16 +45,16 @@ map schema are unchanged by source reorganization.
 
 ## Shared modules
 
-| Directory                    | Responsibility                                                                     |
-| ---------------------------- | ---------------------------------------------------------------------------------- |
-| `shared/accounts/`           | Journal validation, backup/merge rules, badges and username validation             |
-| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette  |
-| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                         |
-| `shared/service/`            | Delivered-service contracts, config, pure wait metrics and the ground-truth corpus |
-| `shared/http/`               | HTTP validator comparison                                                          |
-| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                               |
-| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, canonical records and input budgets                        |
-| `workers/shared/http/`       | Bounded byte streams and admin authorization                                       |
+| Directory                    | Responsibility                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `shared/accounts/`           | Journal validation, backup/merge rules, badges and username validation            |
+| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette |
+| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                        |
+| `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus   |
+| `shared/http/`               | HTTP validator comparison                                                         |
+| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                              |
+| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets        |
+| `workers/shared/http/`       | Bounded byte streams and admin authorization                                      |
 
 `shared/` imports neither application. Workers never import browser implementation
 files, and browser modules never import Worker implementation files. Run
@@ -65,10 +66,16 @@ files, and browser modules never import Worker implementation files. Run
 workspace state and transitions; `HomeWorkspace.tsx` lays out the map and overlays,
 and `HomeSidebar.tsx` composes tool panels. `useStaticMap.ts` owns public map loading.
 
-`web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export
-and Snake code with its component stories. `components/` contains shared page
-chrome; `hooks/` contains preferences, theme and shortcuts. `styles/` contains the
-homepage stylesheet.
+`web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export,
+service (delivered-service overlay) and sla (the /sla status page), and Snake code
+with its component stories. `components/` contains shared page chrome; `hooks/`
+contains preferences, theme and shortcuts. `styles/` contains the homepage
+stylesheet.
+
+`features/sla/` is the non-map SLA status page: `useSlaReport.ts` (one cached
+fetch per session, plus the per-route stop detail), the pure view helpers in
+`sla-view.ts`, and the tick-strip components. Every number comes from
+`GET /api/v1/sla/report`; the page never computes or polls.
 
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
 selection focus, gestures and camera controls. `TrackLayer.tsx` renders fixed

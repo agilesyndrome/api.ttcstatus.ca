@@ -8,7 +8,10 @@
   "previews": {},
   "assets": {
     "directory": "../../dist",
-    "run_worker_first": ["/api/*"],
+    // `/__scheduled` serves wrangler dev's --test-scheduled cron trigger; the
+    // worker owns it so the SPA fallback cannot swallow it (in production the
+    // router simply 404s the path — no page lives there).
+    "run_worker_first": ["/api/*", "/__scheduled"],
     "not_found_handling": "single-page-application",
   },
   "limits": {
@@ -23,7 +26,10 @@
   ],
   "version_metadata": { "binding": "CF_VERSION_METADATA" },
   "triggers": {
-    "crons": ["17 7 * * *"],
+    // The nightly static GTFS sync (map + SLA schedule targets), plus the
+    // hourly SLA rollup (Epic 8, E8S3) that folds completed Toronto days
+    // into the daily/weekly SLA tables before 36-hour retention prunes them.
+    "crons": ["17 7 * * *", "41 * * * *"],
   },
   "vars": {
     "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca",
@@ -49,6 +55,10 @@
     "SERVICE_RESIDUAL_MIN_SAMPLES": "3",
     "SERVICE_WAIT_SHRINK_PRIOR": "4",
     "SERVICE_RECORDER_MODE": "always",
+    // Promise lens (Epic 8; validated defaults in shared/service/config.ts).
+    "SLA_TOLERANCE_RATIO": "1.5",
+    "SLA_MET_RATIO": "0.9",
+    "SLA_DEGRADED_RATIO": "0.7",
   },
   // The recorder singleton (sla.md §4.4): 30 s alarms, DO SQL window store.
   "durable_objects": {

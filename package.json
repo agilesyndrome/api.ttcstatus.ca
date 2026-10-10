@@ -55,7 +55,8 @@
     "check:boundaries": "node scripts/checks/check-boundaries.mjs",
     "map:import": "node scripts/preview/import-rail-map.mjs",
     "test:subway": "node scripts/checks/check-subway.mjs",
-    "test:i18n": "node scripts/checks/check-i18n.mjs"
+    "test:i18n": "node scripts/checks/check-i18n.mjs",
+    "test:sla": "node scripts/checks/check-sla.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",

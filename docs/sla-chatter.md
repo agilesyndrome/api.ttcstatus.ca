@@ -27,7 +27,38 @@ every deviation from the story cards' ideal acceptance criteria.
 
 **Tooling caveat:** the goal-mode tool stored a truncated objective ("H") after
 repeated transport truncation of the long objective text; the full objective above
-is authoritative for this work.
+is authoritative for that (completed) work.
+
+## Objective 2 — the /sla status page (goal of 2026-10-10, recorded verbatim)
+
+> A slick looking page at /sla that mimics the style of USA-status.com. Continuing
+> our code on the sla branch, create a new page (non-map) that looks like the page at
+> USA-status.com showing a (filterable) list of routes & stops and the little green
+> yellow red bars based on the TTC's designated metric of how often they met their
+> SLA. For SLA publish either check the schedule in static feed / schedule data,
+> (probably best) or if data is not there consider the TTC's published metrics on
+> TTC.ca (seems harder) for each route publish the SLA TTC indicates and show as
+> many tick marks as you have data segments for…. This cannot be computed in real
+> time so if you need to address what happens when real time data comes in, do
+> that — this page should be fast to load and not suddenly ask the server to
+> calculate SLA metrics. Bonus points for showing the roll up from real time 30
+> second data to rolling up to daily, weekly with larger width boxes (you'll need
+> to calculate those too)
+
+**Tooling caveat (repeated):** the goal-mode tool again truncated the stored
+objective (to "S") — the same transport bug as Objective 1's "H". The verbatim
+text above is authoritative for this work. (`&amp;` in the command payload is a
+transport encoding artifact for "routes & stops".)
+
+**Carried-forward operating constraints (unchanged from Objective 1):** no git
+commits or pushes; no deploys or remote Cloudflare access (no `wrangler deploy`,
+no remote D1); everything verified locally (unit suites, `pre-flight`,
+dev-stack-shaped harnesses, fixture-intercepted browser checks); deploy-dependent
+acceptance criteria go to the deployment-pending ledger honestly. The promise
+lens is a lens: nothing in the delivered-service pipeline changes its behaviour.
+
+**Epic 8 is the implementation of this objective** — story cards in
+[sla-stories.md](sla-stories.md), work logged below in the work log.
 
 ## Progress tracker
 
@@ -83,6 +114,12 @@ is authoritative for this work.
 | E7S5 | The 5-minute cadence fix (dev env)                                     | done                                           |
 | E7S6 | The snail slime + gradient softening (polish epic)                     | done                                           |
 | E7S7 | Subways disabled; snake game hard-suspend (polish epic)                | done                                           |
+| E8S1 | SLA targets from the static feed (the promise, published)              | ✅ done                                        |
+| E8S2 | SLA compliance math (pure, promise-lens)                               | ✅ done                                        |
+| E8S3 | Tier 3: daily/weekly SLA folds (the precompute)                        | ✅ done                                        |
+| E8S4 | GET /api/v1/sla/report (precomputed-only serving)                      | ✅ done                                        |
+| E8S5 | The /sla page (USA-status-style status page)                           | ✅ done                                        |
+| E8S6 | Docs & reconciliation (Epic 8 close)                                   | ✅ done                                        |
 
 Status legend: ⬜ todo · 🔨 in progress · ✅ done (see log) · ⏸ blocked
 
@@ -132,6 +169,40 @@ any polish-epic work starts (the stages doc's own gate).
 (Consolidates L1/L2.) The deploy pipeline applies migrations 0005/0006
 remotely; then `npm run feature:enable -- voidOverlay <user-or-email>`, sign
 in as that account and one other, and diff `GET /api/v1/me/features`.
+
+**L6 — Epic 8: remote migrations + the first live fold + report on the
+deployed stack.** Done locally: migrations 0007 (schedule tables) and 0008
+(Tier 3) verified through the SQLite D1-shaped harness; the derivation,
+fold, and endpoint all exercised end-to-end against seeded data; the page
+browser-verified through the preview fixture. Pending (needs deploy rights):
+`npm run db:migrate:remote` (0007/0008 ride the normal pipeline), one
+deploy so the nightly import writes real schedule targets and the hourly
+`41 * * * *` cron folds real rollups, then after ≥ 2 hours check
+`GET /api/v1/sla/report` (dataThrough today, tick strips populating) and
+open `/sla` in a browser. The first ~36 hours only show the growing
+today-so-far row until a full day folds — that is the honest behaviour,
+not a bug.
+
+**L7 — Epic 8: a week of production data before the weekly boxes mean
+anything.** The weekly grain renders as soon as any week has one folded
+day, but the wider boxes are honest only once whole weeks exist. After 7
+days of production folds, spot-check one route's week compliance against
+the exact sum of its days (the E8S3 idempotency test is the reference
+derivation).
+
+**L8 — Epic 8: the next production feed flip runs the new schedule
+derivation inside workerd for the first time.** Done locally: the
+derivation ran against the real completegtfs.zip through the same modules
+(end-to-end in Node: 18-23 s, ~595 MB peak RSS, of which the schedule
+materials are a fraction — shapes and patterns dominate, and the existing
+import already carries those in production); the persistence path is
+exercised end-to-end by the importNetworkVersion test through the SQLite
+harness. Pending: the first real feed flip (the feed refreshes ~every 6
+weeks) runs parse + deriveSlaSchedule + persist inside the production
+worker. If it ever trips workerd's memory ceiling, the failure is the
+sync pipeline's own loud-and-isolated story (version marked failed_import,
+the active map and the previous SLA targets untouched, retried next sync)
+— and the fold keeps scoring against the last good targets version.
 
 ## Work log
 
@@ -542,3 +613,179 @@ in the snake game.
   no field/marker/card with ZERO /service/* requests while open (the
   wake-up refetch after closing is legitimate and excluded from the count).
   280/280, board 9/9.
+
+### 2026-10-10 — Epic 8: the /sla status page (the promise lens, made public)
+
+Objective 2 (recorded verbatim above). All local; nothing committed, pushed,
+or deployed, per the standing constraint. The promise lens is a lens —
+nothing in the delivered-service pipeline changed behaviour.
+
+**E8S1 — the promise, derived from the feed the site already downloads.**
+The nightly sync already streams the complete GTFS zip from R2 (the map's
+own source); the streetcar parser now collects schedule materials during
+the same passes (every streetcar trip's calendar class + per-stop departure
+times + headsigns — the pass was already being paid for stop_times), and
+`workers/shared/gtfs/sla-schedule.ts` (pure) derives per directional stop
+and per route the scheduled headway per hour-of-day band, per **exact
+active-service class** ('1', '2', '1+4401', … from calendar.txt +
+calendar_dates.txt — never weekday folklore, so holiday overlays and
+school-day layers keep their own promises). Departure-gap medians per hour
+band (one inserted tripper cannot move a corridor's promise); a date whose
+class publishes no streetcar service publishes no promise. Persisted per
+network version (migrations 0007) — a feed flip never mixes schedules; a
+re-import is byte-identical (row hashes, deterministic orders). Feed
+version + validity ride the class keys; a stale schedule is visible, not
+hidden.
+
+**E8S2 — the math (shared/service/sla-metrics.ts, pure).** Compliance is
+**time-weighted**: the share of monitored gap time within θ =
+scheduled × tolerance. Time-weighting is the honest choice (a rider inside
+a 19-minute gap experiences all of it) AND the additive one (gap-time and
+compliant-time sum exactly, so day → week → route rollups are sums). The
+within-θ estimate is E[min(H, θ)] under the gamma-MoM fit of the merged
+moments — the same machinery as the history quantiles, degenerate-safe at
+CV²≈0 (clockwork exact) — and is labelled an approximation everywhere.
+The §3.2 table reproduces time-weighted: 1/19/1/19 at a 10-minute SLA is
+0.8 (15 of the first 19 minutes are within θ), never the count-based 0.5.
+Toronto day/week keys with DST-probe boundaries (23 h and 25 h days tested
+in both DST directions). 13 hand-derived unit tests.
+
+**E8S3 — the precompute (workers/api/src/sla/fold.ts + migrations 0008).**
+The answer to "this cannot be computed in real time": an hourly cron
+(`41 * * * *`, dispatched in scheduled() by cron string) folds completed
+Toronto days from the 5-minute rollup tier into long-lived daily rows —
+per stop and per route — before the 36-hour retention can prune them,
+then recomputes touched weeks as the exact sum of their days, and
+refreshes the current day's explicitly-partial row (final=0) so the page
+shows live recording being absorbed without ever computing for a
+visitor. Self-healing: missed runs backfill any day whose data still
+survives; a day is foldable only while its EARLIEST bucket still
+survives retention — exactly a 12-hour post-midnight grace (what
+SERVICE_HISTORY_HOURS=36 buys: 24 h of day + 12 h of grace) — and a day
+past that grace is skipped forward WITHOUT rows even if some late
+buckets physically remain (folding survivors would present a partial day
+as final); idempotent by construction.
+Hours with no scheduled service stay out of the denominator; DST wall
+hours are offset-aware (the repeated 1 a.m. maps to the 1 a.m. promise).
+Subways excluded by construction — only stops the streetcar schedule
+targets are folded.
+
+**E8S4 — GET /api/v1/sla/report (precomputed-only).** Reads the Tier 3
+tables + the schedule targets; never derives, never touches the recorder,
+never scans the rollup tier. Routes sorted numerically with published-SLA
+bands (weekday/Saturday/Sunday from the newest respective dates in the
+feed window), day and week tick strips ('as many tick marks as you have
+data segments for' — no fabricated pre-history), `?route=` for the
+directional-stop detail. ETag/304 stable between folds (generatedAt is
+the newest fold underneath the payload, not the wall clock); ~5-minute
+edge cache; honest collecting payload on a fresh deploy. Worst realistic
+payload (17 routes × 90 days + 14 weeks) well under the byte budget.
+
+**E8S5 — the page (web/ui/features/sla/, public /sla).** USA-status.com
+anatomy on the house design language: banner (route counts meeting the
+SLA + overall % + data-through), filter box (narrows routes and loaded
+stop detail live), grain toggle (daily 12×26 px boxes, **weekly 34 px
+wider boxes**), route rows (number, name, status, overall %, published-SLA
+line, strip), expandable stops with headsigns ("towards …"), legend
+including the hatched partial-today box, and the methodology footnote
+stating tolerance, gamma approximation, unmonitored-never-counted, and
+route-rolls-up-stops. One fetch on load (session-cached module-level),
+one cached fetch per expanded route, zero /sla requests when the page is
+not opened, i18n en-CA + fr-CA, reduced-motion safe, non-map (the map
+stack never loads). Preview fixture route in the dev middleware serves
+a deterministic report covering every state; Playwright check
+`npm run test:sla` green; rendering audited programmatically (all bands
+distinct, grain widths, no overflow).
+
+**E8S6 — docs.** CODEMAP rows; README public-API entry + the /sla page
+pointer; sla.md §9 decisions (promise lens shipped, tolerance/bands,
+Tier 3 retention + scheduling, time-weighting) and §10 non-goals scoped
+honestly (schedule bands the page publishes ≠ the old blanket "no
+schedule ingestion"; Tier 3 is the deliberate exception recorded in §9).
+
+**Verification at the epic boundary:** unit suites (13 math + 3
+derivation + 3 import + 3 fold + 5 endpoint) green; full repo suite
+**304/304**; pre-flight board **9/9**; typecheck/lint/format clean; the
+UI builds; the page verified in a real browser through the preview
+fixture (banner, strips in every band, weekly grain, expand, filter,
+methodology, zero-error console). Live-feed verification: the fold and
+endpoint are exercised against the seeded SQLite harness exactly as
+production D1 would see them — the deployed-stack items are in the
+ledger below.
+
+**Lessons recorded:** (1) under `--test-isolation=none`, every test
+file's module code runs before any test — a caching caches.default stub
+in one file poisons the ETag keys of every other suite; the history
+suite's never-caching stub is the pattern to copy (my Map-backed one
+broke four /service tests until I switched). (2) Playwright route globs
+must match the full URL including the query string — `**/api/v1/sla/
+report` silently misses `?route=…`; use a trailing `*`. (3) GTFS
+departure-gap hour attribution: the gap belongs to the hour of the
+departure that started it (23:50 → 01:30 next day is the 23:00 band's
+promise, 6000 s), which the overnight-trip test pins.
+
+### 2026-10-10 — Epic 8 post-close: real-feed verification, two derivation
+
+### fixes, and the LAN dev stack
+
+User steer: the /sla page showed "report unavailable" on the running stack, and
+the stack should be restarted on 0.0.0.0 when done. Diagnosis: the
+work-in-progress was complete, but the running `make dev` worker (started in
+the previous session) had hot-reloaded the new route code without the new
+migrations — `/api/v1/sla/report` was an honest 500. Nothing was wrong with
+the feature; the stack was stale.
+
+**Real-feed verification (the first run of E8S1's derivation on the actual
+completegtfs.zip):** 17 streetcar routes, 680 stops, 4 calendar classes
+('1', '2', '3', '4+5' — the Thanksgiving-holiday set), 32 dates, 18-23 s,
+~595 MB peak in Node. Two real bugs found and fixed, both now unit-pinned:
+
+1. **Route bands inherited corridor service** (the 306 claimed 24-hour
+   service from the 506's daytime departures at their shared stops).
+   Fix: parser materials now key departures per stop → service → ROUTE, and
+   route-level bands derive from the route's OWN departures at its member
+   stops. Stop-level bands stay pooled across streetcar routes (a rider at
+   a stop cares about every route serving it). Verified on the real feed:
+   the 306's weekday bands are now 1:00–6:59 only (10/15/20-min), null by
+   day — its true blue-night span. (My earlier prototype sketch that showed
+   "evening 306 departures" was a timezone-shifted strftime artifact — raw
+   GTFS seconds 25:33–29:48 are 1:33–5:48 a.m., the honest overnight span.)
+2. **Rapid lines leaked into streetcar targets** (Lines 5/6 are route_type 0
+   like streetcars, so the type-only filter missed them). Fix: the E7S7
+   rapid-line set (1/2/4/5/6 by number) is excluded in the derivation —
+   matching `isSubwayOnlyStop`'s rule in the delivered-service brain.
+
+Both fixes are pinned by the synthetic-fixture tests (a night route sharing
+a corridor; a Line-5 LRT that only the number rule catches; hand-derived
+own-departure bands). Full suite 304/304; board 9/9 after.
+
+**Local stack bring-up (so the real page renders on the LAN):**
+
+- Migrations 0007/0008 applied to local D1 (`db:migrate:local`).
+- Schedule targets seeded into local D1 from the real feed via the real
+  derivation code (one-off script; the production path is the nightly
+  import, which writes these on the next feed flip). 32 dates, 680 stops,
+  17 routes under version 1.
+- The recorder's surviving local rollup data (~13 h of real touches from
+  the previous session's soak, 40k rows) + the hourly fold triggered via
+  `--test-scheduled`: first run folded 2026-10-09 final (514 rows), today's
+  partial, and week 2026-10-05 (529 weekly rows); the second run was a clean
+  idempotent no-op on the final day. Live report served through the real
+  worker: 17 routes with real published schedules, real compliance bands,
+  and real stop detail — browser-verified, zero console errors.
+- Cosmetic fix from the real page: GTFS headsigns already read "East - 506
+  Carlton towards …", so the stop rows no longer wrap them in a second
+  "towards" (the i18n key was removed from both catalogues).
+- `run_worker_first` gained `/__scheduled` so wrangler's --test-scheduled
+  trigger reaches the worker instead of the SPA fallback (production 404s
+  the path; nothing lives there).
+- vite.config.mjs: the dev server host is now `UI_HOST || '127.0.0.1'` (same
+  convention as UI_URL) — `UI_HOST=0.0.0.0 npm run dev:viewer` shares the
+  preview on the LAN.
+
+**Dev stack state:** the preview stack (fixture report) runs on 0.0.0.0:4173;
+the real-worker stack (real recorded data) runs on 0.0.0.0:8787 with the 30 s
+cadence env (CLOUDFLARE_INCLUDE_PROCESS_ENV=false,
+REALTIME_UPDATE_SECONDS=30) — the E7S5 lesson applied. Both `/sla` pages
+serve; the fold refreshes today's partial at every :41 cron (triggerable
+immediately via `curl 'http://localhost:8787/__scheduled?cron=41+*+*+*+*'`).

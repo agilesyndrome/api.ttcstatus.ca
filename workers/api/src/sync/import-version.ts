@@ -2,6 +2,11 @@ import {
   parseStreetcarGtfs,
   type ParsedStreetcarGtfs,
 } from '../../../shared/gtfs/parser';
+import {
+  deriveSlaSchedule,
+  slaScheduleRowHash,
+  type SlaScheduleTargets,
+} from '../../../shared/gtfs/sla-schedule';
 import { R2ZipArchive } from '../../../shared/gtfs/zip';
 import { nowIso, runBatches, type NetworkVersion, type SyncEnv } from './sync-common';
 
@@ -13,6 +18,12 @@ async function clearVersionRows(env: SyncEnv, versionId: number): Promise<void> 
     env.DB.prepare(`DELETE FROM gtfs_shapes WHERE version_id = ?`).bind(versionId),
     env.DB.prepare(`DELETE FROM gtfs_patterns WHERE version_id = ?`).bind(versionId),
     env.DB.prepare(`DELETE FROM gtfs_routes WHERE version_id = ?`).bind(versionId),
+    // The promise lens ships with the same version flip (Epic 8, E8S1).
+    env.DB.prepare(`DELETE FROM sla_route_targets WHERE version_id = ?`).bind(versionId),
+    env.DB.prepare(`DELETE FROM sla_schedule_targets WHERE version_id = ?`).bind(
+      versionId,
+    ),
+    env.DB.prepare(`DELETE FROM sla_schedule_dates WHERE version_id = ?`).bind(versionId),
   ]);
 }
 
@@ -145,6 +156,79 @@ async function persistNormalizedGtfs(
   );
 }
 
+/** The promise lens's sanity rails (Epic 8, E8S1): a feed that publishes no
+ * streetcar schedule at all has no promises to compare against — the map can
+ * still import, but the SLA page would be lying if we let it, so fail loudly
+ * and retry at the next sync like every other import problem. */
+function validateSlaSchedule(targets: SlaScheduleTargets): void {
+  if (targets.dates.length === 0) {
+    throw new Error('SLA schedule import found no calendar dates');
+  }
+  if (targets.stops.length === 0) {
+    throw new Error('SLA schedule import found no streetcar scheduled stops');
+  }
+  if (targets.routes.length === 0) {
+    throw new Error('SLA schedule import found no streetcar scheduled routes');
+  }
+}
+
+/** Persist the derived schedule targets (E8S1): date → class, per-stop bands,
+ * per-route published bands. Same bounded-batch discipline as the map rows. */
+async function persistSlaSchedule(
+  env: SyncEnv,
+  versionId: number,
+  targets: SlaScheduleTargets,
+): Promise<void> {
+  await runBatches(
+    env,
+    targets.dates.map((entry) =>
+      env.DB.prepare(
+        `INSERT INTO sla_schedule_dates (version_id, date_key, class_key) VALUES (?, ?, ?)`,
+      ).bind(versionId, entry.dateKey, entry.classKey),
+    ),
+  );
+
+  await runBatches(
+    env,
+    targets.stops.map((stop) =>
+      env.DB.prepare(
+        `INSERT INTO sla_schedule_targets (
+       version_id, stop_id, name, direction_id, headsign, route_ids_json, headways_json, row_hash
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        versionId,
+        stop.stopId,
+        stop.name,
+        stop.directionId,
+        stop.headsign,
+        JSON.stringify(stop.routeIds),
+        JSON.stringify(stop.headways),
+        slaScheduleRowHash([stop.stopId, stop.name, JSON.stringify(stop.headways)]),
+      ),
+    ),
+  );
+
+  await runBatches(
+    env,
+    targets.routes.map((route) =>
+      env.DB.prepare(
+        `INSERT INTO sla_route_targets (
+       version_id, route_id, number, name, overnight, headways_json, stops_json, row_hash
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        versionId,
+        route.routeId,
+        route.number,
+        route.name,
+        route.overnight ? 1 : 0,
+        JSON.stringify(route.headways),
+        JSON.stringify(route.stopIds),
+        slaScheduleRowHash([route.routeId, route.number, JSON.stringify(route.headways)]),
+      ),
+    ),
+  );
+}
+
 /**
  * Parse the already-cached R2 ZIP and materialize its streetcar subset in D1.
  * This function never reaches back to the TTC source; all source traffic is
@@ -178,6 +262,15 @@ export async function importNetworkVersion(
     }
   }
   await persistNormalizedGtfs(env, version.id, parsed);
+
+  // The promise lens (Epic 8, E8S1): derive the schedule's own SLA bands from
+  // the same parsed feed — no new download, no new upstream traffic — and
+  // persist them with the version. A failure here fails the import loudly and
+  // retries at the next sync; the active version (and its targets) are never
+  // left half-flipped.
+  const slaTargets = deriveSlaSchedule(parsed);
+  validateSlaSchedule(slaTargets);
+  await persistSlaSchedule(env, version.id, slaTargets);
 
   await env.DB.prepare(
     `UPDATE network_versions

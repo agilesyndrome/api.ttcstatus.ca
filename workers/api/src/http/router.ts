@@ -15,6 +15,7 @@ import {
   serviceWaveResponse,
   serviceHistoryResponse,
 } from '../service/responses';
+import { slaReportResponse } from '../sla/responses';
 import { feedStatusResponse } from '../diagnostics/feed-status';
 import { analyticsEventResponse } from '../diagnostics/analytics';
 import { versionResponse } from '../diagnostics/version';
@@ -87,6 +88,12 @@ export async function routeRequest(
   }
   if (request.method === 'GET' && url.pathname === '/api/v1/service/history') {
     return serviceHistoryResponse(request, env, ctx);
+  }
+
+  // The SLA report (docs/sla-stories.md Epic 8, E8S4): precomputed-only —
+  // additive, marked experimental in the README.
+  if (request.method === 'GET' && url.pathname === '/api/v1/sla/report') {
+    return slaReportResponse(request, env, ctx);
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/feed/status') {

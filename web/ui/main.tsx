@@ -3,6 +3,7 @@ import { HomePage } from './pages/HomePage';
 import './styles/main.css';
 import { AccountProvider } from './features/accounts/auth';
 import { ProfilePage, PublicProfilePage } from './pages/ProfilePage';
+import { SlaPage } from './pages/SlaPage';
 import { AffiliationNotice } from './components/AffiliationNotice';
 import { snakeVersionForPath } from './snake-route';
 
@@ -12,6 +13,8 @@ const snakeVersion = snakeVersionForPath(path);
 const page =
   path === '/profile' ? (
     <ProfilePage />
+  ) : path === '/sla' ? (
+    <SlaPage />
   ) : publicProfile ? (
     <PublicProfilePage username={publicProfile[1]} />
   ) : (

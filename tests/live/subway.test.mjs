@@ -92,7 +92,10 @@ test('rail import includes all requested subway/LRT types, excludes buses and Li
     'stop_times.txt': 'trip_id,stop_id,stop_sequence\nt,a,1\n',
   };
   const parsed = await parseStreetcarGtfs({
-    stream: (name) => new Response(files[name]).body,
+    // Unknown members (calendar files the fixture doesn't model) stream as
+    // empty — the parser treats an empty calendar as "no schedule dates",
+    // never an error.
+    stream: (name) => new Response(files[name] ?? '').body,
   });
   assert.deepEqual(
     parsed.routes.map((r) => r.shortName),

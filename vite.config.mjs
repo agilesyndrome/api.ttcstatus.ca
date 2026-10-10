@@ -53,6 +53,10 @@ export default defineConfig({
       },
     },
   ],
-  server: { host: '127.0.0.1', port: 4173, strictPort: true },
+  server: {
+    host: process.env.UI_HOST || '127.0.0.1',
+    port: 4173,
+    strictPort: true,
+  },
   build: { outDir: resolve('dist'), emptyOutDir: true },
 });

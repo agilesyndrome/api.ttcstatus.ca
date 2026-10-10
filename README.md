@@ -234,6 +234,33 @@ The browser surface is a per-user-gated debug overlay: grant it with
 `npm run feature:enable -- voidOverlay <clerk-user-or-email>` and it appears on
 the map for that account only; signed-out visitors see nothing.
 
+### `GET /api/v1/sla/report` (experimental)
+
+The public SLA status page's one endpoint (docs/sla-stories.md Epic 8): which
+streetcar routes and stops have been meeting the schedule the TTC's own GTFS
+publishes — precomputed, never computed for the visitor. The nightly static
+import derives per-stop and per-route scheduled-headway bands from the same
+R2 zip the map already uses (zero new upstream traffic), and an hourly cron
+folds the delivered-service rollups into daily and weekly SLA rows before the
+36-hour retention can prune them. The endpoint reads only those precomputed
+tables: `ETag` / `If-None-Match` with a ~5-minute edge cache, CORS, and an
+honest "collecting" payload on a fresh deploy — never a fabricated green.
+
+- `/api/v1/sla/report` — per streetcar route: the published schedule (the
+  SLA the TTC indicates, compacted into hour bands), the current status, the
+  overall compliance, and one tick per recorded day and week. Each tick is
+  green (≥ met threshold), yellow, red, or hollow no-data; today's tick is
+  marked partial ("so far"). `?route=` adds that route's directional stops
+  with their own strips.
+- Compliance is time-weighted: the share of monitored wait time within the
+  scheduled headway × tolerance, estimated from mergeable gamma moments and
+  labelled an approximation everywhere. Hours with no scheduled service carry
+  no promise; unmonitored time never counts for or against anyone.
+
+The page itself is public at **`/sla`** — a filterable routes-and-stops
+status page (the USA-status.com anatomy), with daily tick marks and wider
+weekly boxes.
+
 ### `GET /api/v1/feed/status`
 
 Operational source/import status. This endpoint requires

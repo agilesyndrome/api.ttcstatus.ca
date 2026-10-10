@@ -1463,6 +1463,245 @@ recorded. The release is done.
 
 ---
 
+## Epic 8 — The SLA page (the promise lens, made public)
+
+> Kicked off by the user's /goal of 2026-10-10 (recorded verbatim in
+> docs/sla-chatter.md · Objective 2): a slick, fast page at **/sla** mimicking
+> USA-status.com — a **filterable list of routes & stops** with **small green /
+> yellow / red tick-mark bars** showing, per data segment, **how often each route
+> and stop met the SLA the TTC's schedule indicates**. The promise source is the
+> **static GTFS feed** (the user's "probably best"), with TTC.ca published metrics
+> only as a fallback idea (deferred — the schedule data is present and richer).
+> Nothing on this page may be computed at request time: all compliance numbers are
+> **precomputed by a scheduled fold** from the delivered-service rollups (the same
+> mergeable moments every other layer trusts), and the page loads from that
+> precomputed report only. Real-time recording keeps flowing as it does today;
+> the fold absorbs it. Bonus, now in scope as Tier 3: **daily and weekly rollups**
+> (the weekly boxes rendered wider), precomputed as well.
+
+### E8S1 — SLA targets from the static feed (the promise, published) [DONE]
+
+**Status:** Done — 2026-10-10 · the nightly import derives per-stop/per-route scheduled-headway bands (per calendar class, exact active-service sets) from the SAME R2 zip the map already parses — zero new upstream traffic; persisted per network version (`sla_schedule_dates/targets`, `sla_route_targets`), idempotent re-import byte-identical; validated with a synthetic GTFS zip through the real parser + derivation (short-turn, night-service, holiday-class cases hand-derived) plus the end-to-end importNetworkVersion test. Notes in docs/sla-chatter.md.
+**Source:** Objective 2 (chatter) · the promise lens, per the §11 verdict in the
+polished-overlay proposal ("In. Purely additive.")
+**Stage:** 8 · **Size:** M · **Depends on:** — (Track A start; parallel with E8S2)
+
+Derive the SLA the TTC indicates — per streetcar route, direction, and directional
+stop, per hour-of-day band and service class (weekday / Saturday / Sunday /
+holiday) — from the official merged GTFS static feed (City of Toronto open data,
+"Complete GTFS" zip, updated ~every 6 weeks; feed validity windows inside).
+
+**Acceptance criteria**
+
+1. `scripts/operations/derive-sla-targets.mjs` downloads the GTFS zip (URL pinned as
+   a constant), derives scheduled headways from `trips.txt` + `stop_times.txt` +
+   `calendar.txt` + `calendar_dates.txt` (the feed has no `frequencies.txt` — TTC
+   schedules are per-trip; streetcar routes are `route_type=0`, incl. 3xx night
+   cars), and emits a compact committed JSON module (streetcar routes only).
+2. The output carries: per route — number, name, published-SLA summary line per
+   service class and hour band ("every N min"); per route × direction — hourly
+   scheduled headway bands; per directional stop — hourly scheduled headway bands;
+   plus feed version + validity dates (stale feeds are visible, not hidden).
+3. The derivation is offline and idempotent: same zip in → same JSON out; the
+   script never runs at request time and adds zero constant upstream traffic
+   (one zip per deliberate re-run — a data-citizenship note records this).
+4. A typed loader module serves the worker and UI: scheduled headway for
+   (stopId | routeId, direction, hour, service class); unknown keys are honest
+   misses (no schedule = no promise to compare against, never a fabricated 100%).
+5. Unit tests: a small synthetic GTFS fixture (checked in, few trips) yields
+   hand-derived scheduled headways, including a short-turn case and a night-service
+   case; the real feed's parsed shape is asserted structurally, not numerically.
+
+**Test expectations:** pure-derivation tests against the synthetic fixture in the
+standard `node --test` stack; no network in tests.
+
+**Definition of done:** the targets module is importable by worker and web; the
+published-SLA line for each route is a served string, not a promise the code
+invents.
+
+### E8S2 — SLA compliance math (pure, promise-lens) [DONE]
+
+**Status:** Done — 2026-10-10 · `shared/service/sla-metrics.ts`: time-weighted compliance from mergeable moments via the shared gamma machinery (E[min(H,θ)] under the MoM fit, degenerate clockwork exact); parts merge exactly (day→week→route are sums); the §3.2 bunched table reproduces time-weighted (0.8, not the count-based 0.5) within the labelled gamma tolerance; no-data/no-promise are nulls, never 0; shared banding + Toronto day/week keys (DST-probe boundaries tested both directions). 13 unit tests hand-derived. Notes in docs/sla-chatter.md.
+
+**Source:** Objective 2 (chatter) · merges the promise onto the proven moment math
+**Stage:** 8 · **Size:** M · **Depends on:** E8S1 · builds on E2S7 (moment merging)
+
+One pure module (no I/O) answering: given a stop's (or route's) merged rollup
+moments over a span and the SLA threshold θ for that span, **how much of the
+monitored time was within the SLA?**
+
+**Acceptance criteria**
+
+1. `shared/service/sla-metrics.ts`: compliance(span moments, θ) = 1 −
+   (time fraction in gaps beyond θ). The tail fraction comes from the existing
+   gamma method-of-moments machinery and is **labelled an approximation**
+   exactly as the §3.7 quantiles are; moments still merge exactly across spans,
+   so bucket → day → week → route rollups compose without re-deriving.
+2. Coverage honesty is preserved end-to-end: spans (or spans' sub-buckets) with
+   no coverage contribute **no** monitored time; unmonitored is never compliant
+   and never non-compliant. A span with zero monitored time reports "no data",
+   not 0%.
+3. The SLA threshold θ = scheduled headway (E8S1) × tolerance factor, with the
+   tolerance from config (`SLA_*` vars in the shared config pattern) — no magic
+   numbers outside config; defaults provisional and recorded in sla.md §9.
+4. Status banding (green / yellow / red / no-data) is a pure function of
+   compliance and config thresholds, shared by API and UI so both agree.
+5. Unit tests, hand-derived: clockwork at θ·tolerance → 100%; the §3.2 bunched
+   table (10/10/10/10 vs 1/19/1/19) at a 10-minute SLA reproduces two different,
+   hand-computed compliances; coverage-excluded spans never move the number.
+
+**Test expectations:** the math library standard — every value derived by hand in
+comments, asserted exactly where exact and within labelled epsilon where
+gamma-approximated.
+
+**Definition of done:** every number the /sla page shows is computable by calling
+this module on precomputed moments — nothing else exists.
+
+### E8S3 — Tier 3: daily/weekly SLA folds (the precompute) [DONE]
+
+**Status:** Done — 2026-10-10 · migrations 0007/0008; `workers/api/src/sla/fold.ts` on a new hourly cron (self-healing backfill, idempotent refold, today-so-far partial refreshed each run, weeks recomputed as the exact sum of days); hours with no scheduled service stay out of the denominator; days aged out of retention before their fold are skipped honestly, never fabricated; DST wall-hours read the right band (offset-aware). Tested through the SQLite harness: clockwork=100%, unpromised-hour exclusion, exact route=sum-of-stops, idempotency, backfill, aged-out, no-targets/no-data honesty. Notes in docs/sla-chatter.md.
+
+**Source:** Objective 2 (chatter) · Tier 3 ("weeks of summaries") deferred by the
+Stage 4 hand-off, now made a deliberate product decision by the user
+**Stage:** 8 · **Size:** M · **Depends on:** E8S1, E8S2, E4S2 (rollup store)
+
+The answer to "this cannot be computed in real time": a scheduled, idempotent
+fold turns the 36-hour rollup tier into long-lived daily and weekly SLA rows —
+per route and per directional stop — before the rollup retention prunes them.
+
+**Acceptance criteria**
+
+1. Migration `0007_sla_rollups.sql` (house schema-first): per-grain tables keyed
+   (scope route|stop, scopeId, dayKey Toronto) and (scope, scopeId, weekStart),
+   storing mergeable moments + coverage minutes + touches + the SLA inputs needed
+   by the page; retention is a deliberate product choice (weeks), not an accident.
+2. The fold is **SQL-side and idempotent**: a complete Toronto day aggregates from
+   the 5-minute rollup rows via grouped sums (no JS row-shipping), upserted with a
+   deterministic key so re-runs are byte-identical.
+3. Scheduling is self-healing: on its cadence the job folds **any** completed day
+   whose data still exists and is not yet folded (missed runs backfill; a day
+   aged out of the 36-hour window before its fold is recorded as a gap, honestly
+   absent — never fabricated), refreshes the current week's row, and refreshes a
+   partial "today so far" row so the page stays honest about live recording
+   without ever computing at request time.
+4. The night/day boundary respects the house rule: internal epoch ms; day keys in
+   `America/Toronto`; 3xx night routes stay distinct identities.
+5. Tests: fold from fixture rollups equals hand-merged truth; idempotent refold is
+   byte-identical; backfill picks up a missed day; weekly == exact merge of its
+   dailies; the aged-out day is absent, not zero.
+
+**Test expectations:** pipeline tests through the SQLite D1-shaped harness, no
+live feed, no deploy.
+
+**Definition of done:** after any recorder outage short of the 36-hour grace, the
+long-term SLA record is complete; the page's every number is a table read.
+
+### E8S4 — `GET /api/v1/sla/report` (precomputed-only serving) [DONE]
+
+**Status:** Done — 2026-10-10 · precomputed-only serving (never derives, never touches the recorder, never scans the rollup tier): routes with published-SLA bands + day/week tick strips; `?route=` stop detail; ETag/304 stable between folds (generatedAt = newest fold, not the wall clock); honest collecting payload on a fresh deploy; unknown route = empty detail. Endpoint tests through the real router; worst-case 17×(90d+14w) payload under the byte budget. Notes in docs/sla-chatter.md.
+
+**Source:** Objective 2 (chatter) · "fast to load and not suddenly ask the server
+to calculate SLA metrics"
+**Stage:** 8 · **Size:** S · **Depends on:** E8S3, E8S1 (published SLA strings)
+
+The one endpoint the page calls. It reads the precomputed tables and the
+published-SLA module — it never derives compliance, never touches the recorder,
+and never scans the rollup tier.
+
+**Acceptance criteria**
+
+1. `GET /api/v1/sla/report` serves the snapshot: overall summary (system
+   compliance over the window, data-through timestamp), per-route rows (name,
+   published SLA, day and week tick strips with per-tick compliance + coverage,
+   monitored minutes), sorted by route number; `?route=` returns that route's
+   directional-stop rows for the expandable detail.
+2. Conventions match the `/service/*` family: CORS, `ETag`/304, edge cache
+   (minutes-scale — the data refreshes on the fold cadence, not per tick),
+   experimental-marked; payload within the house byte budget (strip data is
+   compact: one tick = a handful of numbers).
+3. "As many tick marks as you have data segments for": the strips contain exactly
+   the segments with data (per-day segments since recording began; no fabricated
+   pre-history, no gaps papered over).
+4. Endpoint tests mirror the `/service/*` suite: payload contract, ETag/304,
+   filter semantics, byte budget, honest empty/`503`-family behaviour when the
+   tables are empty (e.g., fresh deploy: a friendly "collecting" report, not a
+   fake green).
+
+**Test expectations:** contract tests through the real router with the harness,
+per E3S3's pattern.
+
+**Definition of done:** the page has exactly one fetch, fully cacheable, and the
+endpoint's cost profile is a bounded table read.
+
+### E8S5 — The /sla page (USA-status-style status page) [DONE]
+
+**Status:** Done — 2026-10-10 · public, non-map (no map stack loaded): banner, filterable route rows (number, name, published SLA line, status, overall %, day strip of 12×26 px boxes; weekly grain 34 px boxes — wider, as asked), expandable directional-stop detail with headsigns (one cached fetch per route), banding/legend/methodology footnote (tolerance + gamma approximation + unmonitored rules stated), i18n en-CA/fr-CA, reduced-motion safe, single fetch on load, zero /sla requests when not on the page. Playwright check `test:sla` green through the preview fixture; rendering audited programmatically (bands distinct, grain widths, no overflow). Notes in docs/sla-chatter.md.
+
+**Source:** Objective 2 (chatter) — the user's headline ask
+**Stage:** 8 · **Size:** M · **Depends on:** E8S4 (data), E8S1 (published SLA)
+
+A slick, non-map page at `/sla` mimicking USA-status.com's anatomy: the overall
+banner, the per-entity rows with tick strips, the hover details, the filter.
+
+**Acceptance criteria**
+
+1. The page renders at `/sla` (served by the existing site machinery, whatever the
+   build/viewer pattern turns out to be — non-map: it does not load or mount the
+   map stack).
+2. Header: site-style title, overall status banner ("N of M routes meeting SLA"
+   style with the overall compliance %), data-through timestamp, methodology
+   link/footnote (delivered vs scheduled, tolerance, approximations labelled,
+   unmonitored ≠ non-compliant).
+3. Rows: one per streetcar route (number + name, published SLA line — "the SLA
+   TTC indicates" — current status, overall compliance %, and the tick strip);
+   expanding a route shows its directional stops with their own strips.
+4. Tick strips: one small box per data segment (day grain; **week grain rendered
+   with larger-width boxes**), green/yellow/red per the shared banding, grey +
+   hatched for unmonitored, hollow for no-data; hover/focus tooltip with the
+   segment's date, compliance %, touches, and worst gap. Only segments with data
+   exist — "as many tick marks as you have data segments for."
+5. Filterable: a filter box narrows routes **and** stops live (client-side over
+   the fetched report; stop filtering may lazy-load stop strips via `?route=` on
+   expand).
+6. Fast + polite: single fetch on load (session-cached), no polling math, i18n
+   en-CA + fr-CA, reduced-motion safe, responsive down the existing panel width.
+7. Browser check `test:sla` (the `test:service` pattern, fixture-intercepted):
+   renders from fixture report data, filter works, grain toggle swaps box widths,
+   expand loads stop strips, all band colours + unmonitored/no-data render
+   distinguishably, zero `/api/v1/sla/*` requests when the page is not opened.
+
+**Test expectations:** the Playwright check in the pre-flight stack, fully
+offline from live feeds.
+
+**Definition of done:** a human opens `/sla` and instantly sees which streetcar
+routes and stops have been meeting the schedule — and which haven't — without
+the server ever computing a compliance number for them.
+
+### E8S6 — Docs & reconciliation (Epic 8 close) [DONE]
+
+**Status:** Done — 2026-10-10 · CODEMAP rows (api worker `sla/`, shared SLA math, gtfs schedule derivation, browser `features/sla/`), README public-API entry (experimental, conventions, data-citizenship note) + the /sla page pointer, sla.md §9 decisions (promise lens shipped, tolerance/bands, Tier 3 retention + scheduling, time-weighting) and §10 non-goals scoped honestly; this ledger and the chatter tracker reconciled. Notes in docs/sla-chatter.md.
+
+**Source:** Objective 2 (chatter) · the E6S5 pattern applied to this epic
+**Stage:** 8 · **Size:** S · **Depends on:** E8S1–E8S5
+
+**Acceptance criteria**
+
+1. CODEMAP rows for every new component; README public-API entry for
+   `/api/v1/sla/report` (experimental) with the cache/cadence conventions and a
+   data-citizenship note (the GTFS zip: one deliberate download per re-run of the
+   targets script, nothing at request time).
+2. sla.md §9 decisions log: the promise lens shipped (tolerance + band
+   thresholds recorded); Tier 3's product decision (the user's, recorded) and its
+   retention choice.
+3. This file and the chatter tracker reconciled; deploy-dependent clauses in the
+   deployment-pending ledger with their runbook commands.
+
+**Test expectations:** doc review against shipped behaviour; pre-flight green.
+
+**Definition of done:** the docs tell the truth about the page and its numbers.
+
+---
+
 ## Appendix: source-story ledger
 
 How every story in this file maps back to sla.md §5 and sla-epics.md. Every split

@@ -2116,3 +2116,321 @@ select:focus-visible {
   display: inline-block;
   border-radius: 3px;
 }
+
+/* --- SLA status page (/sla; docs/sla-stories.md Epic 8, E8S5) ------------
+ * A USA-status.com-style status page: banner, filterable route rows with
+ * tick strips, expandable stop rows. Band colours match the map overlay's
+ * state ramp (wave-field.ts STATE_COLORS) so map and page read the same. */
+.sla-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+.sla-page h1 {
+  font-size: 26px;
+  margin: 8px 0 16px;
+  overflow-wrap: anywhere;
+}
+.sla-loading,
+.sla-failed,
+.sla-empty {
+  color: var(--muted);
+}
+.sla-banner {
+  border: 1px solid var(--border);
+  border-left-width: 6px;
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.sla-banner--met {
+  border-left-color: #2f9e6e;
+}
+.sla-banner--degraded {
+  border-left-color: #e0a63c;
+}
+.sla-banner--missed {
+  border-left-color: #d64550;
+}
+.sla-banner--no-data {
+  border-left-color: #b9bec7;
+}
+.sla-banner__headline {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+.sla-banner__metric {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.sla-banner__metric strong {
+  color: var(--text);
+}
+.sla-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.sla-filter {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.sla-grain {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sla-grain__button {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.sla-grain__button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+.sla-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+.sla-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sla-legend .sla-tick {
+  width: 12px;
+  height: 12px;
+  cursor: default;
+}
+.sla-routes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sla-route {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 14px 16px;
+}
+.sla-route__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sla-route__number {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  min-width: 38px;
+}
+.sla-route__name {
+  font-weight: 600;
+  flex: 1 1 auto;
+}
+.sla-route__status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.sla-route__status--met {
+  color: #256f4f;
+  border-color: #2f9e6e;
+}
+.sla-route__status--degraded {
+  color: #8a6516;
+  border-color: #e0a63c;
+}
+.sla-route__status--missed {
+  color: #a3363f;
+  border-color: #d64550;
+}
+.sla-route__percent {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sla-route__toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.sla-route__toggle[aria-expanded='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.sla-route__published {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.sla-route__stops {
+  margin-top: 12px;
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+.sla-route__stops-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sla-route__stops-failed {
+  color: var(--muted);
+  font-size: 13px;
+}
+.sla-stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sla-stop {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--background, #f7f5ed);
+}
+.sla-stop__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.sla-stop__name {
+  font-weight: 600;
+  font-size: 13.5px;
+  flex: 1 1 auto;
+}
+.sla-stop__headsign {
+  color: var(--muted);
+  font-size: 12px;
+}
+.sla-stop__status {
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.sla-strip__empty {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin: 4px 0;
+}
+.sla-strip {
+  margin-top: 2px;
+}
+.sla-strip__row {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.sla-strip__row--week {
+  gap: 4px;
+}
+.sla-tick {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 26px;
+  border-radius: 2px;
+}
+.sla-strip__row--week .sla-tick {
+  width: 34px;
+}
+.sla-tick--met {
+  background: #2f9e6e;
+}
+.sla-tick--degraded {
+  background: #e0a63c;
+}
+.sla-tick--missed {
+  background: #d64550;
+}
+.sla-tick--no-data {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.sla-tick--partial {
+  position: relative;
+  opacity: 0.85;
+}
+.sla-tick--partial::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 4px, #fff5 4px 8px);
+  border-radius: 2px;
+}
+.sla-tick--no-data.sla-tick--partial {
+  border-style: dashed;
+}
+.sla-strip__edges {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 2px;
+}
+.sla-methodology {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 12.5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+}
+.sla-methodology summary {
+  cursor: pointer;
+  color: var(--text);
+}
+.sla-methodology p {
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+@media (max-width: 640px) {
+  .sla-page {
+    padding: 20px 14px 48px;
+  }
+  .sla-tick {
+    width: 10px;
+    height: 22px;
+  }
+  .sla-strip__row--week .sla-tick {
+    width: 28px;
+  }
+}

@@ -113,6 +113,22 @@ export function serviceWaitShrinkPrior(value?: string | number | null): number {
   return validatedInt(value, 4, 0, 50);
 }
 
+/** Promise-lens tolerance: a delivered headway within scheduled × this factor
+ * still meets the SLA (docs/sla-stories.md E8S2; provisional, sla.md §9). */
+export function slaToleranceRatio(value?: string | number | null): number {
+  return validatedNumber(value, 1.5, 1, 3);
+}
+
+/** Compliance at/above this ratio is the green `met` band. */
+export function slaMetRatio(value?: string | number | null): number {
+  return validatedNumber(value, 0.9, 0.5, 1);
+}
+
+/** Compliance in [this, met) is the yellow `degraded` band; below is red. */
+export function slaDegradedRatio(value?: string | number | null): number {
+  return validatedNumber(value, 0.7, 0.2, 1);
+}
+
 export type ServiceRecorderMode = 'always' | 'demand-warm';
 
 /** `always` (default) — the entire point is measuring delivery nobody is
@@ -136,6 +152,9 @@ export interface ServiceConfig {
   residualMinSamples: number;
   waitShrinkPrior: number;
   recorderMode: ServiceRecorderMode;
+  slaToleranceRatio: number;
+  slaMetRatio: number;
+  slaDegradedRatio: number;
 }
 
 /** The whole config in one validated object, from any env-shaped object
@@ -159,5 +178,8 @@ export function serviceConfig(env?: object | null): ServiceConfig {
     residualMinSamples: serviceResidualMinSamples(source.SERVICE_RESIDUAL_MIN_SAMPLES),
     waitShrinkPrior: serviceWaitShrinkPrior(source.SERVICE_WAIT_SHRINK_PRIOR),
     recorderMode: serviceRecorderMode(source.SERVICE_RECORDER_MODE),
+    slaToleranceRatio: slaToleranceRatio(source.SLA_TOLERANCE_RATIO),
+    slaMetRatio: slaMetRatio(source.SLA_MET_RATIO),
+    slaDegradedRatio: slaDegradedRatio(source.SLA_DEGRADED_RATIO),
   };
 }

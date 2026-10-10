@@ -6,6 +6,8 @@
  * seconds. Any "day" rendering happens in the UI in America/Toronto.
  */
 
+import type { SlaBandKind, ScheduledBand } from './sla-metrics';
+
 export type ServiceMode = 'streetcar' | 'subway';
 export type DirectionId = 0 | 1;
 
@@ -188,6 +190,94 @@ export interface ServiceHistoryResponse {
 export interface FeatureFlagsResponse {
   schemaVersion: 1;
   flags: string[];
+}
+
+// ---------------------------------------------------------------------------
+// SLA report — the promise lens, published (docs/sla-stories.md Epic 8).
+// `GET /api/v1/sla/report` serves ONLY precomputed rows (the Tier 3 folds);
+// it never derives compliance at request time. Compliance is time-weighted
+// (sla-metrics.ts) and every tick is one data segment — there are exactly as
+// many ticks as there are recorded segments, never a fabricated pre-history.
+// ---------------------------------------------------------------------------
+
+/** One box on a tick strip: a day (or week) of one route's or stop's record. */
+export interface SlaTick {
+  /** 'YYYY-MM-DD' (day grain) or the Monday key (week grain), Toronto. */
+  key: string;
+  /** 0..1, or null when the segment has no monitored gap time (no data). */
+  compliance: number | null;
+  band: SlaBandKind;
+  /** Observed headways in the segment (the delivered services count). */
+  services: number;
+  /** Monitored gap time, minutes — the compliance denominator. */
+  monitoredMinutes: number;
+  maxGapSeconds: number | null;
+  /** Observable share of the recorded 5-minute segments, 0..1. */
+  coverageRatio: number;
+  /** False only for the still-growing "today so far" segment. */
+  final: boolean;
+}
+
+export interface SlaEntitySummary {
+  compliance: number | null;
+  band: SlaBandKind;
+  monitoredMinutes: number;
+  services: number;
+  /** The newest day with data and its band — the row's "now" status. */
+  latestDayKey: string | null;
+  latestBand: SlaBandKind | null;
+}
+
+/** The published schedule promise, as compact hour bands (the schedule is
+ * banded; the page states it in words, it does not draw a second chart). */
+export interface SlaPublishedSchedule {
+  weekday: ScheduledBand[] | null;
+  saturday: ScheduledBand[] | null;
+  sunday: ScheduledBand[] | null;
+}
+
+export interface SlaRouteReport {
+  routeId: string;
+  number: string;
+  name: string;
+  /** 3xx night routes stay distinct identities (sla.md §3.4). */
+  overnight: boolean;
+  published: SlaPublishedSchedule;
+  overall: SlaEntitySummary;
+  days: SlaTick[];
+  weeks: SlaTick[];
+}
+
+export interface SlaStopReport {
+  stopId: string;
+  name: string;
+  directionId: DirectionId;
+  /** The serving trips' headsign — "towards {headsign}". */
+  headsign: string;
+  routeIds: string[];
+  overall: SlaEntitySummary;
+  days: SlaTick[];
+  weeks: SlaTick[];
+}
+
+export interface SlaReportResponse {
+  schemaVersion: 1;
+  generatedAt: number;
+  /** Day key of the newest segment in the data (partial included). */
+  dataThrough: string | null;
+  targets: {
+    /** The network version whose schedule produced the promises. */
+    versionId: number;
+    toleranceRatio: number;
+    metRatio: number;
+    degradedRatio: number;
+  };
+  /** Whole-report roll-up (merged over the route rows — corridor-shared
+   * stops contribute to each route they serve; documented on the page). */
+  overall: SlaEntitySummary;
+  routes: SlaRouteReport[];
+  /** Present for `?route=`: that route's directional stops. */
+  stops?: SlaStopReport[];
 }
 
 /** The debug overlay's flag (sla.md §4.7). Scaffolding shouldn't ship to everyone. */

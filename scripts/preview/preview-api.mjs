@@ -122,6 +122,203 @@ function previewHistory(scenario, config, windowSeconds, bucketSeconds, math) {
   return { schemaVersion: 1, from, to: now, summaries, bucketSeries };
 }
 
+/** The /sla report preview (Epic 8, E8S5): a deterministic fixture through the
+ * REAL banding math, covering every state the page can render — met,
+ * degraded, missed, no-data, the today-so-far partial, weekly grain, and the
+ * per-route stop detail. Dev-only, never shipped. */
+function previewSlaReport(math, routeFilter) {
+  const { slaBandFor, torontoDayKey, torontoWeekKey } = math;
+  const metRatio = 0.9;
+  const degradedRatio = 0.7;
+  const noon = Date.now();
+  // Noon-anchored day stepping is DST-safe (a ±1 h shift never crosses midnight).
+  const dayKeys = [];
+  for (let back = 25; back >= 0; back -= 1)
+    dayKeys.push(torontoDayKey(noon - back * 86_400_000));
+  const todayKey = dayKeys[dayKeys.length - 1];
+
+  const complianceFor = (seed, index) => {
+    if ((index + seed) % 13 === 4) return null; // an honestly absent day
+    if (index === 22 && seed === 1) return 0.55; // a red day on the 501
+    if (index === 15 && seed === 1) return 0.74; // a yellow day on the 501
+    const base = [0.96, 0.87, 0.98][seed];
+    return Math.min(0.995, base + ((index * 37 + seed * 11) % 7) * 0.009);
+  };
+
+  const tickFor = (dayKey, index, compliance, partial) => {
+    const monitored = compliance === null ? 0 : 840 + ((index * 17) % 5) * 40;
+    return {
+      key: dayKey,
+      compliance: compliance === null ? null : Number(compliance.toFixed(4)),
+      band: slaBandFor(compliance, metRatio, degradedRatio),
+      services: compliance === null ? 0 : 210 + ((index * 13) % 6) * 9,
+      monitoredMinutes: monitored,
+      maxGapSeconds: compliance === null ? null : 420 + ((index * 7) % 4) * 60,
+      coverageRatio: compliance === null ? 0 : 0.9 + ((index * 3) % 3) * 0.03,
+      final: !partial,
+    };
+  };
+
+  const stripFor = (seed, dayCompliance) =>
+    dayKeys.map((dayKey, index) => {
+      const partial = dayKey === todayKey;
+      const compliance = dayCompliance
+        ? dayCompliance(index)
+        : complianceFor(seed, index);
+      return tickFor(dayKey, index, compliance, partial);
+    });
+
+  const weeklyFor = (days) => {
+    const byWeek = new Map();
+    for (const tick of days) {
+      const week = torontoWeekKey(tick.key);
+      const list = byWeek.get(week) ?? [];
+      list.push(tick);
+      byWeek.set(week, list);
+    }
+    return [...byWeek.entries()].map(([weekKey, ticks]) => {
+      const weighted = ticks.filter((tick) => tick.compliance !== null);
+      const gapSeconds = weighted.reduce(
+        (total, tick) => total + tick.monitoredMinutes * 60,
+        0,
+      );
+      const compliant = weighted.reduce(
+        (total, tick) => total + tick.compliance * tick.monitoredMinutes * 60,
+        0,
+      );
+      const compliance = gapSeconds > 0 ? compliant / gapSeconds : null;
+      return {
+        key: weekKey,
+        compliance: compliance === null ? null : Number(compliance.toFixed(4)),
+        band: slaBandFor(compliance, metRatio, degradedRatio),
+        services: ticks.reduce((total, tick) => total + tick.services, 0),
+        monitoredMinutes: ticks.reduce((total, tick) => total + tick.monitoredMinutes, 0),
+        maxGapSeconds: ticks.reduce(
+          (max, tick) => Math.max(max, tick.maxGapSeconds ?? 0),
+          0,
+        ),
+        coverageRatio: 0.93,
+        final: weekKey < torontoWeekKey(todayKey),
+      };
+    });
+  };
+
+  const overallFor = (days) => {
+    const weighted = days.filter((tick) => tick.compliance !== null);
+    const gapSeconds = weighted.reduce(
+      (total, tick) => total + tick.monitoredMinutes * 60,
+      0,
+    );
+    const compliant = weighted.reduce(
+      (total, tick) => total + tick.compliance * tick.monitoredMinutes * 60,
+      0,
+    );
+    const compliance = gapSeconds > 0 ? compliant / gapSeconds : null;
+    const latest = days.at(-1);
+    return {
+      compliance: compliance === null ? null : Number(compliance.toFixed(4)),
+      band: slaBandFor(compliance, metRatio, degradedRatio),
+      monitoredMinutes: days.reduce((total, tick) => total + tick.monitoredMinutes, 0),
+      services: days.reduce((total, tick) => total + tick.services, 0),
+      latestDayKey: latest?.key ?? null,
+      latestBand: latest?.band ?? null,
+    };
+  };
+
+  const routeFixtures = [
+    {
+      routeId: '506',
+      number: '506',
+      name: 'Carlton',
+      overnight: false,
+      seed: 0,
+      published: {
+        weekday: [
+          { fromHour: 5, toHour: 6, headwaySeconds: 600 },
+          { fromHour: 6, toHour: 21, headwaySeconds: 300 },
+          { fromHour: 21, toHour: 24, headwaySeconds: 420 },
+        ],
+        saturday: [{ fromHour: 6, toHour: 23, headwaySeconds: 480 }],
+        sunday: [{ fromHour: 6, toHour: 23, headwaySeconds: 540 }],
+      },
+    },
+    {
+      routeId: '501',
+      number: '501',
+      name: 'Queen',
+      overnight: false,
+      seed: 1,
+      published: {
+        weekday: [{ fromHour: 5, toHour: 24, headwaySeconds: 330 }],
+        saturday: [{ fromHour: 6, toHour: 24, headwaySeconds: 420 }],
+        sunday: null,
+      },
+    },
+    {
+      routeId: '306',
+      number: '306',
+      name: 'Carlton',
+      overnight: true,
+      seed: 2,
+      published: {
+        weekday: [{ fromHour: 20, toHour: 24, headwaySeconds: 900 }],
+        saturday: null,
+        sunday: null,
+      },
+    },
+  ];
+
+  const routes = routeFixtures.map((fixture) => {
+    const days = stripFor(fixture.seed);
+    return {
+      routeId: fixture.routeId,
+      number: fixture.number,
+      name: fixture.name,
+      overnight: fixture.overnight,
+      published: fixture.published,
+      overall: overallFor(days),
+      days,
+      weeks: weeklyFor(days),
+    };
+  });
+
+  const report = {
+    schemaVersion: 1,
+    generatedAt: Date.now(),
+    dataThrough: todayKey,
+    targets: { versionId: 42, toleranceRatio: 1.5, metRatio, degradedRatio },
+    overall: overallFor(routes.flatMap((route) => route.days)),
+    routes,
+  };
+
+  if (routeFilter) {
+    const fixture = routeFixtures.find((entry) => entry.routeId === routeFilter);
+    const stops = fixture
+      ? [0, 1, 2, 3, 4].map((index) => {
+          const stopDays = stripFor(fixture.seed, (dayIndex) => {
+            const compliance = complianceFor(fixture.seed, dayIndex);
+            if (compliance === null) return null;
+            if (dayIndex === 18 && index === 2) return 0.42; // a badly missed stop-day
+            return Math.min(0.995, compliance + (index % 2 === 0 ? 0.02 : -0.03));
+          });
+          return {
+            stopId: `${fixture.routeId}-s${index}`,
+            name: `${fixture.name} stop ${index + 1}`,
+            directionId: index % 2,
+            headsign: index % 2 === 0 ? 'eastbound' : 'westbound',
+            routeIds: [fixture.routeId],
+            overall: overallFor(stopDays),
+            days: stopDays,
+            weeks: weeklyFor(stopDays),
+          };
+        })
+      : [];
+    report.stops = stops;
+  }
+
+  return report;
+}
+
 /** Local API adapter only; production acquisition stays in the Worker. */
 export async function createPreviewMiddleware() {
   const compiled = await build({
@@ -135,7 +332,8 @@ export async function createPreviewMiddleware() {
     export { buildSnakeMap } from './shared/map/game-map';
     export { scenarioById, VOID_CORRIDOR_STOPS } from './shared/service/fixtures';
     export { serviceStatesAt, deriveRollupRow, mergeRollupRows, mergedMeanSeconds, mergedCvSquared, worstGapSeconds, gammaApproxQuantileSeconds } from './shared/service/wait-metrics';
-    export { serviceConfig, SERVICE_WINDOW_SECONDS, SERVICE_BUCKET_SECONDS } from './shared/service/config';`,
+    export { serviceConfig, SERVICE_WINDOW_SECONDS, SERVICE_BUCKET_SECONDS } from './shared/service/config';
+    export { slaBandFor, torontoDayKey, torontoWeekKey } from './shared/service/sla-metrics';`,
       resolveDir: process.cwd(),
       loader: 'ts',
     },
@@ -167,6 +365,9 @@ export async function createPreviewMiddleware() {
     serviceConfig,
     SERVICE_WINDOW_SECONDS,
     SERVICE_BUCKET_SECONDS,
+    slaBandFor,
+    torontoDayKey,
+    torontoWeekKey,
   } = await import(pathToFileURL(resolve('.wrangler/preview/react-realtime.mjs')).href);
   const updateSeconds = liveUpdateSeconds(process.env.REALTIME_UPDATE_SECONDS);
   const snapshots = new VehicleSnapshotCache(
@@ -252,6 +453,22 @@ export async function createPreviewMiddleware() {
         console.error('Service preview failed', error);
         return json({ error: 'service-preview-unavailable' }, 503);
       }
+    }
+
+    // The SLA report preview (Epic 8): the fixture through the real banding —
+    // zero workers, zero D1, zero live feed. Dev-only, never shipped.
+    if (path === '/api/v1/sla/report') {
+      const query = new URL(request.url, 'http://localhost').searchParams;
+      const payload = previewSlaReport(
+        { slaBandFor, torontoDayKey, torontoWeekKey },
+        query.get('route'),
+      );
+      const etag = `"preview-sla-${payload.generatedAt}"`;
+      if (ifNoneMatchMatches(request.headers['if-none-match'], etag)) {
+        response.writeHead(304, { etag, 'cache-control': 'no-store' });
+        return response.end();
+      }
+      return json(payload, 200, { etag, 'cache-control': 'no-store' });
     }
 
     if (path === '/api/v1/version')
