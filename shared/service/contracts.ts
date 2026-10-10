@@ -109,6 +109,8 @@ export interface StopServiceState {
   /** Sub-45 s services in the window. Descriptive display only — never an input
    * to any decision (sla.md §3.5). */
   backToBack: number;
+  /** Routes serving this stop (served for filtering and context). */
+  routeIds: string[];
   coverage: StopCoverageBadge | null;
 }
 
@@ -139,6 +141,9 @@ export interface ServiceWaveResponse {
   windowStart: number;
   windowEnd: number;
   routes: ServiceWaveRoute[];
+  /** The window's coverage intervals — so the field can tell unmonitored
+   * from unserviced at any moment, live or scrubbed (§3.6). */
+  coverage: CoverageInterval[];
 }
 
 /** Merged-moment summary over any sub-window of the 36-hour history (sla.md

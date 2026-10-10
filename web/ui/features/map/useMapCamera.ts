@@ -20,6 +20,7 @@ export function useMapCamera({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
+  onSelectServiceStop,
   followPoint,
 }: Pick<
   TransitMapProps,
@@ -38,6 +39,7 @@ export function useMapCamera({
   | 'controlsRef'
   | 'onSelectFeature'
   | 'onSelectVehicle'
+  | 'onSelectServiceStop'
   | 'followPoint'
 >) {
   const svg = useRef<SVGSVGElement>(null);
@@ -120,10 +122,11 @@ export function useMapCamera({
     tween.current = requestAnimationFrame(step);
   }
   // Camera width bounds in map units. Callers that size zoom by something on
-  // the map (the game uses streetcar length) override these; the default keeps
-  // the explorer's fixed stops of headroom beyond the fitted map.
+  // The map (the game uses streetcar length) override these; the default lets
+  // the explorer zoom from the fitted map down to stop-level detail — deep
+  // enough to read the twin service streams riding a track.
   const minimumWidth = () =>
-    limitsRef.current?.minWidth ?? initialRef.current.width / (driving ? 18 : 12);
+    limitsRef.current?.minWidth ?? initialRef.current.width / (driving ? 18 : 40);
   const maximumWidth = () => limitsRef.current?.maxWidth ?? initialRef.current.width;
   function zoom(factor: number, anchor?: Point) {
     const current = cameraRef.current;
@@ -335,7 +338,18 @@ export function useMapCamera({
         // Pointer capture retargets clicks: hit-test the original release position.
         const target = document
           .elementFromPoint(event.clientX, event.clientY)
-          ?.closest('[data-feature], [data-vehicle]');
+          ?.closest('[data-feature], [data-vehicle], [data-service-stop]');
+        // Delivered-service overlay markers sit above the scene and claim
+        // their taps first: selecting a stop opens its story (the camera
+        // stays following — a deliberate tap is not a stray one).
+        const serviceStopId = target?.getAttribute('data-service-stop');
+        if (serviceStopId && onSelectServiceStop) {
+          onSelectServiceStop(serviceStopId);
+          pointers.current.delete(event.pointerId);
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          return;
+        }
         const feature = data.features.find(
           (feature) => feature.id === target?.getAttribute('data-feature'),
         );

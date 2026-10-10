@@ -435,6 +435,7 @@ export function stopServiceState(
         : null,
     dryness,
     backToBack: backToBackCount(sample.times, config.backToBackSeconds),
+    routeIds: [...new Set(touches.map((touch) => touch.routeId))].sort(),
     coverage: {
       kind: sample.coverage.currentKind,
       unmonitoredSeconds: sample.coverage.unmonitoredSeconds,

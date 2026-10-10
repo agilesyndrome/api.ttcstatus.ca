@@ -2,7 +2,8 @@ import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { memo, useMemo } from 'react';
 import type { Feature, Point } from '../../../../shared/map/model';
-import { streetcarBody } from '../../../../shared/map/live-status';
+import { streetcarBody, type PlottedVehicle } from '../../../../shared/map/live-status';
+import { STREAM_OFFSET } from '../service/wave-field';
 import type { TransitMapProps } from './types';
 export type { TransitMapControls } from './types';
 import { useMapCamera } from './useMapCamera';
@@ -36,12 +37,19 @@ export const TransitMap = memo(function TransitMap({
   onInteract,
   onZoomInteract,
   overlay,
+  underlay,
   mapTools,
   driving = false,
   mapId = 'map',
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
+  onSelectServiceStop,
+  /** The delivered-service car tint: each car's direction field colour where
+   * it rides, or null when that direction has no data. When provided, cars
+   * snap onto their direction's stream (offset to its side of the rail) and
+   * their bodies take the tint — the car IS the field, moving. */
+  serviceCarTint,
 }: TransitMapProps) {
   useLanguage();
   const {
@@ -61,6 +69,7 @@ export const TransitMap = memo(function TransitMap({
     cars,
     selectedRoute,
     selectedFeature,
+    onSelectServiceStop,
     focusPoint,
     focusPointLevel,
     focusBounds,
@@ -257,6 +266,22 @@ export const TransitMap = memo(function TransitMap({
       coast: points(shoreline),
     };
   }, [shoreline]);
+  /** Snap a car position onto its direction's stream: shift perpendicular
+   * (left of the car's heading) by the stream offset — forward cars land on
+   * the direction-0 side, backward cars on the direction-1 side, matching
+   * the twin streams exactly. */
+  const snapToStream = (
+    point: [number, number],
+    angle: number,
+    snapped: boolean,
+  ): [number, number] => {
+    if (!snapped) return point;
+    const radians = (angle * Math.PI) / 180;
+    return [
+      point[0] - Math.sin(radians) * STREAM_OFFSET,
+      point[1] + Math.cos(radians) * STREAM_OFFSET,
+    ];
+  };
   return (
     <section className="map-viewport" aria-label={t('transitMap.interactiveTtcRailMap')}>
       <svg
@@ -289,6 +314,7 @@ export const TransitMap = memo(function TransitMap({
           showSubway={showSubway}
         />
         <TrackClosures data={data} closures={closures} />
+        {typeof underlay === 'function' ? underlay(scale) : underlay}
         {visibleFeatures.map((feature) => (
           <g
             key={feature.id}
@@ -350,192 +376,215 @@ export const TransitMap = memo(function TransitMap({
                   ?.overnight) &&
               (!selectedRoute || car.vehicle.routeId === selectedRoute),
           )
-          .map((car) => (
-            <g
-              key={car.vehicle.id}
-              data-vehicle={car.vehicle.id}
-              data-mode={car.vehicle.mode ?? 'streetcar'}
-              className={`live-car${car.match ? '' : ' off-track'}`}
-              role="button"
-              tabIndex={0}
-              aria-label={`${car.vehicle.mode === 'subway' ? t('viewer.train') : t('header.streetcar')} ${car.vehicle.label}${car.stale ? t('transitMap.stalePosition') : ''}`}
-              opacity={car.stale ? 0.45 : 1}
-              onKeyDown={(event) => selectKey(event, () => onSelectVehicle(car))}
-            >
-              <title>
-                {car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')}{' '}
-                {car.vehicle.label}
-                {car.vehicle.nextStopName &&
-                  t('transitMap.nextStationValuePrediction', {
-                    value1: car.vehicle.nextStopName,
-                  })}
-                {car.stale ? t('viewer.stalePosition') : ''}
-              </title>
-              {selectedVehicleId === car.vehicle.id && (
-                <circle
-                  className="selected-car-ring"
-                  cx={car.point[0]}
-                  cy={car.point[1]}
-                  r={15 / scale}
-                  fill="#278f9120"
-                  stroke="#278f91"
-                  vectorEffect="non-scaling-stroke"
-                />
-              )}
-              {detailedCars ? (
-                streetcarBody(car, data.edges, scale)
-                  .slice()
-                  .reverse()
-                  .map((section, index) => (
-                    <g
-                      key={index}
-                      className={
-                        index === (car.vehicle.mode === 'subway' ? 5 : 4)
-                          ? 'streetcar-cab'
-                          : undefined
-                      }
-                      transform={`translate(${section.point.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}
-                    >
-                      {index === (car.vehicle.mode === 'subway' ? 5 : 4) ? (
-                        <>
-                          {/* The body is drawn tail-first; the larger, pointed cab faces +x. */}
-                          <path
-                            className="streetcar-halo"
-                            d={
-                              car.vehicle.mode === 'subway'
-                                ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
-                                : 'M-4 -5H3L7 0L3 5H-4Z'
-                            }
-                            fill="#fffdf7"
-                            stroke="#fffdf7"
-                            strokeWidth={3.5}
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            className="streetcar-body"
-                            d={
-                              car.vehicle.mode === 'subway'
-                                ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
-                                : 'M-4 -5H3L7 0L3 5H-4Z'
-                            }
-                            fill={
-                              data.routes.find(
-                                (route) => route.id === car.vehicle.routeId,
-                              )?.color ?? '#b4393f'
-                            }
-                            stroke="#25343c"
-                            strokeWidth={1.2}
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M0 -2.5L3 0L0 2.5"
-                            fill="none"
-                            stroke="#fffdf7"
-                            strokeWidth={1.8}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <rect
-                            className="streetcar-halo"
-                            x={car.vehicle.mode === 'subway' ? -6 : -4}
-                            y={-4}
-                            width={car.vehicle.mode === 'subway' ? 12 : 8}
-                            height={8}
-                            rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
-                            fill="#fffdf7"
-                            stroke="#fffdf7"
-                            strokeWidth={3.5}
-                          />
-                          <rect
-                            className="streetcar-body"
-                            x={car.vehicle.mode === 'subway' ? -6 : -4}
-                            y={-4}
-                            width={car.vehicle.mode === 'subway' ? 12 : 8}
-                            height={8}
-                            rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
-                            fill="#fffdf7"
-                            stroke="#25343c"
-                            strokeWidth={1.2}
-                          />
-                          <path
-                            d="M-2 0H2"
-                            fill="none"
-                            stroke={
-                              data.routes.find(
-                                (route) => route.id === car.vehicle.routeId,
-                              )?.color ?? '#b4393f'
-                            }
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                          />
-                        </>
-                      )}
-                    </g>
-                  ))
-              ) : (
-                <g
-                  className="streetcar-cab"
-                  transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
-                >
-                  <rect x={-7} y={-6} width={14} height={12} rx={3} fill="transparent" />
-                  <path
-                    className="streetcar-halo"
-                    d={
-                      car.vehicle.mode === 'subway'
-                        ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
-                        : 'M-4 -3H1L5 0L1 3H-4Z'
-                    }
-                    fill="#fffdf7"
-                    stroke="#fffdf7"
-                    strokeWidth={2}
-                    strokeLinejoin="round"
+          .map((car) => {
+            const tint = serviceCarTint?.(car) ?? null;
+            const snapped = tint !== null;
+            return (
+              <g
+                key={car.vehicle.id}
+                data-vehicle={car.vehicle.id}
+                data-mode={car.vehicle.mode ?? 'streetcar'}
+                className={`live-car${car.match ? '' : ' off-track'}${snapped ? ' on-service-stream' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${car.vehicle.mode === 'subway' ? t('viewer.train') : t('header.streetcar')} ${car.vehicle.label}${car.stale ? t('transitMap.stalePosition') : ''}`}
+                opacity={car.stale ? 0.45 : 1}
+                onKeyDown={(event) => selectKey(event, () => onSelectVehicle(car))}
+              >
+                <title>
+                  {car.vehicle.mode === 'subway' ? t('viewer.train') : t('viewer.car')}{' '}
+                  {car.vehicle.label}
+                  {car.vehicle.nextStopName &&
+                    t('transitMap.nextStationValuePrediction', {
+                      value1: car.vehicle.nextStopName,
+                    })}
+                  {car.stale ? t('viewer.stalePosition') : ''}
+                </title>
+                {selectedVehicleId === car.vehicle.id && (
+                  <circle
+                    className="selected-car-ring"
+                    cx={car.point[0]}
+                    cy={car.point[1]}
+                    r={15 / scale}
+                    fill="#278f9120"
+                    stroke="#278f91"
+                    vectorEffect="non-scaling-stroke"
                   />
-                  <path
-                    className="streetcar-body"
-                    d={
-                      car.vehicle.mode === 'subway'
-                        ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
-                        : 'M-4 -3H1L5 0L1 3H-4Z'
-                    }
-                    fill={
-                      data.routes.find((route) => route.id === car.vehicle.routeId)
-                        ?.color ?? '#b4393f'
-                    }
-                    stroke="#25343c"
-                    strokeWidth={0.75}
-                    strokeLinejoin="round"
-                  />
-                </g>
-              )}
-              {(detailedCars || selectedVehicleId === car.vehicle.id) && (
-                <g
-                  transform={`translate(${car.point.join(' ')}) scale(${1 / scale})`}
-                  pointerEvents="none"
-                >
-                  <text
-                    className="vehicle-number"
-                    x={10}
-                    y={16}
-                    fontSize={10}
-                    fontWeight={700}
-                    fill="#25343c"
-                    stroke="#fffdf7"
-                    strokeWidth={3}
-                    paintOrder="stroke"
+                )}
+                {detailedCars ? (
+                  streetcarBody(car, data.edges, scale)
+                    .slice()
+                    .reverse()
+                    .map((section, index) => {
+                      const snappedPoint = snapToStream(
+                        section.point,
+                        section.angle,
+                        snapped,
+                      );
+                      return (
+                        <g
+                          key={index}
+                          className={
+                            index === (car.vehicle.mode === 'subway' ? 5 : 4)
+                              ? 'streetcar-cab'
+                              : undefined
+                          }
+                          transform={`translate(${snappedPoint.join(' ')}) rotate(${section.angle}) scale(${1 / scale})`}
+                        >
+                          {index === (car.vehicle.mode === 'subway' ? 5 : 4) ? (
+                            <>
+                              {/* The cab: the field's colour where this car rides —
+                              the car IS the service state, moving. */}
+                              <path
+                                className="streetcar-halo"
+                                d={
+                                  car.vehicle.mode === 'subway'
+                                    ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
+                                    : 'M-4 -5H3L7 0L3 5H-4Z'
+                                }
+                                fill="#fffdf7"
+                                stroke="#fffdf7"
+                                strokeWidth={3.5}
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                className="streetcar-body"
+                                d={
+                                  car.vehicle.mode === 'subway'
+                                    ? 'M-6 -5H4L7 -2V2L4 5H-6Z'
+                                    : 'M-4 -5H3L7 0L3 5H-4Z'
+                                }
+                                fill={
+                                  tint ??
+                                  data.routes.find(
+                                    (route) => route.id === car.vehicle.routeId,
+                                  )?.color ??
+                                  '#b4393f'
+                                }
+                                stroke="#25343c"
+                                strokeWidth={1.2}
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M0 -2.5L3 0L0 2.5"
+                                fill="none"
+                                stroke="#fffdf7"
+                                strokeWidth={1.8}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <rect
+                                className="streetcar-halo"
+                                x={car.vehicle.mode === 'subway' ? -6 : -4}
+                                y={-4}
+                                width={car.vehicle.mode === 'subway' ? 12 : 8}
+                                height={8}
+                                rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
+                                fill="#fffdf7"
+                                stroke="#fffdf7"
+                                strokeWidth={3.5}
+                              />
+                              <rect
+                                className="streetcar-body"
+                                x={car.vehicle.mode === 'subway' ? -6 : -4}
+                                y={-4}
+                                width={car.vehicle.mode === 'subway' ? 12 : 8}
+                                height={8}
+                                rx={car.vehicle.mode === 'subway' ? 0.5 : 1.6}
+                                fill="#fffdf7"
+                                stroke="#25343c"
+                                strokeWidth={1.2}
+                              />
+                              <path
+                                d="M-2 0H2"
+                                fill="none"
+                                stroke={
+                                  data.routes.find(
+                                    (route) => route.id === car.vehicle.routeId,
+                                  )?.color ?? '#b4393f'
+                                }
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                              />
+                            </>
+                          )}
+                        </g>
+                      );
+                    })
+                ) : (
+                  <g
+                    className="streetcar-cab"
+                    transform={`translate(${snapToStream(car.point, car.angle, snapped).join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
                   >
-                    {data.routes.find((route) => route.id === car.vehicle.routeId)
-                      ?.number ??
-                      car.vehicle.routeId ??
-                      '—'}{' '}
-                    · {car.vehicle.label}
-                  </text>
-                </g>
-              )}
-            </g>
-          ))}
+                    <rect
+                      x={-7}
+                      y={-6}
+                      width={14}
+                      height={12}
+                      rx={3}
+                      fill="transparent"
+                    />
+                    <path
+                      className="streetcar-halo"
+                      d={
+                        car.vehicle.mode === 'subway'
+                          ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
+                          : 'M-4 -3H1L5 0L1 3H-4Z'
+                      }
+                      fill="#fffdf7"
+                      stroke="#fffdf7"
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      className="streetcar-body"
+                      d={
+                        car.vehicle.mode === 'subway'
+                          ? 'M-6 -4H3L6 -1V1L3 4H-6Z'
+                          : 'M-4 -3H1L5 0L1 3H-4Z'
+                      }
+                      fill={
+                        tint ??
+                        data.routes.find((route) => route.id === car.vehicle.routeId)
+                          ?.color ??
+                        '#b4393f'
+                      }
+                      stroke="#25343c"
+                      strokeWidth={0.75}
+                      strokeLinejoin="round"
+                    />
+                  </g>
+                )}
+                {(detailedCars || selectedVehicleId === car.vehicle.id) && (
+                  <g
+                    transform={`translate(${car.point.join(' ')}) scale(${1 / scale})`}
+                    pointerEvents="none"
+                  >
+                    <text
+                      className="vehicle-number"
+                      x={10}
+                      y={16}
+                      fontSize={10}
+                      fontWeight={700}
+                      fill="#25343c"
+                      stroke="#fffdf7"
+                      strokeWidth={3}
+                      paintOrder="stroke"
+                    >
+                      {data.routes.find((route) => route.id === car.vehicle.routeId)
+                        ?.number ??
+                        car.vehicle.routeId ??
+                        '—'}{' '}
+                      · {car.vehicle.label}
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
         {locationPoint && (
           <g
             className="location-marker"

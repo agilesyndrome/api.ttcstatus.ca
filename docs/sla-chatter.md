@@ -31,51 +31,56 @@ is authoritative for this work.
 
 ## Progress tracker
 
-| ID   | Story                                        | Status                                         |
-| ---- | -------------------------------------------- | ---------------------------------------------- |
-| E0S1 | Service contracts                            | ✅ done                                        |
-| E0S2 | Service configuration & frozen decisions     | ✅ done                                        |
-| E5S1 | Feature-flag backbone                        | ✅ done (deployed-stack gate pending — ledger) |
-| E0S3 | Rollup storage migration                     | ✅ done                                        |
-| E0S4 | Spike: fold-write shape & D1 limits          | ⬜ done                                        |
-| E0S5 | Spike: DO alarm precision & tick idempotency | ⬜ done                                        |
-| E0S6 | Ground-truth scenario corpus                 | ✅ done                                        |
-| E0S7 | Preview fixture adapter                      | ⬜ done                                        |
-| E0S8 | DO binding, env plumbing, green board        | ⬜ done                                        |
-| E1S1 | Recorder DO scaffold & tick loop             | ⬜ done                                        |
-| E1S2 | Network bootstrap in the DO                  | ⬜ done                                        |
-| E1S3 | Streetcar touches: matching & emission       | ⬜ done                                        |
-| E1S4 | Streetcar direction & dwell dedupe           | ⬜ done                                        |
-| E1S5 | Subway touch detection                       | ⬜ done                                        |
-| E1S6 | Window store & pruning                       | ⬜ done                                        |
-| E1S7 | Recorder-core purity & test harness          | ⬜ done                                        |
-| E1S8 | Ops & data-citizenship docs                  | ⬜ done                                        |
-| E2S1 | Headway extraction with censoring            | ✅ done                                        |
-| E2S2 | Renewal wait E[W]                            | ✅ done                                        |
-| E2S3 | Residual wait R(e)                           | ✅ done                                        |
-| E2S4 | Two-axis dryness & states                    | ✅ done                                        |
-| E2S5 | Back-to-back marker                          | ✅ done                                        |
-| E2S6 | Self-baseline sourcing (window)              | ✅ done                                        |
-| E2S7 | Moment merging for rollups                   | ✅ done                                        |
-| E2S8 | Corpus end-to-end assertions                 | ✅ done                                        |
-| E6S1 | Analytics Engine counters                    | ⬜ done                                        |
-| E3S1 | GET /api/v1/service/stops                    | ⬜ done                                        |
-| E3S2 | GET /api/v1/service/wave                     | ⬜ done                                        |
-| E3S3 | Service API contract & budget tests          | ⬜ done                                        |
-| E5S2 | Debug overlay v0                             | ⬜ done                                        |
-| E5S3 | Space-time replay (debug panel)              | ⬜ done                                        |
-| E6S2 | Public API docs (experimental)               | ⬜ done                                        |
-| E6S3 | Browser tests (test:service)                 | ⬜ done                                        |
-| E4S1 | Fold mechanics                               | ⬜ done                                        |
-| E4S2 | Rollup storage & 36-hour retention           | ⬜ done                                        |
-| E4S3 | GET /api/v1/service/history                  | ⬜ done                                        |
-| E4S4 | History tests                                | ⬜ done                                        |
-| E4S5 | Fold-failure grace                           | ⬜ done                                        |
-| E5S4 | Stop "today so far" sparkline                | ⬜ done                                        |
-| E2S9 | Rollup-stabilized self-baselines             | ⬜ done                                        |
-| E6S4 | One-week soak review                         | ⬜ done                                        |
-| E6S5 | Docs finalized & reconciled                  | ⬜ done                                        |
-| E6S6 | Hand-off: polished-overlay epic proposal     | ⬜ done                                        |
+| ID   | Story                                                                  | Status                                         |
+| ---- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| E0S1 | Service contracts                                                      | ✅ done                                        |
+| E0S2 | Service configuration & frozen decisions                               | ✅ done                                        |
+| E5S1 | Feature-flag backbone                                                  | ✅ done (deployed-stack gate pending — ledger) |
+| E0S3 | Rollup storage migration                                               | ✅ done                                        |
+| E0S4 | Spike: fold-write shape & D1 limits                                    | ⬜ done                                        |
+| E0S5 | Spike: DO alarm precision & tick idempotency                           | ⬜ done                                        |
+| E0S6 | Ground-truth scenario corpus                                           | ✅ done                                        |
+| E0S7 | Preview fixture adapter                                                | ⬜ done                                        |
+| E0S8 | DO binding, env plumbing, green board                                  | ⬜ done                                        |
+| E1S1 | Recorder DO scaffold & tick loop                                       | ⬜ done                                        |
+| E1S2 | Network bootstrap in the DO                                            | ⬜ done                                        |
+| E1S3 | Streetcar touches: matching & emission                                 | ⬜ done                                        |
+| E1S4 | Streetcar direction & dwell dedupe                                     | ⬜ done                                        |
+| E1S5 | Subway touch detection                                                 | ⬜ done                                        |
+| E1S6 | Window store & pruning                                                 | ⬜ done                                        |
+| E1S7 | Recorder-core purity & test harness                                    | ⬜ done                                        |
+| E1S8 | Ops & data-citizenship docs                                            | ⬜ done                                        |
+| E2S1 | Headway extraction with censoring                                      | ✅ done                                        |
+| E2S2 | Renewal wait E[W]                                                      | ✅ done                                        |
+| E2S3 | Residual wait R(e)                                                     | ✅ done                                        |
+| E2S4 | Two-axis dryness & states                                              | ✅ done                                        |
+| E2S5 | Back-to-back marker                                                    | ✅ done                                        |
+| E2S6 | Self-baseline sourcing (window)                                        | ✅ done                                        |
+| E2S7 | Moment merging for rollups                                             | ✅ done                                        |
+| E2S8 | Corpus end-to-end assertions                                           | ✅ done                                        |
+| E6S1 | Analytics Engine counters                                              | ⬜ done                                        |
+| E3S1 | GET /api/v1/service/stops                                              | ⬜ done                                        |
+| E3S2 | GET /api/v1/service/wave                                               | ⬜ done                                        |
+| E3S3 | Service API contract & budget tests                                    | ⬜ done                                        |
+| E5S2 | Debug overlay v0                                                       | ⬜ done                                        |
+| E5S3 | Space-time replay (debug panel)                                        | ⬜ done                                        |
+| E6S2 | Public API docs (experimental)                                         | ⬜ done                                        |
+| E6S3 | Browser tests (test:service)                                           | ⬜ done                                        |
+| E4S1 | Fold mechanics                                                         | ⬜ done                                        |
+| E4S2 | Rollup storage & 36-hour retention                                     | ⬜ done                                        |
+| E4S3 | GET /api/v1/service/history                                            | ⬜ done                                        |
+| E4S4 | History tests                                                          | ⬜ done                                        |
+| E4S5 | Fold-failure grace                                                     | ⬜ done                                        |
+| E5S4 | Stop "today so far" sparkline                                          | ⬜ done                                        |
+| E2S9 | Rollup-stabilized self-baselines                                       | ⬜ done                                        |
+| E6S4 | One-week soak review                                                   | ⬜ done                                        |
+| E6S5 | Docs finalized & reconciled                                            | ⬜ done                                        |
+| E6S6 | Hand-off: polished-overlay epic proposal                               | ⬜ done                                        |
+| E7S1 | The dream overlay (polish epic, part 1)                                | done                                           |
+| E7S2 | The sweep + the heartbeat (polish epic, part 2)                        | done                                           |
+| E7S3 | Local-dev overlay bypass (polish epic, dev UX)                         | done                                           |
+| E7S4 | Thin dual-direction streams on the track; direction + speed as honesty | done                                           |
+| E7S5 | The 5-minute cadence fix (dev env)                                     | done                                           |
 
 Status legend: ⬜ todo · 🔨 in progress · ✅ done (see log) · ⏸ blocked
 
@@ -312,3 +317,173 @@ built, files touched, tests added, local verification results, and caveats.
 - **Final state: 43/43 stories done.** Full suite 269/269; pre-flight board
   9/9; typecheck, lint, format clean; nothing committed or pushed (per the
   goal's constraint) - all work is local working-tree changes.
+
+### 2026-10-09 — The dream overlay (E7S1: the polish epic's first light)
+
+User steer: "the intuitive type of UI that was an iPhone in grandma's
+hands, with the brain of a PhD UI developer. Seeing the coming wave as the
+stops aren't serviced on a route needs to be intuitive based on the math
+data we now have."
+
+What shipped (all local; nothing pushed or deployed, per the standing
+constraint):
+
+- **The brain — `web/ui/features/service/wave-field.ts`** (pure, tested):
+  the dryness field along a route pattern at ANY moment (live or scrubbed),
+  computed from the wave's ordered stops + touches with the same shared
+  `drynessAndState` truth the API uses; void runs identified as wave
+  segments with the coming stops named; plain-language sentences
+  (`stopSentence`, `waveSentence`) so every number speaks; a
+  colour-weakness-safe state ramp where fresh/void differ in lightness as
+  well as hue.
+- **The corridor — `WaveField.tsx`**: the wave, drawn. Lanes of the field
+  per ordered stop, the void run outlined with its travel arrow, per-lane
+  plain tooltips, tap-a-lane to select. `live` pins the field at the wave's
+  end; `replay` scrubs the wedge back to the moment it was still forming —
+  the §3.9 sentence ("consecutive stops rise through fresh -> due -> void")
+  is now something you watch happen.
+- **The markers — `VoidOverlay` reworked**: wait-timer rings that FILL as
+  dryness approaches the void horizon (r drawn, not described); gentle
+  pulse on void only, never under reduced motion; hatched unmonitored
+  unchanged; thumb-sized transparent hit targets that never blanket a
+  neighbour; selected halo.
+- **The story — `StopCard.tsx`**: tap a marker (map or lane) and the stop
+  tells you what happened in words: "19 min without a car — usually every
+  5.8 min (3.2x the usual). Next car ~ 4 min." with the facts grid, the
+  pair-passed-here badge, and the blind-spot apology. Every phrase is a
+  served number.
+- **One selection everywhere**: map markers, corridor lanes, and the
+  sparkline selector share one selected stop.
+
+**The discovery that mattered (recorded for the future):** React `onClick`
+on map-scene elements never fires — the camera owns all pointer input via
+pointer capture and hit-tests interactive elements by `data-feature` /
+`data-vehicle` in `onPointerUp`. The overlay now plugs into that house
+protocol with `data-service-stop` (wired through TransitMap ->
+useMapCamera -> onSelectServiceStop), so markers are tappable exactly the
+way stop features are, and the tap still respects following/driving
+semantics.
+
+- **Contract additions (additive):** `ServiceWaveResponse.coverage` (so
+  the field can tell unmonitored from unserviced at any scrub moment) and
+  `StopServiceState.routeIds` (already served by the DO; now typed).
+  Fixture stop positions spread per scenario so preview markers never
+  stack.
+- **Tests at the epic boundary (per user steering):**
+  `tests/service/wave-field.test.mjs` (5 green — field states, scrub
+  honesty including unmonitored-in-outage, sentence numbers, wave
+  headline, colour ramp) and the Playwright check extended: corridor
+  lanes/wedge/arrow/sentence, replay scrub dissolves and restores the
+  wedge, marker tap opens the card with the plain sentences, lane tap
+  selects. Full suite 274/274, board 9/9, UI builds clean.
+- **Live verification:** against the real recorder on the dev stack -
+  638 stops (all with routeIds, 548 with R(e)), the wave serving 229
+  route patterns (63 lanes / 295 touch dots on the busiest), and the
+  earlier zero-pattern scare was just the freshly-restarted isolate
+  waiting for its first alarm cycle.
+- Retired `ReplayDiagram.tsx` (the WaveField's scrub IS the replay now —
+  one visualization for live and history).
+
+### 2026-10-09 — E7S2: Part 2 — the sweep and the heartbeat ("animated honestly")
+
+User steer: "Talk out part 2 and let's roll!" The talked-out rule: **motion
+only from measured data** — no decorative animation; every moving pixel is a
+number we already serve. Two motions shipped:
+
+- **The sweep ("▶ watch" chip on the corridor).** A ~20 s time-lapse of the
+  last 30 minutes: the field re-computes at a requestAnimationFrame-advanced
+  scrub point (throttled to ~12 fps), so the wedge forms behind the pair and
+  sweeps lane by lane — and it LANDS ON LIVE, because "now" is the moment
+  grandma cares about. Dragging the slider (pointerdown) pauses into replay;
+  the live chip cancels; the scrubber stays visible with progress. Motion
+  comes only from the field's own state changes — no easing, no springs.
+- **The heartbeat (the map breathes between ticks).** Everything was
+  30-second-quantized; a stop hitting r = 2.0 twelve seconds after a tick
+  waited 18 more seconds to show it. Now a 1 Hz clock advances elapsed
+  honestly (elapsed since lastTouchAt genuinely grows one second per second)
+  and re-scores with the SAME shared drynessAndState: rings fill in real
+  time, labels tick up, stops cross fresh -> due -> void at the true moment.
+  Guardrails (all tested): R(e) and baselines stay tick-fresh (numbers about
+  gaps, not clocks); coverage stays tick-fresh; unmonitored and collecting
+  never advance into a verdict; the wave feed now polls every 30 s with
+  retained ETag (304 keeps the payload) and keeps the last good wave on
+  failure; the live field's breathing FREEZES if the wave payload is staler
+  than 45 s — stale data must not pretend to tick forward.
+
+New brain functions (pure, tested — 8/8 in wave-field.test.mjs):
+advanceStopState (per-marker heartbeat) and advanceField (corridor
+heartbeat, segments re-form between ticks). routeFieldAt refactored onto a
+shared withSegments() so the wave segments can never disagree between live
+and advanced paths.
+
+Verified: browser check extended and green — press ▶ watch (aria-pressed),
+scrubber appears, the wedge forms MID-SWEEP (waitFor visible), cancel to
+live returns aria-pressed false. 277/277 suite, board 9/9, typecheck/lint/
+format clean. One strict-mode lesson: a map stop named "Mount Olive Station"
+collides with getByRole name 'live' — the check uses exact: true.
+
+### 2026-10-09 — E7S3: the local-dev overlay bypass (why the map looked empty)
+
+User steer: "Shouldn't I see more on this map, especially around Queen?"
+(They were viewing the 0.0.0.0-bound dev stack from the LAN.) Diagnosis from
+the live stack: the car layer was fine (237 streetcars, 20 on the 501) and
+the delivered-service data was rich (98 Queen stops, 39 in void at that
+moment) — but the overlay never mounts locally because it is per-user gated
+through Clerk, and local dev has no Clerk keys (those come from 1Password
+via make dev's .env.local). Auth disabled -> no sign-in -> no flags -> no
+overlay. The gate was working exactly as designed; it was just undemoable
+at home.
+
+Shipped: an explicit dev-only bypass — when the site itself runs without
+auth (`account.enabled === false`, only true locally since production
+always has Clerk configured), `?voidOverlay=1` opts in, persisted in
+sessionStorage so refreshes keep it. Production can never fire it.
+
+Verified against the REAL worker (no fixtures, no interception): plain load
+= 0 markers, 0 panel, and 0 /service/* requests (the gate still holds);
+`?voidOverlay=1` = 603 live markers (181 fresh / 242 due / 179 void /
+1 collecting), panel live, 38 corridor lanes, zero slow requests, zero page
+errors, and session persistence across a plain reload. The browser check
+still passes (its fixture keeps auth enabled, so the bypass never fires and
+the flag-off assertion still sees zero requests): 277/277, board 9/9.
+
+### 2026-10-09 — E7S4/E7S5: thin dual streams, and the frozen-streetcars fix
+
+User steer: lines too thick; animate BOTH directions on the track with the
+animation direction being the direction of travel; speed related to delay
+("green goes faster — faster arrival of streetcars there"). Plus: streetcars
+not updating live positions?
+
+**E7S4 — the dual-stream track.** Each direction now paints its OWN thin
+stream (1.8 map units vs the old 4.5 band), side by side on the track
+(perpendicular offset ±1.15), each flowing in its own travel direction, at
+the speed its state earns: fresh 1.6 s (brisk — cars come quickly here), due
+2.8 s, void 5.5 s (the slow drift), unmonitored static. The nearside lie is
+gone — anchors are per-direction, a one-way void paints one stream only and
+the healthy twin keeps its truth (unit-tested both ways). The travel-direction
+assumption is recorded honestly in code: edges inherit point order from the
+route's direction-0 pattern, so direction 0 flows forward, direction 1
+reversed; the selected stop's card always carries the named ground truth.
+Renderer: TrackService rewritten (two lines per piece, CSS flow keyframes
+fwd/rev, per-piece animation-duration); brain: wave-field.ts gained
+STREAM_OFFSET/STREAM_WIDTH, per-direction anchors, flowsForward/flowSeconds
+per segment, and a pure streamOffset(). Browser check rewritten: the DOM must
+equal the brain piece-for-piece (colours within heartbeat tolerance, states
+exact), twin directions asserted (void wave beside a fresh stream), both
+flow directions and both speeds asserted. The click path moved to the
+feature's own keyboard route (focus + Enter) because live streetcars park
+on platforms and rightly win the pointer tap.
+
+**E7S5 — the frozen streetcars, diagnosed.** NOT the service pipeline: the
+local dev stack was serving vehicles at a FIVE-MINUTE cadence
+(x-live-update-seconds: 300) because .env.local (the make dev env, which
+wrangler auto-loads in dev) sets CLOUDFLARE_INCLUDE_PROCESS_ENV=true and
+REALTIME_UPDATE_SECONDS=300, and my earlier "restarts" never actually killed
+workerd (the PID file held the nohup wrapper). The upstream feed itself is
+alive (two raw fetches 40 s apart differ). Fix: run the dev stack with
+CLOUDFLARE_INCLUDE_PROCESS_ENV=false and REALTIME_UPDATE_SECONDS=30 —
+verified live: 97 of 236 cars moved in ~40 s, cadence headers correct. For
+make dev at the 5-minute pace deliberately, that stays the user's call.
+
+All green: wave-field tests 8/8, browser check PASS, 277/277, board 9/9.
+The stack is live on 0.0.0.0:8787 with the 30 s cadence.

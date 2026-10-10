@@ -60,9 +60,18 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     closeExport,
     reset,
   } = workspace;
-  // The per-user-gated debug overlay (docs/sla.md §5.2): flag off or signed
-  // out → nothing renders and no /service/* requests are made.
+  // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
+  // flag off or signed out → nothing renders and no /service/* requests are
+  // made. Tapping a map stop now also selects its delivered-service story.
   const service = useServiceOverlay(data);
+  const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
+    selectFeature(feature);
+    service.onFeatureSelectForService(feature);
+  };
+  const resetWithService = () => {
+    reset();
+    service.onFeatureSelectForService(null);
+  };
   const headerActions = (
     <div className="header-actions">
       <a
@@ -119,14 +128,14 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         cars={cars}
         onSelect={selectFeature}
         onSelectVehicle={(car) => selectVehicle(car, true)}
-        onReset={reset}
+        onReset={resetWithService}
         onBrandToggle={() => {
           // The brand symbol is the mobile menu button: it opens the nav
           // panel over the map. On desktop it keeps its old meaning — a
           // reset — because the full menu stays visible beside the map.
           if (window.matchMedia('(max-width: 640px)').matches)
             setMobilePanelOpen((open) => !open);
-          else reset();
+          else resetWithService();
         }}
         navOpen={mobilePanelOpen}
         actions={headerActions}
@@ -198,11 +207,14 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             showStreetcar={filters.streetcar}
             showSubway={filters.subway}
             resetKey={resetKey}
-            onSelectFeature={selectFeature}
+            onSelectFeature={selectFeatureWithService}
             onSelectVehicle={(car) => selectVehicle(car)}
+            onSelectServiceStop={service.onSelectServiceStop}
+            serviceCarTint={service.carTint}
+            underlay={service.underlay ?? undefined}
             overlay={service.overlay ?? undefined}
           />
-          {service.panel}
+          {service.card}
           <HomeSidebar workspace={workspace} settings={headerActions} />
         </main>
       ) : (

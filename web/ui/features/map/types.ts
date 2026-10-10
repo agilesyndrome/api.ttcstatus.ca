@@ -46,10 +46,22 @@ export interface TransitMapProps {
   /** Fires instead of onInteract for zoom gestures, so zooming can keep following. */
   onZoomInteract?(): void;
   overlay?: ReactNode | ((scale: number) => ReactNode);
+  /** Renders as the track's skin — UNDER stop labels and cars (the delivered
+   * service field paints the tracks themselves). Same shape as `overlay`. */
+  underlay?: ReactNode | ((scale: number) => ReactNode);
   mapTools?: ReactNode;
   driving?: boolean;
   mapId?: string;
   controlsRef?: RefObject<TransitMapControls | null>;
+  /** The delivered-service car tint: each car's direction field colour where
+   * it rides, or null when that direction has no data. When provided, cars
+   * snap onto their direction's stream and take the tint. */
+  serviceCarTint?(car: PlottedVehicle): string | null;
   onSelectFeature(feature: Feature): void;
+  /** Tapping a delivered-service overlay marker selects its stop — the
+   * camera's pointer-up hit-test is the single click path for the map scene
+   * (pointer capture retargets clicks), so overlay markers declare themselves
+   * with `data-service-stop` and resolve here. */
+  onSelectServiceStop?(stopId: string | null): void;
   onSelectVehicle(car: PlottedVehicle): void;
 }

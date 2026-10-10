@@ -322,6 +322,7 @@ export async function serviceWaveResponse(
     windowStart: payload.windowStart,
     windowEnd: payload.at,
     routes,
+    coverage: payload.coverage,
   };
   const etag = `"wave-${await sha256Hex(JSON.stringify(body))}"`;
   const response = json(body, 200, {

@@ -1415,6 +1415,42 @@ recorded. The release is done.
 
 ---
 
+## Epic 7 — The polished overlay (dream layer)
+
+> Kicked off by the user right after the Stage 4 hand-off recorded its
+> provisional GO ("the intuitive type of UI that was an iPhone in grandma's
+> hands, with the brain of a PhD UI developer — seeing the coming wave as
+> stops aren't serviced needs to be intuitive from the math"). The debug
+> scaffolding stays honest; the dream begins.
+
+### E7S1 — The dream overlay: the wave, visible [DONE]
+
+**Status:** Done — 2026-10-09 · the dryness field along a route pattern computed at any moment (live or scrubbed) with the same shared state truth as the API; the corridor strip draws the wave with its travel arrow and names the coming stops; markers became wait-timer rings that fill toward the void horizon (pulse only on void, never under reduced motion); tap-a-stop (map marker or corridor lane, through the camera's `data-service-stop` hit-test protocol) opens its story in plain words — every sentence a served number; one selection shared by map, corridor, and sparkline; unmonitored stays hatched and apologetic. Verified: 5 new field/sentence tests, the extended Playwright check (lanes, wedge, scrub dissolve/restore, marker-tap card), 274/274 suite, board 9/9, and live against the real recorder (638 stops, 229 wave patterns). Notes in docs/sla-chatter.md.
+
+---
+
+### E7S2 — The sweep + the heartbeat: motion only from measured data [DONE]
+
+**Status:** Done — 2026-10-09 · Part 2 of the polish epic, as talked out with the user. The "▶ watch" chip time-lapses the last 30 minutes in ~20 s — the wedge forms and sweeps lane by lane, then lands on live (drag the slider or tap live to take back control). The heartbeat advances the map and corridor between ticks: elapsed grows one second per second and re-scores through the same shared state machine, so rings fill in real time and stops cross fresh → due → void at the true moment — while R(e), baselines, and coverage stay tick-fresh, blind spots never advance into verdicts, the wave polls every 30 s with ETag retention, and stale-data breathing freezes at 45 s. Verified: advanceStopState/advanceField unit-tested (threshold crossings, unmonitored guard, wave-forms-between-ticks), browser check green through a mid-sweep wedge + cancel path, 277/277 suite, board 9/9. Notes in docs/sla-chatter.md.
+
+---
+
+### E7S3 — The local-dev overlay bypass [DONE]
+
+**Status:** Done — 2026-10-09 · Local dev cannot authenticate (no Clerk keys outside `make dev`'s 1Password env), which made the per-user gate undemoable at home. Now, when the site itself runs without auth — production always has Clerk configured, so this can never fire there — `?voidOverlay=1` opts in (sessionStorage-persisted). Verified against the real worker: plain load makes zero /service/* requests; with the bypass, 603 live markers (181 fresh / 242 due / 179 void), the live panel, and the corridor render on real feeds with zero errors; the gated browser check still passes unchanged. Notes in docs/sla-chatter.md.
+
+---
+
+### E7S4 — Thin dual-direction streams: direction and speed as honesty [DONE]
+
+**Status:** Done — 2026-10-09 · Each direction paints its own thin stream on the track (side-by-side, ±1.15 offset, 1.8 wide), flowing in its own travel direction at the speed its service earns: fresh brisk (1.6 s), due moderate (2.8 s), void slow drift (5.5 s), unmonitored static. Per-direction anchors end the nearside lie — a one-way void paints one stream, its healthy twin keeps its truth (unit-tested). Browser-verified piece-for-piece against the brain, both directions, both flow directions, both speeds. Notes in docs/sla-chatter.md.
+
+### E7S5 — The frozen-streetcars diagnosis (dev cadence) [DONE]
+
+**Status:** Done — 2026-10-09 · Not the service pipeline: the local dev stack served vehicles at a 5-minute cadence because .env.local (auto-loaded by wrangler dev) sets CLOUDFLARE_INCLUDE_PROCESS_ENV=true + REALTIME_UPDATE_SECONDS=300, and prior "restarts" never killed the real workerd. Upstream feed confirmed alive; restarted with the intended 30 s cadence — 97 of 236 cars moved in 40 s. make dev's 5-minute pace remains the user's deliberate setting. Notes in docs/sla-chatter.md.
+
+---
+
 ## Appendix: source-story ledger
 
 How every story in this file maps back to sla.md §5 and sla-epics.md. Every split

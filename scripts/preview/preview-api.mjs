@@ -38,6 +38,7 @@ function previewWave(scenario, corridorStops) {
     schemaVersion: 1,
     windowStart: scenario.windowStart,
     windowEnd: scenario.at,
+    coverage: scenario.coverage,
     routes: patterns.map((pattern) => ({
       routeId: pattern.routeId,
       directionId: pattern.directionId,

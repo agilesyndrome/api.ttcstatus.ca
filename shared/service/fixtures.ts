@@ -188,12 +188,12 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'waiting-paradox',
     stopPositions: {
       st_even: {
-        latitude: 43.653,
-        longitude: -79.3988,
+        latitude: 43.6525,
+        longitude: -79.3905,
       },
       st_bunched: {
-        latitude: 43.653,
-        longitude: -79.3976,
+        latitude: 43.6525,
+        longitude: -79.3895,
       },
     },
     description:
@@ -245,23 +245,23 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'one-way-void',
     stopPositions: {
       st_void_1: {
-        latitude: 43.653,
+        latitude: 43.651,
         longitude: -79.3988,
       },
       st_void_2: {
-        latitude: 43.653,
+        latitude: 43.651,
         longitude: -79.3976,
       },
       st_void_3: {
-        latitude: 43.653,
+        latitude: 43.651,
         longitude: -79.3964,
       },
       st_void_4: {
-        latitude: 43.653,
+        latitude: 43.651,
         longitude: -79.3952,
       },
       st_void_1_w: {
-        latitude: 43.65325,
+        latitude: 43.6513,
         longitude: -79.399,
       },
     },
@@ -334,8 +334,8 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'terminal-dwell',
     stopPositions: {
       st_terminal: {
-        latitude: 43.653,
-        longitude: -79.3952,
+        latitude: 43.649,
+        longitude: -79.394,
       },
     },
     description:
@@ -377,12 +377,12 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'night-and-day',
     stopPositions: {
       st_night: {
-        latitude: 43.6525,
-        longitude: -79.3988,
+        latitude: 43.6475,
+        longitude: -79.393,
       },
       st_disaster: {
-        latitude: 43.6525,
-        longitude: -79.3976,
+        latitude: 43.6475,
+        longitude: -79.392,
       },
     },
     description:
@@ -444,8 +444,8 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'outage',
     stopPositions: {
       st_outage: {
-        latitude: 43.652,
-        longitude: -79.399,
+        latitude: 43.646,
+        longitude: -79.391,
       },
     },
     description:
@@ -492,8 +492,8 @@ export const SCENARIOS: ServiceScenario[] = [
     id: 'outage-live',
     stopPositions: {
       st_silent: {
-        latitude: 43.6495,
-        longitude: -79.3976,
+        latitude: 43.6445,
+        longitude: -79.393,
       },
     },
     description:

@@ -1,8 +1,17 @@
 # Proposal: the polished overlay epic (story E6S6 — the Stage 4 hand-off)
 
-The Stage 4 close. The debug overlay proved the pipeline; this is the
-proposal for the real product home: **the wave of void as a first-class map
-experience.**
+The Stage 4 close.
+
+> **Status update (2026-10-09):** parts 1 and 2 of this epic have shipped —
+> E7S1 (the dream overlay: the wave visible as a live/scrubbable dryness
+> field, wait-timer markers, plain-language stop stories) and E7S2 (the
+> animated sweep "▶ watch" + the real-time heartbeat, under the rule that
+> motion comes only from measured data). See docs/sla-chatter.md. What
+> remains: the progressive rollout on the flag backbone (part 4) and the
+> polish-epic proper (typography, mobile ergonomics).
+> The debug overlay proved the pipeline; this is the
+> proposal for the real product home: **the wave of void as a first-class map
+> experience.**
 
 ## What the soak taught us
 

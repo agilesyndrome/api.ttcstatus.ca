@@ -217,6 +217,9 @@ test('E3S2: /service/wave reconstructs the 30-minute space-time plot in one requ
   assert.equal(body.schemaVersion, 1);
   assert.equal(body.windowStart, oneWay.windowStart);
   assert.equal(body.windowEnd, oneWay.at);
+  // Coverage rides along so the field can tell unmonitored from unserviced
+  // at any scrub moment (honest replay, §3.6).
+  assert.deepEqual(body.coverage, windowPayload.coverage);
   // Two directions, two pattern entries — the split survives.
   assert.equal(body.routes.length, 2);
   const [east] = body.routes;
