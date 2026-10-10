@@ -351,3 +351,110 @@ test('the nightly import persists the promise with the map rows, idempotently', 
   assert.equal(await counts('sla_route_targets', 'WHERE version_id = 1'), 8);
   assert.equal(await counts('sla_schedule_targets', 'WHERE version_id = 1'), 8 * 52);
 });
+
+test('the operator backfill restores the promise for an already-imported version', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { createDatabase } = await import('../helpers/database.mjs');
+  const { importNetworkVersion, backfillSlaSchedule } = await compileModules(`
+    export { importNetworkVersion, backfillSlaSchedule } from './workers/api/src/sync/import-version';
+  `);
+  const initial = await readFile('migrations/0001_initial.sql', 'utf8');
+  const schedule = await readFile('migrations/0007_sla_schedule.sql', 'utf8');
+  const db = createDatabase(`${initial}\n${schedule}`);
+  await db
+    .prepare(
+      `INSERT INTO network_versions (source_key, source_url, r2_etag, r2_key, fetched_at, status)
+       VALUES ('ttc-surface-gtfs', 'src', 'etag-x', 'gtfs.zip', '2026-10-09T00:00:00Z', 'downloaded')`,
+    )
+    .run();
+  const archive = bucketFor(bigFixtureArchive());
+  await importNetworkVersion(
+    { DB: db, GTFS_BUCKET: archive },
+    { id: 1, r2_key: 'gtfs.zip', status: 'downloaded' },
+  );
+
+  const snapshot = async () => ({
+    dates: (
+      await db
+        .prepare(
+          `SELECT * FROM sla_schedule_dates WHERE version_id = 1 ORDER BY date_key`,
+        )
+        .all()
+    ).results,
+    stops: (
+      await db
+        .prepare(
+          `SELECT * FROM sla_schedule_targets WHERE version_id = 1 ORDER BY stop_id`,
+        )
+        .all()
+    ).results,
+    routes: (
+      await db
+        .prepare(`SELECT * FROM sla_route_targets WHERE version_id = 1 ORDER BY route_id`)
+        .all()
+    ).results,
+  });
+  const imported = await snapshot();
+
+  // Simulate the pre-promise-lens deployment: the version's SLA rows are gone.
+  await db.batch([
+    db.prepare(`DELETE FROM sla_route_targets WHERE version_id = 1`),
+    db.prepare(`DELETE FROM sla_schedule_targets WHERE version_id = 1`),
+    db.prepare(`DELETE FROM sla_schedule_dates WHERE version_id = 1`),
+  ]);
+  assert.equal(
+    (await db.prepare(`SELECT COUNT(*) AS n FROM sla_schedule_targets`).first()).n,
+    0,
+    'fixture starts with the promise missing',
+  );
+
+  const backfillEnv = {
+    DB: db,
+    GTFS_BUCKET: archive,
+    STATIC_GTFS_URL: 'https://feed.test/static.zip',
+  };
+  const result = await backfillSlaSchedule(backfillEnv, { id: 1, r2_key: 'gtfs.zip' });
+  assert.equal(result.dates, 22);
+  assert.equal(result.stops, 8 * 52);
+  assert.equal(result.routes, 8);
+  assert.equal(result.dryRun, false);
+  // The restored rows are identical to the ones the import itself wrote.
+  assert.deepEqual(await snapshot(), imported);
+  // GTFS rows were never touched.
+  assert.equal(
+    (
+      await db
+        .prepare(`SELECT COUNT(*) AS n FROM gtfs_routes WHERE version_id = 1`)
+        .first()
+    ).n,
+    8,
+  );
+
+  // Idempotent: a repeated backfill reproduces the same rows.
+  await backfillSlaSchedule(backfillEnv, { id: 1, r2_key: 'gtfs.zip' });
+  assert.deepEqual(await snapshot(), imported);
+
+  // Dry-run reports the same derivation without writing anything.
+  await db.batch([
+    db.prepare(`DELETE FROM sla_route_targets WHERE version_id = 1`),
+    db.prepare(`DELETE FROM sla_schedule_targets WHERE version_id = 1`),
+    db.prepare(`DELETE FROM sla_schedule_dates WHERE version_id = 1`),
+  ]);
+  const dry = await backfillSlaSchedule(
+    backfillEnv,
+    { id: 1, r2_key: 'gtfs.zip' },
+    {
+      dryRun: true,
+    },
+  );
+  assert.deepEqual(
+    { dates: dry.dates, stops: dry.stops, routes: dry.routes },
+    { dates: 22, stops: 8 * 52, routes: 8 },
+  );
+  assert.equal(dry.dryRun, true);
+  assert.equal(
+    (await db.prepare(`SELECT COUNT(*) AS n FROM sla_schedule_targets`).first()).n,
+    0,
+    'dry-run writes nothing',
+  );
+});

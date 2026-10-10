@@ -274,7 +274,7 @@ export async function insertVersion(
 }
 
 export async function runBatches(
-  env: SyncEnv,
+  env: Pick<SyncEnv, 'DB'>,
   statements: ReturnType<D1Database['prepare']>[],
 ): Promise<void> {
   for (let i = 0; i < statements.length; i += BATCH_SIZE) {

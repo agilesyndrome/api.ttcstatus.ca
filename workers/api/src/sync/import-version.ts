@@ -172,10 +172,33 @@ function validateSlaSchedule(targets: SlaScheduleTargets): void {
   }
 }
 
+/** The complete open-data feed carries the rapid lines as well as streetcars;
+ * one that is missing any Line's geometry is wrong at the source, so refuse
+ * it. Streetcar-only feeds are exempt. Shared by the import and the
+ * operator backfill. */
+function validateCompleteFeedRailLines(
+  parsed: ParsedStreetcarGtfs,
+  sourceUrl: string,
+): void {
+  if (!/completegtfs\.zip/i.test(sourceUrl)) return;
+  for (const number of ['1', '2', '4', '5', '6']) {
+    const route = parsed.routes.find((r) => r.shortName === number);
+    if (
+      !route ||
+      !parsed.patterns.some(
+        (p) =>
+          p.routeId === route.routeId &&
+          parsed.shapes.some((s) => s.shapeId === p.shapeId && s.points.length > 1),
+      )
+    )
+      throw new Error(`Complete GTFS is missing rail geometry for Line ${number}`);
+  }
+}
+
 /** Persist the derived schedule targets (E8S1): date → class, per-stop bands,
  * per-route published bands. Same bounded-batch discipline as the map rows. */
 async function persistSlaSchedule(
-  env: SyncEnv,
+  env: Pick<SyncEnv, 'DB'>,
   versionId: number,
   targets: SlaScheduleTargets,
 ): Promise<void> {
@@ -247,20 +270,7 @@ export async function importNetworkVersion(
   const archive = await R2ZipArchive.open(env.GTFS_BUCKET, version.r2_key);
   const parsed = await parseStreetcarGtfs(archive);
   validateStreetcarImport(parsed);
-  if (/completegtfs\.zip/i.test(env.STATIC_GTFS_URL)) {
-    for (const number of ['1', '2', '4', '5', '6']) {
-      const route = parsed.routes.find((r) => r.shortName === number);
-      if (
-        !route ||
-        !parsed.patterns.some(
-          (p) =>
-            p.routeId === route.routeId &&
-            parsed.shapes.some((s) => s.shapeId === p.shapeId && s.points.length > 1),
-        )
-      )
-        throw new Error(`Complete GTFS is missing rail geometry for Line ${number}`);
-    }
-  }
+  validateCompleteFeedRailLines(parsed, env.STATIC_GTFS_URL);
   await persistNormalizedGtfs(env, version.id, parsed);
 
   // The promise lens (Epic 8, E8S1): derive the schedule's own SLA bands from
@@ -290,4 +300,50 @@ export async function importNetworkVersion(
     .run();
 
   version.status = 'imported';
+}
+
+/** Operator backfill (scripts/operations/sla-schedule.mjs `targets`):
+ * re-derive and persist the promise lens for an ALREADY-IMPORTED version, from
+ * the same retained R2 archive the import read — no upstream traffic, no GTFS
+ * row changes, no map regeneration. This is the motion a deployment needs
+ * when it ships new derived tables after a version was imported (the promise
+ * lens itself: versions imported before Epic 8 have no SLA rows, and the
+ * unchanged-feed sync path never reprocesses, by design). Idempotent — the
+ * version's SLA rows are cleared and re-derived from the same archive, so a
+ * repeated run reproduces byte-identical rows. The caller owns the sync lock. */
+export async function backfillSlaSchedule(
+  env: Pick<SyncEnv, 'DB' | 'GTFS_BUCKET' | 'STATIC_GTFS_URL'>,
+  version: Pick<NetworkVersion, 'id' | 'r2_key'>,
+  opts: { dryRun?: boolean } = {},
+): Promise<{ dates: number; stops: number; routes: number; dryRun: boolean }> {
+  const archive = await R2ZipArchive.open(env.GTFS_BUCKET, version.r2_key);
+  const parsed = await parseStreetcarGtfs(archive);
+  validateStreetcarImport(parsed);
+  validateCompleteFeedRailLines(parsed, env.STATIC_GTFS_URL);
+  const slaTargets = deriveSlaSchedule(parsed);
+  validateSlaSchedule(slaTargets);
+  if (opts.dryRun) {
+    return {
+      dates: slaTargets.dates.length,
+      stops: slaTargets.stops.length,
+      routes: slaTargets.routes.length,
+      dryRun: true,
+    };
+  }
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM sla_route_targets WHERE version_id = ?`).bind(version.id),
+    env.DB.prepare(`DELETE FROM sla_schedule_targets WHERE version_id = ?`).bind(
+      version.id,
+    ),
+    env.DB.prepare(`DELETE FROM sla_schedule_dates WHERE version_id = ?`).bind(
+      version.id,
+    ),
+  ]);
+  await persistSlaSchedule(env, version.id, slaTargets);
+  return {
+    dates: slaTargets.dates.length,
+    stops: slaTargets.stops.length,
+    routes: slaTargets.routes.length,
+    dryRun: false,
+  };
 }
