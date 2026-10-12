@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { legacySnakeMiddleware } from './scripts/preview/legacy-snake.mjs';
 import { createPreviewMiddleware } from './scripts/preview/preview-api.mjs';
+import { appServiceWorker } from './scripts/build/service-worker.mjs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 /** Cloudflare Workers Builds injects WORKERS_CI_COMMIT_SHA; local builds read
@@ -36,6 +37,16 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      name: 'ttc-offline-shell',
+      generateBundle(_options, bundle) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'sw.js',
+          source: appServiceWorker(Object.keys(bundle)),
+        });
+      },
+    },
     {
       name: 'ttc-localized-copy',
       transformIndexHtml: { order: 'pre', handler: renderLocalizedHtml },

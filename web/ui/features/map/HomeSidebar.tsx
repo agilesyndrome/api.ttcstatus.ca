@@ -7,6 +7,7 @@ import { BadgesPanel } from './panels/BadgesPanel';
 import { ExplorePanel } from './panels/ExplorePanel';
 import { JournalPanel } from './panels/JournalPanel';
 import type { HomeWorkspaceState } from './useHomeWorkspace';
+import { usePhoneLayout } from '../../hooks/useMediaQuery';
 
 /** The compact map drawer. Panel content lives in focused feature modules so
  * the same Explore, Journal, and Badges renderers can be mounted in the rail
@@ -21,6 +22,7 @@ export function HomeSidebar({
   settings?: ReactNode;
 }) {
   useLanguage();
+  const phone = usePhoneLayout();
   const { data, panel, setPanel, mobilePanelOpen, sidebar } = workspace;
   if (!data) return null;
   return (
@@ -37,7 +39,7 @@ export function HomeSidebar({
         }}
       />
       <div ref={sidebar} id="sidebar-content" className="sidebar-content">
-        <ExplorePanel workspace={workspace} />
+        <ExplorePanel workspace={workspace} showDetails={!phone} />
         <JournalPanel workspace={workspace} />
         <BadgesPanel workspace={workspace} />
         <PageFooter />

@@ -1,0 +1,404 @@
+/* ————— The app shell (nav-v3): one collapsible left nav rail —————
+ * Exactly one nav renders at any width (Nav decides which): the left
+ * rail on wide screens — brand lockup, the one main nav, quick controls
+ * (standalone pages) and the footer beside the content — and the pages'
+ * header strip on compact ones. On compact widths `.app`/`.app-main` turn
+ * transparent (`display:contents`) so the top bar and content flow exactly
+ * as they did before the shell. */
+.app {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+.app-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.app-nav {
+  position: sticky;
+  top: 0;
+  height: var(--app-viewport-height, 100dvh);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 232px;
+  padding: 18px 14px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* The rail owns the brand lockup; the map's top bar keeps its search. On
+ * compact widths the topbar brand returns — it is the overlay-menu button.
+ * (Inside a media query: a descendant selector like this would otherwise
+ * keep matching while `.app` is `display:contents`.) */
+@media (min-width: 901px) {
+  .app .topbar .brand {
+    display: none;
+  }
+}
+.app-nav__head {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+}
+.app-nav__brand {
+  flex: 1;
+  min-width: 0;
+}
+.app-nav__brand strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: -0.35px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav__brand small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav__collapse {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  border-radius: 7px;
+}
+/* The rail's nav: one vertical list of section tabs, page links, and — for
+ * the map workspace — the active tool panel as a clear SUBSECTION of its
+ * tab. The tablist box itself becomes layout-transparent (`display:
+ * contents` keeps its accessible role), so the tabs, the panel and the page
+ * links are all flex items of one column and CSS `order` slots the active
+ * panel between its own tab and the next. */
+.app-nav .main-nav {
+  position: static;
+  /* The nav fills the rail between the brand head and the quick controls /
+   * footer, and its own height constraint is what caps the panel below. */
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* The base .main-nav wraps and centers its items for the old horizontal
+   * strip; in the rail's column direction both would scramble the layout —
+   * wrap splits the tall panel into side columns, and centering would
+   * middle the tabs and panels horizontally. One column, full-width items. */
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.app-nav .main-nav [role='tablist'] {
+  display: contents;
+}
+.app-nav .main-nav [data-nav-item='explore'] {
+  order: 10;
+}
+.app-nav .main-nav [data-nav-item='journal'] {
+  order: 20;
+}
+.app-nav .main-nav [data-nav-item='badges'] {
+  order: 30;
+}
+.app-nav .main-nav [role='tabpanel']#panel-explore {
+  order: 15;
+}
+.app-nav .main-nav [role='tabpanel']#panel-journal {
+  order: 25;
+}
+.app-nav .main-nav [role='tabpanel']#panel-badges {
+  order: 35;
+}
+.app-nav .main-nav__pages {
+  order: 40;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+/* The rail's tabs and page links — scoped so the panel tool buttons below
+ * keep their own component styles. */
+.app-nav .main-nav [data-nav-item],
+.app-nav .main-nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  /* The tabs and the page links pin to their natural height — only the
+   * panel below flexes — so the nav items never scroll away. */
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  text-align: left;
+}
+/* The selected tab announces its section via the generic tab pill
+ * (`.main-nav [role='tablist'] button[aria-selected='true']` above) — the
+ * same look the compact strip carries, so the panel hanging beneath it
+ * reads as its subsection. */
+/* The subsection itself: indented under its tab and hung off a guide line —
+ * the rail the eye follows from the tab's pill down through its tools. The
+ * accent-tinted guide ties the two together in both themes. The tools
+ * scroll INSIDE the subsection (the tab, the page links and the footer stay
+ * pinned), and min-width lets long content wrap instead of overflowing the
+ * rail. */
+.app-nav .main-nav [role='tabpanel'] {
+  flex: 0 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin: 0 4px 6px 24px;
+  padding: 2px 2px 10px 14px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* The rail panel is narrower than the old sidebar column; the quick tools
+ * wrap onto their own rows instead of squeezing three buttons into one. */
+.app-nav [role='tabpanel'] .explore-tools {
+  flex-wrap: wrap;
+}
+/* Standalone pages keep their quick controls (the language shortcut and the
+ * account) at the rail's foot. The footer pins to the bottom (see below). */
+.app-nav__quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+/* The footer owns the rail's last row: pinned to the foot on every variant. */
+.app-nav .site-footer {
+  margin-top: auto;
+}
+/* The map workspace's rail hosts the tool panels, so it carries the sidebar's
+ * width; standalone pages keep the slimmer rail. */
+.app--map .app-nav {
+  width: 320px;
+}
+/* Above the breakpoint the rail carries every tool; the workspace's grid
+ * collapses to the map alone (the compact sidebar still renders below it). */
+@media (min-width: 901px) {
+  .app--map .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Collapsed: a 68px icon rail — the brand symbol and nav icons remain,
+ * labels move into titles, the tool panels step aside, and the footer sheds
+ * its prose. */
+.app[data-collapsed] .app-nav {
+  width: 68px;
+  gap: 12px;
+  padding: 16px 10px 12px;
+}
+.app[data-collapsed] .app-nav__head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.app[data-collapsed] .app-nav__brand {
+  display: grid;
+  place-items: center;
+}
+.app[data-collapsed] .app-nav__lockup,
+.app[data-collapsed] .main-nav__text {
+  display: none;
+}
+.app[data-collapsed] .app-nav .main-nav [role='tabpanel'] {
+  display: none !important;
+}
+.app[data-collapsed] .app-nav__collapse {
+  align-self: center;
+}
+.app[data-collapsed] .app-nav .main-nav [data-nav-item],
+.app[data-collapsed] .app-nav .main-nav__link {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+.app[data-collapsed] .app-nav__quick {
+  flex-direction: column;
+  align-items: stretch;
+}
+.app[data-collapsed] .site-credit {
+  display: none;
+}
+/* Compact screens: the wrappers vanish from the layout (the rail is not
+ * rendered at all — see Nav — and the map's top bar + overlay nav or
+ * the pages' header strip flow exactly as before the shell). */
+@media (max-width: 900px) {
+  .app,
+  .app-main {
+    display: contents;
+  }
+}
+
+/* Nav icons: one small stroke glyph per destination, themed by the current
+ * colour, so the rail stays legible collapsed and the strip stays scannable. */
+.main-nav__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.main-nav__icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.main-nav [role='tablist'] button,
+.main-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.main-nav__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-page {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+.profile-page h1 {
+  font-size: 30px;
+  overflow-wrap: anywhere;
+}
+.profile-page h2 {
+  font-size: 20px;
+  margin-top: 30px;
+}
+.profile-page fieldset,
+.journal-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.privacy-choice {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  font-size: 14px;
+  margin-top: 24px;
+  line-height: 1.6;
+}
+.privacy-choice input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.account-required h1 {
+  font-size: 24px;
+}
+.profile-page .form-control input {
+  font-size: 16px;
+}
+@media (max-width: 640px) {
+  /* The header is one compact row — brand menu button, title, search — and
+     the full controls live inside the nav panel instead of stacking rows of
+     header chrome over the map. */
+  .topbar {
+    --account-header-height: 56px;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .topbar .header-actions {
+    display: none;
+  }
+  .topbar .brand {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .topbar .brand strong {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar .search {
+    order: 0;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+  }
+  .brand-symbol {
+    cursor: pointer;
+  }
+  .auth-status {
+    margin-left: auto;
+  }
+  .auth-controls .action-button {
+    min-height: 44px;
+  }
+}
+/* Header controls render twice: in the top bar on wide screens, at the
+   bottom of the mobile nav on small ones. Only the header copy is shown
+   in each place; the CSS decides which. */
+.nav-settings {
+  display: none;
+}
+.map-export {
+  width: min(960px, calc(100vw - 32px));
+}
+.map-print-sheet {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 18px 0;
+  background: #fffdf7;
+}
+.map-export .comparison-actions {
+  margin-bottom: 0;
+}
+.map-export .map-print-sheet {
+  max-height: min(55dvh, 540px);
+  object-fit: contain;
+}
+.map-print-output {
+  display: none;
+}
+
+/* Keep navigation visible while the details themselves scroll. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.main-nav {
+  position: static;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 16px;
+}
+.sidebar-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+}

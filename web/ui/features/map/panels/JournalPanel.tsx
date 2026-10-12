@@ -35,6 +35,11 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
                   : t('workspace.loadingYourJournal')}
         </p>
         <fieldset className="journal-fieldset" disabled={!accountJournal.ready}>
+          {workspace.accountJournal.cached && (
+            <p role="status" className="account-cache-status">
+              {t('cache.accountOffline')}
+            </p>
+          )}
           <StreetcarJournal
             key={accountJournal.userId}
             entries={journal}

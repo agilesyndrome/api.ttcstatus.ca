@@ -1,3 +1,6 @@
+import { usePhoneLayout } from '../../hooks/useMediaQuery';
+import { MobileDetails } from './MobileDetails';
+import { CachedMapNotice } from './CachedMapNotice';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { HomeSidebar } from './HomeSidebar';
@@ -71,6 +74,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   // renders its own map with no service props, and the base layer sleeps.
   const service = useServiceOverlay(data, cars, snakeOpen);
   const compact = useCompactNav();
+  const phone = usePhoneLayout();
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
     selectFeature(feature);
     service.onFeatureSelectForService(feature);
@@ -148,8 +152,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             // The brand symbol is the mobile menu button: it opens the nav
             // panel over the map. On desktop it keeps its old meaning — a
             // reset — because the full menu stays visible beside the map.
-            if (window.matchMedia('(max-width: 640px)').matches)
-              setMobilePanelOpen((open) => !open);
+            if (phone) setMobilePanelOpen((open) => !open);
             else resetWithService();
           }}
           navOpen={mobilePanelOpen}
@@ -231,6 +234,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
               underlay={service.underlay ?? undefined}
               overlay={service.overlay ?? undefined}
             />
+            <CachedMapNotice workspace={workspace} />
+            {phone && <MobileDetails workspace={workspace} />}
             {service.card}
             {/* Below the rail breakpoint the sidebar overlay carries the
              * same panels; above it they live in the rail under their nav

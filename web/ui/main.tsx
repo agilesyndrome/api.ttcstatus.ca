@@ -1,34 +1,22 @@
 import { createRoot } from 'react-dom/client';
-import { HomePage } from './pages/HomePage';
+import { App } from './App';
 import './styles/main.css';
 import { AccountProvider } from './features/accounts/auth';
-import { ProfilePage, PublicProfilePage } from './pages/ProfilePage';
-import { SettingsPage } from './pages/SettingsPage';
-import { SlaPage } from './pages/SlaPage';
-import { SnakePage } from './pages/SnakePage';
 import { AffiliationNotice } from './components/AffiliationNotice';
-import { snakeVersionForPath } from './snake-route';
+import { initializePlatform, platform } from './services/platform';
+import { registerOfflineShell } from './services/platform/browser/offline-shell';
+import { startNavigation } from './services/navigation/history';
+import { hydrateLanguage } from './i18n';
 
-const path = window.location.pathname.replace(/\/$/, '') || '/';
-const publicProfile = /^\/u\/([^/]+)$/.exec(path);
-const snakeVersion = snakeVersionForPath(path);
-const page =
-  path === '/settings' ? (
-    <SettingsPage />
-  ) : path === '/profile' ? (
-    <ProfilePage />
-  ) : path === '/sla' ? (
-    <SlaPage />
-  ) : snakeVersion !== undefined ? (
-    <SnakePage />
-  ) : publicProfile ? (
-    <PublicProfilePage username={publicProfile[1]} />
-  ) : (
-    <HomePage initialSnakeVersion={snakeVersion} />
-  );
+await initializePlatform();
+await hydrateLanguage();
+startNavigation();
+if (!platform().native) registerOfflineShell();
 createRoot(document.getElementById('root')!).render(
   <>
-    <AccountProvider>{page}</AccountProvider>
+    <AccountProvider>
+      <App />
+    </AccountProvider>
     <AffiliationNotice />
   </>,
 );

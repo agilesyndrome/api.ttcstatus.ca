@@ -125,9 +125,11 @@ try {
       'the stored day/night preference applies on the /sla page',
     );
     assert.equal(
-      await page.locator('button[aria-pressed="true"]', {
-        hasText: 'Night',
-      }).count(),
+      await page
+        .locator('button[aria-pressed="true"]', {
+          hasText: 'Night',
+        })
+        .count(),
       0,
       'the day/night control itself is not on this page — Settings owns it',
     );

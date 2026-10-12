@@ -1477,5 +1477,14 @@
   "workspace.waitingForThisStreetcarSLivePosition": "Waiting for this streetcar’s live position…",
   "workspace.your100SavedStopsAreFullRemoveAStopTo": "Your 100 saved stops are full. Remove a stop to save another.",
   "workspace.yourJournalIsSavedToYourAccount": "Your journal is saved to your account.",
-  "workspace.yourLastChangeHasNotBeenSaved": "Your last change has not been saved."
+  "workspace.yourLastChangeHasNotBeenSaved": "Your last change has not been saved.",
+  "shareMap.mapLinkShared": "Map link shared.",
+  "cache.mapSaved": "Saved map from {date}.",
+  "cache.mapRefreshing": "Refreshing the saved map…",
+  "cache.mapOffline": "Offline — showing the saved map.",
+  "cache.accountOffline": "Offline — showing your last saved account data. Reconnect to make changes.",
+  "navigation.openTools": "Open map tools",
+  "account.signOut": "Sign out",
+  "fleetExplorer.downloadFailed": "The file could not be shared. Please try again.",
+  "cache.mapUnavailable": "Refresh unavailable — showing the saved map."
 }

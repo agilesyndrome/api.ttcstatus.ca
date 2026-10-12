@@ -4,6 +4,8 @@ import { useLanguage } from '../../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { mapLinkHash, type Selection, type MapTools } from '../../commute';
 import type { MapFilterValues } from '../map/MapFilters';
+import { platform } from '../../services/platform';
+import { clientConfig } from '../../services/http/config';
 
 export function ShareMap({
   selection,
@@ -33,13 +35,17 @@ export function ShareMap({
   );
   async function share() {
     const current = ++request.current;
-    const url = new URL(window.location.href);
+    const url = new URL('/', clientConfig().siteOrigin);
     url.hash = mapLinkHash(selection, filters, contextRoute, tools);
     try {
-      await navigator.clipboard.writeText(url.href);
+      const result = await platform().sharing.share(url.href, t('header.title'));
       if (current === request.current) {
         setFallback('');
-        setMessage(english('shareMap.mapLinkCopied'));
+        setMessage(
+          english(
+            result === 'copied' ? 'shareMap.mapLinkCopied' : 'shareMap.mapLinkShared',
+          ),
+        );
       }
     } catch {
       if (current === request.current) {

@@ -1,6 +1,7 @@
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { usePreference } from '../../hooks/usePreferences';
 import { useTheme } from '../../hooks/useTheme';
 import { AuthControls } from '../../features/accounts/auth';
@@ -10,16 +11,7 @@ import type { SidebarPanel } from '../../commute';
 
 export const NAV_RAIL_QUERY = '(max-width: 900px)';
 
-export function useCompactNav() {
-  const [compact, setCompact] = useState(() => window.matchMedia(NAV_RAIL_QUERY).matches);
-  useEffect(() => {
-    const media = window.matchMedia(NAV_RAIL_QUERY);
-    const update = () => setCompact(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-  return compact;
-}
+export const useCompactNav = () => useMediaQuery(NAV_RAIL_QUERY);
 
 export interface NavProps {
   variant: 'map' | 'page';

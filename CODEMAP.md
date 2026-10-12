@@ -62,15 +62,15 @@ files, and browser modules never import Worker implementation files. Run
 
 ## Browser applications
 
-`web/ui/pages/` composes pages. `features/map/useHomeWorkspace.ts` owns the main
-workspace state and transitions; `HomeWorkspace.tsx` lays out the map and overlays,
+`web/ui/pages/` composes pages. `features/map/useHomeWorkspace.ts` composes focused
+selection, location, saved-stop and link owners in `workspace/`; `HomeWorkspace.tsx` lays out the map and overlays,
 and `HomeSidebar.tsx` composes tool panels. `useStaticMap.ts` owns public map loading.
 
 `web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export,
 service (delivered-service overlay) and sla (the /sla status page), and Snake code
 with its component stories. `components/` contains shared page chrome; `hooks/`
-contains preferences, theme and shortcuts. `styles/` contains the homepage
-stylesheet.
+contains preferences, viewport, theme and shortcuts. `styles/` contains shell,
+mobile, game, and feature styles imported in cascade order.
 
 `features/sla/` is the non-map SLA status page: `useSlaReport.ts` (one cached
 fetch per session, plus the per-route stop detail), the pure view helpers in
@@ -114,3 +114,15 @@ Vite copies static assets from `public/` into `dist/`; the viewer build adds
 Run `npm run build:api` before deployment.
 
 The historical design and topology roadmap remain in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## UI platform services
+
+`web/ui/services/` owns platform adapters, configured HTTP transport, navigation,
+and durable cache mechanics. Feature components never import native plugins,
+call fetch directly, or access localStorage. `docs/ui-platform.md` documents the
+ports, native build configuration, offline behavior, and validation commands.
+
+`App.tsx` retains the map screen across client-side page changes and marks inactive
+screens so feed owners stop acquisition. Phone menu content and selection details
+are separate presentations of the existing features. `shared/transit/` owns pure
+transit calculations and map-link contracts; locale formatting remains in the UI.

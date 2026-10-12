@@ -790,5 +790,14 @@
   "workspace.waitingForThisStreetcarSLivePosition": "En attente de la position de ce tramway…",
   "workspace.your100SavedStopsAreFullRemoveAStopTo": "Vous avez atteint la limite de 100 arrêts. Retirez-en un pour en enregistrer un autre.",
   "workspace.yourJournalIsSavedToYourAccount": "Votre journal est enregistré dans votre compte.",
-  "workspace.yourLastChangeHasNotBeenSaved": "Votre dernière modification n’a pas été enregistrée."
+  "workspace.yourLastChangeHasNotBeenSaved": "Votre dernière modification n’a pas été enregistrée.",
+  "shareMap.mapLinkShared": "Lien de la carte partagé.",
+  "cache.mapSaved": "Carte enregistrée le {date}.",
+  "cache.mapRefreshing": "Actualisation de la carte enregistrée…",
+  "cache.mapOffline": "Hors ligne — affichage de la carte enregistrée.",
+  "cache.accountOffline": "Hors ligne — affichage des dernières données de votre compte. Reconnectez-vous pour les modifier.",
+  "navigation.openTools": "Ouvrir les outils de la carte",
+  "account.signOut": "Se déconnecter",
+  "fleetExplorer.downloadFailed": "Le fichier ne peut pas être partagé. Veuillez réessayer.",
+  "cache.mapUnavailable": "Actualisation indisponible — affichage de la carte enregistrée."
 }

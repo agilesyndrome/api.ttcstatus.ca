@@ -1,3 +1,4 @@
+import { apiRequest } from './services/http/client';
 /** Privacy-preserving product analytics: reports only a broad, allowlisted
  * action name. No location, no identifiers beyond the server-issued anonymous
  * visitor cookie — the point is "how many distinct users today took <action>",
@@ -17,7 +18,7 @@ export function trackEvent(action: TrackedAction) {
   if (reported.has(action)) return;
   reported.add(action);
   try {
-    void fetch('/api/v1/event', {
+    void apiRequest('/api/v1/event', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ action }),

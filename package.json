@@ -61,7 +61,9 @@
     "map:import": "node scripts/preview/import-rail-map.mjs",
     "test:subway": "node scripts/checks/check-subway.mjs",
     "test:i18n": "node scripts/checks/check-i18n.mjs",
-    "test:sla": "node scripts/checks/check-sla.mjs"
+    "test:sla": "node scripts/checks/check-sla.mjs",
+    "test:app": "node --test --test-isolation=none tests/ui/*.test.mjs tests/live/*.test.mjs",
+    "test:browser": "node scripts/checks/run-browser-suite.mjs ui mobile auth i18n app-readiness offline-shell"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",
@@ -81,6 +83,14 @@
     "wrangler": "^4.40.0"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/geolocation": "^8.2.3",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.3",
     "@clerk/backend": "^3.22.0",
     "@clerk/localizations": "^4.21.2",
     "@clerk/react": "^6.17.5",

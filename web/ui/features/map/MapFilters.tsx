@@ -1,12 +1,7 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-export interface MapFilterValues {
-  live: boolean;
-  labels: boolean;
-  overnight: boolean;
-  streetcar: boolean;
-  subway: boolean;
-}
+import type { MapFilterValues } from '../../../../shared/transit/types';
+export type { MapFilterValues } from '../../../../shared/transit/types';
 interface Props {
   value: MapFilterValues;
   onChange(value: MapFilterValues): void;

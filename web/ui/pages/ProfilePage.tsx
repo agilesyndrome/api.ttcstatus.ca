@@ -1,3 +1,5 @@
+import { useRoute } from '../services/navigation/react';
+import { apiRequest } from '../services/http/client';
 import { english } from '../../../shared/i18n/messages';
 import { LanguageSettings } from '../components/settings/LanguageSettings';
 import { ThemeSettings } from '../components/settings/ThemeSettings';
@@ -10,15 +12,17 @@ import { UserProfile } from '@clerk/react';
 
 export function ProfilePage() {
   useLanguage();
+  const route = useRoute();
   const account = useAccount();
   const [showClerkSettings, setShowClerkSettings] = useState(false);
   // The globe shortcut lands on /settings#language (and #appearance for the
   // day/night choice): scroll the requested section into view once it mounts.
   useEffect(() => {
-    if (!window.location.hash) return;
-    const target = document.querySelector(window.location.hash);
+    const hash = new URL(route, 'https://ttcstatus.ca').hash.slice(1);
+    if (!hash) return;
+    const target = document.getElementById(hash);
     target?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }, [route]);
   return (
     <AppTemplate current="settings">
       <main className="profile-page">
@@ -32,7 +36,11 @@ export function ProfilePage() {
             <button
               className="action-button"
               type="button"
-              onClick={() => setShowClerkSettings(true)}
+              onClick={() =>
+                account.manageAccount
+                  ? account.manageAccount()
+                  : setShowClerkSettings(true)
+              }
             >
               {t('profile.usernameAndPassword')}
             </button>
@@ -196,7 +204,7 @@ export function PublicProfilePage({ username }: { username: string }) {
   const [message, setMessage] = useState(english('profile.loadingProfile'));
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/v1/profiles/${encodeURIComponent(username)}`, {
+    apiRequest(`/api/v1/profiles/${encodeURIComponent(username)}`, {
       cache: 'no-store',
       signal: controller.signal,
     })

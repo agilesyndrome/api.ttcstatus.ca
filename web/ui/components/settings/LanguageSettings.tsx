@@ -8,7 +8,6 @@ import {
 } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { useAccount } from '../../features/accounts/auth';
-import type { Theme } from '../../hooks/useTheme';
 
 export function LanguageSettings() {
   useLanguage();

@@ -1,0 +1,147 @@
+.tool-form {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.tool-form > label,
+.form-pair > label {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+.form-control {
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+}
+.tool-form input[type='search'],
+.tool-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 8px;
+  color: var(--text);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tool-form .accessible-filter {
+  display: flex;
+  margin-top: 0;
+}
+.fleet-count {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+.report-tag {
+  float: right;
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 500;
+}
+.report-tag.stale {
+  border-color: var(--border);
+  color: var(--muted);
+}
+.fleet-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 16px 0;
+}
+.fleet-pagination button {
+  padding: 7px 9px;
+  font-size: 11px;
+}
+.fleet-pagination span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.export-fleet {
+  width: 100%;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.comparison-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.comparison-summary {
+  padding: 18px;
+  background: var(--soft);
+  border-radius: 10px;
+  margin: 20px 0;
+}
+.comparison-summary strong {
+  display: block;
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+.comparison-summary small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.comparison-result h2 {
+  font-size: 14px;
+}
+.connection-list {
+  display: grid;
+  gap: 10px;
+}
+.connection-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.connection-card > button {
+  width: 100%;
+  text-align: left;
+}
+.connection-card p {
+  margin: 10px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.connection-card details {
+  font-size: 11px;
+  line-height: 1.7;
+}
+.connection-card summary {
+  cursor: pointer;
+}
+.connection-card ul {
+  padding-left: 18px;
+}
+.comparison-marker {
+  pointer-events: none;
+}
+.picking-hint {
+  display: block;
+  color: var(--accent);
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 3px 14px #25343c15;
+}

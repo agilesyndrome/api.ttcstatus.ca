@@ -1,7 +1,11 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { useId, useState, type ReactNode } from 'react';
-import { searchFeatures, type Feature, type ViewerData } from '../../../../shared/map/model';
+import {
+  searchFeatures,
+  type Feature,
+  type ViewerData,
+} from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 
 interface Props {
@@ -53,20 +57,12 @@ export function PageHeader({
   }
   return (
     <header className="topbar">
-      <a
-        className="brand"
-        href="/public"
-        onClick={(event) => {
-          event.preventDefault();
-          setQuery('');
-          onReset();
-        }}
-      >
+      <div className="brand">
         {onBrandToggle ? (
-          <span
+          <button
+            type="button"
             className="brand-symbol brand-toggle"
-            role="button"
-            tabIndex={0}
+            aria-controls="sidebar-content"
             aria-expanded={navOpen}
             aria-label={navOpen ? t('header.closeMenu') : t('header.openMenu')}
             onClick={(event) => {
@@ -76,26 +72,27 @@ export function PageHeader({
               event.preventDefault();
               onBrandToggle();
             }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                event.stopPropagation();
-                onBrandToggle();
-              }
-            }}
           >
             ↔
-          </span>
+          </button>
         ) : (
           <span className="brand-symbol" aria-hidden="true">
             ↔
           </span>
         )}
-        <span>
+        <a
+          className="brand-title"
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            setQuery('');
+            onReset();
+          }}
+        >
           <strong>{t('header.title')}</strong>
           <small>{t('header.tagline')}</small>
-        </span>
-      </a>
+        </a>
+      </div>
       <div className="search">
         <label className="sr-only" htmlFor={id}>
           {t('header.searchStopsStationsRoutesOrVehicleNumbers')}
