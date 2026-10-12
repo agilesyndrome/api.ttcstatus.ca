@@ -174,6 +174,27 @@
   padding: 2px 2px 10px 14px;
   border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
+.app-nav .main-nav [role='tabpanel'][hidden] {
+  display: none !important;
+}
+.app-nav .main-nav [role='tabpanel']#panel-explore:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+.app-nav .main-nav #panel-explore .explore-tools {
+  margin-top: auto;
+  padding-top: 20px;
+}
+.explore-advanced {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.explore-advanced summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
 /* The rail panel is narrower than the old sidebar column; the quick tools
  * wrap onto their own rows instead of squeezing three buttons into one. */
 .app-nav [role='tabpanel'] .explore-tools {
