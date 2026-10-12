@@ -108,25 +108,25 @@
   order: 10;
 }
 .app-nav .main-nav [id$='-route-pulse'] {
-  order: 15;
-}
-.app-nav .main-nav [data-nav-item='journal'] {
   order: 30;
 }
-.app-nav .main-nav [data-nav-item='badges'] {
+.app-nav .main-nav [data-nav-item='journal'] {
   order: 40;
+}
+.app-nav .main-nav [data-nav-item='badges'] {
+  order: 50;
 }
 .app-nav .main-nav [role='tabpanel']#panel-explore {
   order: 20;
 }
 .app-nav .main-nav [role='tabpanel']#panel-route-pulse {
-  order: 25;
-}
-.app-nav .main-nav [role='tabpanel']#panel-journal {
   order: 35;
 }
-.app-nav .main-nav [role='tabpanel']#panel-badges {
+.app-nav .main-nav [role='tabpanel']#panel-journal {
   order: 45;
+}
+.app-nav .main-nav [role='tabpanel']#panel-badges {
+  order: 55;
 }
 .app-nav .main-nav__pages {
   order: 40;
@@ -174,7 +174,8 @@
   padding: 2px 2px 10px 14px;
   border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.app-nav .main-nav [role='tabpanel'][hidden] {
+.app-nav .main-nav [role='tabpanel'][hidden],
+.sidebar [role='tabpanel'][hidden] {
   display: none !important;
 }
 .app-nav .main-nav [role='tabpanel']#panel-explore:not([hidden]) {
@@ -184,16 +185,12 @@
 .app-nav .main-nav #panel-explore .explore-tools {
   margin-top: auto;
   padding-top: 20px;
+  flex-direction: column;
+  align-items: stretch;
 }
-.explore-advanced {
-  margin-top: 18px;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-}
-.explore-advanced summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
+.app-nav .main-nav #panel-explore .explore-tools > *,
+.app-nav .main-nav #panel-explore .share-map > button {
+  width: 100%;
 }
 /* The rail panel is narrower than the old sidebar column; the quick tools
  * wrap onto their own rows instead of squeezing three buttons into one. */

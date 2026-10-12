@@ -55,8 +55,13 @@
 }
 .explore-layers {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin: 12px 0 18px;
+  margin: 12px 0 0;
+}
+.explore-layers .layer-toggle {
+  width: 100%;
+  text-align: left;
 }
 .layer-toggle {
   border: 1px solid var(--line);
@@ -232,9 +237,13 @@ input:focus-visible,
 }
 .explore-tools {
   display: flex;
+  flex-direction: column;
   align-items: start;
   gap: 8px;
   margin-bottom: 24px;
+}
+.explore-tools > .action-button {
+  width: 100%;
 }
 .action-button {
   padding: 9px 12px;
@@ -243,8 +252,6 @@ input:focus-visible,
 }
 .surprise-button {
   white-space: nowrap;
-  color: var(--accent);
-  border-color: var(--accent);
 }
 .share-map {
   flex: 1;

@@ -79,13 +79,6 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
         <div className="comparison-actions export-options">
           <button
             className="action-button"
-            disabled={!ready}
-            onClick={() => window.print()}
-          >
-            {t('mapExport.printSavePdf')}
-          </button>
-          <button
-            className="action-button"
             disabled={!image || !ready}
             onClick={() =>
               image &&

@@ -1,10 +1,7 @@
 import { SelectionDetails } from './SelectionDetails';
 import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
-import { MapFilters } from '../MapFilters';
-import { LiveFeedStatus } from '../LiveFeedStatus';
 import { NearbyStops } from '../../stops/NearbyStops';
-import { ShareMap } from '../../export/ShareMap';
 import { trackEvent } from '../../../analytics';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
@@ -24,13 +21,11 @@ export function ExplorePanel({
     selection,
     setSelection,
     selectedRoute,
-    setSelectedRoute,
     setFollowing,
     setFocusPoint,
     location,
     setLocation,
     pendingCar,
-    feed,
     selectFeature,
     surprise,
     previewMap,
@@ -61,6 +56,24 @@ export function ExplorePanel({
           <span aria-hidden="true" /> {t('workspace.subway')}{' '}
           {filters.subway ? t('workspace.on') : t('workspace.off')}
         </button>
+        <button
+          className={`layer-toggle ${filters.live ? 'is-on' : ''}`}
+          aria-pressed={filters.live}
+          onClick={() => {
+            const live = !filters.live;
+            setFilters({ ...filters, live });
+            if (!live && selection?.kind === 'car') {
+              pendingCar.current = undefined;
+              setFollowing(false);
+              setSelection(
+                selectedRoute ? { kind: 'route', id: selectedRoute } : undefined,
+              );
+            }
+          }}
+        >
+          <span aria-hidden="true" /> {t('mapFilters.showLiveVehicles')}{' '}
+          {filters.live ? t('workspace.on') : t('workspace.off')}
+        </button>
       </div>
       {showDetails && <SelectionDetails workspace={workspace} />}
       <NearbyStops
@@ -72,51 +85,10 @@ export function ExplorePanel({
         }}
         onSelect={selectFeature}
       />
-      <details className="explore-advanced">
-        <summary>{t('mapFilters.mapLayers')}</summary>
-        {workspace.savedAccount && <DraftRecovery document={workspace.savedAccount} />}
-        {workspace.savedAccount?.error && (
-          <p className="tip" role="alert">
-            {t(workspace.savedAccount.error)}
-          </p>
-        )}
-        {workspace.savedCached && (
-          <p role="status" className="account-cache-status">
-            {t('cache.accountOffline')}
-          </p>
-        )}
-        <MapFilters
-          value={filters}
-          onChange={(next) => {
-            setFilters(next);
-            if (!next.live && selection?.kind === 'car') {
-              pendingCar.current = undefined;
-              setFollowing(false);
-              setSelection(
-                selectedRoute ? { kind: 'route', id: selectedRoute } : undefined,
-              );
-            }
-            if (
-              !next.overnight &&
-              data.routes.find((route) => route.id === selectedRoute)?.overnight
-            ) {
-              setSelectedRoute(undefined);
-              if (selection?.kind === 'route') setSelection(undefined);
-            }
-          }}
-        />
-        <LiveFeedStatus {...feed} />
-      </details>
       <div className="explore-tools">
-        <button className="action-button surprise-button" onClick={surprise}>
+        <button className="action-button" onClick={surprise}>
           {t('workspace.surpriseMe')}
         </button>
-        <ShareMap
-          selection={selection}
-          filters={filters}
-          contextRoute={selectedRoute}
-          tools={{ panel }}
-        />
         <button
           className="action-button"
           onClick={() => {
@@ -130,4 +102,3 @@ export function ExplorePanel({
     </div>
   );
 }
-import { DraftRecovery } from '../../accounts/DraftRecovery';

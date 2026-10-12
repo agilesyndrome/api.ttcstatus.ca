@@ -93,10 +93,7 @@ export function RoutePulse({
           <strong>
             {selected.route.number} {selected.route.name}
           </strong>
-          <p>
-            {selected.reported} {t('routePulse.reported')} {selected.stale}{' '}
-            {t('fleetExplorer.stale2')}
-          </p>
+
           <p>
             {selected.medianSpeed === undefined
               ? t('routePulse.speedNotSuppliedForFreshReports')
@@ -106,9 +103,7 @@ export function RoutePulse({
           </p>
         </div>
       )}
-      <p className="microcopy">
-        {t('routePulse.vehicleCountsDescribeThisFeedNotServiceFrequencyOrDelays')}
-      </p>
+
     </section>
   );
 }

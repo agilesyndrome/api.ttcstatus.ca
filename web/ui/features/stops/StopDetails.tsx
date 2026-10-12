@@ -146,27 +146,7 @@ export function StopDetails({
         )}
       </section>
     );
-  if (!feature)
-    return (
-      <section id="details">
-        <p className="eyebrow">{t('viewer.exploreToronto')}</p>
-        <h1>{t('viewer.followTheCitySTracks')}</h1>
-        <p>{t('viewer.fromLongBranchToTheBeachesExploreTheNetworkOne')}</p>
-        <div className="stats">
-          <div>
-            <strong>{data.features.length}</strong>
-            <small>{t('viewer.stopsTerminals')}</small>
-          </div>
-          <div>
-            <strong>{data.routes.filter((route) => !route.overnight).length}</strong>
-            <small>{t('viewer.daytimeRoutes')}</small>
-          </div>
-        </div>
-        <p className="tip">
-          {t('stopDetails.selectAStopTrainOrStreetcarForDetailsUseThe')}
-        </p>
-      </section>
-    );
+  if (!feature) return null;
   const nearby = nearbyCars(data, feature, cars);
   const rapidRoutes = new Set(
     data.routes
