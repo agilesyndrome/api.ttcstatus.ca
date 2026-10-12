@@ -9,7 +9,14 @@
   # decoded from the pk_live_ key; see docs/security.md. worker-src allows the
   # bundled board worker ('self') and Clerk's blob-based timer workers (blob:),
   # which otherwise fall back to script-src and get blocked.
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://clerk.ttcstatus.ca; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.clerk.com; font-src 'self' data:; connect-src 'self' https://clerk.ttcstatus.ca; frame-src 'self' https://clerk.ttcstatus.ca; form-action 'self' https://clerk.ttcstatus.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  # Clerk's abuse/fraud protection and Cloudflare bot-protection hosts are part
+  # of Clerk's documented CSP requirements (challenges.cloudflare.com,
+  # *.protect.clerk.com — connect-src needs the :* port wildcard because those
+  # hosts serve on non-443 ports). static.cloudflareinsights.com is the Cloudflare
+  # Web Analytics beacon (script) and cloudflareinsights.com its trace endpoint
+  # (connect). Local dev widens this same policy for *.clerk.accounts.dev via
+  # scripts/dev/dev-headers.mjs; the snake policy below is never touched.
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://clerk.ttcstatus.ca https://static.cloudflareinsights.com https://challenges.cloudflare.com https://*.protect.clerk.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.clerk.com; font-src 'self' data:; connect-src 'self' https://clerk.ttcstatus.ca https://cloudflareinsights.com https://challenges.cloudflare.com https://*.protect.clerk.com:*; frame-src 'self' https://clerk.ttcstatus.ca https://challenges.cloudflare.com https://*.protect.clerk.com; form-action 'self' https://clerk.ttcstatus.ca; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
 
 # The classic snake game is fully self-contained: no Clerk, no remote fetches.
 # Its policy is enforced today.

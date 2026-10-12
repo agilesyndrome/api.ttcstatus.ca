@@ -3,7 +3,9 @@ import { HomePage } from './pages/HomePage';
 import './styles/main.css';
 import { AccountProvider } from './features/accounts/auth';
 import { ProfilePage, PublicProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { SlaPage } from './pages/SlaPage';
+import { SnakePage } from './pages/SnakePage';
 import { AffiliationNotice } from './components/AffiliationNotice';
 import { snakeVersionForPath } from './snake-route';
 
@@ -11,10 +13,14 @@ const path = window.location.pathname.replace(/\/$/, '') || '/';
 const publicProfile = /^\/u\/([^/]+)$/.exec(path);
 const snakeVersion = snakeVersionForPath(path);
 const page =
-  path === '/profile' ? (
+  path === '/settings' ? (
+    <SettingsPage />
+  ) : path === '/profile' ? (
     <ProfilePage />
   ) : path === '/sla' ? (
     <SlaPage />
+  ) : snakeVersion !== undefined ? (
+    <SnakePage />
   ) : publicProfile ? (
     <PublicProfilePage username={publicProfile[1]} />
   ) : (

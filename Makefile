@@ -3,7 +3,7 @@ API_PORT ?= 8787
 GEN_PORT ?= 8788
 API_LOCAL ?= http://localhost:$(API_PORT)
 
-.PHONY: dev dev/new dev/bootstrap admin/sync admin/sync/status map/streetcar
+.PHONY: dev dev/stop dev/status dev/new dev/bootstrap admin/sync admin/sync/status map/streetcar
 
 # Dev/prod parity: both Workers run from their production wrangler configs in
 # `wrangler dev` (the real Worker code in workerd; the MAP_GENERATOR service
@@ -11,26 +11,24 @@ API_LOCAL ?= http://localhost:$(API_PORT)
 # and dev/bootstrap provisions the map through the same POST /api/v1/admin/sync
 # endpoint production operators use. Ports are pinned so 8787 is always the
 # API Worker. --test-scheduled exposes /__scheduled for cron-path parity.
+#
+# scripts/dev/dev-stack.mjs supervises the whole tree: every Worker runs in
+# its own process group, the stack records itself in .wrangler/dev-stack.json,
+# and every descendant is tagged (TTC_DEV_STACK_ID) — so `make dev` always
+# stops a previous stack first, `make dev/stop` kills every process no matter
+# how deeply it spawned, and even a SIGKILLed supervisor leaves a lock file
+# that the next run uses to clean up. `.env.local` secrets resolve through
+# scripts/dev/with-secrets.mjs (1Password when signed in; a warning + accounts
+# disabled otherwise), and dev:headers widens dist/_headers' CSP for Clerk's
+# *.clerk.accounts.dev dev instance.
 dev:
-	@set -eu; \
-		npm run --silent build:ui && npm run --silent build:viewer; \
-		npm run --silent db:migrate:local; \
-		op run --env-file=.env.local -- npx wrangler dev \
-			-c workers/api/wrangler.jsonc --port $(API_PORT) --test-scheduled & api_pid=$$!; \
-		op run --env-file=.env.local -- npx wrangler dev \
-			-c workers/map-generator/wrangler.jsonc --port $(GEN_PORT) & gen_pid=$$!; \
-		cleanup() { \
-			kill $$api_pid $$gen_pid 2>/dev/null || true; \
-			wait $$api_pid $$gen_pid 2>/dev/null || true; \
-		}; \
-		trap cleanup EXIT HUP INT TERM; \
-		for i in $$(seq 1 90); do \
-			[ "$$(curl -s --max-time 2 $(API_LOCAL)/api/healthz 2>/dev/null | jq -r .worker 2>/dev/null)" = ttcstatus-api ] && break; \
-			sleep 1; \
-		done; \
-		$(MAKE) --no-print-directory dev/bootstrap || \
-			echo "dev/bootstrap failed — the Workers are still running. Fix the source (see STATIC_GTFS_URL in .env.local) and re-run: make dev/bootstrap"; \
-		wait $$api_pid $$gen_pid
+	@node scripts/dev/dev-stack.mjs start $(API_PORT) $(GEN_PORT)
+
+dev/stop:
+	@node scripts/dev/dev-stack.mjs stop
+
+dev/status:
+	@node scripts/dev/dev-stack.mjs status
 
 # Provision the local network + map. Converged with production: when the GTFS
 # source is a remote http(s) feed this is the exact production operator motion
@@ -38,14 +36,16 @@ dev:
 # Worker pipeline. Only a file:// fixture source falls back to the Node
 # platform-proxy harness, because workerd cannot fetch file:// URLs — the
 # harness runs the same syncStaticGtfs/generateStreetcarMap module code.
+# Both paths run through with-secrets so the SYNC_TOKEN reaches bin/api the
+# same way the Worker got it (1Password-resolved, or the literal value).
 dev/bootstrap:
 	@set -eu; \
 		if grep -qE '^STATIC_GTFS_URL=file:' .env.local; then \
 			echo "file:// GTFS source: provisioning via the Node platform proxy (same pipeline modules; workerd cannot fetch file://)"; \
-			op run --env-file=.env.local -- node scripts/dev/bootstrap-local.mjs; \
+			node scripts/dev/with-secrets.mjs node scripts/dev/bootstrap-local.mjs; \
 		else \
 			echo "Provisioning via the production pipeline endpoint POST /api/v1/admin/sync against $(API_LOCAL):"; \
-			op run --env-file=.env.local -- env API_HOST=$(API_LOCAL) ./bin/api POST /api/v1/admin/sync | jq .; \
+			node scripts/dev/with-secrets.mjs env API_HOST=$(API_LOCAL) ./bin/api POST /api/v1/admin/sync | jq .; \
 		fi
 
 # Recreate local D1 from scratch (same migrations as production). `make dev`

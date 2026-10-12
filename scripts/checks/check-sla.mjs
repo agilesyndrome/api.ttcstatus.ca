@@ -66,6 +66,15 @@ try {
       slaRequests += 1;
       return route.fulfill({ json: report });
     });
+    // A stored day/night preference must apply to this page (the control
+    // itself lives in Settings — see the assertions below).
+    await context.addInitScript(() => {
+      try {
+        localStorage.setItem('ttc:theme:v1', JSON.stringify('dark'));
+      } catch {
+        /* blocked storage falls back to the system theme */
+      }
+    });
     await installAccountFixture(context);
     const page = await context.newPage();
     await page.goto(`${origin}/sla`, { waitUntil: 'networkidle' });
@@ -93,34 +102,34 @@ try {
       'signed out, the public nav items render with the current page marked',
     );
     // Header parity with the map's top bar: the same brand lockup (symbol,
-    // title, tagline) and the same day/night control — the page reads as
-    // the same site, and the stored theme preference applies here too.
+    // title, tagline) — carried by the app shell's left rail at this width —
+    // so the page reads as the same site.
     assert.equal(
-      await page.locator('.site-header__brand strong').innerText(),
+      await page.locator('.app-nav__brand strong').innerText(),
       'Unofficial TTCStatus Map',
     );
     assert.equal(
-      await page.locator('.site-header__brand small').innerText(),
+      await page.locator('.app-nav__brand small').innerText(),
       'A city on rails',
     );
-    assert.ok(
-      await page
-        .getByRole('link', { name: 'Language settings', exact: true })
-        .isVisible(),
-    );
-    const themeButton = page.getByRole('button', {
-      name: /Switch to (day|night) theme/,
-    });
-    const before = await page.locator('html').getAttribute('data-theme');
-    await themeButton.click();
-    const after = await page.locator('html').getAttribute('data-theme');
-    assert.ok(['light', 'dark'].includes(after), 'the control sets a real theme');
-    assert.notEqual(after, before, 'the day/night control switches the page theme');
-    await page.getByRole('button', { name: /Switch to (day|night) theme/ }).click();
+    // The globe is the shortcut to Settings → language: it deep-links to the
+    // language section, on every surface (the rail here, the map's top bar).
+    const language = page.getByRole('link', { name: 'Language settings', exact: true });
+    assert.ok(await language.isVisible());
+    assert.equal(await language.getAttribute('href'), '/profile#language');
+    // The day/night control lives in Settings; the stored preference still
+    // applies to this page the moment it loads.
     assert.equal(
       await page.locator('html').getAttribute('data-theme'),
-      before,
-      'the day/night control switches back',
+      'dark',
+      'the stored day/night preference applies on the /sla page',
+    );
+    assert.equal(
+      await page.locator('button[aria-pressed="true"]', {
+        hasText: 'Night',
+      }).count(),
+      0,
+      'the day/night control itself is not on this page — Settings owns it',
     );
     // The gate signs in — the report renders behind the same page load.
     // (The header's account controls carry their own Sign in; the gate's

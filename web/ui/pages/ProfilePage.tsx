@@ -1,23 +1,31 @@
 import { english } from '../../../shared/i18n/messages';
-import { LanguageSettings } from '../components/LanguageSettings';
+import { LanguageSettings } from '../components/settings/LanguageSettings';
+import { ThemeSettings } from '../components/settings/ThemeSettings';
 import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { AccountRequired, useAccount } from '../features/accounts/auth';
-import { SiteHeader } from '../components/SiteHeader';
+import { AppTemplate } from '../templates/AppTemplate';
 import { UserProfile } from '@clerk/react';
 
 export function ProfilePage() {
   useLanguage();
   const account = useAccount();
   const [showClerkSettings, setShowClerkSettings] = useState(false);
+  // The globe shortcut lands on /settings#language (and #appearance for the
+  // day/night choice): scroll the requested section into view once it mounts.
+  useEffect(() => {
+    if (!window.location.hash) return;
+    const target = document.querySelector(window.location.hash);
+    target?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
   return (
-    <>
-      <SiteHeader current="settings" />
+    <AppTemplate current="settings">
       <main className="profile-page">
-        {/* Language preference is browser-local: the settings' own copy says
-         * no account is required, so it must not sit behind the sign-in. */}
+        {/* Both preferences are browser-local: no account is required, so
+         * they sit above the sign-in gate. */}
         <LanguageSettings />
+        <ThemeSettings />
         <AccountRequired>
           <ProfileSettings key={account.userId} />
           {!showClerkSettings && (
@@ -37,7 +45,7 @@ export function ProfilePage() {
           )}
         </AccountRequired>
       </main>
-    </>
+    </AppTemplate>
   );
 }
 function ProfileSettings() {
@@ -207,8 +215,7 @@ export function PublicProfilePage({ username }: { username: string }) {
     return () => controller.abort();
   }, [username]);
   return (
-    <>
-      <SiteHeader />
+    <AppTemplate>
       <main className="profile-page">
         {profile ? (
           <>
@@ -239,6 +246,6 @@ export function PublicProfilePage({ username }: { username: string }) {
           <p role="status">{t(message)}</p>
         )}
       </main>
-    </>
+    </AppTemplate>
   );
 }

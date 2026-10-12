@@ -5,7 +5,7 @@ import { useLanguage } from '../../i18n/react';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ClerkProvider, UserButton, useAuth, useClerk, useUser } from '@clerk/react';
 
-interface Account {
+export interface Account {
   enabled: boolean;
   loaded: boolean;
   userId: string | null;
@@ -30,7 +30,7 @@ const defaults: Account = {
   request: unavailable,
   saveLanguage: async () => {},
 };
-const AccountContext = createContext<Account>(defaults);
+export const AccountContext = createContext<Account>(defaults);
 export const useAccount = () => useContext(AccountContext);
 
 function ClerkAccount({ children }: { children: ReactNode }) {
@@ -166,7 +166,7 @@ export function AuthControls() {
     <nav className="auth-controls" aria-label={t('account.yourAccount')}>
       {account.userId ? (
         <>
-          <a className="theme-toggle profile-toggle" href="/profile">
+          <a className="theme-toggle profile-toggle" href="/settings">
             {t('account.profile')}
           </a>
           <UserButton />

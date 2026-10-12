@@ -101,18 +101,33 @@
 }
 .loading-page footer {
   margin-top: 30px;
-  color: var(--muted);
-  font-size: 12px;
 }
-footer .site-version {
-  margin: 12px 0 0;
-  color: var(--muted);
-  font-size: 12px;
+/* The one footer (nav-v3): open-source credit + running version, rendered at
+ * the foot of the rail, the phone overlay and the standalone pages alike. */
+.site-footer {
+  display: grid;
+  gap: 2px;
+  margin: 24px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
-footer .site-credit {
-  margin: 4px 0 0;
+.site-footer .site-credit {
+  margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.site-footer .site-version {
+  margin: 0;
+  font-size: 11px;
+}
+.site-footer .site-version a {
+  color: var(--accent);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.site-footer .site-version a:hover {
+  text-decoration: underline;
 }
 #details details {
   font-size: 12px;
@@ -618,14 +633,17 @@ input:focus-visible,
   flex: 1 1 auto;
   min-width: 0;
 }
-.main-nav button {
+/* Tab buttons only (`[role='tablist']` scope): the map rail also hosts the
+ * tool panels inside .main-nav, and these strip styles — full-width flex
+ * cells, the pill paddings — must never leak into the panels' own buttons. */
+.main-nav [role='tablist'] button {
   flex: 1;
   padding: 9px 8px;
   border-color: transparent;
   font-size: 12px;
   white-space: nowrap;
 }
-.main-nav button[aria-selected='true'] {
+.main-nav [role='tablist'] button[aria-selected='true'] {
   background: var(--soft);
   border-color: var(--accent);
   color: var(--accent);
@@ -895,7 +913,7 @@ kbd {
   }
 }
 
-.main-nav button,
+.main-nav [role='tablist'] button,
 .main-nav__link {
   padding: 9px 5px;
   font-size: 11px;
@@ -1132,12 +1150,11 @@ select:focus-visible {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* The language quick link stays a wide-screen cluster affordance here —
-     on phones Settings (one tap away in the nav row) leads to the same
-     place, mirroring how the map's top bar hides its controls behind the
-     menu overlay. */
+  /* The globe stays visible on phones too — it is the shortcut to
+     Settings → language; with the day/night control now living in Settings,
+     the strip's second row has room for it beside the nav. */
   .site-header .language-link {
-    display: none;
+    flex-shrink: 0;
   }
   /* The page's own sign-in gate offers both actions; the compact header row
      keeps just the one. The Profile text link is the Settings nav item one
@@ -1166,6 +1183,284 @@ select:focus-visible {
     margin-left: auto;
   }
 }
+
+/* ————— The app shell (nav-v3): one collapsible left nav rail —————
+ * Exactly one nav renders at any width (Nav decides which): the left
+ * rail on wide screens — brand lockup, the one main nav, quick controls
+ * (standalone pages) and the footer beside the content — and the pages'
+ * header strip on compact ones. On compact widths `.app`/`.app-main` turn
+ * transparent (`display:contents`) so the top bar and content flow exactly
+ * as they did before the shell. */
+.app {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+.app-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.app-nav {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 232px;
+  padding: 18px 14px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* The rail owns the brand lockup; the map's top bar keeps its search. On
+ * compact widths the topbar brand returns — it is the overlay-menu button.
+ * (Inside a media query: a descendant selector like this would otherwise
+ * keep matching while `.app` is `display:contents`.) */
+@media (min-width: 901px) {
+  .app .topbar .brand {
+    display: none;
+  }
+}
+.app-nav__head {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+}
+.app-nav__brand {
+  flex: 1;
+  min-width: 0;
+}
+.app-nav__brand strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: -0.35px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav__brand small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav__collapse {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  border-radius: 7px;
+}
+/* The rail's nav: one vertical list of section tabs, page links, and — for
+ * the map workspace — the active tool panel as a clear SUBSECTION of its
+ * tab. The tablist box itself becomes layout-transparent (`display:
+ * contents` keeps its accessible role), so the tabs, the panel and the page
+ * links are all flex items of one column and CSS `order` slots the active
+ * panel between its own tab and the next. */
+.app-nav .main-nav {
+  position: static;
+  /* The nav fills the rail between the brand head and the quick controls /
+   * footer, and its own height constraint is what caps the panel below. */
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* The base .main-nav wraps and centers its items for the old horizontal
+   * strip; in the rail's column direction both would scramble the layout —
+   * wrap splits the tall panel into side columns, and centering would
+   * middle the tabs and panels horizontally. One column, full-width items. */
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.app-nav .main-nav [role='tablist'] {
+  display: contents;
+}
+.app-nav .main-nav [data-nav-item='explore'] {
+  order: 10;
+}
+.app-nav .main-nav [data-nav-item='journal'] {
+  order: 20;
+}
+.app-nav .main-nav [data-nav-item='badges'] {
+  order: 30;
+}
+.app-nav .main-nav [role='tabpanel']#panel-explore {
+  order: 15;
+}
+.app-nav .main-nav [role='tabpanel']#panel-journal {
+  order: 25;
+}
+.app-nav .main-nav [role='tabpanel']#panel-badges {
+  order: 35;
+}
+.app-nav .main-nav__pages {
+  order: 40;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+/* The rail's tabs and page links — scoped so the panel tool buttons below
+ * keep their own component styles. */
+.app-nav .main-nav [data-nav-item],
+.app-nav .main-nav__link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  /* The tabs and the page links pin to their natural height — only the
+   * panel below flexes — so the nav items never scroll away. */
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  text-align: left;
+}
+/* The selected tab announces its section via the generic tab pill
+ * (`.main-nav [role='tablist'] button[aria-selected='true']` above) — the
+ * same look the compact strip carries, so the panel hanging beneath it
+ * reads as its subsection. */
+/* The subsection itself: indented under its tab and hung off a guide line —
+ * the rail the eye follows from the tab's pill down through its tools. The
+ * accent-tinted guide ties the two together in both themes. The tools
+ * scroll INSIDE the subsection (the tab, the page links and the footer stay
+ * pinned), and min-width lets long content wrap instead of overflowing the
+ * rail. */
+.app-nav .main-nav [role='tabpanel'] {
+  flex: 0 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin: 0 4px 6px 24px;
+  padding: 2px 2px 10px 14px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* The rail panel is narrower than the old sidebar column; the quick tools
+ * wrap onto their own rows instead of squeezing three buttons into one. */
+.app-nav [role='tabpanel'] .explore-tools {
+  flex-wrap: wrap;
+}
+/* Standalone pages keep their quick controls (the language shortcut and the
+ * account) at the rail's foot. The footer pins to the bottom (see below). */
+.app-nav__quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+/* The footer owns the rail's last row: pinned to the foot on every variant. */
+.app-nav .site-footer {
+  margin-top: auto;
+}
+/* The map workspace's rail hosts the tool panels, so it carries the sidebar's
+ * width; standalone pages keep the slimmer rail. */
+.app--map .app-nav {
+  width: 320px;
+}
+/* Above the breakpoint the rail carries every tool; the workspace's grid
+ * collapses to the map alone (the compact sidebar still renders below it). */
+@media (min-width: 901px) {
+  .app--map .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Collapsed: a 68px icon rail — the brand symbol and nav icons remain,
+ * labels move into titles, the tool panels step aside, and the footer sheds
+ * its prose. */
+.app[data-collapsed] .app-nav {
+  width: 68px;
+  gap: 12px;
+  padding: 16px 10px 12px;
+}
+.app[data-collapsed] .app-nav__head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.app[data-collapsed] .app-nav__brand {
+  display: grid;
+  place-items: center;
+}
+.app[data-collapsed] .app-nav__lockup,
+.app[data-collapsed] .main-nav__text {
+  display: none;
+}
+.app[data-collapsed] .app-nav .main-nav [role='tabpanel'] {
+  display: none !important;
+}
+.app[data-collapsed] .app-nav__collapse {
+  align-self: center;
+}
+.app[data-collapsed] .app-nav .main-nav [data-nav-item],
+.app[data-collapsed] .app-nav .main-nav__link {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+.app[data-collapsed] .app-nav__quick {
+  flex-direction: column;
+  align-items: stretch;
+}
+.app[data-collapsed] .site-credit {
+  display: none;
+}
+/* Compact screens: the wrappers vanish from the layout (the rail is not
+ * rendered at all — see Nav — and the map's top bar + overlay nav or
+ * the pages' header strip flow exactly as before the shell). */
+@media (max-width: 900px) {
+  .app,
+  .app-main {
+    display: contents;
+  }
+}
+
+/* Nav icons: one small stroke glyph per destination, themed by the current
+ * colour, so the rail stays legible collapsed and the strip stays scannable. */
+.main-nav__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.main-nav__icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.main-nav [role='tablist'] button,
+.main-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.main-nav__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .profile-page {
   max-width: 620px;
   margin: 0 auto;
@@ -1352,16 +1647,29 @@ select:focus-visible {
   .workspace.mobile-panel-open .sidebar {
     display: flex;
   }
-  .main-nav {
+  /* The drawer nav reads like the wide-screen rail: one vertical list of
+   * full-width, big-touch items, never a wrapping race of pills. */
+  .sidebar .main-nav {
+    flex-direction: column;
+    align-items: stretch;
     padding: 4px 10px 8px;
   }
-  .main-nav button,
+  .sidebar .main-nav [role='tablist'] {
+    flex-direction: column;
+  }
+  .sidebar .main-nav__pages {
+    flex-direction: column;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .main-nav [role='tablist'] button,
   .main-nav__link {
     min-height: 44px;
     font-size: 12px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .sidebar-content {
     display: flex;
@@ -1370,12 +1678,23 @@ select:focus-visible {
       max(18px, env(safe-area-inset-left));
     overscroll-behavior-y: contain;
   }
-  .sidebar-content > [role='tabpanel'] {
-    order: 1;
+  /* Inside the drawer's panels the selection details come first — a car or
+   * stop the visitor just picked is what they opened the drawer to read —
+   * and the quick tools follow below. (The rail shows tools first.) */
+  .sidebar [role='tabpanel'] {
+    display: flex;
+    flex-direction: column;
   }
-  .sidebar-content > .explore-tools {
+  .sidebar [role='tabpanel'] > .explore-tools,
+  .sidebar [role='tabpanel'] > .explore-layers {
     order: 2;
     margin: 24px 0 0;
+  }
+  .sidebar [role='tabpanel'] > * {
+    flex-shrink: 0;
+  }
+  .sidebar-content > [role='tabpanel'] {
+    order: 1;
   }
   .sidebar-content > footer {
     order: 3;
@@ -1440,7 +1759,7 @@ select:focus-visible {
   }
 }
 @media (max-width: 360px) {
-  .main-nav button,
+  .main-nav [role='tablist'] button,
   .main-nav__link {
     padding-inline: 4px;
     font-size: 11px;
@@ -2013,6 +2332,31 @@ select:focus-visible {
   }
 }
 
+/* ————— Appearance (nav-v3): the day/night choice lives in Settings —————
+ * The same segmented-control look the /sla page's grain toggle uses. */
+.theme-settings {
+  margin-block-end: 2rem;
+  padding-block-end: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.theme-choices {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.theme-choices button {
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.theme-choices button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
 .language-settings {
   margin-block-end: 2rem;
   padding-block-end: 1.5rem;
@@ -2270,7 +2614,9 @@ select:focus-visible {
   font-size: 13px;
   font-weight: 600;
 }
-.sla-banner {
+/* Shared data and search primitives used by the SLA feature and available to
+ * other list/report surfaces. The SLA-specific rules begin at .sla-controls. */
+.banner {
   border: 1px solid var(--border);
   border-left-width: 6px;
   border-radius: 10px;
@@ -2278,28 +2624,28 @@ select:focus-visible {
   padding: 14px 18px;
   margin-bottom: 16px;
 }
-.sla-banner--met {
+.banner--positive {
   border-left-color: #2f9e6e;
 }
-.sla-banner--degraded {
+.banner--warning {
   border-left-color: #e0a63c;
 }
-.sla-banner--missed {
+.banner--negative {
   border-left-color: #d64550;
 }
-.sla-banner--no-data {
+.banner--neutral {
   border-left-color: #b9bec7;
 }
-.sla-banner__headline {
+.banner__title {
   margin: 0 0 4px;
   font-size: 17px;
 }
-.sla-banner__metric {
+.banner__detail {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
 }
-.sla-banner__metric strong {
+.banner__detail strong {
   color: var(--text);
 }
 .sla-controls {
@@ -2309,9 +2655,12 @@ select:focus-visible {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
-.sla-filter {
+.search-ahead {
   flex: 1 1 240px;
   min-width: 200px;
+}
+.search-ahead__input {
+  width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -2337,7 +2686,7 @@ select:focus-visible {
   background: var(--accent);
   color: #fff;
 }
-.sla-legend {
+.legend {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 18px;
@@ -2346,17 +2695,34 @@ select:focus-visible {
   margin-bottom: 16px;
   align-items: center;
 }
-.sla-legend__item {
+.legend__item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.sla-legend .sla-tick {
+.legend__swatch {
   width: 12px;
   height: 12px;
   cursor: default;
 }
-.sla-legend .sla-tick--live {
+.legend__swatch--positive {
+  background: #2f9e6e;
+}
+.legend__swatch--warning {
+  background: #e0a63c;
+}
+.legend__swatch--negative {
+  background: #d64550;
+}
+.legend__swatch--neutral {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.legend__swatch--partial {
+  opacity: 0.85;
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, #fff5 4px 8px);
+}
+.legend__swatch--live {
   width: 3px;
 }
 .sla-routes {
@@ -2489,78 +2855,78 @@ select:focus-visible {
   font-size: 12.5px;
   color: var(--muted);
 }
-.sla-strip__empty {
+.tick-strip__empty {
   color: var(--muted);
   font-size: 12.5px;
   margin: 4px 0;
 }
-.sla-strip {
+.tick-strip {
   margin-top: 2px;
 }
-.sla-strip__row {
+.tick-strip__row {
   display: flex;
   gap: 3px;
   overflow-x: auto;
   padding-bottom: 2px;
 }
-.sla-strip__row--week {
+.tick-strip__row--wide {
   gap: 4px;
 }
-.sla-tick {
+.tick-strip__tick {
   flex: 0 0 auto;
   width: 12px;
   height: 26px;
   border-radius: 2px;
 }
-.sla-strip__row--week .sla-tick {
+.tick-strip__row--wide .tick-strip__tick {
   width: 34px;
 }
-.sla-tick--met {
+.tick-strip__tick--positive {
   background: #2f9e6e;
 }
-.sla-tick--degraded {
+.tick-strip__tick--warning {
   background: #e0a63c;
 }
-.sla-tick--missed {
+.tick-strip__tick--negative {
   background: #d64550;
 }
-.sla-tick--no-data {
+.tick-strip__tick--neutral {
   background: transparent;
   border: 1px solid var(--border);
 }
-.sla-tick--partial {
+.tick-strip__tick--partial {
   position: relative;
   opacity: 0.85;
 }
-.sla-tick--partial::after {
+.tick-strip__tick--partial::after {
   content: '';
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(135deg, transparent 0 4px, #fff5 4px 8px);
   border-radius: 2px;
 }
-.sla-tick--no-data.sla-tick--partial {
+.tick-strip__tick--neutral.tick-strip__tick--partial {
   border-style: dashed;
 }
 /* --- The live tier: thin slivers at the strip's right edge, one per
  * completed 5-minute bucket of the recorder's rolling window. Distinct at
  * a glance from the 12px daily bars and the 34px weekly boxes. --- */
-.sla-strip__live {
+.tick-strip__live {
   display: flex;
   gap: 2px;
   margin-left: 10px;
   padding-left: 10px;
   border-left: 1px dashed var(--border);
 }
-.sla-tick--live {
+.tick-strip__tick--live {
   width: 3px;
   border-radius: 1px;
 }
-.sla-tick--unmonitored {
+.tick-strip__tick--unmonitored {
   background: #8a8f98;
   opacity: 0.55;
 }
-.sla-strip__edges {
+.tick-strip__edges {
   display: flex;
   justify-content: space-between;
   color: var(--muted);
@@ -2588,14 +2954,14 @@ select:focus-visible {
   .sla-page {
     padding: 20px 14px 48px;
   }
-  .sla-tick {
+  .tick-strip__tick {
     width: 10px;
     height: 22px;
   }
-  .sla-tick--live {
+  .tick-strip__tick--live {
     width: 2px;
   }
-  .sla-strip__row--week .sla-tick {
+  .tick-strip__row--wide .tick-strip__tick {
     width: 28px;
   }
 }

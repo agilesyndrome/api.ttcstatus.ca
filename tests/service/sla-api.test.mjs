@@ -5,6 +5,21 @@ import { readFile } from 'node:fs/promises';
 import { compileModules } from '../helpers/compile.mjs';
 import { createDatabase } from '../helpers/database.mjs';
 
+/** The Toronto-local day key — the same derivation the Worker uses. A plain
+ * `toISOString().slice(0, 10)` is the UTC date, which disagrees with Toronto
+ * for the four hours after 20:00 ET each day (UTC rolls over first) and made
+ * this suite flip between passing and failing depending on when it ran. */
+const torontoTodayKey = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+};
+
 // Epic 8, E8S4: `GET /api/v1/sla/report` through the real router — the
 // precomputed-only contract, with E3S3's endpoint-test discipline: payload
 // contract, ETag/304, filter semantics, and the honest collecting report.
@@ -120,7 +135,7 @@ async function seedReport(db) {
   // 2026-10-10 a Saturday, 2026-10-11 a Sunday) — plus today under the
   // weekday class when today isn't already one of the above (the seed stays
   // deterministic no matter which day the suite runs on).
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = torontoTodayKey();
   const todayClass = seededTodayClass(todayKey);
   const dateRows = [
     ['2026-10-07', 'w'],
@@ -295,7 +310,7 @@ test('the report is members-only: no session is 401, no Clerk config is 503, tam
 });
 
 test('the report serves precomputed rows only, with the /service family conventions', async () => {
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = torontoTodayKey();
   const db = await freshSeededDb();
   await seedReport(db);
   const response = await get('/api/v1/sla/report', envFor(db));

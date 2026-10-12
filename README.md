@@ -496,7 +496,8 @@ the map on its latest position, enabling its layer when needed. Typing a search 
 shared loaded fleet without additional vehicle requests. The map reuses `web/map/` camera, model and GPS projection helpers.
 
 ```bash
-npm run dev:viewer       # React homepage + credential-free local API, port 4173
+npm run dev:viewer       # React homepage + local API, port 4173 (accounts load
+                         # when 1Password resolves .env.local; otherwise disabled)
 npm run storybook        # Components and interaction examples, port 6006
 npm run build:api        # Typecheck + React assets + standalone HTML viewer
 npm run build:storybook  # Standalone component catalogue in storybook-static/

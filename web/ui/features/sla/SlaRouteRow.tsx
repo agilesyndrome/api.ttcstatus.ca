@@ -1,8 +1,10 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import type { SlaRouteReport } from '../../../../shared/service/contracts';
+import type { SlaRouteReport, SlaStopReport } from '../../../../shared/service/contracts';
+import { TickStrip } from '../../components/data/TickStrip';
 import { formatPercent, publishedClasses, type PublishedClass } from './sla-view';
 import type { SlaLiveBucket } from './sla-live';
+import { slaTickStripProps } from './sla-tick-strip';
 
 const PUBLISHED_CLASS_LABELS: Record<PublishedClass, string> = {
   weekday: 'sla.publishedWeekday',
@@ -11,10 +13,9 @@ const PUBLISHED_CLASS_LABELS: Record<PublishedClass, string> = {
   holiday: 'sla.publishedHoliday',
 };
 import { useSlaStops } from './useSlaReport';
-import { SlaTickStrip } from './SlaTickStrip';
 import { SlaStopRow } from './SlaStopRow';
 
-interface Props {
+export interface SlaRouteRowProps {
   route: SlaRouteReport;
   grain: 'day' | 'week';
   /** User's expand/collapse choice (session-scoped, not persisted). */
@@ -26,6 +27,10 @@ interface Props {
   live?: SlaLiveBucket[] | null;
   /** Live slivers for the route's stops, keyed `${routeId}|${stopId}`. */
   liveByStop?: Map<string, SlaLiveBucket[]>;
+  /** Optional fixture/host-provided stop details. Production omits this and
+   * keeps the lazy, session-cached request behavior. */
+  stops?: SlaStopReport[] | null;
+  stopsFailed?: boolean;
 }
 
 /** One route row: number, name, the SLA the TTC's own schedule indicates, the
@@ -40,10 +45,16 @@ export function SlaRouteRow({
   needle,
   live,
   liveByStop,
-}: Props) {
+  stops: providedStops,
+  stopsFailed: providedStopsFailed,
+}: SlaRouteRowProps) {
   useLanguage();
   const wantsStops = expanded;
-  const { stops, failed: stopsFailed } = useSlaStops(wantsStops ? route.routeId : null);
+  const hasProvidedStops =
+    providedStops !== undefined || providedStopsFailed !== undefined;
+  const loaded = useSlaStops(wantsStops && !hasProvidedStops ? route.routeId : null);
+  const stops = hasProvidedStops ? providedStops : loaded.stops;
+  const stopsFailed = hasProvidedStops ? Boolean(providedStopsFailed) : loaded.failed;
   const percent = formatPercent(route.overall.compliance);
   const statusKey =
     route.overall.latestBand === null
@@ -114,10 +125,8 @@ export function SlaRouteRow({
           {percent === null ? '—' : t('sla.tickWithin', { value1: percent })}
         </span>
       </div>
-      <SlaTickStrip
-        ticks={grain === 'day' ? route.days : route.weeks}
-        grain={grain}
-        live={live}
+      <TickStrip
+        {...slaTickStripProps(grain === 'day' ? route.days : route.weeks, grain, live)}
       />
       {expanded && (
         <div className="sla-route__stops">

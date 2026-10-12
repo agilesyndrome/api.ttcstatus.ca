@@ -191,8 +191,16 @@ try {
   await page.getByRole('tab', { name: 'Explore', exact: true }).click();
   await page.getByRole('button', { name: 'Locate me & centre map', exact: true }).click();
   await page.locator('.location-marker').waitFor();
-  await page.getByRole('button', { name: 'Switch to night theme' }).click();
-  // Save map lives in the sidebar's explore tools now, not a map overlay.
+  // The day/night control lives in Settings; the map's N shortcut still
+  // flips it from anywhere — use it to capture the night theme.
+  await page.keyboard.press('n');
+  assert.equal(
+    await page.locator('html').getAttribute('data-theme'),
+    'dark',
+    'the N shortcut switches the map to the night theme',
+  );
+  // Save map lives under the Explore item (the rail's explore tools), not a
+  // separate overlay.
   await page.getByRole('button', { name: 'Save map', exact: true }).click();
   const dialog = page.getByRole('dialog', {
     name: 'Take this map with you.',
@@ -333,6 +341,54 @@ try {
     'true',
   );
 
+  // The open rail keeps the tabs and page links in one column beside the
+  // map: the base strip's wrap/center must stay overridden there, or the
+  // tall active tool panel wraps the other nav items into side columns
+  // clipped outside the rail — only Explore would remain visible.
+  const rail = await page.evaluate(() => {
+    const nav = document.querySelector('.app-nav');
+    const box = (node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    };
+    const items = [
+      ...nav.querySelectorAll('.main-nav [role="tab"], .main-nav__pages a'),
+    ].map((node) => ({
+      name: node.getAttribute('data-nav-item') ?? node.getAttribute('href'),
+      ...box(node),
+    }));
+    const selected = nav.querySelector('.main-nav [role="tab"][aria-selected="true"]');
+    const panel = nav.querySelector('.main-nav [role="tabpanel"]:not([hidden])');
+    return {
+      rail: box(nav),
+      items,
+      overflow: nav.scrollHeight - nav.clientHeight,
+      selected: box(selected),
+      panel: box(panel),
+    };
+  });
+  assert.equal(rail.overflow, 0, 'the open rail itself does not scroll');
+  const below = [];
+  for (const item of rail.items) {
+    assert.ok(
+      item.left >= rail.rail.left - 0.5 &&
+        item.right <= rail.rail.right + 0.5 &&
+        item.top >= rail.rail.top - 0.5 &&
+        item.bottom <= rail.rail.bottom + 0.5,
+      `nav item ${item.name} stays inside the open rail column (no wrap scramble)`,
+    );
+    assert.ok(
+      Math.abs(item.left - rail.items[0].left) <= 0.5,
+      `nav item ${item.name} shares the rail's one column edge`,
+    );
+    if (item.top > rail.selected.bottom) below.push(item.top);
+  }
+  assert.ok(
+    rail.panel.top > rail.selected.bottom &&
+      rail.panel.bottom <= Math.min(...below) + 0.5,
+    'the active tool panel slots directly under its own tab',
+  );
+
   const full = await context.newPage();
   accounts.journals.set('user_full', {
     entries: Array.from({ length: 500 }, (_, index) => ({
@@ -394,7 +450,7 @@ try {
   await privateTab.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Collection UI passed: explore stop saving/location, server journal/notes/badges/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts and three-tab keyboard navigation; no browser errors.',
+    'Collection UI passed: explore stop saving/location, server journal/notes/badges/removal, private-marker-free offline SVG and print/PDF, 320px/390px layouts, three-tab keyboard navigation and open-rail column geometry; no browser errors.',
   );
   await context.close();
 } finally {

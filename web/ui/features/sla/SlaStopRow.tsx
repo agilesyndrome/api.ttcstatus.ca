@@ -1,9 +1,10 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import type { SlaStopReport } from '../../../../shared/service/contracts';
+import { TickStrip } from '../../components/data/TickStrip';
 import { formatPercent } from './sla-view';
-import { SlaTickStrip } from './SlaTickStrip';
 import type { SlaLiveBucket } from './sla-live';
+import { slaTickStripProps } from './sla-tick-strip';
 
 interface Props {
   stop: SlaStopReport;
@@ -28,10 +29,8 @@ export function SlaStopRow({ stop, grain, live }: Props) {
           {percent === null ? '—' : t('sla.tickWithin', { value1: percent })}
         </span>
       </div>
-      <SlaTickStrip
-        ticks={grain === 'day' ? stop.days : stop.weeks}
-        grain={grain}
-        live={live}
+      <TickStrip
+        {...slaTickStripProps(grain === 'day' ? stop.days : stop.weeks, grain, live)}
       />
     </li>
   );

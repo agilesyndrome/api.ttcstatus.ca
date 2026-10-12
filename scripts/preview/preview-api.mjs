@@ -404,11 +404,20 @@ export async function createPreviewMiddleware() {
       response.writeHead(status, { 'content-type': 'application/json', ...headers });
       response.end(JSON.stringify(value));
     };
-    // Use Wrangler for Clerk sessions and D1 account data; this preview has no auth secrets.
-    if (request.method === 'GET' && path === '/api/v1/auth/config')
-      return json({ enabled: false, publishableKey: null }, 200, {
-        'cache-control': 'no-store',
-      });
+    // Use Wrangler for Clerk sessions and D1 account data; this preview has no
+    // account backend. When dev secrets resolve (scripts/dev/with-secrets.mjs
+    // runs `vite` through 1Password), the real publishable key passes through
+    // so the actual Clerk SDK loads; without it accounts stay disabled.
+    if (request.method === 'GET' && path === '/api/v1/auth/config') {
+      const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+      return json(
+        typeof publishableKey === 'string' && /^pk_(?:test|live)_\S+/.test(publishableKey)
+          ? { enabled: true, publishableKey }
+          : { enabled: false, publishableKey: null },
+        200,
+        { 'cache-control': 'no-store' },
+      );
+    }
     if (path.startsWith('/api/v1/me/'))
       return json({ error: 'auth-unavailable' }, 503, { 'cache-control': 'no-store' });
     if (path.startsWith('/api/v1/profiles/'))
