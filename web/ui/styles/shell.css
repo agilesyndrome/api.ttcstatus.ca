@@ -107,20 +107,26 @@
 .app-nav .main-nav [data-nav-item='explore'] {
   order: 10;
 }
-.app-nav .main-nav [data-nav-item='journal'] {
-  order: 20;
-}
-.app-nav .main-nav [data-nav-item='badges'] {
-  order: 30;
-}
-.app-nav .main-nav [role='tabpanel']#panel-explore {
+.app-nav .main-nav [id$='-route-pulse'] {
   order: 15;
 }
-.app-nav .main-nav [role='tabpanel']#panel-journal {
+.app-nav .main-nav [data-nav-item='journal'] {
+  order: 30;
+}
+.app-nav .main-nav [data-nav-item='badges'] {
+  order: 40;
+}
+.app-nav .main-nav [role='tabpanel']#panel-explore {
+  order: 20;
+}
+.app-nav .main-nav [role='tabpanel']#panel-route-pulse {
   order: 25;
 }
-.app-nav .main-nav [role='tabpanel']#panel-badges {
+.app-nav .main-nav [role='tabpanel']#panel-journal {
   order: 35;
+}
+.app-nav .main-nav [role='tabpanel']#panel-badges {
+  order: 45;
 }
 .app-nav .main-nav__pages {
   order: 40;

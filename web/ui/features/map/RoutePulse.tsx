@@ -34,7 +34,6 @@ export function RoutePulse({
   const peak = Math.max(1, ...entries.map((entry) => entry.reported));
   return (
     <section className="route-pulse" aria-label={t('routePulse.routeActivity')}>
-      <p className="eyebrow">{t('routePulse.theCityInMotion')}</p>
       <div className="section-heading">
         <h2>{t('routePulse.routePulse')}</h2>
         <span className="pulse-total">

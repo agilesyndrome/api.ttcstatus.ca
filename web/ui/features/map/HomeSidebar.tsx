@@ -6,6 +6,7 @@ import { NavPanel } from '../../components/nav/NavPanel';
 import { BadgesPanel } from './panels/BadgesPanel';
 import { ExplorePanel } from './panels/ExplorePanel';
 import { JournalPanel } from './panels/JournalPanel';
+import { RoutePulsePanel } from './panels/RoutePulsePanel';
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 import { usePhoneLayout } from '../../hooks/useMediaQuery';
 
@@ -40,6 +41,7 @@ export function HomeSidebar({
       />
       <div ref={sidebar} id="sidebar-content" className="sidebar-content">
         <ExplorePanel workspace={workspace} showDetails={!phone} />
+        <RoutePulsePanel workspace={workspace} />
         <JournalPanel workspace={workspace} />
         <BadgesPanel workspace={workspace} />
         <PageFooter />

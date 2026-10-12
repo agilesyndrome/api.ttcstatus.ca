@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ClerkProvider, useAuth, useClerk, useUser } from '@clerk/react';
 import { apiRequest, createApiClient } from '../../services/http/client';
-import { english } from '../../../../shared/i18n/messages';
 import { getLocale, setLanguagePreference, isLanguagePreference } from '../../i18n';
 import { accountLocales } from '../../i18n/clerk';
 import { useLanguage } from '../../i18n/react';
-import { AccountContext, defaultAccount } from './context';
+import { AccountContext } from './context';
+import { TrackWork } from '../../components/page/TrackWork';
 
 function ClerkAccount({ children }: { children: ReactNode }) {
   useLanguage();
@@ -45,15 +45,16 @@ function ClerkAccount({ children }: { children: ReactNode }) {
   );
 }
 
-/** The public map renders while auth configuration and Clerk load. */
+/** The app remains in maintenance mode until auth configuration is usable. */
 export function BrowserAccountProvider({ children }: { children: ReactNode }) {
   useLanguage();
-  const [config, setConfig] = useState<{ enabled: boolean; publishableKey?: string }>();
-  const [error, setError] = useState('');
+  const [config, setConfig] = useState<{
+    enabled: boolean;
+    publishableKey?: string | null;
+  }>();
   const [attempt, setAttempt] = useState(0);
   const retry = () => {
     setConfig(undefined);
-    setError('');
     setAttempt((value) => value + 1);
   };
   useEffect(() => {
@@ -74,29 +75,16 @@ export function BrowserAccountProvider({ children }: { children: ReactNode }) {
           throw new Error();
         if (!controller.signal.aborted) {
           setConfig(value);
-          setError(
-            value.enabled
-              ? ''
-              : english('account.accountsAreTemporarilyUnavailableTryAgainInAMoment'),
-          );
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setConfig({ enabled: false });
-          setError(english('account.unableToLoadAccountsPleaseTryAgain'));
         }
       });
     return () => controller.abort();
   }, [attempt]);
-  if (!config?.enabled || !config.publishableKey)
-    return (
-      <AccountContext.Provider
-        value={{ ...defaultAccount, loaded: Boolean(config), error, retry }}
-      >
-        {children}
-      </AccountContext.Provider>
-    );
+  if (!config?.enabled || !config.publishableKey) return <TrackWork onRetry={retry} />;
   return (
     <ClerkProvider
       localization={accountLocales[getLocale()]}

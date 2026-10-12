@@ -69,5 +69,23 @@ export default defineConfig({
     port: 4173,
     strictPort: true,
   },
-  build: { outDir: resolve('dist'), emptyOutDir: true },
+  build: {
+    outDir: resolve('dist'),
+    emptyOutDir: true,
+    // Clerk is needed by the account controls, but it is a large vendor
+    // dependency and should not inflate the main navigation chunk. Keep it
+    // independently cacheable for visitors who already have the app shell.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'clerk',
+              test: /node_modules[\\/]@clerk[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
 });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 // Run against npm run dev:viewer. TTC responses are intercepted with local data.
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
@@ -27,7 +28,9 @@ const snapshot = {
 };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+  await installAccountFixture(context);
+  const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   // The explorer no longer ships a zoom/fit overlay: the camera answers the
@@ -159,6 +162,7 @@ try {
     'UI passed: homepage, live feed/304, zoom, stop/streetcar search, pause/resume, mobile layout; no browser errors.',
   );
   await page.close();
+  await context.close();
 } finally {
   await browser.close();
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium, devices } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 // Run against npm run dev:viewer, with deterministic TTC responses.
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
@@ -29,6 +30,7 @@ const snapshot = {
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const context = await browser.newContext({ ...devices['iPhone 13'] });
+  await installAccountFixture(context);
   const errors = [];
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),

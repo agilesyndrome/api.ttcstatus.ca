@@ -7,6 +7,7 @@ import { HomeSidebar } from './HomeSidebar';
 import { BadgesPanel } from './panels/BadgesPanel';
 import { ExplorePanel } from './panels/ExplorePanel';
 import { JournalPanel } from './panels/JournalPanel';
+import { RoutePulsePanel } from './panels/RoutePulsePanel';
 import { lazy, Suspense } from 'react';
 
 import { Nav, useCompactNav } from '../../components/nav/Nav';
@@ -88,19 +89,23 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
       {/* The globe is a shortcut to Settings → language (/settings#language);
        * the day/night control lives in Settings itself. */}
       <a
-        className="account-link language-link"
+        className="utility-button language-link"
         href="/settings#language"
         aria-label={t('language.settings')}
         title={t('language.settings')}
       >
-        🌐
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="7" />
+          <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
+        </svg>
       </a>
       <button
-        className="shortcut-toggle"
+        type="button"
+        className="utility-button shortcut-toggle"
         aria-label={t('keyboard.title')}
         onClick={() => setShortcutHelp(true)}
       >
-        ?
+        <span aria-hidden="true">?</span>
       </button>
       <AuthControls />
     </div>
@@ -138,6 +143,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         onPanel={setPanel}
         panels={{
           explore: <ExplorePanel workspace={workspace} />,
+          'route-pulse': <RoutePulsePanel workspace={workspace} />,
           journal: <JournalPanel workspace={workspace} />,
           badges: <BadgesPanel workspace={workspace} />,
         }}

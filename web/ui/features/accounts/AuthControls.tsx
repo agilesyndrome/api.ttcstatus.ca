@@ -23,8 +23,16 @@ export function AuthControls() {
     <nav className="auth-controls" aria-label={t('account.yourAccount')}>
       {account.userId ? (
         <>
-          <a className="theme-toggle profile-toggle" href="/settings">
-            {t('account.profile')}
+          <a
+            className="utility-button profile-toggle"
+            href="/settings"
+            aria-label={t('account.profile')}
+            title={t('account.profile')}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="7" r="3" />
+              <path d="M4.5 17c.8-3 2.6-4.5 5.5-4.5s4.7 1.5 5.5 4.5" />
+            </svg>
           </a>
           {account.signOut ? (
             <button className="action-button" onClick={account.signOut}>

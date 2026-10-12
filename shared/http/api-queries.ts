@@ -1,9 +1,9 @@
 // API query inputs are public artifact selectors or explicitly chosen transit
 // preferences. Adding a parameter requires a deliberate contract change here.
 export const allowedApiQueries: Record<string, readonly string[]> = {
-  '/api/v1/map/streetcar': ['tag', 'artifact', 'format'],
-  '/api/v1/map/snake': ['tag', 'artifact', 'format'],
-  '/api/v1/map/ttcstatus': ['tag', 'artifact', 'format'],
+  '/api/v1/map/streetcar': ['tag', 'artifact', 'format', 'client'],
+  '/api/v1/map/snake': ['tag', 'artifact', 'format', 'client'],
+  '/api/v1/map/ttcstatus': ['tag', 'artifact', 'format', 'client'],
   '/api/v1/stops': ['map', 'tag', 'artifact'],
   '/api/v1/manifest': ['map', 'tag'],
   '/api/v1/service/stops': ['routes'],

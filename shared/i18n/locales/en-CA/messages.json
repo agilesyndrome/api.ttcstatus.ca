@@ -1490,5 +1490,6 @@
   "accountDraft.retained": "Your unsaved changes are kept on this device. Retry merges independent edits. Keep my changes uses yours when the same entry changed elsewhere.",
   "accountDraft.retry": "Retry merge",
   "accountDraft.keepMine": "Keep my changes",
-  "accountDraft.discard": "Discard unsaved changes"
+  "accountDraft.discard": "Discard unsaved changes",
+  "trackWork.pleaseWaitWhileWePerformTrackMaintenance": "Please wait while we perform track maintenance"
 }

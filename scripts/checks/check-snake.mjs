@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
@@ -102,14 +103,12 @@ const errors = [],
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+  await installAccountFixture(context);
   let feedCalls = 0,
     mapCalls = 0,
     snakeBoardCalls = 0;
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
-  );
-  await context.route('**/api/v1/auth/config', (route) =>
-    route.fulfill({ json: { enabled: false, publishableKey: null } }),
   );
   await context.route('**/api/v1/map/ttcstatus', (route) => {
     mapCalls++;
@@ -272,12 +271,10 @@ try {
     isMobile: true,
     hasTouch: true,
   });
+  await installAccountFixture(mobileContext);
   await mobileContext.addInitScript(() => {
     Math.random = () => 0.5;
   });
-  await mobileContext.route('**/api/v1/auth/config', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
   await mobileContext.route('**/api/v1/map/ttcstatus', (route) =>
     route.fulfill({ json: forkMap }),
   );

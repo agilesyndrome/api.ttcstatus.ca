@@ -74,12 +74,15 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
           {variant === 'page' && (
             <div className="app-nav__quick">
               <a
-                className="account-link language-link"
+                className="utility-button language-link"
                 href="/settings#language"
                 aria-label={t('language.settings')}
                 title={t('language.settings')}
               >
-                🌐
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7" />
+                  <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
+                </svg>
               </a>
               <AuthControls />
             </div>
@@ -102,12 +105,15 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
             <div className="site-header__nav">
               <NavPanel current={current} />
               <a
-                className="account-link language-link"
+                className="utility-button language-link"
                 href="/settings#language"
                 aria-label={t('language.settings')}
                 title={t('language.settings')}
               >
-                🌐
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7" />
+                  <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
+                </svg>
               </a>
             </div>
             <div className="header-actions">

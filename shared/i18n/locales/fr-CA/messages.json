@@ -803,5 +803,6 @@
   "accountDraft.retained": "Vos modifications non enregistrées sont conservées sur cet appareil. Réessayer fusionne les modifications indépendantes. Garder mes modifications privilégie les vôtres si la même entrée a changé ailleurs.",
   "accountDraft.retry": "Réessayer la fusion",
   "accountDraft.keepMine": "Garder mes modifications",
-  "accountDraft.discard": "Abandonner les modifications"
+  "accountDraft.discard": "Abandonner les modifications",
+  "trackWork.pleaseWaitWhileWePerformTrackMaintenance": "Veuillez patienter pendant que nous effectuons des travaux d’entretien sur les voies"
 }

@@ -104,3 +104,116 @@
     display: none;
   }
 }
+
+.track-work {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(28px, 8vw, 112px);
+  padding: max(32px, 8vw) max(24px, 8vw);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--soft) 78%, var(--canvas)),
+      transparent 62%
+    ),
+    var(--canvas);
+  color: var(--text);
+}
+.track-work__scene {
+  position: relative;
+  min-height: 230px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 82%, var(--soft));
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--text) 12%, transparent);
+}
+.track-work__scene::before,
+.track-work__scene::after {
+  content: '';
+  position: absolute;
+  left: -15%;
+  width: 130%;
+  height: 24px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 24px,
+    color-mix(in srgb, var(--accent) 22%, var(--border)) 24px 30px,
+    transparent 30px 56px
+  );
+  transform: rotate(-13deg);
+}
+.track-work__scene::before {
+  top: 36%;
+}
+.track-work__scene::after {
+  top: 57%;
+}
+.track-work__rail {
+  position: absolute;
+  left: -15%;
+  width: 130%;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.75;
+  transform: rotate(-13deg);
+}
+.track-work__rail--near {
+  top: 49%;
+}
+.track-work__rail--far {
+  top: 66%;
+}
+.track-work__work-light {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #cf3f48;
+  color: #fff;
+  font-size: 28px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, #cf3f48 16%, transparent);
+  transform: translate(-50%, -50%);
+}
+.track-work__content {
+  max-width: 600px;
+}
+.track-work h1 {
+  max-width: 11ch;
+  margin: 10px 0 24px;
+  font-size: clamp(32px, 5vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -1.8px;
+}
+.track-work .action-button {
+  min-width: 112px;
+}
+.track-work .site-footer {
+  max-width: 420px;
+  margin-top: 64px;
+}
+@media (max-width: 680px) {
+  .track-work {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 28px;
+    padding-block: 40px;
+  }
+  .track-work__scene {
+    min-height: 150px;
+  }
+  .track-work h1 {
+    max-width: 14ch;
+    font-size: clamp(36px, 12vw, 56px);
+  }
+  .track-work .site-footer {
+    margin-top: 48px;
+  }
+}

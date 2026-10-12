@@ -54,7 +54,10 @@ export function useStaticMap() {
         const response = await apiRequest(request, {
           signal: controller.signal,
           headers: cached?.etag ? { 'if-none-match': cached.etag } : {},
-          cache: 'no-cache',
+          // The app owns its snapshot cache and its ETag. Do not let the
+          // browser's separate HTTP cache create a 304 when IndexedDB has no
+          // matching snapshot for the app to use.
+          cache: 'no-store',
         });
         if (response.status === 304 && cached) {
           if (!stopped())
@@ -64,7 +67,19 @@ export function useStaticMap() {
               cached: false,
               savedAt: cached.savedAt,
               refreshing: false,
+              error: undefined,
             }));
+          return;
+        }
+        if (response.status === 304) {
+          // A browser cache can still surface a 304 in some environments. If
+          // the current view already has usable map data, retain it rather
+          // than incorrectly reporting a refresh failure.
+          setState((current) =>
+            current.key === key && current.data
+              ? { ...current, cached: false, refreshing: false, error: undefined }
+              : current,
+          );
           return;
         }
         if (!response.ok) throw new Error(await mapFailure(response));

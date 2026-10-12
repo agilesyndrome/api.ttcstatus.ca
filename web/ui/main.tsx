@@ -13,10 +13,10 @@ await hydrateLanguage();
 startNavigation();
 if (!platform().native) registerOfflineShell();
 createRoot(document.getElementById('root')!).render(
-  <>
-    <AccountProvider>
+  <AccountProvider>
+    <>
       <App />
-    </AccountProvider>
-    <AffiliationNotice />
-  </>,
+      <AffiliationNotice />
+    </>
+  </AccountProvider>,
 );

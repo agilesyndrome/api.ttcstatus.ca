@@ -4,7 +4,6 @@ import { useLanguage } from '../../../i18n/react';
 import { MapFilters } from '../MapFilters';
 import { LiveFeedStatus } from '../LiveFeedStatus';
 import { NearbyStops } from '../../stops/NearbyStops';
-import { RoutePulse } from '../RoutePulse';
 import { ShareMap } from '../../export/ShareMap';
 import { trackEvent } from '../../../analytics';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
@@ -32,12 +31,9 @@ export function ExplorePanel({
     setLocation,
     pendingCar,
     feed,
-    cars,
     selectFeature,
-    selectRoute,
     surprise,
     previewMap,
-    shownRoutes,
     panel,
   } = workspace;
   if (!data) return null;
@@ -128,15 +124,6 @@ export function ExplorePanel({
         }}
       />
       <LiveFeedStatus {...feed} />
-      <RoutePulse
-        routes={shownRoutes}
-        cars={cars}
-        loaded={Boolean(feed.snapshot)}
-        active={feed.active}
-        failed={feed.failed}
-        selectedRoute={selectedRoute}
-        onSelect={(id) => selectRoute(selectedRoute === id ? undefined : id)}
-      />
     </div>
   );
 }

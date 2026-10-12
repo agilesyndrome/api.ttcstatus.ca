@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 const directory = resolve('dist');
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
@@ -12,7 +13,7 @@ const server = createServer(async (request, response) => {
   try {
     if (path === '/api/v1/auth/config') {
       response.setHeader('content-type', 'application/json');
-      response.end('{"enabled":false}');
+      response.end('{"enabled":true,"publishableKey":"pk_test_fixture"}');
       return;
     }
     if (path.startsWith('/api/')) {
@@ -56,6 +57,7 @@ try {
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
   );
+  await installAccountFixture(context);
   await context.route('**/api/v1/map/ttcstatus', (route) =>
     route.fulfill({ json: map, headers: { etag: '"offline-map"' } }),
   );

@@ -4,6 +4,7 @@ import { compileModules } from '../helpers/compile.mjs';
 
 const {
   apiUrl,
+  completedResponse,
   createApiClient,
   internalDestination,
   platform,
@@ -13,6 +14,7 @@ const {
   snapshotKey,
 } = await compileModules(`
   export { apiUrl } from './web/ui/services/http/config';
+  export { completedResponse } from './web/ui/services/http/response';
   export { createApiClient } from './web/ui/services/http/client';
   export { internalDestination } from './web/ui/services/navigation/destinations';
   export { platform } from './web/ui/services/platform';
@@ -166,6 +168,15 @@ test('the request deadline covers native token acquisition and a response body s
     })('/api/v1/map/ttcstatus', { signal: cancelled.signal }),
     /already closed/,
   );
+});
+
+test('304 responses pass through without trying to rebuild a body', async () => {
+  const response = {
+    status: 304,
+    body: new ReadableStream(),
+    arrayBuffer: () => assert.fail('304 bodies must not be consumed'),
+  };
+  assert.equal(await completedResponse(response, new AbortController().signal), response);
 });
 
 test('cached snapshots validate data and isolate users, origins, and pinned map versions', async () => {

@@ -1,15 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 const errors = [];
 async function prepare(context) {
-  await context.route('**/api/v1/auth/config', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
+  await installAccountFixture(context);
   await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({ status: 503, json: {} }),

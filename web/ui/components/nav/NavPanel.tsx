@@ -42,6 +42,15 @@ export const navLogos: Record<Destination['key'], ReactNode> = {
       <path d="M10.4 5.6 8.9 8.9 5.6 10.4 7.1 7.1z" fill="currentColor" stroke="none" />
     </svg>
   ),
+  'route-pulse': (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path
+        d="M2 9h2.5l1.5-4 3 7 1.5-4H14"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
   journal: (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M3.5 2.75h8.9v10.5H5.2a1.7 1.7 0 0 1-1.7-1.7z" strokeLinejoin="round" />
@@ -90,6 +99,12 @@ const panelItems: readonly Destination[] = [
     label: () => t('navigation.explore'),
     href: '/',
     logo: navLogos.explore,
+  },
+  {
+    key: 'route-pulse',
+    label: () => t('routePulse.routePulse'),
+    href: '/#view=route-pulse',
+    logo: navLogos['route-pulse'],
   },
   {
     key: 'journal',
@@ -179,7 +194,7 @@ function PanelLink({
     return (
       <button
         id={id}
-        data-nav-item={id?.replace(/^.*-/, '')}
+        data-nav-item={id?.replace(/^.*?-/, '')}
         role="tab"
         aria-selected={selected}
         aria-controls={controls}
@@ -229,7 +244,7 @@ export function NavPanel(props: NavPanelProps) {
     );
 
   const signedIn = Boolean(account.userId);
-  const visiblePanels = signedIn ? panelItems : panelItems.slice(0, 1);
+  const visiblePanels = signedIn ? panelItems : panelItems.slice(0, 2);
 
   if (panel === undefined || onPanel === undefined) {
     return (
