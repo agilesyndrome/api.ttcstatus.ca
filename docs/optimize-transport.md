@@ -490,3 +490,222 @@ Rules we will hold ourselves to:
 [Transform Rules]: https://developers.cloudflare.com/rules/transform/
 [rate limiting rules]: https://developers.cloudflare.com/waf/rate-limiting/
 [Clerk pricing]: https://clerk.com/pricing
+
+---
+
+# Epics & stories
+
+Companion to the sections above: they own the _what_ and the _why_; this
+appendix owns the _work items_ — every story a developer can pick up cold.
+It maps the "Implementation order" list into six epics. Status: planning, v1.
+
+## Conventions
+
+- **IDs.** `E{epic}S{story}` — Epic 1, Story 2 is `E1S2`.
+- **Order.** Stories are listed in **chronological order of attack**; within
+  an epic, the order is dependency order. An epic starts only after the
+  previous epic's boundary story passes — that rule is what keeps cross-epic
+  dependencies from blocking anyone.
+- **Sizes.** **XS** X-Small (hours), **S** Small (≤ a day), **M** Medium (a few
+  days). **Nothing is Large.** Any story that grows past M is split on the
+  spot — see E1S3's split note for the pattern.
+- **Testing split: 95/5.** Every feature story ships its own new modules'
+  focused unit tests as ~5% of its effort. No story turns into test-suite
+  construction. **Live validations** (typecheck, `check:boundaries`,
+  `test:app`, `build:api`, `test:browser`, device checks) run **only in each
+  epic's boundary story** — never mid-epic. Cheap targeted unit tests are
+  fine any time; the expensive stuff waits for the gate.
+- **Code style.** Human-maintainable first: logical files and directories, one
+  job per module, and comments written for a **junior developer reading cold**.
+  Fragment comments are fine. A small amount of profanity is permitted —
+  reserved for the worst offenders, the things that actually cause grief:
+
+  ```ts
+  // Clients derive tick from their own clock; the recorder derives it from the
+  // alarm. If those two ever disagree, every client 404s at once and the whole
+  // streetcar system has a goddamn bad day. Do not shift this grid.
+  const tickId = Math.floor(now / tickMs);
+  ```
+
+- **Comment contract.** The `TRANSPORT CONTRACT` block from change 6 lands at
+  the transport seam in E5S1 — before any native work — so a Swift/Kotlin
+  rewrite implements a spec instead of rediscovering one.
+
+## Story map — the attack order
+
+| #  | ID   | Story                                                          | Epic | Size | Depends on            |
+| -- | ---- | -------------------------------------------------------------- | ---- | ---- | --------------------- |
+| 1  | E1S1 | Public live bucket + custom domain + cache/CORS rules          | 1    | S    | —                     |
+| 2  | E1S2 | Tick-document contract + pure writer                           | 1    | S    | —                     |
+| 3  | E1S3 | Recorder publishes per-tick docs to R2                         | 1    | M    | E1S1, E1S2           |
+| 4  | E1S4 | `auth/config` gains the `live` block + edge cache              | 1    | XS   | —                     |
+| 5  | E1S5 | **Epic 1 boundary: validate the live path end-to-end**         | 1    | XS   | E1S1–E1S4             |
+| 6  | E2S1 | Config client: fetch once per launch                           | 2    | S    | E1S5                  |
+| 7  | E2S2 | Tick derivation + path-template URL builder                   | 2    | S    | E2S1                  |
+| 8  | E2S3 | Three-case client fetch contract (no 5xx parsing)             | 2    | M    | E2S2                  |
+| 9  | E2S4 | UI states: outage body field, last-good age                    | 2    | S    | E2S3                  |
+| 10 | E2S5 | Standalone viewer repoint                                      | 2    | S    | E2S3                  |
+| 11 | E2S6 | **Epic 2 boundary: staged rollout + dashboards**               | 2    | XS   | E2S1–E2S5             |
+| 12 | E3S1 | Delete the public vehicle route + `vehicleResponse`            | 3    | S    | E2S6 (traffic ≈ 0)    |
+| 13 | E3S2 | Recorder is write-only (binding-only routes)                   | 3    | XS   | E3S1                  |
+| 14 | E3S3 | WAF per-IP rule ~100/min on `/api/*`                           | 3    | XS   | E3S1                  |
+| 15 | E3S4 | Observability dashboards, alerts, CPU limits                  | 3    | S    | E3S1                  |
+| 16 | E3S5 | **Epic 3 boundary: removal + hardening validated**            | 3    | XS   | E3S1–E3S4             |
+| 17 | E4S1 | Local JWKS/JWT session verification module                     | 4    | M    | —                     |
+| 18 | E4S2 | 401/403 grant gate on the service endpoints                    | 4    | M    | E4S1                  |
+| 19 | E4S3 | Client sends the session; honest unauthorized states           | 4    | S    | E4S2                  |
+| 20 | E4S4 | Per-session caps on granted endpoints                           | 4    | S    | E4S1, E4S2            |
+| 21 | E4S5 | SLA MRU pricing decision (+ optional separate endpoint)        | 4    | XS   | —                     |
+| 22 | E4S6 | **Epic 4 boundary: auth + limits validated**                    | 4    | XS   | E4S1–E4S5             |
+| 23 | E5S1 | `TRANSPORT CONTRACT` comment at the seam                        | 5    | XS   | E2S6                  |
+| 24 | E5S2 | Capacitor platform adapters (lifecycle → `active`)            | 5    | M    | E5S1                  |
+| 25 | E5S3 | Native build config: origins for the config fetch only         | 5    | XS   | —                     |
+| 26 | E5S4 | Native session driver (`credentials: 'omit'`)                   | 5    | S    | E5S3                  |
+| 27 | E5S5 | **Epic 5 boundary: shell validated on a device**                | 5    | XS   | E5S1–E5S4             |
+| 28 | E6S1 | Location-query rejection on every public path                  | 6    | S    | —                     |
+| 29 | E6S2 | `shared/transit` device-only invariant comments                 | 6    | XS   | —                     |
+| 30 | E6S3 | **Epic 6 boundary: final full validation + doc reconcile**     | 6    | XS   | E6S1, E6S2            |
+
+Explicit non-stories: WS/SSE and APNs/FCM stay deferred (change 8); the
+"Non-changes" list is done on purpose, not backlog.
+
+## Epic 1 — Live publication infrastructure
+
+Outcome: the live path exists and serves correct, cached, CORS-able tick
+documents — including outage docs — while every existing client still runs
+untouched on the Worker path.
+
+- **E1S1 — Public live bucket + custom domain + rules (S).** Create the
+  dedicated public R2 bucket, attach the custom domain, and configure: edge
+  cache eligibility for the host, the CORS `Access-Control-Allow-Origin: *`
+  transform, and the ~1-day `live/t/` lifecycle rule. Accept: a manually
+  `PUT` test object is served with `cf-cache-status: HIT`, native `304` on
+  `If-None-Match`, and permissive CORS. No application code changes.
+- **E1S2 — Tick-document contract + pure writer (S).** New module (e.g.
+  `workers/api/src/realtime/tick-doc.ts`): a pure
+  `snapshot → tick document` function implementing the change-2 body shape —
+  `schemaVersion`, `vehicles`, `fetchedAt`, `tickId`, optional `outage` —
+  where total upstream failure yields `{ vehicles: [], outage: { since,
+  tickId } }`. Pure means unit-testable with fixtures; no I/O in this file.
+  Accept: unit tests cover fleet, outage, and empty snapshots.
+- **E1S3 — Recorder publishes per-tick docs to R2 (M).** In the recorder's
+  post-acquisition step (not inside `runTick`'s critical path — see the
+  split note), `PUT live/t/<tickId>/vehicles.json` from E1S2's output, with
+  object `cache-control: public, max-age=600`. A new R2 binding reaches the
+  DO env. **Publish failures are recorded, never fatal** — acquisition,
+  folds, and retention must survive a broken publish. Split pattern: if this
+  grows past M, split binding/env plumbing from the publish call.
+- **E1S4 — `auth/config` gains the `live` block (XS).** Extend
+  `authConfig(env)` additively (`live: { base, pathTemplate, updateSeconds }`)
+  and change the route's cache policy `no-store` → `public, max-age=300`.
+  Existing fields unchanged. Accept: unit test asserts the block and that
+  unknown-field tolerance holds.
+- **E1S5 — Boundary (XS).** Deploy to staging → production. Run the full
+  validation suite once. Verify: `HIT`s, `304`s, CORS, outage-doc publish
+  (kill upstream feed deliberately, watch the honest outage doc appear),
+  config caching, lifecycle expiry.
+
+## Epic 2 — Client repoint to the live path
+
+Outcome: web clients live on the CDN path. The Worker vehicle route still
+exists and still works — removal is Epic 3, gated on observed traffic.
+
+- **E2S1 — Config client (S).** New service in `web/ui/services/` (and shared
+  types): fetch `/api/v1/auth/config` once per launch, cache in memory, typed
+  parse of `clerk` + `live`. No transport may proceed without it; failure =
+  retry next activation, never a fallback URL.
+- **E2S2 — Tick derivation + URL builder (S).** In `shared/live`:
+  `tick = floor(now / (updateSeconds × 1000))` and path-template substitution
+  (`{tick}` → id). Unit tests cover the tick grid edge (the E5S1 comment's
+  "goddamn bad day" scenario) and clock skew.
+- **E2S3 — Three-case fetch contract (M).** Rework
+  `requestVehicleUpdate`/`VehiclePoller`: **200** → use doc (outage from the
+  body, never a status); **404** → retry `tick−1` once → keep last-good with
+  age; **network error** → last-good + existing backoff. **Delete** the
+  `Retry-After`, `503`, and `x-live-*` parsing — there is no fallback host.
+  Keep `If-None-Match`, 15 s timeout, non-overlap, and activation/visibility
+  semantics. Accept: unit tests for all three cases and the 404→tick−1 path.
+- **E2S4 — UI states (S).** `useVehicleFeed`/overlay rendering driven by the
+  new body fields: outage banner from `outage.since`, staleness age from
+  `fetchedAt`, and "waiting for config" state. Honest age display unchanged.
+- **E2S5 — Standalone viewer (S).** Repoint `web/map/viewer.ts` to the same
+  config → tick contract; remove its hardcoded absolute vehicle URL.
+- **E2S6 — Boundary (XS).** Staged rollout; watch dashboards for old-path
+  traffic share; run the full suite once. Exit when old-path share ≈ 0.
+
+## Epic 3 — Worker path removal + `/api/*` hardening
+
+Outcome: the fallback route is gone; `/api/*` is small enough to rate-limit
+aggressively.
+
+- **E3S1 — Delete the public vehicle route (S).** Remove the router line,
+  `vehicleResponse`, and its POP cache/ETag/503 logic. Gate: E2S6's observed
+  old-path share ≈ 0 — otherwise still-cached web shells 404 their polls.
+- **E3S2 — Recorder write-only (XS).** Confirm + comment: recorder routes are
+  reachable only via the service binding (`service-recorder.internal` is not
+  public DNS); fleet reads happen nowhere on the public surface.
+- **E3S3 — WAF per-IP rule (XS).** ~100 requests/min/IP on `/api/*`. NAT math
+  in change 5. Nothing on `live.ttcstatus.ca`.
+- **E3S4 — Observability (S).** Dashboards + alerts: request volume per
+  endpoint, 304 ratio, cache hit ratio, MRU count, per-invocation CPU limit.
+- **E3S5 — Boundary (XS).** Full suite once; verify removal held under a
+  real rush window; bill matches the modeled table.
+
+## Epic 4 — Overlay grant enforcement + per-session protection
+
+Outcome: service data is server-gated; per-user abuse caps exist.
+
+- **E4S1 — Local JWKS/JWT verification (M).** New module (e.g.
+  `workers/api/src/accounts/verify.ts`): fetch and cache Clerk JWKS, verify
+  session tokens locally — **no per-request Clerk API call**. Unit tests with
+  fixture tokens (tampering must fail, per the repo's existing pattern).
+- **E4S2 — Grant gate (M).** `401`/`403` on `/api/v1/service/*` from the
+  verified session; identity never from query parameters; protected responses
+  `private` (or `no-store`) and never in `caches.default`. Grant admin stays in
+  the existing `feature:*` workflow.
+- **E4S3 — Client auth wiring (S).** Service/SLA fetches carry the session;
+  signed-out or ungranted users make **zero** service requests and see honest
+  empty states.
+- **E4S4 — Per-session caps (S).** WAF/custom rate caps keyed on JWT `sub`
+  for the granted service endpoints only — the sole per-user pollers left on
+  `/api/*`.
+- **E4S5 — SLA pricing decision (XS).** Decision + numbers in this doc's
+  Clerk table: gate `/sla` or split a broader-policy endpoint. Priced before
+  shipped, per the caveat rules.
+- **E4S6 — Boundary (XS).** Full suite once; 401/403/`private` verified
+  against live Clerk tokens.
+
+## Epic 5 — Capacitor native shell
+
+Outcome: the same bundle ships as an installed app; transport identical.
+
+- **E5S1 — `TRANSPORT CONTRACT` comment (XS).** The change-6 comment block
+  lands at `shared/live/polling.ts` + the platform HTTP service. This is the
+  native rewrite's spec — do it before any native work.
+- **E5S2 — Platform adapters (M).** Per `docs/ui-platform.md` ownership:
+  native lifecycle (`appStateChange` → the existing `active` seam),
+  foreground-only polling, device-local location via the port, preferences,
+  sharing. Each adapter its own small file. **No background polling** — a
+  WebView timer is not a background service.
+- **E5S3 — Build config (XS).** `webDir: dist`; `VITE_API_ORIGIN` exists to
+  reach the config fetch only; no live host ever baked into a binary.
+- **E5S4 — Native session driver (S).** `AccountProvider` adapter over
+  `createApiClient({ token, credentials: 'omit' })`, per the ui-platform
+  contract.
+- **E5S5 — Boundary (XS).** Real-device validation (the one live validation
+  this epic defers everything for): foreground/active transitions, 404 skew
+  path on a skewed device clock, outage rendering.
+
+## Epic 6 — Broadcast-only invariant hardening (final)
+
+Outcome: the privacy invariant is enforced, not just intended.
+
+- **E6S1 — Location-query rejection everywhere (S).** Extend
+  `workers/api/src/http/privacy.ts` to reject location-bearing query
+  parameters on **every** public path — including any future live-host-shaped
+  route. This is the tripwire for the 2027 `?lat=&lon=` PR.
+- **E6S2 — Device-only invariant comments (XS).** `shared/transit` keeps its
+  device-only comments (`LocalSpatialIndex` cell keys are never API params or
+  telemetry); `check:boundaries` extended if any import path needs it.
+- **E6S3 — Boundary (XS).** Full suite once; reconcile this doc's completion
+  conditions against reality and record the deltas.

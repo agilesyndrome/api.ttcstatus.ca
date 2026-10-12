@@ -64,17 +64,25 @@
   /* The drawer nav reads like the wide-screen rail: one vertical list of
    * full-width, big-touch items, never a wrapping race of pills. */
   .sidebar .main-nav {
+    position: static;
+    width: 100%;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     flex: 0 0 auto;
     overflow: visible;
+    margin: 0;
     padding: 4px 10px 8px;
   }
   .sidebar .main-nav [role='tablist'] {
+    display: flex;
     flex-direction: column;
+    flex: 0 0 auto;
+    width: 100%;
   }
   .sidebar .main-nav__pages {
     flex-direction: column;
+    width: 100%;
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border);
@@ -90,8 +98,10 @@
   .sidebar-content {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     min-height: 0;
     height: 100%;
+    box-sizing: border-box;
     overflow-y: auto;
     padding: 18px max(18px, env(safe-area-inset-right)) 24px
       max(18px, env(safe-area-inset-left));
