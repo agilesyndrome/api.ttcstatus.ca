@@ -28,11 +28,12 @@ export function HomeSidebar({
   if (!data) return null;
   return (
     <aside
+      ref={sidebar}
       className="sidebar"
       aria-label={t('workspace.stopAndRouteDetails')}
       data-open={mobilePanelOpen ? '' : undefined}
     >
-      <div ref={sidebar} id="sidebar-content" className="sidebar-content">
+      <div id="sidebar-content" className="sidebar-content">
         <NavPanel
           panel={panel}
           onPanel={(next) => {

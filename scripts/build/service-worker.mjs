@@ -12,11 +12,11 @@ export function appServiceWorker(files) {
     .update(JSON.stringify(resources))
     .digest('hex')
     .slice(0, 16);
-  return `// Generated from the build manifest; activation waits for old tabs to close.
+  return `// Generated from the build manifest; the manifest revision changes when assets change.
 const CACHE = ${JSON.stringify(`ttc-ui-${revision}`)};
 const RESOURCES = ${JSON.stringify(resources)};
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(RESOURCES)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(RESOURCES)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith('ttc-ui-') && key !== CACHE).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
@@ -27,7 +27,16 @@ self.addEventListener('fetch', (event) => {
   const appPage = event.request.mode === 'navigate' && (/^\\/(settings|profile|sla|snake(?:\\/v2)?)?\\/?$/.test(url.pathname) || /^\\/u\\/[^/]+$/.test(url.pathname));
   if (!appPage && !RESOURCES.includes(url.pathname)) return;
   event.respondWith(caches.open(CACHE).then(async (cache) => {
-    const cached = await cache.match(appPage ? '/index.html' : url.pathname);
+    if (appPage) {
+      try {
+        const fresh = await fetch(event.request, { cache: 'no-store' });
+        if (fresh.ok) await cache.put('/index.html', fresh.clone());
+        return fresh;
+      } catch {
+        return (await cache.match('/index.html')) || Response.error();
+      }
+    }
+    const cached = await cache.match(url.pathname);
     return cached || fetch(event.request);
   }));
 });

@@ -57,31 +57,31 @@
     box-shadow: 0 -4px 20px #25343c0d;
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--surface);
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
   }
   .workspace.mobile-panel-open .sidebar {
-    display: flex;
+    display: block;
   }
   /* The drawer nav reads like the wide-screen rail: one vertical list of
    * full-width, big-touch items, never a wrapping race of pills. */
   .sidebar .main-nav {
     position: static;
+    display: block;
     width: 100%;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    flex: 0 0 auto;
     overflow: visible;
     margin: 0;
-    padding: 4px 10px 8px;
+    padding: 4px 14px 8px;
   }
   .sidebar .main-nav [role='tablist'] {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 auto;
+    display: block;
     width: 100%;
   }
   .sidebar .main-nav__pages {
-    flex-direction: column;
+    display: block;
     width: 100%;
     margin-top: 8px;
     padding-top: 8px;
@@ -89,6 +89,7 @@
   }
   .main-nav [role='tablist'] button,
   .main-nav__link {
+    width: 100%;
     min-height: 44px;
     font-size: 12px;
     display: flex;
@@ -96,16 +97,14 @@
     justify-content: flex-start;
   }
   .sidebar-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    height: 100%;
+    position: static;
+    width: auto;
+    min-height: 100%;
+    height: auto;
     box-sizing: border-box;
-    overflow-y: auto;
-    padding: 18px max(18px, env(safe-area-inset-right)) 24px
-      max(18px, env(safe-area-inset-left));
-    overscroll-behavior-y: contain;
+    overflow: visible !important;
+    padding: 18px max(0px, env(safe-area-inset-right)) 24px
+      max(0px, env(safe-area-inset-left));
   }
   /* Inside the drawer's panels the selection details come first — a car or
    * stop the visitor just picked is what they opened the drawer to read —
@@ -113,6 +112,14 @@
   .sidebar [role='tabpanel'] {
     display: flex;
     flex-direction: column;
+    position: static;
+    overflow: visible !important;
+    width: 100%;
+    margin: 0;
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 12px 14px 24px;
+    border-left: 2px solid var(--accent);
   }
   .sidebar [role='tabpanel'] > .explore-tools,
   .sidebar [role='tabpanel'] > .explore-layers {

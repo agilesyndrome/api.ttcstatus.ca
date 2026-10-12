@@ -497,7 +497,8 @@ Rules we will hold ourselves to:
 
 Companion to the sections above: they own the _what_ and the _why_; this
 appendix owns the _work items_ — every story a developer can pick up cold.
-It maps the "Implementation order" list into six epics. Status: planning, v1.
+It maps the "Implementation order" list into seven epics (Epic 7 is the
+single-worker consolidation). Status: planning, v1.
 
 ## Conventions
 
@@ -565,9 +566,18 @@ It maps the "Implementation order" list into six epics. Status: planning, v1.
 | 28 | E6S1 | Location-query rejection on every public path                  | 6    | S    | —                     |
 | 29 | E6S2 | `shared/transit` device-only invariant comments                 | 6    | XS   | —                     |
 | 30 | E6S3 | **Epic 6 boundary: final full validation + doc reconcile**     | 6    | XS   | E6S1, E6S2            |
+| 31 | E7S1 | Move generator core into `workers/api/src/mapgen/`            | 7    | M    | E6S3 (order only)     |
+| 32 | E7S2 | Merge env/config — one worker, one `Env`                      | 7    | S    | E7S1                  |
+| 33 | E7S3 | Sync generates in-process (drop the service binding)           | 7    | S    | E7S2                  |
+| 34 | E7S4 | Debug render in-process (admin-gated, unchanged)              | 7    | XS   | E7S2                  |
+| 35 | E7S5 | Delete the map-generator worker                                | 7    | S    | E7S3, E7S4            |
+| 36 | E7S6 | Docs + monitors reconcile                                      | 7    | XS   | E7S5                  |
+| 37 | E7S7 | **Epic 7 boundary: end-to-end regeneration validated**        | 7    | XS   | E7S1–E7S6             |
 
-Explicit non-stories: WS/SSE and APNs/FCM stay deferred (change 8); the
-"Non-changes" list is done on purpose, not backlog.
+Explicit non-stories: WS/SSE and APNs/FCM stay deferred (change 8); a
+Queues/Workflows offload of map generation stays deferred until nightly
+generation outgrows a single invocation (see Epic 7's future-optionality
+note); the "Non-changes" list is done on purpose, not backlog.
 
 ## Epic 1 — Live publication infrastructure
 
@@ -709,3 +719,80 @@ Outcome: the privacy invariant is enforced, not just intended.
   telemetry); `check:boundaries` extended if any import path needs it.
 - **E6S3 — Boundary (XS).** Full suite once; reconcile this doc's completion
   conditions against reality and record the deltas.
+
+## Epic 7 — Single-worker consolidation (map-generator → api)
+
+Outcome: **one Worker, one deploy artifact, one config**, and the internal
+HTTP contract between the API and the map generator is gone. Runs last: it is
+content-independent of E2–E6 (it touches `sync/` and `maps/debug.ts`, which no
+transport story edits) and is sequenced only by the epic-boundary rule.
+
+**Why it helps strategy:**
+
+- **Atomic deploys kill version skew.** Today `shared/` code ships in two
+  independently deployed Workers, so the API can run against a generator
+  built from different shared geometry/contracts. One worker = one artifact,
+  and the existing blast-radius guards already cover the coupling:
+  `map_generation_jobs` bookkeeping, import validation before publication,
+  and previous-good-version retention.
+- **Half the operational surface.** One wrangler config, one deploy pipeline,
+  one log stream, one secrets store (`SYNC_TOKEN` managed once), one healthz.
+  Fewer moving parts is the same doctrine as one transport path, no fallback.
+- **The internal contract disappears.** The only two `MAP_GENERATOR.fetch`
+  call sites — `sync/network-lifecycle.ts` and `maps/debug.ts` — become typed
+  function calls. No Bearer ceremony between our own workers, no
+  JSON parse/serialize at the seam, no synthetic `map-generator.internal`
+  hostname. **No new public route is created** by this epic.
+- **Future optionality stays cheap.** Keep the moved code in a self-contained
+  `mapgen/` directory: if nightly generation ever outgrows a single
+  invocation, the Cloudflare-native path is Queues/Workflows, and a
+  re-split stays mechanical instead of archaeological. Both deferred —
+  see "Explicit non-stories".
+
+**What it deliberately does not change (so nobody sells it as something it
+isn't):** billing is neutral — service bindings are already free (no extra
+request charge; CPU is billed once across both), two Workers add no account
+minimum, and both configs already set identical `limits.cpu_ms: 300000`.
+Latency is neutral — service bindings already run in-thread. This epic buys
+operability and risk reduction, not dollars.
+
+- **E7S1 — Move the generator core (M).** Relocate `generate.ts` and the
+  `source/`, `topology/`, `layout/`, `rendering/`, `artifacts/` modules
+  verbatim into `workers/api/src/mapgen/`, fixing import paths only — no
+  behavior change. Keep the directory self-contained behind a thin exported
+  interface (`generateStreetcarMap`, `renderDebugMapSvg`) and comment the
+  seam: the isolation is what makes a future split or a Queues/Workflows
+  offload mechanical. The generator's HTTP shell (`healthz`, auth glue, JSON
+  envelope parsing) is deliberately **not** moved — it dies with the worker in
+  E7S5.
+- **E7S2 — Merge env + config (S).** Fold `MapGeneratorEnv` into the API `Env`
+  type. Nothing new is provisioned: the API worker already binds the same D1
+  database and already carries the `SOURCE_ATTRIBUTION` var and `SYNC_TOKEN`
+  secret the generator uses. Add a short comment on the merged env noting
+  which vars the `mapgen/` path consumes, so the next deployer doesn't prune
+  them by accident.
+- **E7S3 — Sync generates in-process (S).** `requestMapGeneration()` calls the
+  moved `generateStreetcarMap(env, versionId)` directly, preserving the
+  `map_generation_jobs` pending → running → failed bookkeeping and the
+  error surfaces the HTTP route used to produce. After this deploys, the
+  `MAP_GENERATOR` binding is unused at runtime — that is the parallel-run
+  window: a rollback redeploys the API and the old worker still answers.
+- **E7S4 — Debug render in-process (XS).** `maps/debug.ts` calls
+  `renderDebugMapSvg` directly, keeping `authorizedSync`, the 2 MB body cap,
+  the 413/400 error shapes, the CSP header, and `nosniff` exactly as the
+  route enforced them. This stays an admin-gated debug surface;
+  `/api/internal/generate` gets **no** public route — its only callers are
+  the sync path (now a function call) and this existing admin route.
+- **E7S5 — Delete the second worker (S).** Remove `workers/map-generator/`,
+  the `MAP_GENERATOR` service binding from the API config, the `Fetcher` type
+  and its "shared only between…" comment in `sync-common.ts`, and every
+  build/deploy step that references the generator. `grep map-generator` must
+  come back empty outside this doc and git history.
+- **E7S6 — Docs + monitors reconcile (XS).** CODEMAP's map-generator rows and
+  service-binding references; any uptime monitor still pointed at the
+  generator's retired `/api/healthz`; deploy and operations documentation.
+- **E7S7 — Boundary (XS).** Full suite once, then the real thing: trigger the
+  nightly sync (or `admin/sync`), watch generation run → the atomic
+  network + map pointer flip (all three published names) → confirm the map
+  loads and dashboards show a single worker; rehearse rollback by redeploying
+  the previous version and re-running generation.

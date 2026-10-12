@@ -73,26 +73,12 @@
   color: var(--muted);
   border-radius: 7px;
 }
-/* The rail's nav: one vertical list of section tabs, page links, and — for
- * the map workspace — each tool panel as a clear subsection of its tab. The
- * tablist box becomes layout-transparent while each tab and panel stay
- * together in one shared nav section. */
+/* The rail scrolls as one column: brand, sections, page links, then footer. */
 .app-nav .main-nav {
   position: static;
-  /* The nav fills the rail between the brand head and the quick controls /
-   * footer, and its own height constraint is what caps the panel below. */
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: none;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  /* The base .main-nav wraps and centers its items for the old horizontal
-   * strip; in the rail's column direction both would scramble the layout —
-   * wrap splits the tall panel into side columns, and centering would
-   * middle the tabs and panels horizontally. One column, full-width items. */
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 4px;
+  display: block;
   margin: 0;
   padding: 0;
   border: 0;
@@ -100,12 +86,12 @@
   background: transparent;
 }
 .app-nav .main-nav [role='tablist'] {
-  display: contents;
+  display: block;
 }
 .app-nav .main-nav__section {
-  display: flex;
-  flex-direction: column;
+  display: block;
   min-width: 0;
+  margin-bottom: 4px;
 }
 .app-nav .main-nav__pages {
   display: flex;
@@ -125,9 +111,6 @@
   justify-content: flex-start;
   gap: 10px;
   width: 100%;
-  /* The tabs and the page links pin to their natural height — only the
-   * panel below flexes — so the nav items never scroll away. */
-  flex: 0 0 auto;
   padding: 9px 11px;
   text-align: left;
 }
@@ -135,21 +118,12 @@
  * (`.main-nav [role='tablist'] button[aria-selected='true']` above) — the
  * same look the compact strip carries, so the panel hanging beneath it
  * reads as its subsection. */
-/* The subsection itself: indented under its tab and hung off a guide line —
- * the rail the eye follows from the tab's pill down through its tools. The
- * accent-tinted guide ties the two together in both themes. The tools
- * scroll INSIDE the subsection (the tab, the page links and the footer stay
- * pinned), and min-width lets long content wrap instead of overflowing the
- * rail. */
+/* Panels stay in normal flow. The guide starts at the rail's left edge. */
 .app-nav .main-nav [role='tabpanel'] {
-  flex: 0 1 auto;
-  min-height: 0;
   min-width: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  margin: 0 4px 6px 24px;
-  padding: 2px 2px 10px 14px;
+  overflow: visible;
+  margin: 0 -14px 6px;
+  padding: 2px 14px 10px;
   border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .app-nav .main-nav [role='tabpanel'][hidden],
@@ -186,9 +160,10 @@
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
-/* The footer owns the rail's last row: pinned to the foot on every variant. */
+/* Short menus keep the footer at the bottom; long menus push it below content. */
 .app-nav .site-footer {
   margin-top: auto;
+  flex-shrink: 0;
 }
 /* The map workspace's rail hosts the tool panels, so it carries the sidebar's
  * width; standalone pages keep the slimmer rail. */

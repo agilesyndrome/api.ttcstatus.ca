@@ -14,12 +14,14 @@
   color: var(--text);
   box-shadow: 0 4px 24px #0003;
   font-size: 14px;
+  pointer-events: none;
 }
 .affiliation-notice p {
   margin: 6px 0 0;
 }
 .affiliation-notice button {
   flex-shrink: 0;
+  pointer-events: auto;
 }
 @media (max-width: 480px) {
   .affiliation-notice {

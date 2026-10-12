@@ -72,7 +72,13 @@ export function useSelection(
     }
   }, [panel]);
   useEffect(() => {
-    if (account.loaded && !account.userId && panel !== 'explore') setPanel('explore');
+    if (
+      account.loaded &&
+      !account.userId &&
+      panel !== 'explore' &&
+      panel !== 'route-pulse'
+    )
+      setPanel('explore');
   }, [account.loaded, account.userId, panel]);
 
   useWorkspaceLink({
