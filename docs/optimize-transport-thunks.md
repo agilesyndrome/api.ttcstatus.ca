@@ -70,6 +70,14 @@ Every story gets a status here, updated the moment it completes:
 - [x] E7S5 — map-generator worker deleted (grep clean outside docs/history)
 - [x] E7S6 — CODEMAP/README/docs/ops scripts reconciled
 - [ ] E7S7 — boundary: end-to-end regeneration vs production (needs deploy)
+- [ ] E8S1 — **fix the stale Playwright suite** (the last thing we do):
+      rewrite `check-ui`, `check-mobile`, `check-auth`, `check-i18n`,
+      `check-subway`, `check-snake`, `check-hackathon`, `check-exploration`
+      against the current "Nav v2" UI — the pre-existing selector staleness
+      documented in Final work + Open questions (checkboxes → layer buttons,
+      `Sign in` button, `Paramètres de langue` link, `↗ Share map`,
+      `504 King` route button, `.live-status` → `.route-pulse`). Runs after
+      every other story closes; `check-offline-shell` + `check-service` pass.
 
 ## Live-validation policy (user directive)
 
