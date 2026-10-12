@@ -202,3 +202,11 @@ privacy. `npm run test:auth` and `npm run test:collection` run against the Vite
 preview using an isolated Clerk SDK/session fixture. They test application flows
 without creating real users or replacing live Clerk configuration. These fixtures
 are loaded only by Playwright and are never included in the production app.
+
+## Future Capacitor clients
+
+Account CORS includes PUT and every private response. The default signed-token
+authorized parties include `capacitor://localhost`; custom hosts must be configured
+explicitly. Tokens still require Clerk signature, session identity, expiry, and a
+matching `azp`. Missing parties are rejected. See the [mobile privacy contract](api/mobile-privacy.md)
+for native-token integration limits and the separate redirect configuration work.

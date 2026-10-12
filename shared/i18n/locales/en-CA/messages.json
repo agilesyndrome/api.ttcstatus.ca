@@ -1486,5 +1486,9 @@
   "navigation.openTools": "Open map tools",
   "account.signOut": "Sign out",
   "fleetExplorer.downloadFailed": "The file could not be shared. Please try again.",
-  "cache.mapUnavailable": "Refresh unavailable — showing the saved map."
+  "cache.mapUnavailable": "Refresh unavailable — showing the saved map.",
+  "accountDraft.retained": "Your unsaved changes are kept on this device. Retry merges independent edits. Keep my changes uses yours when the same entry changed elsewhere.",
+  "accountDraft.retry": "Retry merge",
+  "accountDraft.keepMine": "Keep my changes",
+  "accountDraft.discard": "Discard unsaved changes"
 }

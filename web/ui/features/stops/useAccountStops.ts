@@ -1,8 +1,10 @@
+import { mergeSavedStops } from '../../../../shared/accounts/merge';
 import { english } from '../../../../shared/i18n/messages';
 import { validSavedStops } from '../../../../shared/accounts/saved-stops';
 import { useAccountDocument } from '../accounts/useAccountDocument';
 
 const options = {
+  merge: mergeSavedStops,
   path: '/api/v1/me/stops',
   field: 'stopIds',
   empty: [] as string[],

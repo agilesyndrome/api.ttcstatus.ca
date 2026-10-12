@@ -8,6 +8,7 @@ import { json } from './http/responses';
 import { syncStaticGtfs } from './sync/sync';
 import { runSlaRollup } from './sla/fold';
 import { serviceConfig } from '../../../shared/service/config';
+import { requestFailureContext } from './http/privacy';
 // The recorder singleton Durable Object (docs/sla.md §4.4) — exported so the
 // wrangler binding can instantiate it.
 export { ServiceRecorder } from './service/service-recorder';
@@ -24,16 +25,7 @@ export default {
     try {
       return await routeRequest(request, env, ctx);
     } catch (error) {
-      // The full failure detail (message, stack, request) belongs in Workers
-      // Logs; the client only ever sees the opaque 500 below.
-      console.error('unhandled request failure', {
-        method: request.method,
-        url: request.url,
-        error:
-          error instanceof Error
-            ? { message: error.message, stack: error.stack }
-            : String(error),
-      });
+      console.error('unhandled request failure', requestFailureContext(request, error));
       return json({ error: 'internal-error' }, 500, { 'cache-control': 'no-store' });
     }
   },

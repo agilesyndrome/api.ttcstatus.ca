@@ -10,20 +10,21 @@ source file locations.
 `workers/api/src/index.ts` supplies the HTTP and scheduled entrypoints.
 `http/router.ts` dispatches existing API paths without importing GTFS data itself.
 
-| Directory      | Responsibility                                                                  |
-| -------------- | ------------------------------------------------------------------------------- |
-| `http/`        | Routing and public/private JSON response helpers                                |
-| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations  |
-| `maps/`        | Map/network reads, map caching and protected debug forwarding                   |
-| `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response         |
-| `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints |
-| `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report  |
-| `sync/`        | Static download, import, map generation, delta, publication and retention       |
-| `diagnostics/` | Existing public feed-status response and deployed-version reporting             |
+| Directory      | Responsibility                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `http/`        | Routing, input privacy boundary and consistent CORS response helpers                      |
+| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations            |
+| `maps/`        | Artifact selection, map/directory reads, release manifests and protected debug forwarding |
+| `realtime/`    | Bounded upstream decoding and vehicle HTTP distribution; acquisition owned by recorder    |
+| `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints           |
+| `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report            |
+| `sync/`        | Static download, import, map generation, delta, publication and retention                 |
+| `contracts/`   | Public OpenAPI document and endpoint descriptions                                         |
+| `diagnostics/` | Protected feed diagnostics, allowlisted analytics and deployed-version reporting          |
 
 Only `sync/sync.ts` contacts the static GTFS source. Import reads the cached R2
 archive. Public map requests read materialized data; live requests use the bounded
-snapshot acquisition and cache. Account ownership comes from verified sessions,
+recorder's persisted singleton publication and POP cache. Account ownership comes from verified sessions,
 never request fields.
 
 ## Map generator
@@ -51,7 +52,9 @@ map schema are unchanged by source reorganization.
 | `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette |
 | `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                        |
 | `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus   |
-| `shared/http/`               | HTTP validator comparison                                                         |
+| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers       |
+| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                 |
+| `shared/http/`               | HTTP validators and the location-free query contract                              |
 | `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                              |
 | `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets        |
 | `workers/shared/http/`       | Bounded byte streams and admin authorization                                      |

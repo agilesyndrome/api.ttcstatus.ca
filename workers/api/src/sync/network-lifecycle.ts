@@ -153,9 +153,12 @@ export async function pruneOldNetworkVersions(env: SyncEnv): Promise<void> {
     await env.DB.batch([
       env.DB.prepare(
         `DELETE FROM map_artifact_chunks
-         WHERE artifact_id IN (SELECT id FROM map_artifacts WHERE version_id = ?)`,
+         WHERE artifact_id IN (SELECT id FROM map_artifacts WHERE version_id = ?
+           AND id NOT IN (SELECT artifact_id FROM map_tags))`,
       ).bind(version.id),
-      env.DB.prepare(`DELETE FROM map_artifacts WHERE version_id = ?`).bind(version.id),
+      env.DB.prepare(
+        `DELETE FROM map_artifacts WHERE version_id = ? AND id NOT IN (SELECT artifact_id FROM map_tags)`,
+      ).bind(version.id),
       env.DB.prepare(`DELETE FROM gtfs_pattern_stops WHERE version_id = ?`).bind(
         version.id,
       ),

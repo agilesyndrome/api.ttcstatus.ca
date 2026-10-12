@@ -52,7 +52,10 @@ test('authorized clients inject the current token without sharing it with public
     credentials: 'omit',
     fetch: transport,
   });
-  await privateClient('/api/v1/me/stops', { method: 'PUT', body: '{}' });
+  await privateClient('/api/v1/me/stops', {
+    method: 'PUT',
+    body: JSON.stringify({ stopIds: [], revision: 0 }),
+  });
   token = 'second';
   await privateClient('/api/v1/me/journal');
   await createApiClient({ origin: 'https://ttcstatus.ca', fetch: transport })(

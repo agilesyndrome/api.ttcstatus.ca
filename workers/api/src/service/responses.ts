@@ -21,7 +21,7 @@ import type {
   TouchEvent,
   WaveTouch,
 } from '../../../../shared/service/contracts';
-import { SERVICE_RECORDER_NAME } from './service-recorder';
+import { recorderFetch } from './recorder-client';
 import {
   gammaApproxQuantileSeconds,
   mergeRollupRows,
@@ -49,13 +49,6 @@ interface RecorderWindowPayload {
   touches: TouchEvent[];
   coverage: CoverageInterval[];
   patterns: Array<{ routeId: string; directionId: 0 | 1; stopIds: string[] }>;
-}
-
-async function recorderFetch(env: Env, path: string): Promise<Response> {
-  // The DO name lives in the hostname so the route is a clean pathname
-  // ('/states', '/window') inside the Durable Object.
-  const id = env.SERVICE_RECORDER.idFromName(SERVICE_RECORDER_NAME);
-  return env.SERVICE_RECORDER.get(id).fetch(`https://service-recorder.internal${path}`);
 }
 
 function parseRoutesFilter(value: string | null): Set<string> | null {

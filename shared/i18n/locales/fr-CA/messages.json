@@ -799,5 +799,9 @@
   "navigation.openTools": "Ouvrir les outils de la carte",
   "account.signOut": "Se déconnecter",
   "fleetExplorer.downloadFailed": "Le fichier ne peut pas être partagé. Veuillez réessayer.",
-  "cache.mapUnavailable": "Actualisation indisponible — affichage de la carte enregistrée."
+  "cache.mapUnavailable": "Actualisation indisponible — affichage de la carte enregistrée.",
+  "accountDraft.retained": "Vos modifications non enregistrées sont conservées sur cet appareil. Réessayer fusionne les modifications indépendantes. Garder mes modifications privilégie les vôtres si la même entrée a changé ailleurs.",
+  "accountDraft.retry": "Réessayer la fusion",
+  "accountDraft.keepMine": "Garder mes modifications",
+  "accountDraft.discard": "Abandonner les modifications"
 }

@@ -2,6 +2,34 @@ import { mapToGps } from '../map/projection';
 import type { PlottedVehicle } from '../map/live-status';
 import type { Feature, Route, ViewerData } from '../map/model';
 import type { Location } from './types';
+import { LocalSpatialIndex } from './spatial-index';
+
+interface IndexedStop extends Location {
+  feature: Feature;
+  accessible: boolean | null;
+}
+const stopIndexes = new WeakMap<ViewerData, LocalSpatialIndex<IndexedStop>>();
+
+function stopIndex(data: ViewerData): LocalSpatialIndex<IndexedStop> {
+  let index = stopIndexes.get(data);
+  if (!index) {
+    const points = data.features
+      .filter((feature) => feature.boardingPoints > 0)
+      .flatMap((feature) => {
+        // Legacy cached maps remain usable; new artifacts always retain original points.
+        const positions = feature.geographicPoints ?? [
+          {
+            ...mapToGps(feature.point, data.geographicTransform),
+            accessible: feature.accessible,
+          },
+        ];
+        return positions.map((point) => ({ ...point, feature }));
+      });
+    index = new LocalSpatialIndex(points);
+    stopIndexes.set(data, index);
+  }
+  return index;
+}
 
 /** Measure geography, never distances on the compressed schematic. */
 export function distanceMetres(a: Location, b: Location): number {
@@ -20,23 +48,25 @@ export function nearbyStops(
   location: Location,
   accessibleOnly = false,
 ) {
-  return data.features
-    .filter(
-      (feature) =>
-        feature.boardingPoints > 0 && (!accessibleOnly || feature.accessible === true),
-    )
-    .map((feature) => ({
-      feature,
-      metres: distanceMetres(location, mapToGps(feature.point, data.geographicTransform)),
-    }))
-    .filter((stop) => stop.metres <= 2500)
+  const matches = new Map<string, { feature: Feature; metres: number }>();
+  for (const point of stopIndex(data).within(location, 2500)) {
+    if (accessibleOnly && point.accessible !== true) continue;
+    const metres = distanceMetres(location, point);
+    if (metres > 2500) continue;
+    const previous = matches.get(point.feature.id);
+    if (!previous || metres < previous.metres)
+      matches.set(point.feature.id, { feature: point.feature, metres });
+  }
+  return [...matches.values()]
     .sort((a, b) => a.metres - b.metres || a.feature.id.localeCompare(b.feature.id))
     .slice(0, 5);
 }
 /** Nearby is proximity only: route, direction and trip stop sequence cannot
  * establish arrival predictions from the vehicle-position feed. */
 export function nearbyCars(data: ViewerData, feature: Feature, cars: PlottedVehicle[]) {
-  const location = mapToGps(feature.point, data.geographicTransform);
+  const locations = feature.geographicPoints?.length
+    ? feature.geographicPoints
+    : [mapToGps(feature.point, data.geographicTransform)];
   const rapidRoutes = new Set(
     data.routes
       .filter((route) => /^(1|2|4|5|6)$/.test(route.number))
@@ -52,7 +82,12 @@ export function nearbyCars(data: ViewerData, feature: Feature, cars: PlottedVehi
         car.vehicle.routeId &&
         feature.routeIds.includes(car.vehicle.routeId),
     )
-    .map((car) => ({ car, metres: distanceMetres(location, car.vehicle) }))
+    .map((car) => ({
+      car,
+      metres: Math.min(
+        ...locations.map((location) => distanceMetres(location, car.vehicle)),
+      ),
+    }))
     .filter((car) => car.metres <= 2000)
     .sort(
       (a, b) => a.metres - b.metres || a.car.vehicle.id.localeCompare(b.car.vehicle.id),

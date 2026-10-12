@@ -1,0 +1,2878 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "TTCStatus API",
+    "version": "1.1.0",
+    "description": "Public transit data and owner-scoped account documents. Device GPS and GPS-derived grid keys remain local. Responses evolve additively within v1."
+  },
+  "servers": [{ "url": "https://ttcstatus.ca" }],
+  "paths": {
+    "/api/healthz": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Health" } }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "head": {
+        "responses": {
+          "200": { "description": "Healthy; no body." },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/version": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkerVersion" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/network": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Network" } }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "This OpenAPI document.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/config": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthConfig" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/manifest": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map",
+            "required": false,
+            "schema": {
+              "enum": ["streetcar", "snake", "ttcstatus"],
+              "default": "ttcstatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReleaseManifest" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/stops": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map",
+            "required": false,
+            "schema": {
+              "enum": ["streetcar", "snake", "ttcstatus"],
+              "default": "ttcstatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StopDirectory" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "head": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map",
+            "required": false,
+            "schema": {
+              "enum": ["streetcar", "snake", "ttcstatus"],
+              "default": "ttcstatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact metadata; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "description": "HTTP error; no response body for HEAD." }
+        }
+      }
+    },
+    "/api/v1/map/streetcar": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SchematicMap" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "head": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact metadata; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "description": "HTTP error; no response body for HEAD." }
+        }
+      }
+    },
+    "/api/v1/map/snake": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ViewerMap" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "head": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact metadata; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "description": "HTTP error; no response body for HEAD." }
+        }
+      }
+    },
+    "/api/v1/map/ttcstatus": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ViewerMap" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "head": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "artifact",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1 }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artifact metadata; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "description": "HTTP error; no response body for HEAD." }
+        }
+      }
+    },
+    "/api/v1/vehicles/streetcar": {
+      "get": {
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VehicleSnapshot" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/service/stops": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "routes",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ServiceStops" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/service/wave": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "routes",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ServiceWave" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/service/history": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stop",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "routes",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": { "type": "integer", "description": "UTC epoch milliseconds." }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ServiceHistory" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/event": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AnalyticsEvent" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Accepted action; no body." },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/profiles/{username}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "username",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PublicProfile" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/sla/report": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "route",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SlaReport" }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "304": {
+            "description": "Matching ETag; no body.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" },
+                "description": "Quoted content validator; weak client validators are accepted."
+              },
+              "X-Network-Version": {
+                "schema": { "type": "integer" },
+                "description": "Static network version for map/directory responses."
+              },
+              "X-Map-Artifact": {
+                "schema": { "type": "integer" },
+                "description": "Matching immutable map/directory identity."
+              },
+              "X-Map-Format": { "schema": { "type": "string" } },
+              "X-Schema-Version": { "schema": { "type": "integer" } },
+              "X-Live-Update-Seconds": {
+                "schema": { "type": "integer" },
+                "description": "Client polling cadence, in seconds."
+              },
+              "X-Live-Next-Update-At": {
+                "schema": { "type": "string", "format": "date-time" },
+                "description": "Next recorder publication boundary for live responses."
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        },
+        "security": [{ "ClerkSession": [] }],
+        "x-stability": "experimental"
+      }
+    },
+    "/api/v1/me/stops": {
+      "get": {
+        "security": [{ "ClerkSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SavedStopsDocument" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "put": {
+        "security": [{ "ClerkSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SavedStopsWrite" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RevisionResult" }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict. Retain the draft; compare with current, merge, then retry with its revision.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SavedStopsConflict" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/me/journal": {
+      "get": {
+        "security": [{ "ClerkSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JournalDocument" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "put": {
+        "security": [{ "ClerkSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/JournalWrite" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RevisionResult" }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict. Retain the draft; compare with current, merge, then retry with its revision.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JournalConflict" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/me/profile": {
+      "get": {
+        "security": [{ "ClerkSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "put": {
+        "security": [{ "ClerkSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileWrite" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/me/features": {
+      "get": {
+        "security": [{ "ClerkSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FeatureFlags" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/feed/status": {
+      "get": {
+        "security": [{ "OperatorToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FeedDiagnostics" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/admin/sync": {
+      "post": {
+        "security": [{ "OperatorToken": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SyncResult" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/debug/map/streetcar.svg": {
+      "post": {
+        "security": [{ "OperatorToken": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SchematicMap" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Debug SVG of public transit geography.",
+            "content": { "image/svg+xml": { "schema": { "type": "string" } } }
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ClerkSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Clerk session JWT"
+      },
+      "OperatorToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Private deployment operator credential."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "guidance": { "type": "string" }
+        },
+        "required": ["error"],
+        "additionalProperties": true
+      },
+      "JournalEntry": {
+        "type": "object",
+        "properties": {
+          "vehicleId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Canonical UTC timestamp, e.g. 2026-10-12T17:00:00.000Z.",
+            "maxLength": 40
+          },
+          "note": { "type": "string", "minLength": 0, "maxLength": 1000 },
+          "status": { "enum": ["seen", "ridden"] },
+          "routeId": { "type": "string", "minLength": 0, "maxLength": 200 },
+          "routeNumber": { "type": "string", "minLength": 0, "maxLength": 200 },
+          "routeName": { "type": "string", "minLength": 0, "maxLength": 200 },
+          "overnight": { "type": "boolean" }
+        },
+        "required": ["vehicleId", "label", "recordedAt", "note"],
+        "additionalProperties": false
+      },
+      "JournalDocument": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/JournalEntry" },
+            "maxItems": 500,
+            "description": "vehicleId is unique within a journal."
+          },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": ["entries", "revision"],
+        "additionalProperties": true
+      },
+      "JournalWrite": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/JournalEntry" },
+            "maxItems": 500,
+            "description": "vehicleId is unique within a journal."
+          },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": ["entries", "revision"],
+        "additionalProperties": false
+      },
+      "SavedStopsDocument": {
+        "type": "object",
+        "properties": {
+          "stopIds": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "maxItems": 100,
+            "uniqueItems": true
+          },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": ["stopIds", "revision"],
+        "additionalProperties": true
+      },
+      "SavedStopsWrite": {
+        "type": "object",
+        "properties": {
+          "stopIds": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "maxItems": 100,
+            "uniqueItems": true
+          },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": ["stopIds", "revision"],
+        "additionalProperties": false
+      },
+      "RevisionResult": {
+        "type": "object",
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": ["revision"],
+        "additionalProperties": true
+      },
+      "JournalConflict": {
+        "type": "object",
+        "properties": {
+          "error": { "const": "journal-conflict" },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "current": { "$ref": "#/components/schemas/JournalDocument" }
+        },
+        "required": ["error", "revision", "current"],
+        "additionalProperties": true
+      },
+      "SavedStopsConflict": {
+        "type": "object",
+        "properties": {
+          "error": { "const": "saved-stops-conflict" },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "current": { "$ref": "#/components/schemas/SavedStopsDocument" }
+        },
+        "required": ["error", "revision", "current"],
+        "additionalProperties": true
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string" },
+          "publicBadges": { "type": "boolean" }
+        },
+        "required": ["username", "publicBadges"],
+        "additionalProperties": true
+      },
+      "ProfileWrite": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,29}$" },
+          "publicBadges": { "type": "boolean" }
+        },
+        "required": ["username", "publicBadges"],
+        "additionalProperties": false
+      },
+      "PublicProfile": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string" },
+          "badges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "icon": { "type": "string" },
+                "description": { "type": "string" }
+              },
+              "required": ["name", "icon", "description"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["username", "badges"],
+        "additionalProperties": true
+      },
+      "FeatureFlags": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "flags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["schemaVersion", "flags"],
+        "additionalProperties": true
+      },
+      "AuthConfig": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "publishableKey": { "type": ["string", "null"] }
+        },
+        "required": ["enabled", "publishableKey"],
+        "additionalProperties": true
+      },
+      "AnalyticsEvent": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "enum": [
+              "located",
+              "tracked-streetcar",
+              "played-snake",
+              "saved-stop",
+              "removed-stop",
+              "exported-map"
+            ]
+          }
+        },
+        "required": ["action"],
+        "additionalProperties": false
+      },
+      "Point": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "StopPosition": {
+        "type": "object",
+        "properties": {
+          "stopId": { "type": "string" },
+          "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+          "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+          "accessible": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] }
+        },
+        "required": ["stopId", "latitude", "longitude", "accessible"],
+        "additionalProperties": true
+      },
+      "StopService": {
+        "type": "object",
+        "properties": {
+          "patternId": { "type": "string" },
+          "routeId": { "type": "string" },
+          "directionId": { "enum": [0, 1] },
+          "headsign": { "type": "string" }
+        },
+        "required": ["patternId", "routeId", "directionId", "headsign"],
+        "additionalProperties": true
+      },
+      "BoardingStop": {
+        "allOf": [
+          { "$ref": "#/components/schemas/StopPosition" },
+          {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "parentStationId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "services": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/StopService" }
+              },
+              "displayFeatureId": { "type": "string" }
+            },
+            "required": ["name", "parentStationId", "services", "displayFeatureId"],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "StopDirectory": {
+        "type": "object",
+        "properties": {
+          "format": { "const": "ttc-stop-directory" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "networkVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "stops": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BoardingStop" }
+          }
+        },
+        "required": ["format", "schemaVersion", "networkVersion", "stops"],
+        "additionalProperties": true
+      },
+      "GeographicTransform": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "integer", "const": 1 },
+          "rotationDegrees": { "type": "number" },
+          "xAxis": { "$ref": "#/components/schemas/WarpAxis" },
+          "yAxis": { "$ref": "#/components/schemas/WarpAxis" },
+          "minX": { "type": "number" },
+          "maxY": { "type": "number" },
+          "scaleX": { "type": "number" },
+          "scaleY": { "type": "number" },
+          "offsetX": { "type": "number" },
+          "offsetY": { "type": "number" },
+          "projection": {
+            "type": "object",
+            "properties": {
+              "latitude": { "type": "number" },
+              "longitude": { "type": "number" },
+              "metresPerLatitudeDegree": { "type": "number" },
+              "metresPerLongitudeDegree": { "type": "number" }
+            },
+            "required": [
+              "latitude",
+              "longitude",
+              "metresPerLatitudeDegree",
+              "metresPerLongitudeDegree"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "version",
+          "rotationDegrees",
+          "xAxis",
+          "yAxis",
+          "minX",
+          "maxY",
+          "scaleX",
+          "scaleY",
+          "offsetX",
+          "offsetY",
+          "projection"
+        ],
+        "additionalProperties": true
+      },
+      "WarpAxis": {
+        "type": "object",
+        "properties": {
+          "lower": { "type": "number" },
+          "upper": { "type": "number" },
+          "outerScale": { "type": "number" }
+        },
+        "required": ["lower", "upper", "outerScale"],
+        "additionalProperties": true
+      },
+      "Route": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "number": { "type": "string" },
+          "name": { "type": "string" },
+          "color": { "type": "string" },
+          "overnight": { "type": "boolean" },
+          "scheduled": { "type": "boolean" }
+        },
+        "required": ["id", "number", "name", "color", "overnight", "scheduled"],
+        "additionalProperties": true
+      },
+      "StopPattern": {
+        "type": "object",
+        "properties": {
+          "routeId": { "type": "string" },
+          "stopIds": { "type": "array", "items": { "type": "string" } },
+          "headsign": { "type": "string" },
+          "pathId": { "type": "string" },
+          "directionId": { "enum": [0, 1] }
+        },
+        "required": ["routeId", "stopIds", "headsign"],
+        "additionalProperties": true
+      },
+      "Feature": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "enum": ["stop", "terminal"] },
+          "point": { "$ref": "#/components/schemas/Point" },
+          "routeIds": { "type": "array", "items": { "type": "string" } },
+          "accessible": { "anyOf": [{ "type": "boolean" }, { "type": "null" }] },
+          "boardingPoints": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "platformNames": { "type": "array", "items": { "type": "string" } },
+          "destinations": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          },
+          "replacementRouteIds": { "type": "array", "items": { "type": "string" } },
+          "stopIds": { "type": "array", "items": { "type": "string" } },
+          "geographicPoints": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StopPosition" }
+          },
+          "edgeId": { "type": "string" },
+          "distanceAlongMetres": { "type": "number" }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "point",
+          "routeIds",
+          "accessible",
+          "boardingPoints",
+          "platformNames",
+          "destinations",
+          "replacementRouteIds"
+        ],
+        "additionalProperties": true
+      },
+      "Edge": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "a": { "type": "string" },
+          "b": { "type": "string" },
+          "points": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Point" }
+          },
+          "sourcePoints": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Point" }
+          },
+          "sourceDistances": { "type": "array", "items": { "type": "number" } },
+          "lengthMetres": { "type": "number" },
+          "routeIds": { "type": "array", "items": { "type": "string" } },
+          "infrastructureIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": [
+          "id",
+          "a",
+          "b",
+          "points",
+          "sourcePoints",
+          "sourceDistances",
+          "lengthMetres",
+          "routeIds",
+          "infrastructureIds"
+        ],
+        "additionalProperties": true
+      },
+      "ViewerMap": {
+        "type": "object",
+        "properties": {
+          "format": { "const": "ttc-viewer-map" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "networkVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "features": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Feature" }
+          },
+          "routes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Route" }
+          },
+          "edges": { "type": "array", "items": { "$ref": "#/components/schemas/Edge" } },
+          "infrastructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
+              "required": ["id", "name"],
+              "additionalProperties": true
+            }
+          },
+          "shoreline": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Point" }
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "kind": { "type": "string" },
+                "angle": { "type": "number" },
+                "point": { "$ref": "#/components/schemas/Point" }
+              },
+              "required": ["text", "kind", "angle", "point"],
+              "additionalProperties": true
+            }
+          },
+          "northAngle": { "type": "number" },
+          "snapshot": { "type": "string" },
+          "bounds": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" }
+            },
+            "required": ["x", "y", "width", "height"],
+            "additionalProperties": true
+          },
+          "geographicTransform": { "$ref": "#/components/schemas/GeographicTransform" },
+          "stopDirectory": { "$ref": "#/components/schemas/StopDirectory" },
+          "patterns": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StopPattern" }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "routeIds": { "type": "array", "items": { "type": "string" } },
+                "edgeRefs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "edgeId": { "type": "string" },
+                      "direction": { "enum": [1, -1] }
+                    },
+                    "required": ["edgeId", "direction"],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": ["id", "routeIds", "edgeRefs"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "features",
+          "routes",
+          "edges",
+          "infrastructure",
+          "shoreline",
+          "labels",
+          "northAngle",
+          "snapshot",
+          "bounds",
+          "geographicTransform"
+        ],
+        "additionalProperties": true
+      },
+      "SchematicMap": {
+        "type": "object",
+        "properties": {
+          "format": { "const": "ttc-schematic-map" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "networkVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "generatorVersion": { "type": "string" },
+          "display": {
+            "type": "object",
+            "properties": {
+              "geographicTransform": {
+                "$ref": "#/components/schemas/GeographicTransform"
+              }
+            },
+            "required": ["geographicTransform"],
+            "additionalProperties": true
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "routeIds": { "type": "array", "items": { "type": "string" } },
+                "stopIds": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["id", "name", "x", "y", "routeIds", "stopIds"],
+              "additionalProperties": true
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "shortName": { "type": "string" },
+                "longName": { "type": "string" },
+                "color": { "type": "string" }
+              },
+              "required": ["id"],
+              "additionalProperties": true
+            }
+          },
+          "patterns": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StopPattern" }
+          },
+          "graph": {
+            "type": "object",
+            "properties": {
+              "edges": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Edge" }
+              }
+            },
+            "required": ["edges"],
+            "additionalProperties": true
+          },
+          "infrastructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
+              "required": ["id", "name"],
+              "additionalProperties": true
+            }
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "shoreline": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Point" }
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": { "type": "string" },
+                    "kind": { "type": "string" },
+                    "angle": { "type": "number" },
+                    "point": { "$ref": "#/components/schemas/Point" }
+                  },
+                  "required": ["text", "kind", "angle", "point"],
+                  "additionalProperties": true
+                }
+              },
+              "north": {
+                "type": "object",
+                "properties": { "angle": { "type": "number" } },
+                "required": ["angle"],
+                "additionalProperties": true
+              }
+            },
+            "required": ["shoreline", "labels", "north"],
+            "additionalProperties": true
+          },
+          "stopDirectory": { "$ref": "#/components/schemas/StopDirectory" }
+        },
+        "required": [
+          "schemaVersion",
+          "networkVersion",
+          "display",
+          "stops",
+          "routes",
+          "patterns",
+          "graph",
+          "infrastructure",
+          "context"
+        ],
+        "additionalProperties": true
+      },
+      "ArtifactLink": {
+        "type": "object",
+        "properties": {
+          "format": { "type": "string" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "etag": { "type": "string" },
+          "url": {
+            "type": "string",
+            "description": "API-relative immutable artifact URL."
+          }
+        },
+        "required": ["format", "schemaVersion", "etag", "url"],
+        "additionalProperties": true
+      },
+      "ReleaseManifest": {
+        "type": "object",
+        "properties": {
+          "format": { "const": "ttc-release-manifest" },
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "networkVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "artifactId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "selectedBy": { "type": "string" },
+          "generatorVersion": { "type": "string" },
+          "map": {
+            "allOf": [
+              { "$ref": "#/components/schemas/ArtifactLink" },
+              {
+                "type": "object",
+                "properties": { "name": { "enum": ["streetcar", "snake", "ttcstatus"] } },
+                "required": ["name"],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "stops": {
+            "anyOf": [{ "$ref": "#/components/schemas/ArtifactLink" }, { "type": "null" }]
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "networkVersion",
+          "artifactId",
+          "selectedBy",
+          "generatorVersion",
+          "map",
+          "stops"
+        ],
+        "additionalProperties": true
+      },
+      "LiveVehicle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 timestamp."
+              },
+              { "type": "null" }
+            ]
+          },
+          "mode": { "enum": ["streetcar", "subway"] },
+          "positionKind": { "enum": ["gps", "next-station"] },
+          "nextStopName": { "type": "string" },
+          "arrivalAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601 timestamp."
+          },
+          "routeId": { "type": "string" },
+          "tripId": { "type": "string" },
+          "bearing": { "type": "number" },
+          "speedMetresPerSecond": { "type": "number" }
+        },
+        "required": ["id", "label", "latitude", "longitude", "observedAt"],
+        "additionalProperties": true
+      },
+      "SubwayPrediction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "routeId": { "type": "string" },
+          "tripId": { "type": "string" },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 timestamp."
+              },
+              { "type": "null" }
+            ]
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stopId": { "type": "string" },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "arrivalAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "UTC ISO 8601 timestamp."
+                }
+              },
+              "required": ["stopId", "sequence", "arrivalAt"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["id", "label", "routeId", "tripId", "observedAt", "stops"],
+        "additionalProperties": true
+      },
+      "VehicleSnapshot": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "fetchedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601 timestamp."
+          },
+          "feedTimestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 timestamp."
+              },
+              { "type": "null" }
+            ]
+          },
+          "source": { "type": "string" },
+          "attribution": { "type": "string" },
+          "vehicles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LiveVehicle" }
+          },
+          "invalidPositions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "surfaceStatus": { "enum": ["available", "unavailable"] },
+          "subwayStatus": { "enum": ["available", "unavailable"] },
+          "subwaySource": { "type": "string" },
+          "subwayPredictions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SubwayPrediction" }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "fetchedAt",
+          "feedTimestamp",
+          "source",
+          "attribution",
+          "vehicles",
+          "invalidPositions"
+        ],
+        "additionalProperties": true
+      },
+      "Coverage": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "to": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "mode": { "enum": ["streetcar", "subway"] },
+          "kind": { "enum": ["observable", "outage", "no-reports"] }
+        },
+        "required": ["from", "to", "mode", "kind"],
+        "additionalProperties": true
+      },
+      "ServiceState": {
+        "type": "object",
+        "properties": {
+          "stopId": { "type": "string" },
+          "directionId": { "enum": [0, 1] },
+          "state": { "enum": ["fresh", "due", "void", "unmonitored", "collecting"] },
+          "lastTouchAt": {
+            "anyOf": [
+              { "type": "integer", "description": "UTC epoch milliseconds." },
+              { "type": "null" }
+            ]
+          },
+          "minutesSince": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "medianHeadwayOwnSeconds": {
+            "anyOf": [{ "type": "number" }, { "type": "null" }]
+          },
+          "irregularity": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "expectedWaitSeconds": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "dryness": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "backToBack": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "routeIds": { "type": "array", "items": { "type": "string" } },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": { "enum": ["observable", "outage", "no-reports"] },
+                  "unmonitoredSeconds": { "type": "number" },
+                  "since": {
+                    "anyOf": [
+                      { "type": "integer", "description": "UTC epoch milliseconds." },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                "required": ["kind", "unmonitoredSeconds", "since"],
+                "additionalProperties": true
+              },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": [
+          "stopId",
+          "directionId",
+          "state",
+          "lastTouchAt",
+          "minutesSince",
+          "medianHeadwayOwnSeconds",
+          "irregularity",
+          "expectedWaitSeconds",
+          "dryness",
+          "backToBack",
+          "routeIds",
+          "coverage"
+        ],
+        "additionalProperties": true
+      },
+      "ServiceStops": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "at": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "states": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ServiceState" }
+          }
+        },
+        "required": ["schemaVersion", "at", "states"],
+        "additionalProperties": true
+      },
+      "ServiceWave": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "windowStart": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "windowEnd": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "coverage": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Coverage" }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "routeId": { "type": "string" },
+                "directionId": { "enum": [0, 1] },
+                "patternStopIds": { "type": "array", "items": { "type": "string" } },
+                "touches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "stopIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "dt": {
+                        "type": "integer",
+                        "description": "UTC epoch milliseconds."
+                      },
+                      "vehicleId": { "type": "string" },
+                      "directionId": { "enum": [0, 1] },
+                      "mode": { "enum": ["streetcar", "subway"] }
+                    },
+                    "required": ["stopIndex", "dt", "vehicleId", "directionId", "mode"],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": ["routeId", "directionId", "patternStopIds", "touches"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["schemaVersion", "windowStart", "windowEnd", "coverage", "routes"],
+        "additionalProperties": true
+      },
+      "ServiceHistory": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "from": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "to": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stopId": { "type": "string" },
+                "n": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                "meanHeadwaySeconds": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "irregularity": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+                "maxGapSeconds": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+                "backToBack": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "distinctVehicles": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "routeIds": { "type": "array", "items": { "type": "string" } },
+                "coverageRatio": { "type": "number" },
+                "medianApproxSeconds": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "p90ApproxSeconds": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                }
+              },
+              "required": [
+                "stopId",
+                "n",
+                "meanHeadwaySeconds",
+                "irregularity",
+                "maxGapSeconds",
+                "backToBack",
+                "distinctVehicles",
+                "routeIds",
+                "coverageRatio",
+                "medianApproxSeconds",
+                "p90ApproxSeconds"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "bucketSeries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "stopId": { "type": "string" },
+                "buckets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bucketStart": {
+                        "type": "integer",
+                        "description": "UTC epoch milliseconds."
+                      },
+                      "n": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "maxGapSeconds": { "type": "number" },
+                      "backToBack": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": ["bucketStart", "n", "maxGapSeconds", "backToBack"],
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "required": ["stopId", "buckets"],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": ["schemaVersion", "from", "to", "summaries"],
+        "additionalProperties": true
+      },
+      "Health": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" }, "worker": { "type": "string" } },
+        "required": ["ok", "worker"],
+        "additionalProperties": true
+      },
+      "WorkerVersion": {
+        "type": "object",
+        "properties": {
+          "site": { "type": "string" },
+          "source": { "type": "string" },
+          "deploy": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "tag": { "type": "string" },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "UTC ISO 8601 timestamp."
+                  }
+                },
+                "required": ["id", "tag", "timestamp"],
+                "additionalProperties": true
+              },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": ["site", "source", "deploy"],
+        "additionalProperties": true
+      },
+      "NetworkVersion": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "source_url": { "type": "string" },
+          "source_etag": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "source_last_modified": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC ISO 8601 timestamp."
+          },
+          "imported_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 timestamp."
+              },
+              { "type": "null" }
+            ]
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC ISO 8601 timestamp."
+              },
+              { "type": "null" }
+            ]
+          },
+          "route_count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "pattern_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "shape_count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "stop_count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "pattern_stop_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "r2_etag": { "type": "string" }
+        },
+        "required": [
+          "id",
+          "source_url",
+          "source_etag",
+          "source_last_modified",
+          "fetched_at",
+          "imported_at",
+          "activated_at",
+          "route_count",
+          "pattern_count",
+          "shape_count",
+          "stop_count",
+          "pattern_stop_count",
+          "r2_etag"
+        ],
+        "additionalProperties": true
+      },
+      "Network": {
+        "type": "object",
+        "properties": {
+          "mode": { "const": "streetcar" },
+          "version": { "$ref": "#/components/schemas/NetworkVersion" },
+          "attribution": { "type": "string" }
+        },
+        "required": ["mode", "version", "attribution"],
+        "additionalProperties": true
+      },
+      "FeedDiagnostics": {
+        "type": "object",
+        "properties": {
+          "state": { "anyOf": [{ "type": "object" }, { "type": "null" }] },
+          "recentVersions": { "type": "array", "items": { "type": "object" } },
+          "recorder": { "anyOf": [{ "type": "object" }, { "type": "null" }] }
+        },
+        "required": ["state", "recentVersions", "recorder"],
+        "additionalProperties": true
+      },
+      "SyncResult": {
+        "type": "object",
+        "properties": {
+          "changed": { "type": "boolean" },
+          "reason": { "type": "string" },
+          "versionId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "artifactId": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "required": [],
+        "additionalProperties": true
+      },
+      "SlaSummary": {
+        "type": "object",
+        "properties": {
+          "compliance": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "band": { "enum": ["met", "degraded", "missed", "no-data"] },
+          "monitoredMinutes": { "type": "number" },
+          "services": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "latestDayKey": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "latestBand": {
+            "anyOf": [
+              { "enum": ["met", "degraded", "missed", "no-data"] },
+              { "type": "null" }
+            ]
+          }
+        },
+        "required": [
+          "compliance",
+          "band",
+          "monitoredMinutes",
+          "services",
+          "latestDayKey",
+          "latestBand"
+        ],
+        "additionalProperties": true
+      },
+      "SlaTick": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "compliance": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "band": { "enum": ["met", "degraded", "missed", "no-data"] },
+          "services": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "monitoredMinutes": { "type": "number" },
+          "maxGapSeconds": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "coverageRatio": { "type": "number" },
+          "final": { "type": "boolean" }
+        },
+        "required": [
+          "key",
+          "compliance",
+          "band",
+          "services",
+          "monitoredMinutes",
+          "maxGapSeconds",
+          "coverageRatio",
+          "final"
+        ],
+        "additionalProperties": true
+      },
+      "ScheduledBand": {
+        "type": "object",
+        "properties": {
+          "fromHour": { "type": "number" },
+          "toHour": { "type": "number" },
+          "headwaySeconds": { "type": "number" }
+        },
+        "required": ["fromHour", "toHour", "headwaySeconds"],
+        "additionalProperties": true
+      },
+      "SlaRoute": {
+        "type": "object",
+        "properties": {
+          "routeId": { "type": "string" },
+          "number": { "type": "string" },
+          "name": { "type": "string" },
+          "overnight": { "type": "boolean" },
+          "published": {
+            "type": "object",
+            "properties": {
+              "weekday": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ScheduledBand" }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "saturday": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ScheduledBand" }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "sunday": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ScheduledBand" }
+                  },
+                  { "type": "null" }
+                ]
+              },
+              "holiday": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ScheduledBand" }
+                  },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["weekday", "saturday", "sunday", "holiday"],
+            "additionalProperties": true
+          },
+          "todayHeadways": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+              },
+              { "type": "null" }
+            ]
+          },
+          "overall": { "$ref": "#/components/schemas/SlaSummary" },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaTick" }
+          },
+          "weeks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaTick" }
+          }
+        },
+        "required": [
+          "routeId",
+          "number",
+          "name",
+          "overnight",
+          "published",
+          "todayHeadways",
+          "overall",
+          "days",
+          "weeks"
+        ],
+        "additionalProperties": true
+      },
+      "SlaStop": {
+        "type": "object",
+        "properties": {
+          "stopId": { "type": "string" },
+          "name": { "type": "string" },
+          "directionId": { "enum": [0, 1] },
+          "headsign": { "type": "string" },
+          "routeIds": { "type": "array", "items": { "type": "string" } },
+          "overall": { "$ref": "#/components/schemas/SlaSummary" },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaTick" }
+          },
+          "weeks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaTick" }
+          }
+        },
+        "required": [
+          "stopId",
+          "name",
+          "directionId",
+          "headsign",
+          "routeIds",
+          "overall",
+          "days",
+          "weeks"
+        ],
+        "additionalProperties": true
+      },
+      "SlaReport": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "generatedAt": { "type": "integer", "description": "UTC epoch milliseconds." },
+          "dataThrough": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "targets": {
+            "type": "object",
+            "properties": {
+              "versionId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "toleranceRatio": { "type": "number" },
+              "metRatio": { "type": "number" },
+              "degradedRatio": { "type": "number" },
+              "todayClass": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": [
+              "versionId",
+              "toleranceRatio",
+              "metRatio",
+              "degradedRatio",
+              "todayClass"
+            ],
+            "additionalProperties": true
+          },
+          "overall": { "$ref": "#/components/schemas/SlaSummary" },
+          "routes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaRoute" }
+          },
+          "stops": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SlaStop" }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "generatedAt",
+          "dataThrough",
+          "targets",
+          "overall",
+          "routes"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Opaque error code; optional human-readable context.",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      }
+    }
+  }
+}

@@ -270,6 +270,37 @@ test('real Clerk session verification accepts signed tokens and rejects tamperin
     });
   try {
     assert.equal(await authenticateAccount(authenticated(token()), env), 'user_signed');
+    // Real signature verification covers the future iPhone WebView's token
+    // party, not trust in its caller-controlled HTTP Origin header.
+    assert.equal(
+      await authenticateAccount(
+        authenticated(token({ azp: 'capacitor://localhost' })),
+        env,
+      ),
+      'user_signed',
+    );
+    assert.equal(
+      (
+        await authenticateAccount(
+          authenticated(token({ azp: 'capacitor://foreign' })),
+          env,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (await authenticateAccount(authenticated(token({ azp: undefined })), env)).status,
+      401,
+    );
+    assert.equal(
+      (
+        await authenticateAccount(authenticated(token()), {
+          ...env,
+          CLERK_AUTHORIZED_PARTIES: '',
+        })
+      ).status,
+      503,
+    );
     assert.equal((await api.fetch(authenticated(token()), env, {})).status, 200);
     const privateEntry = { entries: [entry], revision: 0 };
     assert.equal(

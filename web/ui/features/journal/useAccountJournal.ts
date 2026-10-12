@@ -1,8 +1,10 @@
+import { mergeJournal } from '../../../../shared/accounts/merge';
 import { english } from '../../../../shared/i18n/messages';
 import { validJournal, type JournalEntry } from '../../../../shared/accounts/journal';
 import { useAccountDocument } from '../accounts/useAccountDocument';
 
 const options = {
+  merge: mergeJournal,
   path: '/api/v1/me/journal',
   field: 'entries',
   empty: [] as JournalEntry[],

@@ -3,16 +3,23 @@ import { useAccount } from './auth';
 import { useActivity } from '../../services/platform/react';
 import { readSnapshot, saveSnapshot } from '../../services/cache/snapshots';
 import { accountDocumentKey } from './document-cache';
+import {
+  readAccountDocument,
+  writeAccountDocument,
+  type PendingEdit,
+} from './document-write';
 
 interface Document<T> {
   items: T;
   revision: number;
+  pending?: PendingEdit<T>;
 }
 interface Options<T> {
   path: string;
   field: string;
   empty: T;
   valid(value: unknown): value is T;
+  merge(base: T, draft: T, current: T, preferDraft?: boolean): T | null;
   unavailable: string;
   conflict: string;
   unsaved: string;
@@ -28,6 +35,7 @@ export function useAccountDocument<T>(options: Options<T>) {
   identity.current = account.userId;
   const generation = useRef(0);
   const busy = useRef(false);
+  const mutation = useRef<AbortController | undefined>(undefined);
   const [state, setState] = useState({
     userId: account.userId,
     items: options.empty,
@@ -36,10 +44,12 @@ export function useAccountDocument<T>(options: Options<T>) {
     saving: false,
     cached: false,
     error: '',
+    pending: undefined as PendingEdit<T> | undefined,
   });
   const latest = useRef(state);
   latest.current = state;
   useEffect(() => {
+    mutation.current?.abort();
     const epoch = ++generation.current;
     const userId = account.userId;
     busy.current = false;
@@ -52,6 +62,7 @@ export function useAccountDocument<T>(options: Options<T>) {
         saving: false,
         cached: false,
         error: '',
+        pending: undefined,
       });
       return;
     }
@@ -68,13 +79,22 @@ export function useAccountDocument<T>(options: Options<T>) {
       return (
         options.valid(document.items) &&
         Number.isSafeInteger(document.revision) &&
-        Number(document.revision) >= 0
+        Number(document.revision) >= 0 &&
+        (document.pending === undefined ||
+          (document.pending !== null &&
+            typeof document.pending === 'object' &&
+            options.valid(document.pending.base) &&
+            options.valid(document.pending.items)))
       );
     };
     void (async () => {
       const cached = await readSnapshot(key, validDocument);
       if (!current()) return;
-      const previous = latest.current.userId === userId ? latest.current : undefined;
+      const previous =
+        latest.current.userId === userId && latest.current.loaded
+          ? latest.current
+          : undefined;
+      const pending = previous?.pending ?? cached?.value.pending;
       setState({
         userId,
         items: previous?.items ?? cached?.value.items ?? options.empty,
@@ -83,6 +103,7 @@ export function useAccountDocument<T>(options: Options<T>) {
         saving: false,
         cached: true,
         error: '',
+        pending,
       });
       if (!activity.online) return;
       try {
@@ -90,12 +111,8 @@ export function useAccountDocument<T>(options: Options<T>) {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(options.unavailable);
-        const body = await response.json();
-        const document = {
-          items: body[options.field] as unknown,
-          revision: body.revision as unknown,
-        };
-        if (!validDocument(document)) throw new Error(options.unavailable);
+        const document = readAccountDocument(await response.json(), options);
+        if (!document) throw new Error(options.unavailable);
         if (!current()) return;
         setState({
           userId,
@@ -104,8 +121,9 @@ export function useAccountDocument<T>(options: Options<T>) {
           saving: false,
           cached: false,
           error: '',
+          pending,
         });
-        await saveSnapshot(key, { value: document, savedAt: Date.now() });
+        await saveSnapshot(key, { value: { ...document, pending }, savedAt: Date.now() });
       } catch (error) {
         if (current())
           setState((previous) => ({
@@ -114,66 +132,107 @@ export function useAccountDocument<T>(options: Options<T>) {
           }));
       }
     })();
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      mutation.current?.abort();
+    };
     // Feature options are module constants; HTTP function identity may change with a token refresh.
   }, [account.userId, activity.active, activity.online]);
   const current =
     state.userId === account.userId
       ? state
       : { ...state, items: options.empty, loaded: false, cached: false };
-  async function change(update: (items: T) => T) {
-    if (!account.userId || !current.loaded || current.cached || busy.current)
+  async function commit(pending: PendingEdit<T>, preferDraft = false) {
+    if (
+      !account.userId ||
+      !current.loaded ||
+      current.cached ||
+      busy.current ||
+      !activity.online
+    )
       return false;
-    const items = update(current.items);
-    if (!options.valid(items)) return false;
     const userId = account.userId;
     const epoch = generation.current;
     const isCurrent = () => identity.current === userId && generation.current === epoch;
+    const key = accountDocumentKey(userId, options.path);
+    const controller = new AbortController();
+    mutation.current = controller;
     busy.current = true;
-    setState({ ...current, items, saving: true, error: '' });
+    setState({ ...current, saving: true, pending, error: '' });
     try {
-      const response = await request.current(options.path, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ [options.field]: items, revision: current.revision }),
+      // Persist before PUT so a disconnect or cold restart cannot erase the draft.
+      await saveSnapshot(key, {
+        value: { items: current.items, revision: current.revision, pending },
+        savedAt: Date.now(),
       });
-      if (!response.ok)
-        throw new Error(response.status === 409 ? options.conflict : options.unsaved);
-      const body = await response.json();
-      if (!Number.isSafeInteger(body.revision) || body.revision <= current.revision)
-        throw new Error(options.unsaved);
       if (!isCurrent()) return false;
-      const document = { items, revision: body.revision as number };
+      const result = await writeAccountDocument(
+        request.current,
+        options,
+        current,
+        pending,
+        preferDraft,
+        isCurrent,
+        controller.signal,
+      );
+      if (!isCurrent()) return false;
+      const retained = result.saved ? undefined : pending;
       setState({
         userId,
-        ...document,
+        ...result.document,
+        pending: retained,
         loaded: true,
         saving: false,
         cached: false,
-        error: '',
+        error: result.saved ? '' : options.conflict,
       });
-      await saveSnapshot(accountDocumentKey(userId, options.path), {
-        value: document,
+      await saveSnapshot(key, {
+        value: { ...result.document, pending: retained },
         savedAt: Date.now(),
       });
-      return isCurrent();
-    } catch (error) {
+      return result.saved && isCurrent();
+    } catch {
       if (isCurrent())
-        setState({
-          ...current,
-          saving: false,
-          error: error instanceof Error ? error.message : options.unsaved,
-        });
+        setState({ ...current, pending, saving: false, error: options.unsaved });
       return false;
     } finally {
       if (isCurrent()) busy.current = false;
     }
   }
+  function change(update: (items: T) => T) {
+    if (current.pending) return Promise.resolve(false);
+    const items = update(current.items);
+    if (!options.valid(items)) return Promise.resolve(false);
+    return commit({ base: current.items, items });
+  }
+  function retryDraft(preferDraft = false) {
+    return current.pending
+      ? commit(current.pending, preferDraft)
+      : Promise.resolve(false);
+  }
+  async function discardDraft() {
+    if (!account.userId || busy.current) return;
+    setState({ ...current, pending: undefined, error: '' });
+    await saveSnapshot(accountDocumentKey(account.userId, options.path), {
+      value: { items: current.items, revision: current.revision },
+      savedAt: Date.now(),
+    });
+  }
   return {
     userId: account.userId,
     items: current.items,
     change,
-    ready: current.loaded && !current.cached && !current.saving && !busy.current,
+    ready:
+      current.loaded &&
+      !current.cached &&
+      !current.saving &&
+      !busy.current &&
+      !current.pending,
+    hasDraft: Boolean(current.pending),
+    canRetryDraft:
+      current.loaded && !current.cached && !current.saving && activity.online,
+    retryDraft,
+    discardDraft,
     saving: current.saving,
     cached: current.loaded && current.cached,
     error: current.error,

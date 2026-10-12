@@ -2,68 +2,75 @@ import type { Env } from '../env';
 import { json } from '../http/responses';
 import type { ExecutionContextLike } from '../../../shared/cloudflare/bindings';
 import { ifNoneMatchMatches } from '../../../../shared/http/etag';
-
-import { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from './realtime';
-import { VehicleSnapshotCache } from './vehicle-snapshot-cache';
 import { liveUpdateSeconds } from '../../../../shared/live/config';
+import { recorderFetch } from '../service/recorder-client';
+import type { PublishedSnapshot } from '../service/published-snapshot';
 
-// Keep only the current configuration in an isolate; edge caching is shared
-// within a Cloudflare location, not a global single-poller guarantee.
-let vehicleStore: { key: string; cache: VehicleSnapshotCache } | undefined;
+/** The API distributes the recorder's public snapshot. It never acquires TTC
+ * feeds itself, and every client receives the same fleet without GPS filters. */
 export async function vehicleResponse(
   request: Request,
   env: Env,
   ctx: ExecutionContextLike,
 ): Promise<Response> {
-  const source = env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL;
   const updateSeconds = liveUpdateSeconds(env.REALTIME_UPDATE_SECONDS);
   const cache = (caches as unknown as { default: Cache }).default;
-  const storeKey = JSON.stringify([
-    source,
-    env.SOURCE_ATTRIBUTION,
-    updateSeconds,
+  // Config changes invalidate a POP's old envelope; the recorder independently
+  // checks its persisted acquisition configuration after deployment/eviction.
+  const config = JSON.stringify([
+    env.REALTIME_VEHICLE_URL,
     env.REALTIME_SUBWAY_URL,
+    env.SOURCE_ATTRIBUTION,
+    env.SERVICE_SAMPLE_SECONDS,
+    updateSeconds,
   ]);
   const key = new Request(
-    `https://ttcstatus-cache.invalid/api/v1/vehicles/streetcar?config=${encodeURIComponent(storeKey)}`,
+    `https://ttcstatus-cache.invalid/recorder-vehicles?config=${encodeURIComponent(config)}`,
   );
-  const cached = await cache.match(key);
   const conditional = (response: Response) =>
     ifNoneMatchMatches(request.headers.get('if-none-match'), response.headers.get('etag'))
       ? new Response(null, { status: 304, headers: response.headers })
       : response;
-  if (cached) return conditional(cached);
+  const cached = await cache.match(key);
+  // A cache implementation should honor max-age; this additional guard prevents
+  // stale cached fleets from masking an outage after their published next tick.
+  if (
+    cached &&
+    Date.parse(cached.headers.get('x-live-next-update-at') ?? '') > Date.now()
+  )
+    return conditional(cached);
   try {
-    if (vehicleStore?.key !== storeKey)
-      vehicleStore = {
-        key: storeKey,
-        cache: new VehicleSnapshotCache(
-          source,
-          env.SOURCE_ATTRIBUTION,
-          updateSeconds,
-          (url, attribution) =>
-            fetchRailSnapshot(url, attribution, env.REALTIME_SUBWAY_URL),
-        ),
-      };
-    const result = await vehicleStore.cache.get();
+    const publication = await recorderFetch(env, '/snapshot');
+    if (!publication.ok) throw new Error('recorder unavailable');
+    const result = (await publication.json()) as PublishedSnapshot;
+    if (
+      !result.snapshot ||
+      !result.etag ||
+      !Number.isFinite(result.checkedAt) ||
+      !Number.isFinite(result.nextUpdateAt) ||
+      result.nextUpdateAt <= Date.now()
+    ) {
+      throw new Error('no current snapshot');
+    }
+    // Client polling cadence and recorder acquisition cadence are distinct. Edge
+    // copies expire by the next acquisition so partial/outage states stay honest.
     const remainingSeconds = Math.max(
       0,
       Math.floor((result.nextUpdateAt - Date.now()) / 1000),
     );
     const response = json(result.snapshot, 200, {
-      'cache-control': `public, max-age=${remainingSeconds}`,
+      'cache-control': `public, max-age=${Math.min(updateSeconds, remainingSeconds)}`,
       etag: result.etag,
       'x-live-update-seconds': String(updateSeconds),
       'x-live-next-update-at': new Date(result.nextUpdateAt).toISOString(),
     });
     ctx.waitUntil(cache.put(key, response.clone()));
     return conditional(response);
-  } catch (error) {
-    console.error('Streetcar snapshot failed', error);
+  } catch {
     return json(
       {
         error: 'vehicles-unavailable',
-        message: 'Live streetcar positions are temporarily unavailable.',
+        message: 'Live transit observations are temporarily unavailable.',
       },
       503,
       {

@@ -2,6 +2,7 @@ import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
 import { StreetcarJournal } from '../../journal/StreetcarJournal';
 import { AccountRequired } from '../../accounts/auth';
+import { DraftRecovery } from '../../accounts/DraftRecovery';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** The map workspace's Journal content, shared by the rail and mobile drawer. */
@@ -18,6 +19,7 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
       hidden={panel !== 'journal'}
     >
       <AccountRequired>
+        <DraftRecovery document={accountJournal} />
         {accountJournal.error && (
           <div className="tip" role="alert">
             {t(accountJournal.error)}

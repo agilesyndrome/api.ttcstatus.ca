@@ -1,0 +1,80 @@
+import {
+  array,
+  boolean,
+  epoch,
+  nullable,
+  number,
+  object,
+  ref,
+  revision,
+  string,
+  version,
+} from './schema';
+
+const band = { enum: ['met', 'degraded', 'missed', 'no-data'] };
+const schedule = nullable(array(ref('ScheduledBand')));
+export const slaSchemas = {
+  SlaSummary: object({
+    compliance: nullable(number),
+    band,
+    monitoredMinutes: number,
+    services: revision,
+    latestDayKey: nullable(string),
+    latestBand: nullable(band),
+  }),
+  SlaTick: object({
+    key: string,
+    compliance: nullable(number),
+    band,
+    services: revision,
+    monitoredMinutes: number,
+    maxGapSeconds: nullable(number),
+    coverageRatio: number,
+    final: boolean,
+  }),
+  ScheduledBand: object({ fromHour: number, toHour: number, headwaySeconds: number }),
+  SlaRoute: object({
+    routeId: string,
+    number: string,
+    name: string,
+    overnight: boolean,
+    published: object({
+      weekday: schedule,
+      saturday: schedule,
+      sunday: schedule,
+      holiday: schedule,
+    }),
+    todayHeadways: nullable(array(nullable(number))),
+    overall: ref('SlaSummary'),
+    days: array(ref('SlaTick')),
+    weeks: array(ref('SlaTick')),
+  }),
+  SlaStop: object({
+    stopId: string,
+    name: string,
+    directionId: { enum: [0, 1] },
+    headsign: string,
+    routeIds: array(string),
+    overall: ref('SlaSummary'),
+    days: array(ref('SlaTick')),
+    weeks: array(ref('SlaTick')),
+  }),
+  SlaReport: object(
+    {
+      schemaVersion: version,
+      generatedAt: epoch,
+      dataThrough: nullable(string),
+      targets: object({
+        versionId: revision,
+        toleranceRatio: number,
+        metRatio: number,
+        degradedRatio: number,
+        todayClass: nullable(string),
+      }),
+      overall: ref('SlaSummary'),
+      routes: array(ref('SlaRoute')),
+      stops: array(ref('SlaStop')),
+    },
+    ['schemaVersion', 'generatedAt', 'dataThrough', 'targets', 'overall', 'routes'],
+  ),
+};

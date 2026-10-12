@@ -1,4 +1,5 @@
 import { sha256Hex } from '../../../shared/gtfs/hash';
+import { chunkString } from '../../../shared/storage/chunks';
 import {
   ARTIFACT_CHUNK_CHARACTERS,
   GENERATOR_VERSION,
@@ -16,23 +17,6 @@ export interface ArtifactOptions {
   mode?: string;
 }
 
-function chunkString(value: string): string[] {
-  const chunks: string[] = [];
-  let start = 0;
-
-  while (start < value.length) {
-    let end = Math.min(value.length, start + ARTIFACT_CHUNK_CHARACTERS);
-    // Do not split a UTF-16 surrogate pair across D1 rows.
-    if (end < value.length) {
-      const last = value.charCodeAt(end - 1);
-      if (last >= 0xd800 && last <= 0xdbff) end--;
-    }
-    chunks.push(value.slice(start, end));
-    start = end;
-  }
-  return chunks;
-}
-
 /** Persist a complete immutable map artifact and mark its generation job done. */
 export async function storeMapArtifact(
   env: MapGeneratorEnv,
@@ -46,21 +30,27 @@ export async function storeMapArtifact(
   const generatorVersion = options.generatorVersion ?? GENERATOR_VERSION;
   const json = JSON.stringify(bundle);
   const etag = await sha256Hex(json);
-  const chunks = chunkString(json);
+  const chunks = chunkString(json, ARTIFACT_CHUNK_CHARACTERS);
   const createdAt = new Date().toISOString();
   const byteSize = new TextEncoder().encode(json).byteLength;
 
   const existing = await env.DB.prepare(
-    `SELECT id FROM map_artifacts
+    `SELECT id, chunk_count, (SELECT COUNT(*) FROM map_artifact_chunks WHERE artifact_id = map_artifacts.id) AS stored_chunks FROM map_artifacts
      WHERE version_id = ? AND mode = ? AND style = ? AND generator_version = ?
      LIMIT 1`,
   )
     .bind(versionId, mode, style, generatorVersion)
-    .first<{ id: number }>();
+    .first<{ id: number; chunk_count: number; stored_chunks: number }>();
 
   let artifactId: number;
   if (existing) {
     artifactId = existing.id;
+    // Completed artifacts are immutable. A regeneration with the same generator
+    // version reuses it; bump the generator version for content changes.
+    if (existing.stored_chunks === existing.chunk_count && existing.chunk_count > 0) {
+      await completeGenerationJob(env, versionId, createdAt);
+      return artifactId;
+    }
     await env.DB.batch([
       env.DB.prepare(`DELETE FROM map_artifact_chunks WHERE artifact_id = ?`).bind(
         artifactId,
@@ -114,6 +104,15 @@ export async function storeMapArtifact(
     await env.DB.batch(statements.slice(i, i + 25));
   }
 
+  await completeGenerationJob(env, versionId, createdAt);
+  return artifactId;
+}
+
+async function completeGenerationJob(
+  env: MapGeneratorEnv,
+  versionId: number,
+  createdAt: string,
+) {
   await env.DB.prepare(
     `UPDATE map_generation_jobs
      SET status = 'completed', completed_at = ?, error = NULL
@@ -125,6 +124,4 @@ export async function storeMapArtifact(
   )
     .bind(createdAt, versionId, MAP_MODE)
     .run();
-
-  return artifactId;
 }

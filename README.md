@@ -2,6 +2,11 @@
 
 Cloudflare Workers + D1 + R2 backend for TTCstatus.
 
+[Privacy-focused mobile API contract](docs/api/mobile-privacy.md) covers original
+stop geography, local nearest-stop lookup, paired artifact manifests, OpenAPI,
+recorder-owned live snapshots, native bearer authentication, and revision recovery.
+Device GPS and local grid keys stay on the device. Notifications remain deferred.
+
 Clerk sign-up/login, protected account Journals, and opt-in public badge profiles
 are implemented. See [Clerk setup](docs/clerk-setup.md) for the two required
 Cloudflare bindings, the D1 migration, local development, and activation steps.

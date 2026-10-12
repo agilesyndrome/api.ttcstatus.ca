@@ -86,6 +86,12 @@ export function ExplorePanel({
           {filters.subway ? t('workspace.on') : t('workspace.off')}
         </button>
       </div>
+      {workspace.savedAccount && <DraftRecovery document={workspace.savedAccount} />}
+      {workspace.savedAccount?.error && (
+        <p className="tip" role="alert">
+          {t(workspace.savedAccount.error)}
+        </p>
+      )}
       {workspace.savedCached && (
         <p role="status" className="account-cache-status">
           {t('cache.accountOffline')}
@@ -134,3 +140,4 @@ export function ExplorePanel({
     </div>
   );
 }
+import { DraftRecovery } from '../../accounts/DraftRecovery';

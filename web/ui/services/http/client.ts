@@ -1,6 +1,7 @@
 import { abortable } from './cancellation';
 import { completedResponse } from './response';
 import { apiUrl } from './config';
+import { assertLocationFreeRequest } from './privacy';
 
 export type ApiRequest = (path: string, init?: RequestInit) => Promise<Response>;
 export interface ClientOptions {
@@ -14,6 +15,7 @@ export interface ClientOptions {
 /** One transport seam for browser hooks, native account adapters, and deterministic tests. */
 export function createApiClient(options: ClientOptions = {}): ApiRequest {
   return async (path, init = {}) => {
+    assertLocationFreeRequest(path, init);
     const headers = new Headers(init.headers);
     const controller = new AbortController();
     const abort = () => controller.abort(init.signal?.reason);
