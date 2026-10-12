@@ -236,7 +236,7 @@
   "keyboard.shortcutsWorkWhileYouReOutsideATextFieldOr": "Les raccourcis fonctionnent lorsque vous êtes hors d’un champ de texte ou d’un menu.",
   "keyboard.switchDayNightTheme": "Changer le thème jour/nuit",
   "keyboard.title": "Raccourcis clavier",
-  "language.browserDefault": "Utiliser la langue du navigateur",
+  "language.browserDefault": "Auto",
   "language.browserProfile": "Profil du navigateur",
   "language.browserStorageIsUnavailableYourLanguageChoiceWillLastFor": "Le stockage du navigateur est indisponible. Votre choix de langue sera conservé pour cet onglet seulement.",
   "language.label": "Langue",

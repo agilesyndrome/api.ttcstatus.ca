@@ -80,9 +80,9 @@ try {
   await page.getByText(/Offline — showing the saved map/).waitFor();
   await page.getByRole('button', { name: 'Open menu', exact: true }).tap();
   await page.getByRole('link', { name: 'Settings', exact: true }).tap();
-  await page.getByRole('heading', { name: 'Browser profile', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Language', exact: true }).waitFor();
   await page.reload();
-  await page.getByRole('heading', { name: 'Browser profile', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Language', exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log(
     'Built offline shell passed: cold offline map reload, cached geometry, lazy Settings navigation and direct offline Settings reload.',

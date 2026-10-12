@@ -25,17 +25,17 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
             {t(accountJournal.error)}
           </div>
         )}
-        <p className="microcopy" role="status">
-          {accountJournal.saving
-            ? t('workspace.savingYourJournal')
-            : accountJournal.error === 'journal.unavailable'
-              ? ''
-              : accountJournal.error
-                ? t('workspace.yourLastChangeHasNotBeenSaved')
-                : accountJournal.ready
-                  ? t('workspace.yourJournalIsSavedToYourAccount')
+        {(accountJournal.saving || accountJournal.error || !accountJournal.ready) && (
+          <p className="microcopy" role="status">
+            {accountJournal.saving
+              ? t('workspace.savingYourJournal')
+              : accountJournal.error === 'journal.unavailable'
+                ? ''
+                : accountJournal.error
+                  ? t('workspace.yourLastChangeHasNotBeenSaved')
                   : t('workspace.loadingYourJournal')}
-        </p>
+          </p>
+        )}
         <fieldset className="journal-fieldset" disabled={!accountJournal.ready}>
           {workspace.accountJournal.cached && (
             <p role="status" className="account-cache-status">

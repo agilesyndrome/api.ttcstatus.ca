@@ -128,11 +128,7 @@ function ProfileSettings() {
   }
   return (
     <>
-      <p className="eyebrow">{t('profile.yourCornerOfTheCity')}</p>
       <h1>{t('profile.yourProfile')}</h1>
-      <p className="helper">
-        {t('profile.chooseAUsernameAndDecideWhetherToShareYourAccomplishments')}
-      </p>
       {message && (
         <p className="tip" role="status">
           {t(message)}
@@ -156,11 +152,7 @@ function ProfileSettings() {
                 pattern="[a-z0-9][a-z0-9_-]{2,29}"
                 value={username}
                 onChange={(event) => setUsername(event.target.value.toLowerCase())}
-                aria-describedby="username-help"
               />
-              <p id="username-help" className="microcopy">
-                {t('profile.330LowercaseLettersNumbersUnderscoresOrHyphensStartWith')}
-              </p>
             </div>
             <label className="privacy-choice">
               <input
@@ -170,9 +162,6 @@ function ProfileSettings() {
               />{' '}
               {t('profile.showMyProfileAndEarnedBadgesPublicly')}
             </label>
-            <p className="microcopy">
-              {t('profile.offByDefaultWhenEnabledAnyoneWithYourProfileLink')}
-            </p>
             <button className="action-button" type="submit">
               {busy ? t('profile.saving') : t('profile.saveProfile')}
             </button>

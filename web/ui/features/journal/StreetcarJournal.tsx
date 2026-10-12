@@ -59,9 +59,7 @@ export function StreetcarJournal({
   const currentPage = Math.min(page, Math.max(0, Math.ceil(results.length / 10) - 1));
   return (
     <section className="streetcar-journal">
-      <p className="eyebrow">{t('journal.yourRollingCollection')}</p>
       <h1>{t('journal.streetcarJournal')}</h1>
-      <p className="helper">{t('journal.markCarsSeenOrRiddenAndKeepPrivateNotesAdd')}</p>
       <form
         className="tool-form"
         onSubmit={async (event) => {
@@ -150,11 +148,6 @@ export function StreetcarJournal({
           {t('journal.collected')}
         </span>
       </div>
-      <p className="microcopy">
-        {t('journal.savedPrivatelyToYourAccount')}
-        {t('journal.upTo')} {JOURNAL_LIMIT}{' '}
-        {t('journal.differentCarsNoGpsCoordinatesAreRecordedNotesAndDates')}
-      </p>
       {message && (
         <p className="tip" role="status">
           {t(message)}
@@ -180,11 +173,6 @@ export function StreetcarJournal({
         {results.length === 1 ? t('journal.collectedCar') : t('journal.collectedCars')}{' '}
         {t('journal.found')}
       </p>
-      {!entries.length && (
-        <p className="tip">
-          {t('journal.yourFirstCatchIsWaitingChooseAStreetcarAndSelect')}
-        </p>
-      )}
       {Boolean(entries.length) && !results.length && (
         <p className="helper">{t('journal.noCollectedCarsMatchThatSearch')}</p>
       )}

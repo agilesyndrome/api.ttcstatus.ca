@@ -904,7 +904,7 @@
   "keyboard.shortcutsWorkWhileYouReOutsideATextFieldOr": "Shortcuts work while you’re outside a text field or menu.",
   "keyboard.switchDayNightTheme": "Switch day/night theme",
   "keyboard.title": "Keyboard shortcuts",
-  "language.browserDefault": "Use browser language",
+  "language.browserDefault": "Auto",
   "language.browserProfile": "Browser profile",
   "language.browserStorageIsUnavailableYourLanguageChoiceWillLastFor": "Browser storage is unavailable. Your language choice will last for this tab.",
   "language.label": "Language",

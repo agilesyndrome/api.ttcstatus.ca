@@ -78,7 +78,7 @@ try {
     node.dataset.retained = 'true';
   });
   await page.getByRole('link', { name: 'Language settings', exact: true }).click();
-  await page.getByRole('heading', { name: 'Browser profile', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Language', exact: true }).waitFor();
   const pausedCalls = feedCalls;
   await page.waitForTimeout(300);
   assert.equal(

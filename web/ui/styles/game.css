@@ -481,13 +481,13 @@
   padding-block-end: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
-.theme-choices {
+.segmented-control {
   display: inline-flex;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
-.theme-choices button {
+.segmented-control button {
   padding: 8px 14px;
   border: 0;
   background: transparent;
@@ -495,7 +495,7 @@
   font: inherit;
   cursor: pointer;
 }
-.theme-choices button[aria-pressed='true'] {
+.segmented-control button[aria-pressed='true'] {
   background: var(--accent);
   color: #fff;
 }
