@@ -298,19 +298,21 @@ export function NavPanel(props: NavPanelProps) {
           }
         }}
       >
-        {visiblePanels.map((item) =>
-          renderItem(item, {
-            mode: 'tab',
-            id: `${id}-${item.key}`,
-            selected: panel === item.key,
-            controls: `panel-${item.key}`,
-            tabIndex: panel === item.key ? 0 : -1,
-            title: titleFor(item.label(), collapsed),
-            onClick: () => onPanel(item.key as SidebarPanel),
-          }),
-        )}
+        {visiblePanels.map((item) => (
+          <div className="main-nav__section" key={item.key}>
+            {renderItem(item, {
+              mode: 'tab',
+              id: `${id}-${item.key}`,
+              selected: panel === item.key,
+              controls: `panel-${item.key}`,
+              tabIndex: panel === item.key ? 0 : -1,
+              title: titleFor(item.label(), collapsed),
+              onClick: () => onPanel(item.key as SidebarPanel),
+            })}
+            {panels?.[item.key as SidebarPanel] ?? null}
+          </div>
+        ))}
       </div>
-      {visiblePanels.map((item) => panels?.[item.key as SidebarPanel] ?? null)}
       <div className="main-nav__pages">
         {pageItems.map((item) =>
           renderItem(item, { title: titleFor(item.label(), collapsed) }),

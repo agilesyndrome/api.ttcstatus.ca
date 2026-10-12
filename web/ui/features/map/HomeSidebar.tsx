@@ -32,18 +32,20 @@ export function HomeSidebar({
       aria-label={t('workspace.stopAndRouteDetails')}
       data-open={mobilePanelOpen ? '' : undefined}
     >
-      <NavPanel
-        panel={panel}
-        onPanel={(next) => {
-          setPanel(next);
-          sidebar.current?.scrollTo({ top: 0 });
-        }}
-      />
       <div ref={sidebar} id="sidebar-content" className="sidebar-content">
-        <ExplorePanel workspace={workspace} showDetails={!phone} />
-        <RoutePulsePanel workspace={workspace} />
-        <JournalPanel workspace={workspace} />
-        <BadgesPanel workspace={workspace} />
+        <NavPanel
+          panel={panel}
+          onPanel={(next) => {
+            setPanel(next);
+            sidebar.current?.scrollTo({ top: 0 });
+          }}
+          panels={{
+            explore: <ExplorePanel workspace={workspace} showDetails={!phone} />,
+            'route-pulse': <RoutePulsePanel workspace={workspace} />,
+            journal: <JournalPanel workspace={workspace} />,
+            badges: <BadgesPanel workspace={workspace} />,
+          }}
+        />
         <PageFooter />
         {settings && <div className="nav-settings">{settings}</div>}
       </div>

@@ -154,6 +154,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           onSelect={selectFeature}
           onSelectVehicle={(car) => selectVehicle(car, true)}
           onReset={resetWithService}
+          actions={null}
           onBrandToggle={() => {
             // The brand symbol is the mobile menu button: it opens the nav
             // panel over the map. On desktop it keeps its old meaning — a
@@ -162,7 +163,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             else resetWithService();
           }}
           navOpen={mobilePanelOpen}
-          actions={headerActions}
         />
         {data ? (
           <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>

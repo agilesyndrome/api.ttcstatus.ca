@@ -92,9 +92,12 @@ button[aria-pressed='true'] {
 .search > span {
   position: absolute;
   left: 14px;
-  top: 6px;
-  font-size: 27px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22px;
+  line-height: 1;
   color: var(--muted);
+  pointer-events: none;
 }
 .search input {
   width: 100%;

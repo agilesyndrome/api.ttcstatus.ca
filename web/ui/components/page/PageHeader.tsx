@@ -191,7 +191,11 @@ export function PageHeader({
           </div>
         )}
       </div>
-      {actions ?? <span className="snapshot">{t('header.ttcStatusMap')}</span>}
+      {actions === undefined ? (
+        <span className="snapshot">{t('header.ttcStatusMap')}</span>
+      ) : (
+        actions
+      )}
     </header>
   );
 }

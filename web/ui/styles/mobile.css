@@ -66,6 +66,8 @@
   .sidebar .main-nav {
     flex-direction: column;
     align-items: stretch;
+    flex: 0 0 auto;
+    overflow: visible;
     padding: 4px 10px 8px;
   }
   .sidebar .main-nav [role='tablist'] {
@@ -88,6 +90,9 @@
   .sidebar-content {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
     padding: 18px max(18px, env(safe-area-inset-right)) 24px
       max(18px, env(safe-area-inset-left));
     overscroll-behavior-y: contain;
@@ -105,18 +110,6 @@
     margin: 24px 0 0;
   }
   .sidebar [role='tabpanel'] > * {
-    flex-shrink: 0;
-  }
-  .sidebar-content > [role='tabpanel'] {
-    order: 1;
-  }
-  .sidebar-content > footer {
-    order: 3;
-  }
-  .sidebar-content > .nav-settings {
-    order: 4;
-  }
-  .sidebar-content > * {
     flex-shrink: 0;
   }
   /* Account, language and theme controls move from the hidden top bar to the
