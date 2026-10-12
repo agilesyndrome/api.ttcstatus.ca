@@ -8,9 +8,8 @@ export interface CachedVehicleSnapshot {
   nextUpdateAt: number;
 }
 
-/** An isolate shares acquisitions between simultaneous viewers, even on an
- * edge-cache miss. The same store serves the credential-free local preview.
- * This is demand-driven: no viewers means no background TTC requests. */
+/** Credential-free local previews share acquisitions within their process.
+ * Production consumers use the recorder's persisted singleton publication. */
 export class VehicleSnapshotCache {
   private cached?: CachedVehicleSnapshot;
   private pending?: Promise<CachedVehicleSnapshot>;

@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { legacySnakeMiddleware } from './scripts/preview/legacy-snake.mjs';
 import { createPreviewMiddleware } from './scripts/preview/preview-api.mjs';
+import { appServiceWorker } from './scripts/build/service-worker.mjs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 /** Cloudflare Workers Builds injects WORKERS_CI_COMMIT_SHA; local builds read
@@ -37,6 +38,16 @@ export default defineConfig({
   plugins: [
     react(),
     {
+      name: 'ttc-offline-shell',
+      generateBundle(_options, bundle) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'sw.js',
+          source: appServiceWorker(Object.keys(bundle)),
+        });
+      },
+    },
+    {
       name: 'ttc-localized-copy',
       transformIndexHtml: { order: 'pre', handler: renderLocalizedHtml },
       async generateBundle() {
@@ -58,5 +69,23 @@ export default defineConfig({
     port: 4173,
     strictPort: true,
   },
-  build: { outDir: resolve('dist'), emptyOutDir: true },
+  build: {
+    outDir: resolve('dist'),
+    emptyOutDir: true,
+    // Clerk is needed by the account controls, but it is a large vendor
+    // dependency and should not inflate the main navigation chunk. Keep it
+    // independently cacheable for visitors who already have the app shell.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'clerk',
+              test: /node_modules[\\/]@clerk[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
 });

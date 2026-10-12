@@ -8,6 +8,13 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  // Storybook 10 surfaces a failed play function as a browser console error
+  // while the render phase still reports "finished" — collect the console
+  // too, or a broken play (a story asserting UI that no longer exists) can
+  // pass this check silently.
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
   const index = await (await fetch(`${origin}/index.json`)).json();
   const stories = Object.values(index.entries).filter((entry) => entry.type === 'story');
   for (const story of stories) {

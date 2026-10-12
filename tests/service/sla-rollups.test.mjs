@@ -168,19 +168,42 @@ test('the daily fold: clockwork is 100%, unpromised hours stay out of the denomi
   assert.equal(todayRoute.final, 0);
   assert.equal(todayRoute.services, 4);
 
-  // The week row is the exact sum of its days and shares the fold's
-  // week-liveness: final only when the whole week has passed.
-  const week = await db
-    .prepare(`SELECT * FROM sla_weekly WHERE scope='route' AND scope_id='506'`)
-    .first();
-  assert.ok(week, 'weekly row exists');
-  const expectedServices = 10 + 4;
-  assert.equal(week.services, expectedServices);
-  assert.equal(week.gap_seconds, 2400 * 2 + 2400);
+  // Weekly rows are the exact sums of their days and share the fold's
+  // week-liveness: final only when the whole week has passed. Yesterday and
+  // today can straddle a Monday boundary, so assert each affected week
+  // independently instead of relying on SELECT's row order.
+  const weekRows = (
+    await db
+      .prepare(
+        `SELECT * FROM sla_weekly
+         WHERE scope='route' AND scope_id='506' ORDER BY week_key`,
+      )
+      .all()
+  ).results;
   assert.equal(
-    week.final,
-    torontoWeekKey(yesterdayKey) < torontoWeekKey(todayKey) ? 1 : 0,
+    weekRows.length,
+    new Set([yesterdayKey, todayKey].map(torontoWeekKey)).size,
   );
+
+  for (const weekKey of new Set([yesterdayKey, todayKey].map(torontoWeekKey))) {
+    const week = weekRows.find((row) => row.week_key === weekKey);
+    assert.ok(week, `weekly row exists for ${weekKey}`);
+    const expectedDays = [yesterdayKey, todayKey].filter(
+      (dayKey) => torontoWeekKey(dayKey) === weekKey,
+    );
+    assert.equal(
+      week.services,
+      expectedDays.reduce((sum, dayKey) => sum + (dayKey === yesterdayKey ? 10 : 4), 0),
+    );
+    assert.equal(
+      week.gap_seconds,
+      expectedDays.reduce(
+        (sum, dayKey) => sum + (dayKey === yesterdayKey ? 4800 : 2400),
+        0,
+      ),
+    );
+    assert.equal(week.final, weekKey < torontoWeekKey(todayKey) ? 1 : 0);
+  }
 
   // Idempotency: re-running reproduces every stored value.
   const before = await dumpDaily(db);

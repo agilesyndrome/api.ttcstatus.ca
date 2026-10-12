@@ -134,7 +134,6 @@ export function useServiceOverlay(
       );
     }
     return rounded;
-    // eslint-disable-next-line -- value-stable string: recomputes only on a visible step
   }, [signature]);
   const carTint = useMemo(() => {
     const edges = data?.edges ?? [];

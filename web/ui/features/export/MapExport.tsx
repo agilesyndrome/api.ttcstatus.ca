@@ -13,8 +13,10 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [url, setUrl] = useState<string>();
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState(false);
   useEffect(() => {
     setReady(false);
+    setError(false);
     if (!image) {
       setUrl(undefined);
       return;
@@ -77,21 +79,20 @@ export function MapExport({ image, includeCars, onCars, onClose }: Props) {
         <div className="comparison-actions export-options">
           <button
             className="action-button"
-            disabled={!ready}
-            onClick={() => window.print()}
-          >
-            {t('mapExport.printSavePdf')}
-          </button>
-          <button
-            className="action-button"
             disabled={!image || !ready}
             onClick={() =>
-              image && downloadFile(image, 'toronto-streetcar-map.svg', 'image/svg+xml')
+              image &&
+              void downloadFile(
+                image,
+                'toronto-streetcar-map.svg',
+                'image/svg+xml',
+              ).catch(() => setError(true))
             }
           >
             {t('mapExport.downloadMapSvg')}
           </button>
         </div>
+        {error && <p role="alert">{t('fleetExplorer.downloadFailed')}</p>}
         <p className="microcopy export-options">
           {t('mapExport.svgWorksOfflineInABrowserAndScalesForPrinting')}
         </p>

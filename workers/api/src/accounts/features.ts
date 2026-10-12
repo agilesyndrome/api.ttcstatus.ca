@@ -9,10 +9,12 @@ import type { AccountEnv } from './env';
  * and CORS, per the story card. Empty for everyone else — scaffolding never
  * means "visible to everyone". */
 export async function ownedFeaturesResponse(
-  _request: Request,
+  request: Request,
   env: AccountEnv,
   userId: string,
 ): Promise<Response> {
+  if (request.method !== 'GET')
+    return json({ error: 'method-not-allowed' }, 405, { 'cache-control': 'no-store' });
   const rows = await env.DB.prepare(
     'SELECT flag FROM feature_flags WHERE subject = ? ORDER BY flag',
   )

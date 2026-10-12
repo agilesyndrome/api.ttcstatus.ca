@@ -1,3 +1,5 @@
+import { platform } from '../../services/platform';
+import { apiRequest } from '../../services/http/client';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import {
@@ -83,7 +85,7 @@ const loadBoard = (source: ViewerData) => {
   if (!pending) {
     pending = (async () => {
       try {
-        const response = await fetch('/api/v1/map/snake', { cache: 'no-cache' });
+        const response = await apiRequest('/api/v1/map/snake', { cache: 'no-cache' });
         if (response.ok) {
           const payload = await response.json();
           if (isBoard(payload)) return payload;
@@ -118,7 +120,7 @@ function useSnakeBoard(source: ViewerData) {
 }
 const readBest = () => {
   try {
-    const value = Number(localStorage.getItem('ttc:snake:v2:best'));
+    const value = Number(platform().preferences.peek('ttc:snake:v2:best'));
     return Number.isSafeInteger(value) && value > 0 ? value : 1;
   } catch {
     return 1;
@@ -200,7 +202,9 @@ const SnakeCockpit = memo(function SnakeCockpit({
   useLanguage();
   useEffect(() => {
     try {
-      localStorage.setItem('ttc:snake:v2:played', '1');
+      void platform()
+        .preferences.set('ttc:snake:v2:played', '1')
+        .catch(() => {});
     } catch {
       /* Optional achievement storage. */
     }
@@ -225,13 +229,33 @@ const SnakeCockpit = memo(function SnakeCockpit({
   const [mode, setMode] = useState<Mode>('arcade');
   const [best, setBest] = useState(readBest);
   const [follow, setFollow] = useState(true);
+  const muteChanged = useRef(false);
   const [muted, setMuted] = useState(() => {
     try {
-      return localStorage.getItem('ttc:snake:v2:muted') === '1';
+      return platform().preferences.peek('ttc:snake:v2:muted') === '1';
     } catch {
       return false;
     }
   });
+  useEffect(() => {
+    let current = true;
+    const preferences = platform().preferences;
+    void Promise.all([
+      preferences.get('ttc:snake:v2:best'),
+      preferences.get('ttc:snake:v2:muted'),
+    ])
+      .then(([storedBest, storedMuted]) => {
+        if (!current) return;
+        const score = Number(storedBest);
+        if (Number.isSafeInteger(score) && score > 0)
+          setBest((best) => Math.max(best, score));
+        if (!muteChanged.current) setMuted(storedMuted === '1');
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, []);
   const [, redraw] = useReducer((value) => value + 1, 0);
   const traffic = useRef(cars);
   traffic.current = cars;
@@ -432,13 +456,12 @@ const SnakeCockpit = memo(function SnakeCockpit({
         redraw();
       }
     };
-    const visibility = () => {
-      if (document.hidden) away();
-    };
+    const stopActivity = platform().lifecycle.subscribe(({ active }) => {
+      if (!active) away();
+    });
     window.addEventListener('keydown', keydown, true);
     window.addEventListener('keyup', keyup);
     window.addEventListener('blur', away);
-    document.addEventListener('visibilitychange', visibility);
     let frame: number,
       previous = 0,
       lastHud = 0,
@@ -501,14 +524,16 @@ const SnakeCockpit = memo(function SnakeCockpit({
       window.removeEventListener('keydown', keydown, true);
       window.removeEventListener('keyup', keyup);
       window.removeEventListener('blur', away);
-      document.removeEventListener('visibilitychange', visibility);
+      stopActivity();
     };
   }, [engine]);
   useEffect(() => {
     if (engine.mode !== 'arcade' || engine.count <= best) return;
     setBest(engine.count);
     try {
-      localStorage.setItem('ttc:snake:v2:best', String(engine.count));
+      void platform()
+        .preferences.set('ttc:snake:v2:best', String(engine.count))
+        .catch(() => {});
     } catch {
       /* A run does not require browser storage. */
     }
@@ -1096,12 +1121,15 @@ const SnakeCockpit = memo(function SnakeCockpit({
               type="checkbox"
               checked={muted}
               onChange={(event) => {
+                muteChanged.current = true;
                 setMuted(event.target.checked);
                 try {
-                  localStorage.setItem(
-                    'ttc:snake:v2:muted',
-                    event.target.checked ? '1' : '0',
-                  );
+                  void platform()
+                    .preferences.set(
+                      'ttc:snake:v2:muted',
+                      event.target.checked ? '1' : '0',
+                    )
+                    .catch(() => {});
                 } catch {
                   /* Optional preference. */
                 }

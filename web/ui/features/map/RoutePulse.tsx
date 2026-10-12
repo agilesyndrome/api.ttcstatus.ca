@@ -34,7 +34,6 @@ export function RoutePulse({
   const peak = Math.max(1, ...entries.map((entry) => entry.reported));
   return (
     <section className="route-pulse" aria-label={t('routePulse.routeActivity')}>
-      <p className="eyebrow">{t('routePulse.theCityInMotion')}</p>
       <div className="section-heading">
         <h2>{t('routePulse.routePulse')}</h2>
         <span className="pulse-total">
@@ -94,10 +93,7 @@ export function RoutePulse({
           <strong>
             {selected.route.number} {selected.route.name}
           </strong>
-          <p>
-            {selected.reported} {t('routePulse.reported')} {selected.stale}{' '}
-            {t('fleetExplorer.stale2')}
-          </p>
+
           <p>
             {selected.medianSpeed === undefined
               ? t('routePulse.speedNotSuppliedForFreshReports')
@@ -107,9 +103,7 @@ export function RoutePulse({
           </p>
         </div>
       )}
-      <p className="microcopy">
-        {t('routePulse.vehicleCountsDescribeThisFeedNotServiceFrequencyOrDelays')}
-      </p>
+
     </section>
   );
 }

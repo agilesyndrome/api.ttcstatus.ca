@@ -1,3 +1,5 @@
+import { useActivity } from '../../services/platform/react';
+import { apiRequest } from '../../services/http/client';
 import { useEffect, useState } from 'react';
 import type { SlaReportResponse } from '../../../../shared/service/contracts';
 import {
@@ -40,9 +42,12 @@ interface FetchLoopOptions {
  * exponential backoff on failure — never a tighter loop than the recorder
  * itself publishes. */
 function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
+  const activity = useActivity();
+  const eligible = enabled && activity.active && activity.online;
   useEffect(() => {
-    if (!enabled) return;
+    if (!eligible) return;
     let stopped = false;
+    const controller = new AbortController();
     let etag: string | null = null;
     let failureBackoff = options.intervalMs;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -51,8 +56,9 @@ function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
       const headers: Record<string, string> = {};
       if (etag) headers['if-none-match'] = etag;
       try {
-        const response = await fetch(options.url, {
+        const response = await apiRequest(options.url, {
           headers,
+          signal: controller.signal,
           cache: 'no-store',
           credentials: 'omit',
         });
@@ -60,7 +66,8 @@ function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
           etag = response.headers.get('etag') ?? etag;
         } else if (response.ok) {
           etag = response.headers.get('etag');
-          options.onSuccess(await response.json(), etag);
+          const payload = await response.json();
+          if (!stopped) options.onSuccess(payload, etag);
         } else {
           throw new Error(`live fetch HTTP ${response.status}`);
         }
@@ -78,23 +85,15 @@ function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
       timer = setTimeout(run, delay);
     };
 
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible' && !stopped) {
-        if (timer) clearTimeout(timer);
-        run();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
     run();
 
     return () => {
       stopped = true;
       if (timer) clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
+      controller.abort();
     };
-    // eslint-disable-next-line -- options are stable per call site; the
     // loop identity follows `enabled`.
-  }, [enabled]);
+  }, [eligible]);
 }
 
 export function useSlaLive(report: SlaReportResponse | null): SlaLiveState {
@@ -173,7 +172,6 @@ export function useSlaLive(report: SlaReportResponse | null): SlaLiveState {
     setLive({ byRoute, byStop, windowEnd: wave.windowEnd, ready: true });
     // The report identity changes only between folds; the recomputation
     // follows the polling payloads, not the report object.
-    // eslint-disable-next-line -- payloads drive the recompute
   }, [wave, states]);
 
   return live;

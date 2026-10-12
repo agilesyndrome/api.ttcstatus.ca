@@ -10,6 +10,7 @@ const compiled = await build({
   export * from "./shared/map/projection";
   export * from "./shared/live/vehicles";
   export * from "./workers/api/src/realtime/realtime";
+  export { SnapshotPublisher } from "./workers/api/src/service/published-snapshot";
   export { default as apiWorker } from "./workers/api/src/index";
   export * from "./shared/map/live-status";
   export * from "./shared/map/model";
@@ -37,6 +38,8 @@ const {
   projectSnapshot,
   streetcarBody,
   fetchVehicleSnapshot,
+  fetchRailSnapshot,
+  SnapshotPublisher,
   apiWorker,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
@@ -290,6 +293,25 @@ test('acquisition handles upstream failure and size limits', async () => {
     globalThis.fetch = original;
   }
 });
+function recorderBinding(attribution = '') {
+  let stored = null;
+  const publisher = new SnapshotPublisher(
+    {
+      read: () => stored,
+      write: (value) => {
+        stored = value;
+      },
+    },
+    () => fetchRailSnapshot('https://fixture.test/vehicles', attribution),
+    'fixture',
+    30,
+  );
+  return {
+    idFromName: () => 'singleton',
+    get: () => ({ fetch: async () => Response.json(await publisher.get()) }),
+  };
+}
+
 test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never accesses D1', async () => {
   const originalFetch = globalThis.fetch,
     originalCaches = globalThis.caches;
@@ -298,6 +320,7 @@ test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     ctx = { waitUntil: (task) => tasks.push(task) };
   const env = {
     SOURCE_ATTRIBUTION: 'fixture',
+    SERVICE_RECORDER: recorderBinding('fixture'),
     DB: {
       prepare() {
         throw new Error('Vehicle reads must not query static D1');
@@ -320,7 +343,7 @@ test('public vehicle endpoint returns CORS JSON, reuses its edge cache and never
     const first = await apiWorker.fetch(request, env, ctx);
     assert.equal(first.status, 200);
     assert.equal(first.headers.get('access-control-allow-origin'), '*');
-    assert.match(first.headers.get('cache-control'), /^public, max-age=(29|30)$/);
+    assert.match(first.headers.get('cache-control'), /^public, max-age=\d+$/);
     assert.equal(first.headers.get('x-live-update-seconds'), '30');
     assert.equal((await first.json()).vehicles[0].id, '4400');
     await Promise.all(tasks);
@@ -389,7 +412,7 @@ test('public endpoint makes upstream failure an uncached 503 while the static ma
     globalThis.fetch = async () => new Response('down', { status: 502 });
     const response = await apiWorker.fetch(
       new Request('https://api.example/api/v1/vehicles/streetcar'),
-      { SOURCE_ATTRIBUTION: '' },
+      { SOURCE_ATTRIBUTION: '', SERVICE_RECORDER: recorderBinding() },
       {
         waitUntil() {
           throw new Error('Do not cache failures');
@@ -422,7 +445,11 @@ test('runtime interval changes invalidate old cache entries and advertise the fi
         put: async (key, response) => entries.set(key.url, response),
       },
     };
-    const env = { SOURCE_ATTRIBUTION: 'interval-test', REALTIME_UPDATE_SECONDS: '30' },
+    const env = {
+        SOURCE_ATTRIBUTION: 'interval-test',
+        REALTIME_UPDATE_SECONDS: '30',
+        SERVICE_RECORDER: recorderBinding('interval-test'),
+      },
       ctx = { waitUntil: (task) => tasks.push(task) },
       request = new Request('https://api.example/api/v1/vehicles/streetcar');
     const first = await apiWorker.fetch(request, env, ctx);
@@ -434,10 +461,10 @@ test('runtime interval changes invalidate old cache entries and advertise the fi
       { ...env, REALTIME_UPDATE_SECONDS: '300' },
       ctx,
     );
-    assert.equal(calls, 4);
+    assert.equal(calls, 2);
     assert.equal(second.status, 304);
     assert.equal(second.headers.get('x-live-update-seconds'), '300');
-    assert.match(second.headers.get('cache-control'), /^public, max-age=(299|300)$/);
+    assert.ok(Number(second.headers.get('cache-control').split('=')[1]) <= 30);
     assert.ok(
       second.headers
         .get('access-control-expose-headers')

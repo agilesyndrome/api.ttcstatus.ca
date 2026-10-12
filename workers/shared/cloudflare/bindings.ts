@@ -155,6 +155,7 @@ export interface DurableObjectSqlLike {
 }
 
 export interface DurableObjectStorageLike {
+  transactionSync<T>(callback: () => T): T;
   get(key: string): Promise<unknown>;
   put(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<boolean>;

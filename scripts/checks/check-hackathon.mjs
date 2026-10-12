@@ -140,7 +140,9 @@ try {
   const link = await page.evaluate(() => navigator.clipboard.readText());
   assert.equal(new URLSearchParams(new URL(link).hash.slice(1)).get('stop'), stop.id);
   assert.equal(calls, currentCalls, 'sharing and saving reuse the existing feed');
-  await page.getByRole('button', { name: 'Switch to night theme' }).click();
+  // The day/night control lives in Settings; the map's N shortcut still
+  // flips it — and the choice persists across the reload below.
+  await page.keyboard.press('n');
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.reload();
   await page.getByRole('heading', { name: stop.name, exact: true }).waitFor();
@@ -276,7 +278,9 @@ try {
   );
   await fitMap(page);
   await page.screenshot({ path: '/tmp/ttc-hackathon-night.png' });
-  await page.getByRole('button', { name: 'Switch to day theme' }).click();
+  // Flip back to day with the same shortcut for the comparison shot.
+  await page.keyboard.press('n');
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   await page.screenshot({ path: '/tmp/ttc-hackathon-day.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(150);

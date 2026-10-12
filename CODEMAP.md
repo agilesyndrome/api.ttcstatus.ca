@@ -10,20 +10,21 @@ source file locations.
 `workers/api/src/index.ts` supplies the HTTP and scheduled entrypoints.
 `http/router.ts` dispatches existing API paths without importing GTFS data itself.
 
-| Directory      | Responsibility                                                                  |
-| -------------- | ------------------------------------------------------------------------------- |
-| `http/`        | Routing and public/private JSON response helpers                                |
-| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations  |
-| `maps/`        | Map/network reads, map caching and protected debug forwarding                   |
-| `realtime/`    | Bounded vehicle acquisition, decoding, snapshot cache and HTTP response         |
-| `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints |
-| `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report  |
-| `sync/`        | Static download, import, map generation, delta, publication and retention       |
-| `diagnostics/` | Existing public feed-status response and deployed-version reporting             |
+| Directory      | Responsibility                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `http/`        | Routing, input privacy boundary and consistent CORS response helpers                      |
+| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations            |
+| `maps/`        | Artifact selection, map/directory reads, release manifests and protected debug forwarding |
+| `realtime/`    | Bounded upstream decoding and vehicle HTTP distribution; acquisition owned by recorder    |
+| `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints           |
+| `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report            |
+| `sync/`        | Static download, import, map generation, delta, publication and retention                 |
+| `contracts/`   | Public OpenAPI document and endpoint descriptions                                         |
+| `diagnostics/` | Protected feed diagnostics, allowlisted analytics and deployed-version reporting          |
 
 Only `sync/sync.ts` contacts the static GTFS source. Import reads the cached R2
 archive. Public map requests read materialized data; live requests use the bounded
-snapshot acquisition and cache. Account ownership comes from verified sessions,
+recorder's persisted singleton publication and POP cache. Account ownership comes from verified sessions,
 never request fields.
 
 ## Map generator
@@ -51,7 +52,9 @@ map schema are unchanged by source reorganization.
 | `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette |
 | `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                        |
 | `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus   |
-| `shared/http/`               | HTTP validator comparison                                                         |
+| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers       |
+| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                 |
+| `shared/http/`               | HTTP validators and the location-free query contract                              |
 | `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                              |
 | `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets        |
 | `workers/shared/http/`       | Bounded byte streams and admin authorization                                      |
@@ -62,15 +65,15 @@ files, and browser modules never import Worker implementation files. Run
 
 ## Browser applications
 
-`web/ui/pages/` composes pages. `features/map/useHomeWorkspace.ts` owns the main
-workspace state and transitions; `HomeWorkspace.tsx` lays out the map and overlays,
+`web/ui/pages/` composes pages. `features/map/useHomeWorkspace.ts` composes focused
+selection, location, saved-stop and link owners in `workspace/`; `HomeWorkspace.tsx` lays out the map and overlays,
 and `HomeSidebar.tsx` composes tool panels. `useStaticMap.ts` owns public map loading.
 
 `web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export,
 service (delivered-service overlay) and sla (the /sla status page), and Snake code
 with its component stories. `components/` contains shared page chrome; `hooks/`
-contains preferences, theme and shortcuts. `styles/` contains the homepage
-stylesheet.
+contains preferences, viewport, theme and shortcuts. `styles/` contains shell,
+mobile, game, and feature styles imported in cascade order.
 
 `features/sla/` is the non-map SLA status page: `useSlaReport.ts` (one cached
 fetch per session, plus the per-route stop detail), the pure view helpers in
@@ -114,3 +117,15 @@ Vite copies static assets from `public/` into `dist/`; the viewer build adds
 Run `npm run build:api` before deployment.
 
 The historical design and topology roadmap remain in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## UI platform services
+
+`web/ui/services/` owns platform adapters, configured HTTP transport, navigation,
+and durable cache mechanics. Feature components never import native plugins,
+call fetch directly, or access localStorage. `docs/ui-platform.md` documents the
+ports, native build configuration, offline behavior, and validation commands.
+
+`App.tsx` retains the map screen across client-side page changes and marks inactive
+screens so feed owners stop acquisition. Phone menu content and selection details
+are separate presentations of the existing features. `shared/transit/` owns pure
+transit calculations and map-link contracts; locale formatting remains in the UI.

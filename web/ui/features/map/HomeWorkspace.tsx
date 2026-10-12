@@ -1,10 +1,18 @@
+import { usePhoneLayout } from '../../hooks/useMediaQuery';
+import { MobileDetails } from './MobileDetails';
+import { CachedMapNotice } from './CachedMapNotice';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { HomeSidebar } from './HomeSidebar';
+import { BadgesPanel } from './panels/BadgesPanel';
+import { ExplorePanel } from './panels/ExplorePanel';
+import { JournalPanel } from './panels/JournalPanel';
+import { RoutePulsePanel } from './panels/RoutePulsePanel';
 import { lazy, Suspense } from 'react';
 
-import { PageHeader } from '../../components/PageHeader';
-import { PageFooter } from '../../components/PageFooter';
+import { Nav, useCompactNav } from '../../components/nav/Nav';
+import { PageHeader } from '../../components/page/PageHeader';
+import { PageFooter } from '../../components/page/PageFooter';
 
 import { TransitMap } from '../map/TransitMap';
 
@@ -32,6 +40,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     exportImage,
     exportCars,
     selectedRoute,
+    panel,
+    setPanel,
     mobilePanelOpen,
     setMobilePanelOpen,
     following,
@@ -46,7 +56,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     focusPointLevel,
     focusBounds,
     resetKey,
-    theme,
     cars,
     feature,
     car,
@@ -65,6 +74,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   // made. Hard-suspended while the snake game is open (E7S7) — the game
   // renders its own map with no service props, and the base layer sleeps.
   const service = useServiceOverlay(data, cars, snakeOpen);
+  const compact = useCompactNav();
+  const phone = usePhoneLayout();
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
     selectFeature(feature);
     service.onFeatureSelectForService(feature);
@@ -75,29 +86,26 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   };
   const headerActions = (
     <div className="header-actions">
+      {/* The globe is a shortcut to Settings → language (/settings#language);
+       * the day/night control lives in Settings itself. */}
       <a
-        className="account-link language-link"
-        href="/profile"
+        className="utility-button language-link"
+        href="/settings#language"
         aria-label={t('language.settings')}
         title={t('language.settings')}
       >
-        🌐
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="7" />
+          <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
+        </svg>
       </a>
       <button
-        className="shortcut-toggle"
+        type="button"
+        className="utility-button shortcut-toggle"
         aria-label={t('keyboard.title')}
         onClick={() => setShortcutHelp(true)}
       >
-        ?
-      </button>
-      <button
-        className="theme-toggle"
-        aria-label={
-          theme.dark ? t('workspace.switchToDayTheme') : t('workspace.switchToNightTheme')
-        }
-        onClick={theme.toggle}
-      >
-        {theme.dark ? t('workspace.day') : t('workspace.night')}
+        <span aria-hidden="true">?</span>
       </button>
       <AuthControls />
     </div>
@@ -124,110 +132,133 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           />
         </Suspense>
       )}
-      <PageHeader
-        data={data}
-        cars={cars}
-        onSelect={selectFeature}
-        onSelectVehicle={(car) => selectVehicle(car, true)}
-        onReset={resetWithService}
-        onBrandToggle={() => {
-          // The brand symbol is the mobile menu button: it opens the nav
-          // panel over the map. On desktop it keeps its old meaning — a
-          // reset — because the full menu stays visible beside the map.
-          if (window.matchMedia('(max-width: 640px)').matches)
-            setMobilePanelOpen((open) => !open);
-          else resetWithService();
+      {/* The one app shell (nav-v3): the collapsible left nav rail lives on
+       * wide screens and hosts the tool panels directly under their nav item,
+       * with the map filling the remaining width; the top bar keeps search
+       * and the quick controls. Narrower screens keep the compact top bar +
+       * the sidebar overlay with the same panels. */}
+      <Nav
+        variant="map"
+        panel={panel}
+        onPanel={setPanel}
+        panels={{
+          explore: <ExplorePanel workspace={workspace} />,
+          'route-pulse': <RoutePulsePanel workspace={workspace} />,
+          journal: <JournalPanel workspace={workspace} />,
+          badges: <BadgesPanel workspace={workspace} />,
         }}
-        navOpen={mobilePanelOpen}
-        actions={headerActions}
-      />
-      {data ? (
-        <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
-          <TransitMap
-            mapTools={
-              <>
-                <button
-                  className="locate-launch"
-                  aria-label={t('nearbyStops.locateMeCenterMap')}
-                  title={t('nearbyStops.locateMeCenterMap')}
-                  aria-busy={locating}
-                  onClick={requestLocate}
-                  disabled={locating}
-                >
-                  ◎
-                  {locating && (
-                    <span className="sr-only" role="status">
-                      {t('nearbyStops.findingYourLocation')}
-                    </span>
+      >
+        <PageHeader
+          data={data}
+          cars={cars}
+          onSelect={selectFeature}
+          onSelectVehicle={(car) => selectVehicle(car, true)}
+          onReset={resetWithService}
+          actions={null}
+          onBrandToggle={() => {
+            // The brand symbol is the mobile menu button: it opens the nav
+            // panel over the map. On desktop it keeps its old meaning — a
+            // reset — because the full menu stays visible beside the map.
+            if (phone) setMobilePanelOpen((open) => !open);
+            else resetWithService();
+          }}
+          navOpen={mobilePanelOpen}
+        />
+        {data ? (
+          <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
+            <TransitMap
+              mapTools={
+                <>
+                  <button
+                    className="locate-launch"
+                    aria-label={t('nearbyStops.locateMeCenterMap')}
+                    title={t('nearbyStops.locateMeCenterMap')}
+                    aria-busy={locating}
+                    onClick={requestLocate}
+                    disabled={locating}
+                  >
+                    ◎
+                    {locating && (
+                      <span className="sr-only" role="status">
+                        {t('nearbyStops.findingYourLocation')}
+                      </span>
+                    )}
+                  </button>
+                  {locateError && (
+                    <p role="alert" className="locate-error">
+                      {t(locateError)}
+                    </p>
                   )}
-                </button>
-                {locateError && (
-                  <p role="alert" className="locate-error">
-                    {t(locateError)}
-                  </p>
-                )}
-                <button
-                  className="snake-launch"
-                  aria-label={t('workspace.playStreetcarSnake')}
-                  title={t('workspace.playStreetcarSnake')}
-                  onClick={() => setSnakeOpen(true)}
-                >
-                  🐍
-                </button>
-              </>
-            }
-            data={data}
-            followPoint={car && following ? car.point : undefined}
-            cars={
-              // A followed car gets the map to itself; anything else unfollows.
-              car && following
-                ? [car]
-                : filters.live
-                  ? cars.filter((car) =>
-                      car.vehicle.mode === 'subway' ? filters.subway : filters.streetcar,
-                    )
-                  : []
-            }
-            selectedRoute={selectedRoute}
-            selectedFeature={feature}
-            selectedVehicleId={car?.vehicle.id}
-            focusPoint={focusPoint}
-            focusPointLevel={focusPointLevel}
-            focusBounds={focusBounds}
-            locationPoint={locationPoint}
-            comparisonStops={undefined}
-            pickingLabel={undefined}
-            onInteract={() => setFollowing(false)}
-            onZoomInteract={() => {
-              /* Zooming keeps camera following; only panning takes over. */
-            }}
-            mapControls={false}
-            savedStopIds={savedStops}
-            showLabels={filters.labels}
-            includeOvernight={filters.overnight}
-            showStreetcar={filters.streetcar}
-            showSubway={filters.subway}
-            resetKey={resetKey}
-            onSelectFeature={selectFeatureWithService}
-            onSelectVehicle={(car) => selectVehicle(car)}
-            onSelectServiceStop={service.onSelectServiceStop}
-            serviceCarTint={service.carTint}
-            underlay={service.underlay ?? undefined}
-            overlay={service.overlay ?? undefined}
-          />
-          {service.card}
-          <HomeSidebar workspace={workspace} settings={headerActions} />
-        </main>
-      ) : (
-        <main className="loading-page">
-          <h1>{t('header.ttcStatusMap')}</h1>
-          <p role={error ? 'alert' : 'status'}>
-            {error ? t(error) : t('workspace.loadingTheStreetcarNetwork')}
-          </p>
-          {error && <button onClick={() => retryMap()}>{t('common.retry')}</button>}
-          <PageFooter />
-        </main>
-      )}
+                  <button
+                    className="snake-launch"
+                    aria-label={t('workspace.playStreetcarSnake')}
+                    title={t('workspace.playStreetcarSnake')}
+                    onClick={() => setSnakeOpen(true)}
+                  >
+                    🐍
+                  </button>
+                </>
+              }
+              data={data}
+              followPoint={car && following ? car.point : undefined}
+              cars={
+                // A followed car gets the map to itself; anything else unfollows.
+                car && following
+                  ? [car]
+                  : filters.live
+                    ? cars.filter((car) =>
+                        car.vehicle.mode === 'subway'
+                          ? filters.subway
+                          : filters.streetcar,
+                      )
+                    : []
+              }
+              selectedRoute={selectedRoute}
+              selectedFeature={feature}
+              selectedVehicleId={car?.vehicle.id}
+              focusPoint={focusPoint}
+              focusPointLevel={focusPointLevel}
+              focusBounds={focusBounds}
+              locationPoint={locationPoint}
+              comparisonStops={undefined}
+              pickingLabel={undefined}
+              onInteract={() => setFollowing(false)}
+              onZoomInteract={() => {
+                /* Zooming keeps camera following; only panning takes over. */
+              }}
+              mapControls={false}
+              savedStopIds={savedStops}
+              showLabels={filters.labels}
+              includeOvernight={filters.overnight}
+              showStreetcar={filters.streetcar}
+              showSubway={filters.subway}
+              resetKey={resetKey}
+              onSelectFeature={selectFeatureWithService}
+              onSelectVehicle={(car) => selectVehicle(car)}
+              onSelectServiceStop={service.onSelectServiceStop}
+              serviceCarTint={service.carTint}
+              underlay={service.underlay ?? undefined}
+              overlay={service.overlay ?? undefined}
+            />
+            <CachedMapNotice workspace={workspace} />
+            {phone && <MobileDetails workspace={workspace} />}
+            {service.card}
+            {/* Below the rail breakpoint the sidebar overlay carries the
+             * same panels; above it they live in the rail under their nav
+             * item, and the map fills the workspace. */}
+            {compact && <HomeSidebar workspace={workspace} settings={headerActions} />}
+          </main>
+        ) : (
+          <main className="loading-page">
+            <h1>{t('header.ttcStatusMap')}</h1>
+            <p role={error ? 'alert' : 'status'}>
+              {error ? t(error) : t('workspace.loadingTheStreetcarNetwork')}
+            </p>
+            {error && <button onClick={() => retryMap()}>{t('common.retry')}</button>}
+            <PageFooter />
+          </main>
+        )}
+      </Nav>
       <MapExport
         image={exportImage}
         includeCars={exportCars}

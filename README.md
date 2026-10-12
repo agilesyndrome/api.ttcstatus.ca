@@ -2,6 +2,11 @@
 
 Cloudflare Workers + D1 + R2 backend for TTCstatus.
 
+[Privacy-focused mobile API contract](docs/api/mobile-privacy.md) covers original
+stop geography, local nearest-stop lookup, paired artifact manifests, OpenAPI,
+recorder-owned live snapshots, native bearer authentication, and revision recovery.
+Device GPS and local grid keys stay on the device. Notifications remain deferred.
+
 Clerk sign-up/login, protected account Journals, and opt-in public badge profiles
 are implemented. See [Clerk setup](docs/clerk-setup.md) for the two required
 Cloudflare bindings, the D1 migration, local development, and activation steps.
@@ -234,17 +239,25 @@ The browser surface is a per-user-gated debug overlay: grant it with
 `npm run feature:enable -- voidOverlay <clerk-user-or-email>` and it appears on
 the map for that account only; signed-out visitors see nothing.
 
-### `GET /api/v1/sla/report` (experimental)
+### `GET /api/v1/sla/report` (experimental, members-only)
 
-The public SLA status page's one endpoint (docs/sla-stories.md Epic 8): which
+The SLA status page's one endpoint (docs/sla-stories.md Epic 8): which
 streetcar routes and stops have been meeting the schedule the TTC's own GTFS
 publishes — precomputed, never computed for the visitor. The nightly static
 import derives per-stop and per-route scheduled-headway bands from the same
 R2 zip the map already uses (zero new upstream traffic), and an hourly cron
 folds the delivered-service rollups into daily and weekly SLA rows before the
 36-hour retention can prune them. The endpoint reads only those precomputed
-tables: `ETag` / `If-None-Match` with a ~5-minute edge cache, CORS, and an
-honest "collecting" payload on a fresh deploy — never a fabricated green.
+tables: `ETag` / `If-None-Match`, CORS, and an honest "collecting" payload on
+a fresh deploy — never a fabricated green.
+
+While the report is in beta it is a members-only surface: the router places
+it behind the same Clerk-verified session gate as `/api/v1/me/*` (a verified
+bearer token; unauthenticated requests receive `401`, a Worker without Clerk
+configured returns `503`). Clients receive a `Cache-Control: private`
+envelope — an authorized surface never teaches a shared cache to serve it
+without a session — while the edge keeps a minutes-scale storage copy that
+is only reachable behind the gate.
 
 - `/api/v1/sla/report` — per streetcar route: the published schedule (the
   SLA the TTC indicates, compacted into hour bands **on the TTC's advertised
@@ -269,9 +282,10 @@ honest "collecting" payload on a fresh deploy — never a fabricated green.
   labelled an approximation everywhere. Hours with no scheduled service carry
   no promise; unmonitored time never counts for or against anyone.
 
-The page itself is public at **`/sla`** — a filterable routes-and-stops
+The page itself sits at **`/sla`** — a filterable routes-and-stops
 status page (the USA-status.com anatomy), with daily tick marks and wider
-weekly boxes.
+weekly boxes — behind the same sign-in gate as the report: signed-out
+visitors meet the gate and no report request is made at all.
 
 ### `GET /api/v1/feed/status`
 
@@ -487,7 +501,8 @@ the map on its latest position, enabling its layer when needed. Typing a search 
 shared loaded fleet without additional vehicle requests. The map reuses `web/map/` camera, model and GPS projection helpers.
 
 ```bash
-npm run dev:viewer       # React homepage + credential-free local API, port 4173
+npm run dev:viewer       # React homepage + local API, port 4173 (accounts load
+                         # when 1Password resolves .env.local; otherwise disabled)
 npm run storybook        # Components and interaction examples, port 6006
 npm run build:api        # Typecheck + React assets + standalone HTML viewer
 npm run build:storybook  # Standalone component catalogue in storybook-static/

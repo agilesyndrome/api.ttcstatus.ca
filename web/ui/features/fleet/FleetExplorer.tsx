@@ -1,3 +1,4 @@
+import { downloadFile } from '../export/download';
 import { t, getLocale } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { useId, useMemo, useState } from 'react';
@@ -55,14 +56,11 @@ export function FleetExplorer({
       data.routes,
       snapshot,
     );
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'toronto-streetcar-snapshot.csv';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    void downloadFile(
+      csv,
+      'toronto-streetcar-snapshot.csv',
+      'text/csv;charset=utf-8',
+    ).catch(() => setMessage(t('fleetExplorer.downloadFailed')));
     setMessage(
       t('fleetExplorer.downloadedValueVehicleReports', { value1: results.length }),
     );

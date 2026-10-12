@@ -1,0 +1,247 @@
+@media (max-width: 900px) {
+  .sidebar-content {
+    padding: 20px 16px;
+  }
+}
+@media (max-width: 640px) {
+  body:has(.route-screen:not([hidden]) .workspace),
+  body:not(:has(.route-screen)):has(.workspace) {
+    overflow: hidden;
+  }
+  /* The workspace and the nav overlay are siblings of the top bar, so the
+     header height custom property must be declared on a common ancestor —
+     not on .topbar, which they do not inherit from. */
+  :root {
+    --account-header-height: 56px;
+  }
+  .topbar {
+    height: calc(var(--account-header-height, 120px) + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    /* Search results must stay above the nav overlay (z 6) so the header
+       search remains usable while the menu is open. */
+    z-index: 7;
+  }
+  .search input,
+  .tool-form input[type='search'],
+  .tool-form select,
+  .tool-form textarea,
+  .share-map input {
+    font-size: 16px;
+  }
+  .search-results {
+    max-height: min(390px, 50dvh);
+  }
+  .workspace {
+    height: calc(
+      var(--app-viewport-height, 100dvh) - var(--account-header-height, 120px) -
+        env(safe-area-inset-top)
+    );
+    grid-template-rows: minmax(0, 1fr);
+  }
+  /* The sidebar is no longer a bottom sheet with its own handle: it is the
+     nav menu, a full overlay covering the map, opened by the brand symbol.
+     The map keeps every pixel of the header's remaining height. */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: calc(var(--account-header-height, 120px) + env(safe-area-inset-top));
+    z-index: 6;
+    display: none;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: 0 -4px 20px #25343c0d;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--surface);
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+  }
+  .workspace.mobile-panel-open .sidebar {
+    display: block;
+  }
+  /* The drawer nav reads like the wide-screen rail: one vertical list of
+   * full-width, big-touch items, never a wrapping race of pills. */
+  .sidebar .main-nav {
+    position: static;
+    display: block;
+    width: 100%;
+    overflow: visible;
+    margin: 0;
+    padding: 4px 14px 8px;
+  }
+  .sidebar .main-nav [role='tablist'] {
+    display: block;
+    width: 100%;
+  }
+  .sidebar .main-nav__pages {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .main-nav [role='tablist'] button,
+  .main-nav__link {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .sidebar-content {
+    position: static;
+    width: auto;
+    min-height: 100%;
+    height: auto;
+    box-sizing: border-box;
+    overflow: visible !important;
+    padding: 18px max(0px, env(safe-area-inset-right)) 24px
+      max(0px, env(safe-area-inset-left));
+  }
+  /* Inside the drawer's panels the selection details come first — a car or
+   * stop the visitor just picked is what they opened the drawer to read —
+   * and the quick tools follow below. (The rail shows tools first.) */
+  .sidebar [role='tabpanel'] {
+    display: flex;
+    flex-direction: column;
+    position: static;
+    overflow: visible !important;
+    width: 100%;
+    margin: 0;
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 12px 14px 24px;
+    border-left: 2px solid var(--accent);
+  }
+  .sidebar [role='tabpanel'] > .explore-tools,
+  .sidebar [role='tabpanel'] > .explore-layers {
+    order: 2;
+    margin: 24px 0 0;
+  }
+  .sidebar [role='tabpanel'] > * {
+    flex-shrink: 0;
+  }
+  /* Account, language and theme controls move from the hidden top bar to the
+     bottom of the nav: one menu holds everything on a phone. */
+  .nav-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  #details h1 {
+    font-size: 23px;
+    overflow-wrap: anywhere;
+  }
+  #details p,
+  .helper,
+  .map-filters label {
+    font-size: 14px;
+  }
+  .stop-facts dt,
+  .stop-facts dd {
+    font-size: 13px;
+  }
+  .action-button,
+  .close-details,
+  .remove-stop,
+  .theme-toggle {
+    min-height: 44px;
+  }
+  .close-details {
+    width: 44px;
+  }
+  .map-controls {
+    max-width: calc(100% - 20px);
+  }
+  .map-controls button,
+  .map-controls #zoom-in,
+  .map-controls #zoom-out {
+    height: 44px;
+    min-width: 44px;
+    padding: 0 8px;
+    white-space: nowrap;
+  }
+  .map-filters label {
+    min-height: 44px;
+  }
+  .map-filters input {
+    width: 20px;
+    height: 20px;
+  }
+}
+@media (max-width: 360px) {
+  .main-nav [role='tablist'] button,
+  .main-nav__link {
+    padding-inline: 4px;
+    font-size: 11px;
+  }
+}
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+  :root:has(.map-print-output img) {
+    background: white !important;
+    color-scheme: light;
+  }
+  body:has(.map-print-output img),
+  body:has(.map-print-output img) #root {
+    height: auto;
+    margin: 0;
+    background: white;
+    color-scheme: light;
+  }
+  body:has(.map-print-output img) #root > :not(.map-print-output) {
+    display: none !important;
+  }
+  .map-export::backdrop {
+    display: none;
+    background: transparent;
+  }
+  .map-print-output {
+    display: block;
+    position: static;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  .map-print-output .map-print-sheet {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 180mm;
+    border: 0;
+    border-radius: 0;
+    margin: 0 auto;
+    break-inside: avoid;
+    print-color-adjust: exact;
+  }
+}
+
+.snake-launch {
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 23px;
+  background: var(--surface);
+  box-shadow: 0 3px 16px #25343c15;
+  z-index: 2;
+}

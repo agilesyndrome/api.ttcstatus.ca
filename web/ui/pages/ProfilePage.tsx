@@ -1,34 +1,46 @@
+import { useRoute } from '../services/navigation/react';
+import { apiRequest } from '../services/http/client';
 import { english } from '../../../shared/i18n/messages';
-import { LanguageSettings } from '../components/LanguageSettings';
+import { LanguageSettings } from '../components/settings/LanguageSettings';
+import { ThemeSettings } from '../components/settings/ThemeSettings';
 import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
-import { AccountRequired, AuthControls, useAccount } from '../features/accounts/auth';
+import { AccountRequired, useAccount } from '../features/accounts/auth';
+import { AppTemplate } from '../templates/AppTemplate';
 import { UserProfile } from '@clerk/react';
 
 export function ProfilePage() {
   useLanguage();
+  const route = useRoute();
   const account = useAccount();
   const [showClerkSettings, setShowClerkSettings] = useState(false);
+  // The globe shortcut lands on /settings#language (and #appearance for the
+  // day/night choice): scroll the requested section into view once it mounts.
+  useEffect(() => {
+    const hash = new URL(route, 'https://ttcstatus.ca').hash.slice(1);
+    if (!hash) return;
+    const target = document.getElementById(hash);
+    target?.scrollIntoView({ behavior: 'smooth' });
+  }, [route]);
   return (
-    <>
-      <header className="account-header">
-        <a className="account-link" href="/">
-          {t('profile.ttcStatus')}
-        </a>
-        <AuthControls />
-      </header>
+    <AppTemplate current="settings">
       <main className="profile-page">
-        {/* Language preference is browser-local: the settings' own copy says
-         * no account is required, so it must not sit behind the sign-in. */}
+        {/* Both preferences are browser-local: no account is required, so
+         * they sit above the sign-in gate. */}
         <LanguageSettings />
+        <ThemeSettings />
         <AccountRequired>
           <ProfileSettings key={account.userId} />
           {!showClerkSettings && (
             <button
               className="action-button"
               type="button"
-              onClick={() => setShowClerkSettings(true)}
+              onClick={() =>
+                account.manageAccount
+                  ? account.manageAccount()
+                  : setShowClerkSettings(true)
+              }
             >
               {t('profile.usernameAndPassword')}
             </button>
@@ -41,7 +53,7 @@ export function ProfilePage() {
           )}
         </AccountRequired>
       </main>
-    </>
+    </AppTemplate>
   );
 }
 function ProfileSettings() {
@@ -116,11 +128,7 @@ function ProfileSettings() {
   }
   return (
     <>
-      <p className="eyebrow">{t('profile.yourCornerOfTheCity')}</p>
       <h1>{t('profile.yourProfile')}</h1>
-      <p className="helper">
-        {t('profile.chooseAUsernameAndDecideWhetherToShareYourAccomplishments')}
-      </p>
       {message && (
         <p className="tip" role="status">
           {t(message)}
@@ -144,11 +152,7 @@ function ProfileSettings() {
                 pattern="[a-z0-9][a-z0-9_-]{2,29}"
                 value={username}
                 onChange={(event) => setUsername(event.target.value.toLowerCase())}
-                aria-describedby="username-help"
               />
-              <p id="username-help" className="microcopy">
-                {t('profile.330LowercaseLettersNumbersUnderscoresOrHyphensStartWith')}
-              </p>
             </div>
             <label className="privacy-choice">
               <input
@@ -158,9 +162,6 @@ function ProfileSettings() {
               />{' '}
               {t('profile.showMyProfileAndEarnedBadgesPublicly')}
             </label>
-            <p className="microcopy">
-              {t('profile.offByDefaultWhenEnabledAnyoneWithYourProfileLink')}
-            </p>
             <button className="action-button" type="submit">
               {busy ? t('profile.saving') : t('profile.saveProfile')}
             </button>
@@ -192,7 +193,7 @@ export function PublicProfilePage({ username }: { username: string }) {
   const [message, setMessage] = useState(english('profile.loadingProfile'));
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/v1/profiles/${encodeURIComponent(username)}`, {
+    apiRequest(`/api/v1/profiles/${encodeURIComponent(username)}`, {
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -211,13 +212,7 @@ export function PublicProfilePage({ username }: { username: string }) {
     return () => controller.abort();
   }, [username]);
   return (
-    <>
-      <header className="account-header">
-        <a className="account-link" href="/">
-          {t('profile.ttcStatus')}
-        </a>
-        <AuthControls />
-      </header>
+    <AppTemplate>
       <main className="profile-page">
         {profile ? (
           <>
@@ -248,6 +243,6 @@ export function PublicProfilePage({ username }: { username: string }) {
           <p role="status">{t(message)}</p>
         )}
       </main>
-    </>
+    </AppTemplate>
   );
 }

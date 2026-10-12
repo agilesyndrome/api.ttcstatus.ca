@@ -7,21 +7,22 @@ interface SavedStopsRow {
   revision: number;
 }
 
+async function readSavedStops(env: AccountEnv, userId: string) {
+  const row = await env.DB.prepare(
+    'SELECT stop_ids, revision FROM user_saved_stops WHERE user_id = ?',
+  )
+    .bind(userId)
+    .first<SavedStopsRow>();
+  return { stopIds: row ? JSON.parse(row.stop_ids) : [], revision: row?.revision ?? 0 };
+}
+
 export async function ownedSavedStopsResponse(
   request: Request,
   env: AccountEnv,
   userId: string,
 ): Promise<Response> {
   if (request.method === 'GET') {
-    const row = await env.DB.prepare(
-      'SELECT stop_ids, revision FROM user_saved_stops WHERE user_id = ?',
-    )
-      .bind(userId)
-      .first<SavedStopsRow>();
-    return reply({
-      stopIds: row ? JSON.parse(row.stop_ids) : [],
-      revision: row?.revision ?? 0,
-    });
+    return reply(await readSavedStops(env, userId));
   }
   if (request.method !== 'PUT') return reply({ error: 'method-not-allowed' }, 405);
   const value = await body(request, SAVED_STOPS_BODY_LIMIT);
@@ -45,6 +46,12 @@ export async function ownedSavedStopsResponse(
         )
           .bind(JSON.stringify(value.stopIds), userId, value.revision)
           .run();
-  if (!result.meta.changes) return reply({ error: 'saved-stops-conflict' }, 409);
+  if (!result.meta.changes) {
+    const current = await readSavedStops(env, userId);
+    return reply(
+      { error: 'saved-stops-conflict', revision: current.revision, current },
+      409,
+    );
+  }
   return reply({ revision: Number(value.revision) + 1 });
 }

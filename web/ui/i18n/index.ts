@@ -1,3 +1,4 @@
+import { platform } from '../services/platform';
 import {
   catalogues,
   languageMetadata,
@@ -59,11 +60,7 @@ function browserLanguages() {
       : [navigator.language];
 }
 function browserStorage() {
-  try {
-    return typeof window === 'undefined' ? undefined : window.localStorage;
-  } catch {
-    return undefined;
-  }
+  return { getItem: (key: string) => platform().preferences.peek(key) };
 }
 let preference = readLanguagePreference(browserStorage());
 let locale = preference === 'browser' ? resolveLocale(browserLanguages()) : preference;
@@ -103,15 +100,15 @@ function updateLanguage() {
 export function setLanguagePreference(next: LanguagePreference) {
   if (!isLanguagePreference(next)) return;
   preference = next;
-  try {
-    const storage = browserStorage();
-    if (!storage) throw new Error('Storage unavailable');
-    if (next === 'browser') storage.removeItem(languageStorageKey);
-    else storage.setItem(languageStorageKey, next);
-    persistent = true;
-  } catch {
+  persistent = true;
+  const storage = platform().preferences;
+  void (
+    next === 'browser'
+      ? storage.remove(languageStorageKey)
+      : storage.set(languageStorageKey, next)
+  ).catch(() => {
     persistent = false;
-  }
+  });
   updateLanguage();
 }
 
@@ -168,4 +165,15 @@ export function plural(
     { ...values, count: new Intl.NumberFormat(language).format(count) },
     language,
   );
+}
+
+/** Native preferences are ready before the first screen renders. */
+export async function hydrateLanguage() {
+  try {
+    const stored = await platform().preferences.get(languageStorageKey);
+    preference = isLanguagePreference(stored) ? stored : 'browser';
+    updateLanguage();
+  } catch {
+    /* Keep the detected language when storage is unavailable. */
+  }
 }

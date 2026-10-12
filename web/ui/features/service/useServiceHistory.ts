@@ -1,3 +1,4 @@
+import { apiRequest } from '../../services/http/client';
 import { useEffect, useState } from 'react';
 import type { ServiceHistoryResponse } from '../../../../shared/service/contracts';
 
@@ -24,7 +25,7 @@ export function useServiceHistory(
     const controller = new AbortController();
     void (async () => {
       try {
-        const response = await fetch(
+        const response = await apiRequest(
           `/api/v1/service/history?stop=${encodeURIComponent(stopId)}`,
           {
             signal: controller.signal,

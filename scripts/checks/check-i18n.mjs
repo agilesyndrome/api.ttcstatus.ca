@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 const errors = [];
+async function chooseLanguage(page, label) {
+  await page
+    .locator('.language-settings .segmented-control')
+    .getByRole('button', { name: label, exact: true })
+    .click();
+}
 async function prepare(context) {
-  await context.route('**/api/v1/auth/config', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  );
+  await installAccountFixture(context);
   await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
   await context.route('**/api/v1/vehicles/streetcar', (route) =>
     route.fulfill({ status: 503, json: {} }),
@@ -23,15 +28,20 @@ try {
   await prepare(context);
   const page = await context.newPage();
   await page.goto(origin);
-  await page.getByRole('heading', { name: 'Suivez les rails de la ville.' }).waitFor();
+  await page.getByRole('tab', { name: 'Explorer', exact: true }).waitFor();
   assert.equal(await page.locator('html').getAttribute('lang'), 'fr-CA');
   assert.equal(await page.locator('html').getAttribute('dir'), 'ltr');
   await page.getByRole('button', { name: 'Compris', exact: true }).click();
   await page.getByRole('link', { name: 'Paramètres de langue' }).click();
-  await page.getByLabel('Langue', { exact: true }).selectOption('en-CA');
-  await page.getByRole('heading', { name: 'Browser profile' }).waitFor();
+  await chooseLanguage(page, 'English');
+  await page.getByRole('heading', { name: 'Language', exact: true }).waitFor();
   await page.reload();
-  assert.equal(await page.getByLabel('Language', { exact: true }).inputValue(), 'en-CA');
+  assert.equal(
+    await page
+      .locator('.language-settings .segmented-control button[aria-pressed="true"]')
+      .textContent(),
+    'English',
+  );
   assert.equal(await page.locator('html').getAttribute('lang'), 'en-CA');
 
   const mapPage = await context.newPage();
@@ -43,7 +53,7 @@ try {
   await mapPage.waitForTimeout(250);
   const viewBox = await mapPage.locator('#map').getAttribute('viewBox');
   await mapPage.getByRole('searchbox').fill('Queen');
-  await page.getByLabel('Language', { exact: true }).selectOption('fr-CA');
+  await chooseLanguage(page, 'Français');
   // The map tools re-render in French; the overnight layer label proves it.
   await mapPage.getByRole('checkbox', { name: 'Inclure les lignes de nuit' }).waitFor();
   assert.equal(
@@ -56,7 +66,7 @@ try {
     viewBox,
     'switching preserves camera',
   );
-  await page.getByLabel('Langue', { exact: true }).selectOption('browser');
+  await chooseLanguage(page, 'Auto');
   assert.equal(await page.evaluate(() => localStorage.getItem('ttc.language')), null);
   assert.equal(await page.locator('html').getAttribute('lang'), 'fr-CA');
   await page.evaluate(() => {
@@ -66,9 +76,9 @@ try {
     });
     window.dispatchEvent(new Event('languagechange'));
   });
-  await page.getByRole('heading', { name: 'Browser profile' }).waitFor();
+  await page.getByRole('heading', { name: 'Langue', exact: true }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByLabel('Language', { exact: true }).selectOption('fr-CA');
+  await chooseLanguage(page, 'Français');
   assert.ok(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     'French profile fits mobile',
@@ -109,7 +119,7 @@ try {
   });
   const fallbackPage = await unsupported.newPage();
   await fallbackPage.goto(`${origin}/profile`);
-  await fallbackPage.getByRole('heading', { name: 'Browser profile' }).waitFor();
+  await fallbackPage.getByRole('heading', { name: 'Language', exact: true }).waitFor();
   assert.equal(await fallbackPage.locator('html').getAttribute('lang'), 'en-CA');
   await unsupported.close();
 
@@ -124,11 +134,11 @@ try {
   });
   const blockedPage = await blocked.newPage();
   await blockedPage.goto(`${origin}/profile`);
-  await blockedPage.getByLabel('Language', { exact: true }).selectOption('fr-CA');
+  await chooseLanguage(blockedPage, 'Français');
   // With storage blocked the preference cannot persist, but the choice still
   // applies to the session: the page renders in French without the removed
   // browser-storage warnings.
-  await blockedPage.getByRole('heading', { name: 'Profil du navigateur' }).waitFor();
+  await blockedPage.getByRole('heading', { name: 'Langue', exact: true }).waitFor();
   assert.equal(await blockedPage.locator('html').getAttribute('lang'), 'fr-CA');
   await blocked.close();
   assert.deepEqual(errors, []);

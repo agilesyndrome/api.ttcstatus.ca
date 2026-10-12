@@ -15,7 +15,10 @@ import type { Env } from '../env';
 import type { DurableObjectStateLike } from '../../../shared/cloudflare/bindings';
 import { serviceConfig, SERVICE_WINDOW_SECONDS } from '../../../../shared/service/config';
 import type { ServiceConfig } from '../../../../shared/service/config';
-import { fetchRailSnapshot } from '../realtime/realtime';
+import { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from '../realtime/realtime';
+import { SnapshotPublisher } from './published-snapshot';
+import { RecorderSnapshotStore } from './snapshot-store';
+export { SERVICE_RECORDER_NAME } from './recorder-client';
 import {
   gammaApproxQuantileSeconds,
   serviceStatesAt,
@@ -30,9 +33,6 @@ import {
 import { loadNetwork } from './network';
 import type { RecorderNetwork } from './network';
 import { runFoldCycle } from './fold';
-
-/** The singleton's well-known name: one recorder for the whole deployment. */
-export const SERVICE_RECORDER_NAME = 'service-recorder';
 
 /** Re-check the network version hourly: the nightly GTFS flip reloads the
  * network without losing the window (story 1.2). */
@@ -100,6 +100,7 @@ const initialTelemetry: RecorderTelemetry = {
 };
 
 export class ServiceRecorder {
+  private readonly snapshots: SnapshotPublisher;
   private readonly store: WindowStore;
   private network: RecorderNetwork | null = null;
   private networkCheckedAt = 0;
@@ -118,6 +119,19 @@ export class ServiceRecorder {
   ) {
     this.store = new WindowStore(state.storage.sql);
     this.config = serviceConfig(env);
+    const source = env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL;
+    this.snapshots = new SnapshotPublisher(
+      new RecorderSnapshotStore(state.storage),
+      () =>
+        fetchRailSnapshot(source, env.SOURCE_ATTRIBUTION ?? '', env.REALTIME_SUBWAY_URL),
+      JSON.stringify([
+        source,
+        env.REALTIME_SUBWAY_URL,
+        env.SOURCE_ATTRIBUTION,
+        this.config.sampleSeconds,
+      ]),
+      this.config.sampleSeconds,
+    );
   }
 
   /** Internal routes: telemetry (default), live states, and the raw window —
@@ -128,6 +142,11 @@ export class ServiceRecorder {
     this.store.initialize();
     await this.ensureAlarm();
     const path = new URL(request.url).pathname;
+    if (path === '/snapshot') {
+      return Response.json(await this.snapshots.get(), {
+        headers: { 'cache-control': 'no-store' },
+      });
+    }
     // Quantized to the tick grid: the payload is stable within a tick, so
     // ETags and 304s work per tick (story 3.1).
     const sampleMs = this.config.sampleSeconds * 1000;
@@ -243,24 +262,14 @@ export class ServiceRecorder {
       }
     }
 
-    let snapshot = null;
+    const published = await this.snapshots.get();
+    const snapshot = published.snapshot;
     let surfaceStatus: RecorderTelemetry['surfaceStatus'] = 'unavailable';
     let subwayStatus: RecorderTelemetry['subwayStatus'] = 'unavailable';
     let upstreamFailures = telemetry.upstreamFailures;
-    const source = this.env.REALTIME_VEHICLE_URL;
-    if (source) {
-      try {
-        snapshot = await fetchRailSnapshot(
-          source,
-          this.env.SOURCE_ATTRIBUTION ?? '',
-          this.env.REALTIME_SUBWAY_URL,
-        );
-        surfaceStatus = snapshot.surfaceStatus ?? 'unavailable';
-        subwayStatus = snapshot.subwayStatus ?? 'unavailable';
-      } catch {
-        // Both feeds down: an outage. Recorded, never fabricated.
-        upstreamFailures += 1;
-      }
+    if (snapshot) {
+      surfaceStatus = snapshot.surfaceStatus ?? 'unavailable';
+      subwayStatus = snapshot.subwayStatus ?? 'unavailable';
     } else {
       upstreamFailures += 1;
     }

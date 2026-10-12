@@ -95,12 +95,32 @@ op run --env-file=.env.prod -- node -e \
   "const k=process.env.CLERK_PUBLISHABLE_KEY;console.log(Buffer.from(k.replace(/^pk_live_/,''),'base64url').toString())"
 ```
 
+The policy also carries Clerk's documented bot- and fraud-protection hosts
+(`challenges.cloudflare.com`; `*.protect.clerk.com`, with the `:*` port wildcard
+on `connect-src` because those hosts serve on non-443 ports) and Cloudflare Web
+Analytics (`static.cloudflareinsights.com` for the beacon script,
+`cloudflareinsights.com` for its trace endpoint).
+
 After the next deploy, sign in at https://ttcstatus.ca and confirm nothing
 legitimate is blocked; if a console error appears, widen the affected directive
 in `public/_headers` before redeploying. Two known browser-native needs are
 already covered: `img-src … blob:` for locally generated map/download previews,
 and `worker-src 'self' blob:` for the bundled snake board worker (`'self'`) and
 Clerk's timer workers, which load from `blob:` URLs.
+
+### Local development widening
+
+`wrangler dev` serves `dist/` through the same Workers Assets pipeline as
+production, so the enforced policy applies to local dev too. A development
+Clerk instance (`pk_test_…`) serves its frontend API from
+`<instance>.clerk.accounts.dev`, which the production policy blocks. The dev
+commands (`make dev`, `npm run dev:api`) therefore run
+`scripts/dev/dev-headers.mjs` after each build: it rewrites `dist/_headers`
+(never `public/_headers`) to add `https://*.clerk.accounts.dev` to
+`script-src`/`connect-src`/`frame-src`/`form-action`, plus Clerk's dev-instance
+telemetry hosts, and never touches the snake policy. The change is marked with a
+`# dev-only` comment and is idempotent. The Vite preview (`npm run dev:viewer`)
+serves no `_headers` at all, so it needs no widening.
 
 ## Operational correctness
 

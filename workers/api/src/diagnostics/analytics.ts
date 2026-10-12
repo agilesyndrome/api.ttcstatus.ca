@@ -1,5 +1,6 @@
 import type { Env } from '../env';
 import { cors, json } from '../http/responses';
+import { BodyTooLargeError, readLimitedBytes } from '../../../shared/http/streams';
 
 /** Broad, product-level actions the app reports. The allowlist keeps the
  * endpoint from becoming a free-form log: only these exact strings are
@@ -24,7 +25,13 @@ function visitorId(request: Request): string | undefined {
   if (!header) return undefined;
   for (const part of header.split(';')) {
     const [name, ...rest] = part.trim().split('=');
-    if (name === VISITOR_COOKIE) return decodeURIComponent(rest.join('='));
+    if (name === VISITOR_COOKIE) {
+      try {
+        return decodeURIComponent(rest.join('='));
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }
@@ -40,8 +47,23 @@ export async function analyticsEventResponse(
     return json({ error: 'payload-too-large' }, 413, { 'cache-control': 'no-store' });
   let action: unknown;
   try {
-    action = (await request.json()).action;
-  } catch {
+    if (!request.headers.get('content-type')?.startsWith('application/json'))
+      return json({ error: 'json-required' }, 415, { 'cache-control': 'no-store' });
+    if (!request.body) throw new Error('empty');
+    const value: unknown = JSON.parse(
+      new TextDecoder().decode(await readLimitedBytes(request.body, 1024)),
+    );
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.keys(value).some((field) => field !== 'action')
+    )
+      return json({ error: 'invalid-event' }, 400, { 'cache-control': 'no-store' });
+    action = (value as { action?: unknown }).action;
+  } catch (error) {
+    if (error instanceof BodyTooLargeError)
+      return json({ error: 'payload-too-large' }, 413, { 'cache-control': 'no-store' });
     return json({ error: 'invalid-body' }, 400, { 'cache-control': 'no-store' });
   }
   if (typeof action !== 'string' || !ACTIONS.has(action))

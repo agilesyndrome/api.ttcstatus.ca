@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { platform } from '../../services/platform';
 import { journalBadges, type JournalEntry } from '../../../../shared/accounts/journal';
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
@@ -5,20 +7,29 @@ import { useLanguage } from '../../i18n/react';
 export function Badges({ entries }: { entries: JournalEntry[] }) {
   useLanguage();
   const collection = journalBadges(entries);
-  const playedSnake = (() => {
-    try {
-      return localStorage.getItem('ttc:snake:v2:played') === '1';
-    } catch {
-      return false;
-    }
-  })();
-  const playedClassic = (() => {
-    try {
-      return localStorage.getItem('ttc:snake:v1:played') === '1';
-    } catch {
-      return false;
-    }
-  })();
+  const [playedSnake, setPlayedSnake] = useState(
+    () => platform().preferences.peek('ttc:snake:v2:played') === '1',
+  );
+  const [playedClassic, setPlayedClassic] = useState(
+    () => platform().preferences.peek('ttc:snake:v1:played') === '1',
+  );
+  useEffect(() => {
+    let current = true;
+    void Promise.all([
+      platform().preferences.get('ttc:snake:v2:played'),
+      platform().preferences.get('ttc:snake:v1:played'),
+    ])
+      .then(([snake, classic]) => {
+        if (current) {
+          setPlayedSnake(snake === '1');
+          setPlayedClassic(classic === '1');
+        }
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, []);
   return (
     <section className="streetcar-journal">
       <p className="eyebrow">{t('journal.yourRollingCollection')}</p>

@@ -17,7 +17,12 @@
   "limits": {
     "cpu_ms": 300000,
   },
-  "observability": { "enabled": true },
+  // Keep sanitized application logs; automatic invocation logs include raw URLs.
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "enabled": true, "invocation_logs": false },
+  },
   "analytics_engine_datasets": [
     {
       "binding": "ANALYTICS",
@@ -32,7 +37,7 @@
     "crons": ["17 7 * * *", "41 * * * *"],
   },
   "vars": {
-    "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca",
+    "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca,capacitor://localhost",
     // Live refresh and shared snapshot cache lifetime, in seconds (30–300).
     "REALTIME_SUBWAY_URL": "https://gtfsrt.ttc.ca/trips/subway?format=binary",
     "REALTIME_UPDATE_SECONDS": "30",

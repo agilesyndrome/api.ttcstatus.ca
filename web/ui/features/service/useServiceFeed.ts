@@ -1,3 +1,5 @@
+import { useActivity } from '../../services/platform/react';
+import { apiRequest } from '../../services/http/client';
 import { useEffect, useRef, useState } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 
@@ -17,6 +19,8 @@ const DEFAULT_SECONDS = 30;
  * with the retained ETag, and pauses when the tab is hidden. Disabled means
  * disabled: no requests are made at all (the overlay gate, sla.md §4.7). */
 export function useServiceFeed(enabled: boolean): ServiceFeedState {
+  const activity = useActivity();
+  const eligible = enabled && activity.active && activity.online;
   const [state, setState] = useState<ServiceFeedState>({
     loading: enabled,
     failed: false,
@@ -37,6 +41,7 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       });
       return;
     }
+    if (!eligible) return;
     let stopped = false;
     let timer: number | undefined;
     const controller = new AbortController();
@@ -45,14 +50,10 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       if (!stopped) timer = window.setTimeout(pull, milliseconds);
     };
     const pull = async () => {
-      if (document.visibilityState === 'hidden') {
-        schedule(5_000);
-        return;
-      }
       try {
         const headers = new Headers();
         if (etag.current) headers.set('if-none-match', etag.current);
-        const response = await fetch('/api/v1/service/stops', {
+        const response = await apiRequest('/api/v1/service/stops', {
           headers,
           signal: controller.signal,
           cache: 'no-store',
@@ -87,8 +88,8 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       } catch (error) {
         if (stopped || controller.signal.aborted) return;
         setState((current) => ({ ...current, loading: false, failed: true }));
-        schedule(Math.min(300_000, backoffSeconds) * 1000);
-        backoffSeconds = Math.min(300_000, backoffSeconds * 2);
+        schedule(Math.min(300, backoffSeconds) * 1000);
+        backoffSeconds = Math.min(300, backoffSeconds * 2);
       }
     };
     void pull();
@@ -97,6 +98,6 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       controller.abort();
       if (timer) window.clearTimeout(timer);
     };
-  }, [enabled]);
+  }, [enabled, eligible]);
   return state;
 }

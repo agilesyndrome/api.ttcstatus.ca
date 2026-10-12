@@ -20,6 +20,10 @@ import { feedStatusResponse } from '../diagnostics/feed-status';
 import { analyticsEventResponse } from '../diagnostics/analytics';
 import { versionResponse } from '../diagnostics/version';
 import { manualSyncResponse } from '../sync/manual-sync';
+import { privacyQueryResponse } from './privacy';
+import { stopDirectoryResponse } from '../maps/stop-directory';
+import { manifestResponse } from '../maps/manifest';
+import { openApiDocument } from '../contracts/openapi';
 
 export async function routeRequest(
   request: Request,
@@ -30,6 +34,20 @@ export async function routeRequest(
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: cors() });
+  }
+  const privacyError = privacyQueryResponse(url);
+  if (privacyError) return privacyError;
+  if (request.method === 'GET' && url.pathname === '/api/v1/openapi.json') {
+    return json(openApiDocument, 200, { 'cache-control': 'public, max-age=300' });
+  }
+  if (
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    url.pathname === '/api/v1/stops'
+  ) {
+    return stopDirectoryResponse(request, env, ctx);
+  }
+  if (request.method === 'GET' && url.pathname === '/api/v1/manifest') {
+    return manifestResponse(request, env);
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/auth/config') {
@@ -91,8 +109,14 @@ export async function routeRequest(
   }
 
   // The SLA report (docs/sla-stories.md Epic 8, E8S4): precomputed-only —
-  // additive, marked experimental in the README.
+  // additive, marked experimental in the README. The report is a
+  // members-only surface while it is in beta: the router places it behind
+  // the same verified-session gate as /me/*, so neither the report nor its
+  // edge cache entry is reachable signed out. The page mirrors this with its
+  // own sign-in gate.
   if (request.method === 'GET' && url.pathname === '/api/v1/sla/report') {
+    const identity = await authenticateAccount(request, env);
+    if (identity instanceof Response) return identity;
     return slaReportResponse(request, env, ctx);
   }
 

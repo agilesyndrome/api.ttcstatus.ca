@@ -16,6 +16,7 @@ import {
 } from '../../../../shared/map/geometry';
 import type { LatLon, MapSourceData, XY } from '../types';
 import { layoutStreetcarMap } from '../topology/schematic';
+import { boardingStopsById } from '../source/stop-geography';
 
 interface StopCluster {
   id: string;
@@ -106,6 +107,7 @@ export function buildStreetcarMapBundle(
   }
 
   const clusters: StopCluster[] = [];
+  const boardingStops = boardingStopsById(data);
   for (const stop of data.stops) {
     if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lon)) continue;
     const [x, y] = projectToLocalMetres([stop.lat, stop.lon]);
@@ -156,11 +158,13 @@ export function buildStreetcarMapBundle(
       stopIds: cluster.stopIds,
       routeIds: [...cluster.routeIds].sort(),
       accessible: cluster.accessible,
+      boardingStops: cluster.stopIds.flatMap((id) => boardingStops.get(id) ?? []),
     };
   });
 
   return layoutStreetcarMap({
     schemaVersion: 1,
+    format: 'ttc-schematic-map',
     mode: MAP_MODE,
     style: MAP_STYLE,
     generatorVersion: GENERATOR_VERSION,

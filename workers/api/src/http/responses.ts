@@ -1,13 +1,13 @@
 export function cors(headers = new Headers()): Headers {
   headers.set('access-control-allow-origin', '*');
-  headers.set('access-control-allow-methods', 'GET, HEAD, POST, OPTIONS');
+  headers.set('access-control-allow-methods', 'GET, HEAD, POST, PUT, OPTIONS');
   headers.set(
     'access-control-allow-headers',
     'Authorization, Content-Type, If-None-Match',
   );
   headers.set(
     'access-control-expose-headers',
-    'ETag, X-Live-Update-Seconds, X-Live-Next-Update-At, Retry-After',
+    'ETag, X-Network-Version, X-Map-Artifact, X-Map-Generator, X-Map-Format, X-Schema-Version, X-Live-Update-Seconds, X-Live-Next-Update-At, Retry-After',
   );
   return headers;
 }
@@ -25,4 +25,4 @@ export function json(
 }
 
 export const accountReply = (body: unknown, status = 200) =>
-  Response.json(body, { status, headers: { 'cache-control': 'no-store' } });
+  json(body, status, { 'cache-control': 'no-store' });

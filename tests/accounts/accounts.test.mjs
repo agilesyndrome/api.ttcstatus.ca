@@ -40,9 +40,23 @@ test('runtime configuration exposes only the publishable key; missing keys leave
     enabled: false,
     publishableKey: null,
   });
+  // Unresolved secret-manager references (local dev loads .env.local verbatim
+  // before the 1Password wrapper resolves them) must read as unconfigured,
+  // never as a bogus publishable key.
+  assert.deepEqual(
+    authConfig({
+      CLERK_PUBLISHABLE_KEY: 'op://vault/item/clerk_publishable_key',
+      CLERK_SECRET_KEY: 'op://vault/item/clerk_secret_key',
+    }),
+    { enabled: false, publishableKey: null },
+  );
+  assert.deepEqual(authConfig({ CLERK_SECRET_KEY: 'sk_test_secret' }), {
+    enabled: false,
+    publishableKey: null,
+  });
   const response = await api.fetch(
     new Request('https://ttcstatus.ca/api/v1/auth/config'),
-    { CLERK_PUBLISHABLE_KEY: 'pk_test_public', CLERK_SECRET_KEY: 'must-not-leak' },
+    { CLERK_PUBLISHABLE_KEY: 'pk_test_public', CLERK_SECRET_KEY: 'sk_test_secret' },
     {},
   );
   assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -256,6 +270,37 @@ test('real Clerk session verification accepts signed tokens and rejects tamperin
     });
   try {
     assert.equal(await authenticateAccount(authenticated(token()), env), 'user_signed');
+    // Real signature verification covers the future iPhone WebView's token
+    // party, not trust in its caller-controlled HTTP Origin header.
+    assert.equal(
+      await authenticateAccount(
+        authenticated(token({ azp: 'capacitor://localhost' })),
+        env,
+      ),
+      'user_signed',
+    );
+    assert.equal(
+      (
+        await authenticateAccount(
+          authenticated(token({ azp: 'capacitor://foreign' })),
+          env,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (await authenticateAccount(authenticated(token({ azp: undefined })), env)).status,
+      401,
+    );
+    assert.equal(
+      (
+        await authenticateAccount(authenticated(token()), {
+          ...env,
+          CLERK_AUTHORIZED_PARTIES: '',
+        })
+      ).status,
+      503,
+    );
     assert.equal((await api.fetch(authenticated(token()), env, {})).status, 200);
     const privateEntry = { entries: [entry], revision: 0 };
     assert.equal(

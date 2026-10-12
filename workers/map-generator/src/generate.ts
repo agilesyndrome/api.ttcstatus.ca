@@ -1,6 +1,7 @@
 import { buildViewerData, type ViewerSource } from '../../../shared/map/model';
 import { buildSnakeMap } from '../../../shared/map/game-map';
 import { storeMapArtifact } from './artifacts/artifact-store';
+import { storeStopDirectory } from './artifacts/stop-directory-store';
 import { buildStreetcarMapBundle } from './layout/build-map';
 import {
   SNAKE_BOARD_STYLE,
@@ -35,11 +36,15 @@ export async function generateStreetcarMap(
 }> {
   const source = await loadMapSourceData(env, versionId);
   const bundle = buildStreetcarMapBundle(source, env.SOURCE_ATTRIBUTION);
-  const artifactId = await storeMapArtifact(env, versionId, bundle);
 
   // Validate the exact React contract before deriving the board artifacts.
   // The bundle is opaque to its builder, but its public shape is this source.
   const viewer = buildViewerData(bundle as ViewerSource);
+  // Both public map formats carry the same original geography and cluster identities.
+  const artifactId = await storeMapArtifact(env, versionId, {
+    ...(bundle as ViewerSource),
+    stopDirectory: viewer.stopDirectory,
+  });
   const board = buildSnakeMap(viewer).data;
   const snakeArtifactId = await storeMapArtifact(env, versionId, board, {
     name: SNAKE_MAP_NAME,
@@ -51,5 +56,10 @@ export async function generateStreetcarMap(
     name: TTCSTATUS_MAP_NAME,
     style: TTCSTATUS_BOARD_STYLE,
   });
+  if (viewer.stopDirectory) {
+    for (const id of [artifactId, snakeArtifactId, ttcstatusArtifactId]) {
+      await storeStopDirectory(env, id, viewer.stopDirectory);
+    }
+  }
   return { artifactId, snakeArtifactId, ttcstatusArtifactId };
 }

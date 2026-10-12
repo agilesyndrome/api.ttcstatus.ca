@@ -7,21 +7,22 @@ interface JournalRow {
   revision: number;
 }
 
+async function readJournal(env: AccountEnv, userId: string) {
+  const row = await env.DB.prepare(
+    'SELECT entries, revision FROM user_journals WHERE user_id = ?',
+  )
+    .bind(userId)
+    .first<JournalRow>();
+  return { entries: row ? JSON.parse(row.entries) : [], revision: row?.revision ?? 0 };
+}
+
 export async function ownedJournalResponse(
   request: Request,
   env: AccountEnv,
   userId: string,
 ): Promise<Response> {
   if (request.method === 'GET') {
-    const row = await env.DB.prepare(
-      'SELECT entries, revision FROM user_journals WHERE user_id = ?',
-    )
-      .bind(userId)
-      .first<JournalRow>();
-    return reply({
-      entries: row ? JSON.parse(row.entries) : [],
-      revision: row?.revision ?? 0,
-    });
+    return reply(await readJournal(env, userId));
   }
   if (request.method !== 'PUT') return reply({ error: 'method-not-allowed' }, 405);
   const value = await body(request, JOURNAL_BODY_LIMIT);
@@ -45,6 +46,9 @@ export async function ownedJournalResponse(
         )
           .bind(JSON.stringify(value.entries), userId, value.revision)
           .run();
-  if (!result.meta.changes) return reply({ error: 'journal-conflict' }, 409);
+  if (!result.meta.changes) {
+    const current = await readJournal(env, userId);
+    return reply({ error: 'journal-conflict', revision: current.revision, current }, 409);
+  }
   return reply({ revision: Number(value.revision) + 1 });
 }

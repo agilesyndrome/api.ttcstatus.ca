@@ -1,5 +1,11 @@
 import { PALETTE } from './palette';
+import { buildStopDirectory } from './stop-directory';
 import type { GeographicTransform, ProjectionEdge } from './projection';
+import type {
+  BoardingStop,
+  StopDirectory,
+  StopPosition,
+} from '../transit/stop-directory';
 
 export type Point = [number, number];
 export interface Route {
@@ -22,10 +28,13 @@ export interface Feature {
   destinations: Record<string, string[]>;
   replacementRouteIds: string[];
   stopIds?: string[];
+  geographicPoints?: StopPosition[];
   edgeId?: string;
   distanceAlongMetres?: number;
 }
 export interface StopPattern {
+  id?: string;
+  directionId?: 0 | 1;
   routeId: string;
   stopIds: string[];
   headsign: string;
@@ -44,6 +53,10 @@ export interface Edge extends ProjectionEdge {
   infrastructureIds: string[];
 }
 export interface ViewerData {
+  format?: 'ttc-viewer-map';
+  schemaVersion?: 1;
+  networkVersion?: number;
+  stopDirectory?: StopDirectory;
   features: Feature[];
   routes: Route[];
   edges: Edge[];
@@ -70,11 +83,16 @@ interface SourceStop {
   y: number;
   routeIds: string[];
   stopIds: string[];
+  boardingStops?: BoardingStop[];
   accessible?: boolean;
   edgeId?: string;
   distanceAlongMetres?: number;
 }
 export interface ViewerSource {
+  format?: 'ttc-schematic-map';
+  schemaVersion?: number;
+  networkVersion?: number;
+  stopDirectory?: StopDirectory;
   display: { geographicTransform: GeographicTransform };
   generatedAt?: string;
   source?: { fetchedAt?: string };
@@ -164,6 +182,20 @@ export function buildViewerData(source: ViewerSource): ViewerData {
       destinations,
       replacementRouteIds: [],
       stopIds,
+      ...(stops.some((stop) => stop.boardingStops)
+        ? {
+            geographicPoints: stops.flatMap((stop) =>
+              (stop.boardingStops ?? []).map(
+                ({ stopId, latitude, longitude, accessible }) => ({
+                  stopId,
+                  latitude,
+                  longitude,
+                  accessible,
+                }),
+              ),
+            ),
+          }
+        : {}),
       ...(stops.length === 1 && stops[0].edgeId
         ? { edgeId: stops[0].edgeId, distanceAlongMetres: stops[0].distanceAlongMetres }
         : {}),
@@ -247,6 +279,15 @@ export function buildViewerData(source: ViewerSource): ViewerData {
       'Rebuild the map with map:preview to include its geographic transform',
     );
   return {
+    format: 'ttc-viewer-map',
+    schemaVersion: 1,
+    ...(source.networkVersion !== undefined
+      ? { networkVersion: source.networkVersion }
+      : {}),
+    ...(source.networkVersion !== undefined &&
+    source.stops.some((stop) => stop.boardingStops)
+      ? { stopDirectory: buildStopDirectory(source, features) }
+      : {}),
     features,
     routes,
     edges,

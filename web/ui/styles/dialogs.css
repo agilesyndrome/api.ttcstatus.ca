@@ -1,0 +1,269 @@
+.keyboard-help {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(var(--app-viewport-height, 100dvh) - 40px);
+  padding: 24px;
+}
+.keyboard-help::backdrop {
+  background: #07172299;
+}
+.keyboard-help .details-heading h2 {
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+.keyboard-help .details-heading button {
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+}
+.shortcut-list {
+  display: grid;
+  gap: 10px;
+}
+.shortcut-list > div {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.shortcut-list dt {
+  width: 26px;
+  text-align: center;
+}
+.shortcut-list dd {
+  margin: 0;
+  font-size: 12px;
+}
+kbd {
+  display: inline-block;
+  min-width: 24px;
+  padding: 3px 6px;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font:
+    11px ui-monospace,
+    monospace;
+}
+@media (max-width: 900px) {
+  .main-nav {
+    top: -20px;
+    margin: -20px -16px 18px;
+  }
+}
+@media (max-width: 640px) {
+  .main-nav {
+    margin: -20px -20px 18px;
+  }
+  .picking-hint {
+    left: 10px;
+    top: 10px;
+    right: 60px;
+    font-size: 10px;
+  }
+}
+@media (max-width: 360px) {
+  .topbar {
+    padding: 0 12px;
+    gap: 10px;
+  }
+  .brand strong {
+    font-size: 15px;
+  }
+  .brand {
+    gap: 8px;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+  .theme-toggle {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}
+
+.main-nav [role='tablist'] button,
+.main-nav__link {
+  padding: 9px 5px;
+  font-size: 11px;
+  min-width: 0;
+}
+.stop-browser h1,
+.streetcar-journal h1 {
+  font-size: 24px;
+  letter-spacing: -0.6px;
+  margin-bottom: 12px;
+}
+.tool-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  background: var(--canvas);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font:
+    12px system-ui,
+    sans-serif;
+  resize: vertical;
+}
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.journal-summary {
+  padding: 20px;
+  background: var(--soft);
+  border-radius: 12px;
+  margin: 18px 0;
+}
+.journal-summary > strong {
+  display: block;
+  font-size: 38px;
+  letter-spacing: -1px;
+  color: var(--accent);
+}
+.journal-summary > span {
+  display: block;
+  font-size: 13px;
+  margin: 3px 0 10px;
+}
+.journal-summary > small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.journal-achievements {
+  margin: 16px 0;
+  font-size: 12px;
+}
+.journal-achievements summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.journal-badges {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.journal-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+}
+.journal-badge > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--canvas);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.journal-badge strong {
+  display: block;
+  font-size: 12px;
+}
+.journal-badge small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.6;
+  margin-top: 3px;
+}
+.journal-badge.earned {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+.journal-badge.earned > span {
+  background: var(--surface);
+  color: var(--accent);
+}
+.journal-badge.earned strong {
+  color: var(--text);
+}
+.journal-backups {
+  margin-top: 18px;
+}
+.journal-entries {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.journal-entry {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.journal-entry .section-heading {
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.journal-entry .section-heading h2 {
+  overflow-wrap: anywhere;
+}
+.journal-entry .report-tag {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.journal-entry .comparison-actions {
+  margin: 12px 0 0;
+}
+.journal-note {
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 12px 0;
+}
+.journal-confirm {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.journal-confirm p {
+  font-size: 12px;
+  margin-bottom: 0;
+}
+.journal-car-actions {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.journal-car-actions .text-button {
+  display: block;
+  margin: 8px 0;
+}
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-controls .action-button {
+  white-space: nowrap;
+}
+.signup-button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.auth-status {
+  color: var(--muted);
+  font-size: 11px;
+}
+.account-link {
+  color: var(--accent);
+  font-size: 13px;
+}
+/* The standalone pages' header (nav-v2): the map top bar's own chrome —
+   the full brand lockup (symbol, title, tagline — all inherited from the
+   shared .brand styles), the one main nav, and the same quick controls in
+   the same order as the map's header actions. The nav strip shares the
+   sidebar's item styles, so the menu reads identically wherever it renders;
+   it drops the strip's own padding/border here and wraps to its own
+   full-width row on phones. */

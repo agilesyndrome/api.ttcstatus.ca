@@ -1,28 +1,22 @@
 import { createRoot } from 'react-dom/client';
-import { HomePage } from './pages/HomePage';
+import { App } from './App';
 import './styles/main.css';
 import { AccountProvider } from './features/accounts/auth';
-import { ProfilePage, PublicProfilePage } from './pages/ProfilePage';
-import { SlaPage } from './pages/SlaPage';
 import { AffiliationNotice } from './components/AffiliationNotice';
-import { snakeVersionForPath } from './snake-route';
+import { initializePlatform, platform } from './services/platform';
+import { registerOfflineShell } from './services/platform/browser/offline-shell';
+import { startNavigation } from './services/navigation/history';
+import { hydrateLanguage } from './i18n';
 
-const path = window.location.pathname.replace(/\/$/, '') || '/';
-const publicProfile = /^\/u\/([^/]+)$/.exec(path);
-const snakeVersion = snakeVersionForPath(path);
-const page =
-  path === '/profile' ? (
-    <ProfilePage />
-  ) : path === '/sla' ? (
-    <SlaPage />
-  ) : publicProfile ? (
-    <PublicProfilePage username={publicProfile[1]} />
-  ) : (
-    <HomePage initialSnakeVersion={snakeVersion} />
-  );
+await initializePlatform();
+await hydrateLanguage();
+startNavigation();
+if (!platform().native) registerOfflineShell();
 createRoot(document.getElementById('root')!).render(
-  <>
-    <AccountProvider>{page}</AccountProvider>
-    <AffiliationNotice />
-  </>,
+  <AccountProvider>
+    <>
+      <App />
+      <AffiliationNotice />
+    </>
+  </AccountProvider>,
 );

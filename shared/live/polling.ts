@@ -24,8 +24,9 @@ export async function requestVehicleUpdate(
   endpoint: string,
   signal: AbortSignal,
   etag?: string,
+  request: (path: string, init?: RequestInit) => Promise<Response> = fetch,
 ): Promise<SnapshotUpdate> {
-  const response = await fetch(endpoint, {
+  const response = await request(endpoint, {
     signal,
     cache: 'no-store',
     headers: etag ? { 'if-none-match': etag } : {},

@@ -35,21 +35,57 @@ for (const area of ['shared', 'workers', 'web']) {
       ts.ScriptTarget.Latest,
       true,
     );
-    for (const statement of source.statements) {
-      if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement))
-        continue;
-      const specifier = statement.moduleSpecifier;
-      if (!specifier || !ts.isStringLiteral(specifier) || !specifier.text.startsWith('.'))
-        continue;
+    const sourcePath = file.split(sep).join('/');
+    const gradeImport = (specifier) => {
+      if (!specifier || !ts.isStringLiteral(specifier)) return;
+      if (
+        specifier.text.startsWith('@capacitor/') &&
+        !sourcePath.startsWith('web/ui/services/platform/')
+      )
+        failures.push(
+          `${file} imports a native plugin outside the platform service boundary`,
+        );
+      if (!specifier.text.startsWith('.')) return;
       const target = resolve(dirname(join(root, file)), specifier.text);
       if (!target.startsWith(root + sep) && target !== root) {
         failures.push(`${file} imports outside the checkout: ${specifier.text}`);
-        continue;
+        return;
       }
+      const targetPath = relative(root, target).split(sep).join('/');
+      if (
+        sourcePath.startsWith('web/ui/services/') &&
+        /^(web\/ui\/(features|components|hooks)\/)/.test(targetPath)
+      )
+        failures.push(`${file} imports UI implementation from a service`);
       const prefix = relative(root, target).split(sep)[0];
       if (forbiddenPrefixes[area].includes(prefix))
         failures.push(`${file} imports ${specifier.text}`);
-    }
+    };
+    // Grade static imports/re-exports and lazy imports through the same rules.
+    const inspect = (node) => {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+        gradeImport(node.moduleSpecifier);
+      if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword
+      )
+        gradeImport(node.arguments[0]);
+      if (
+        sourcePath.startsWith('web/ui/') &&
+        !sourcePath.startsWith('web/ui/services/')
+      ) {
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === 'fetch'
+        )
+          failures.push(`${file} calls fetch outside the HTTP service`);
+        if (ts.isIdentifier(node) && node.text === 'localStorage')
+          failures.push(`${file} accesses localStorage outside the platform service`);
+      }
+      ts.forEachChild(node, inspect);
+    };
+    inspect(source);
   }
 }
 

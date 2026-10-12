@@ -14,13 +14,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Show live vehicles' }),
+    ).toBeChecked();
     await userEvent.click(
-      within(canvasElement).getByRole('checkbox', { name: 'More stop labels' }),
+      canvas.getByRole('checkbox', { name: 'Include overnight routes' }),
     );
     await expect(args.onChange).toHaveBeenCalledWith({
       live: true,
-      labels: true,
-      overnight: false,
+      labels: false,
+      overnight: true,
       streetcar: true,
       subway: true,
     });
