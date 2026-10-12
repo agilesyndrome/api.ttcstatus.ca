@@ -1,6 +1,14 @@
 import { SOURCE_KEY, nowIso, type NetworkVersion, type SyncEnv } from './sync-common';
+import { generateStreetcarMap } from '../mapgen/generate';
 
-/** Ask the separately deployed map Worker to precompute this network version. */
+/** Precompute this network version's maps — in-process (E7S3,
+ * docs/optimize-transport.md Epic 7: the internal HTTP contract between the
+ * API and the generator is gone; the only two call sites are typed function
+ * calls now). The `map_generation_jobs` pending → running → failed
+ * bookkeeping the generator's route used to enforce moves here unchanged:
+ * acquisition, folds, and retention never depend on generation. The env
+ * is the merged one (E7S2): SyncEnv already carries DB, SOURCE_ATTRIBUTION,
+ * and SYNC_TOKEN — everything mapgen consumes. */
 export async function requestMapGeneration(
   env: SyncEnv,
   versionId: number,
@@ -13,26 +21,36 @@ export async function requestMapGeneration(
     .bind(versionId, createdAt)
     .run();
 
-  const response = await env.MAP_GENERATOR.fetch(
-    'https://map-generator.internal/api/internal/generate',
-    {
-      method: 'POST',
-      headers: {
-        authorization: env.SYNC_TOKEN ? `Bearer ${env.SYNC_TOKEN}` : '',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ versionId, mode: 'streetcar', style: 'snake-v1' }),
-    },
-  );
+  await env.DB.prepare(
+    `UPDATE map_generation_jobs
+      SET status = 'running', started_at = ?, error = NULL
+      WHERE id = (
+        SELECT id FROM map_generation_jobs
+        WHERE version_id = ? AND mode = 'streetcar'
+        ORDER BY id DESC LIMIT 1
+      )`,
+  )
+    .bind(nowIso(), versionId)
+    .run();
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    artifactId?: number;
-    error?: string;
-  };
-  if (!response.ok || !payload.artifactId) {
-    throw new Error(payload.error || `Map generator returned HTTP ${response.status}`);
+  try {
+    const result = await generateStreetcarMap(env, versionId);
+    return result.artifactId;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await env.DB.prepare(
+      `UPDATE map_generation_jobs
+        SET status = 'failed', completed_at = ?, error = ?
+        WHERE id = (
+          SELECT id FROM map_generation_jobs
+          WHERE version_id = ? AND mode = 'streetcar'
+          ORDER BY id DESC LIMIT 1
+        )`,
+    )
+      .bind(nowIso(), message.slice(0, 2000), versionId)
+      .run();
+    throw error;
   }
-  return payload.artifactId;
 }
 
 /**

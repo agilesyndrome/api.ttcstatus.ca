@@ -13,7 +13,7 @@ await mkdir(directory, { recursive: true });
 const compiled = await build({
   stdin: {
     contents: `export { parseStreetcarGtfs } from './workers/shared/gtfs/parser';
-export { buildStreetcarMapBundle } from './workers/map-generator/src/layout/build-map';`,
+export { buildStreetcarMapBundle } from './workers/api/src/mapgen/layout/build-map';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },

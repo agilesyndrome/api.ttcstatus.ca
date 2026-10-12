@@ -13,7 +13,7 @@ import {
   metresBetween,
   projectToLocalMetres,
   simplifyPolyline,
-} from '../../../../shared/map/geometry';
+} from '../../../../../shared/map/geometry';
 import type { LatLon, MapSourceData, XY } from '../types';
 import { layoutStreetcarMap } from '../topology/schematic';
 import { boardingStopsById } from '../source/stop-geography';

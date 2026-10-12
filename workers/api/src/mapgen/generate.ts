@@ -1,5 +1,5 @@
-import { buildViewerData, type ViewerSource } from '../../../shared/map/model';
-import { buildSnakeMap } from '../../../shared/map/game-map';
+import { buildViewerData, type ViewerSource } from '../../../../shared/map/model';
+import { buildSnakeMap } from '../../../../shared/map/game-map';
 import { storeMapArtifact } from './artifacts/artifact-store';
 import { storeStopDirectory } from './artifacts/stop-directory-store';
 import { buildStreetcarMapBundle } from './layout/build-map';

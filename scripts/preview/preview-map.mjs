@@ -4,11 +4,11 @@ import { resolve } from 'node:path';
 
 // Compile the actual Worker geometry rather than maintain a second layout
 // implementation for local previewing. This module only lays out a local map
-// bundle; production generation stays in the map-generator Worker.
+// bundle; production generation runs in-process in the API Worker (Epic 7).
 const compiled = await build({
   stdin: {
     contents:
-      'export { layoutStreetcarMap } from "./workers/map-generator/src/topology/schematic"; export { projectToLocalMetres } from "./shared/map/geometry";',
+      'export { layoutStreetcarMap } from "./workers/api/src/mapgen/topology/schematic"; export { projectToLocalMetres } from "./shared/map/geometry";',
     resolveDir: process.cwd(),
     loader: 'ts',
   },

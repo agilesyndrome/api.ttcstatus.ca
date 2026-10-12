@@ -32,14 +32,14 @@ Responsibilities:
 - Reads individual ZIP entries from R2 using ranged reads and streaming `deflate-raw` decompression.
 - Imports streetcars and Lines 1, 2, 4, 5 and 6 into versioned D1 rows.
 - Refuses to activate obviously incomplete imports.
-- Calls the map-generator Worker only when a new static feed was actually imported.
+- Generates the map in-process only when a new static feed was actually imported.
 - Activates the new network only after map generation succeeds.
 - Deletes superseded raw R2 ZIPs and old canonical rows after successful activation.
 - Retains lightweight version/change summaries instead of raw nightly snapshots.
 
-### Map-generator Worker
+### Map generator (in-process)
 
-`workers/map-generator`
+`workers/api/src/mapgen/` — moved inside the API Worker (docs/optimize-transport.md Epic 7).
 
 Responsibilities:
 
@@ -69,7 +69,7 @@ Lake Shore to Long Branch through the Humber tunnel, and Kingston Road to Bingha
 when the feed does not schedule streetcars there. These use the TTC track-network
 reference, mapped OpenStreetMap rail and, for two intervening corridors, approximate
 City of Toronto road centrelines. Source notes and licences are in
-`workers/map-generator/src/source/physical-tracks.json`. Database overlays with matching
+`workers/api/src/mapgen/source/physical-tracks.json`. Database overlays with matching
 IDs take precedence over the bundled defaults.
 
 Detailed physical Queens Quay geometry also supplies bends missing from coarse
@@ -93,7 +93,7 @@ track without scheduled streetcar service.
 
 The local vite preview (`npm run dev:viewer`) serves `/api/v1/map/streetcar`
 from `data/fixtures/streetcarmap.json` (or `.wrangler/preview/rail-map.json`
-after `make dev/new`, or `MAP_INPUT`), laid out by the real map-generator
+after `make dev/new`, or `MAP_INPUT`), laid out by the real map generator
 geometry without credentials, D1 or feed downloads. For the legacy v1.0.1
 fixture, the preview recovers approximate metre coordinates from the audited
 Ossington overlay because that format omitted its geographic display transform.
@@ -302,11 +302,11 @@ make admin/sync/status
 ### `POST /api/v1/debug/map/streetcar.svg` (debug endpoint)
 
 Renders a previously generated `data/fixtures/streetcarmap.json` bundle as standalone SVG.
-The authenticated API proxy forwards the JSON to the map-generator debug
-renderer; it does not read D1, fetch GTFS, or invoke the sync pipeline. The
+The authenticated API route renders in-process (`workers/api/src/mapgen/rendering/`);
+it does not read D1, fetch GTFS, or invoke the sync pipeline. The
 request body is the map JSON and requires `Authorization: Bearer <SYNC_TOKEN>`.
-The endpoint is disabled with `404` until `SYNC_TOKEN` is configured on both
-Workers, and accepts bundles up to 2 MB.
+The endpoint is disabled with `404` until `SYNC_TOKEN` is configured, and
+accepts bundles up to 2 MB.
 
 For remote rendering of a custom JSON bundle (the local Make targets do not
 need this endpoint):
@@ -354,13 +354,13 @@ It does not need the admin `SYNC_TOKEN`, download GTFS, or reimport the network.
 It shares the static-sync lock, validates the React contract before storing,
 switches the map pointer only after all chunks exist, and retains the previous
 artifact for rollback. If the active map already uses the current generator,
-it leaves that artifact unchanged. Release steps after updating generator code:
+it leaves that artifact unchanged. Release steps after updating generator code
+(single Worker since Epic 7 — the generator lives inside the API deploy):
 
 ```bash
 npm run build:api
-npm run deploy:map
-npm run map:regenerate:remote
 npm run deploy:api
+npm run map:regenerate:remote
 ```
 
 The React homepage revalidates map data on load and uses a schematic-format URL
@@ -412,17 +412,15 @@ the other boards.
 ### Cloudflare deploy configuration
 
 This repository contains two Workers, so configure two Cloudflare Workers Builds projects
-from the same repository. Both projects use the same gating build command:
+from the same repository. One project, one Worker since Epic 7 (map generation
+is in-process):
 
-- API project: root directory `/`, build command `npm run ci`, deploy command
+- Root directory `/`, build command `npm run ci`, deploy command
   `npm run deploy:api`
-- Map project: root directory `/`, build command `npm run ci`, deploy command
-  `npm run deploy:map`
 
-The deploy commands apply pending D1 migrations (`npm run db:migrate:remote`)
-before shipping either Worker, so a deploy can never run ahead of the schema
-it needs. Migrations are tracked and idempotent; both projects share one
-database, so whichever deploy runs first brings the schema up to date. A
+The deploy command applies pending D1 migrations (`npm run db:migrate:remote`)
+before shipping, so a deploy can never run ahead of the schema it needs.
+Migrations are tracked and idempotent. A
 failed migration stops the deploy.
 
 `npm run ci` is the deploy gate: it runs `npm run pre-flight` (secret scans,
@@ -437,15 +435,14 @@ Both projects must have the same D1 database bound to the `DB` binding. Replace
 `REPLACE_WITH_D1_DATABASE_ID` in both Wrangler configurations before the first deploy;
 Wrangler cannot deploy a remote D1 binding with that placeholder.
 
-Enter the Cloudflare build and deploy commands without Markdown backticks. For the
-map project, use these literal values:
+Enter the Cloudflare build and deploy commands without Markdown backticks:
 
 ```text
 Build command: npm run ci
-Deploy command: npm run deploy:map
+Deploy command: npm run deploy:api
 ```
 
-The static import is intentionally a heavyweight production job and requires a **Workers Paid** plan so the API and map-generator Workers can use the configured CPU budget. The nightly Cron Trigger runs it in the background; the manual endpoint runs the same pipeline inline within its request. Normal API reads remain lightweight because they never parse GTFS.
+The static import is intentionally a heavyweight production job and requires a **Workers Paid** plan so the API Worker can use the configured CPU budget. The nightly Cron Trigger runs it in the background; the manual endpoint runs the same pipeline inline within its request. Normal API reads remain lightweight because they never parse GTFS.
 
 Create one D1 database and one R2 bucket:
 
@@ -454,10 +451,9 @@ npx wrangler d1 create ttcstatus
 npx wrangler r2 bucket create ttcstatus-static-gtfs
 ```
 
-Put the returned D1 database ID into both:
+Put the returned D1 database ID into:
 
 - `workers/api/wrangler.jsonc`
-- `workers/map-generator/wrangler.jsonc`
 
 replacing `REPLACE_WITH_D1_DATABASE_ID`.
 
@@ -474,19 +470,14 @@ Optional manual-sync secret:
 npx wrangler secret put SYNC_TOKEN -c workers/api/wrangler.jsonc
 ```
 
-The map-generator debug renderer uses the same secret name independently:
+Since the generator folded into the API Worker (Epic 7) there is a single
+deploy artifact and a single place to manage the secret.
 
-```bash
-npx wrangler secret put SYNC_TOKEN -c workers/map-generator/wrangler.jsonc
-```
-
-Deploy the map generator first because the API Worker has a Service Binding to it.
 These manual deploys are the break-glass path for when Cloudflare Workers Builds
 is unavailable; normally Cloudflare deploys every push after `npm run ci` passes:
 
 ```bash
 npm run pre-flight
-npm run deploy:map
 npm run deploy:api
 ```
 
@@ -522,8 +513,7 @@ Vite writes the homepage and hashed JS/CSS into `dist/` for Worker
 asset deployment. Static assets are copied from `public/`. The standalone HTML preview remains at `/map/`. All API Worker
 routes now start with `/api/`, including `/api/healthz`; the previous `/v1/*` and
 `/healthz` paths are retired. Unknown `/api/*` requests return JSON errors.
-The map-generator service routes also moved under `/api/`; deploy the map Worker
-before the API Worker when releasing this change.
+
 
 For 100 visible viewers at the default 30-second cadence, the site receives about
 3.3 snapshot requests per second on average. One page hook serves every UI
@@ -775,7 +765,7 @@ npm run db:migrate:local
 
 Or run the whole local stack with dev/prod parity — `make dev` builds the UI,
 migrates local D1/R2, starts both Workers from their production `wrangler.jsonc`
-configs (API pinned to 8787, map-generator to 8788, real `MAP_GENERATOR` service
+configs (API pinned to 8787, single Worker — map generation runs in-process
 binding between them, `--test-scheduled` for the cron path), and bootstraps the
 map through the same `POST /api/v1/admin/sync` endpoint production operators use:
 
@@ -803,7 +793,7 @@ This intentionally avoids the expensive pattern of preserving complete raw daily
 
 ## Next geometry work
 
-The v1 generator establishes the important separation between canonical GTFS geometry and generated display geometry. The next map-generator iterations can add the deeper rules already captured in `ARCHITECTURE.md`, including:
+The v1 generator established the important separation between canonical GTFS geometry and generated display geometry. The next generator iterations can add the deeper rules already captured in `ARCHITECTURE.md`, including:
 
 - protected topology anchors
 - physical corridor graph extraction
@@ -816,7 +806,7 @@ The v1 generator establishes the important separation between canonical GTFS geo
 - trip-pattern matching and temporal continuity for streamed vehicle projection
 - automated route-connectivity regression tests
 
-Those changes can happen inside the map-generator Worker without changing the public API contract.
+Those changes can happen inside `workers/api/src/mapgen/` without changing the public API contract.
 
 ### Streetcar Snake on xplore
 

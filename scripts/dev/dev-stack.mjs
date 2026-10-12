@@ -27,7 +27,7 @@
 // server on the same port.
 //
 // Usage:
-//   node scripts/dev/dev-stack.mjs start [apiPort genPort] [--no-bootstrap]
+//   node scripts/dev/dev-stack.mjs start [apiPort] [--no-bootstrap]
 //   node scripts/dev/dev-stack.mjs stop
 //   node scripts/dev/dev-stack.mjs status
 import { spawn, spawnSync, execSync } from 'node:child_process';
@@ -54,7 +54,6 @@ const [command = 'start', ...rest] = process.argv.slice(2);
 const positional = rest.filter((argument) => !argument.startsWith('--'));
 const flags = new Set(rest.filter((argument) => argument.startsWith('--')));
 const apiPort = Number(positional[0] ?? process.env.API_PORT ?? 8787);
-const genPort = Number(positional[1] ?? process.env.GEN_PORT ?? 8788);
 
 /* ————————————————————————— book-keeping ————————————————————————— */
 
@@ -261,8 +260,7 @@ const start = async () => {
   // with workerd's fatal "bind(): Address already in use". Each Worker gets
   // its own (entry port + 200).
   const apiInspectorPort = apiPort + 200;
-  const genInspectorPort = genPort + 200;
-  for (const port of [apiPort, genPort, apiInspectorPort, genInspectorPort]) {
+  for (const port of [apiPort, apiInspectorPort]) {
     let ready = false;
     for (let attempt = 0; attempt < 5 && !ready; attempt += 1) {
       ready = await bindable(port);
@@ -336,17 +334,8 @@ const start = async () => {
     String(apiInspectorPort),
     '--test-scheduled',
   ]);
-  spawnWorker('map-generator', [
-    'npx',
-    'wrangler',
-    'dev',
-    '-c',
-    'workers/map-generator/wrangler.jsonc',
-    '--port',
-    String(genPort),
-    '--inspector-port',
-    String(genInspectorPort),
-  ]);
+  // Single worker since Epic 7 (docs/optimize-transport.md): map generation
+  // runs in-process inside the API Worker — there is no second stack entry.
   writeLock({
     version: 1,
     stackId,
@@ -384,7 +373,7 @@ const start = async () => {
     await sleep(500);
   }
   console.log(
-    `Dev stack ready: api on http://localhost:${apiPort}, map-generator on http://localhost:${genPort}`,
+    `Dev stack ready: api on http://localhost:${apiPort} (single worker — map generation runs in-process)`,
   );
 
   if (!flags.has('--no-bootstrap')) {

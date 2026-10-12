@@ -2,7 +2,6 @@ import type {
   AnalyticsEngineDataset,
   D1Database,
   DurableObjectNamespaceLike,
-  Fetcher,
   R2Bucket,
   WorkerVersionMetadata,
 } from '../../shared/cloudflare/bindings';
@@ -10,9 +9,17 @@ import type { SyncEnv } from './sync/sync';
 import type { AccountEnv } from './accounts';
 
 export interface Env extends SyncEnv, AccountEnv {
+  // Merged env (docs/optimize-transport.md E7S2): the map-generator worker
+  // folded into this one, so this single Env feeds everything — including
+  // src/mapgen/ (generate.ts + source/topology/layout/rendering/artifacts).
+  // The mapgen path consumes exactly: DB, SOURCE_ATTRIBUTION, SYNC_TOKEN —
+  // all already declared here or via SyncEnv. Do not prune them.
   DB: D1Database;
   GTFS_BUCKET: R2Bucket;
-  MAP_GENERATOR: Fetcher;
+  /** Dedicated public live bucket (optimize-transport.md change 1): the
+   * recorder publishes one immutable tick document per 30 s tick. Optional so
+   * local dev runs without it — publish then no-ops (recorded in telemetry). */
+  LIVE_BUCKET?: R2Bucket;
   /** The recorder singleton Durable Object (sla.md §4.4). */
   SERVICE_RECORDER: DurableObjectNamespaceLike;
   ANALYTICS?: AnalyticsEngineDataset;

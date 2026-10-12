@@ -1,6 +1,6 @@
-import type { StopDirectory } from '../../../../shared/transit/stop-directory';
-import { sha256Hex } from '../../../shared/gtfs/hash';
-import { chunkString } from '../../../shared/storage/chunks';
+import type { StopDirectory } from '../../../../../shared/transit/stop-directory';
+import { sha256Hex } from '../../../../shared/gtfs/hash';
+import { chunkString } from '../../../../shared/storage/chunks';
 import type { MapGeneratorEnv } from '../types';
 
 /** Publish only a complete directory, identified by its immutable map artifact. */

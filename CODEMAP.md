@@ -19,6 +19,7 @@ source file locations.
 | `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints           |
 | `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report            |
 | `sync/`        | Static download, import, map generation, delta, publication and retention                 |
+| `mapgen/`      | In-process map generation (Epic 7): source reads, topology, layout, rendering, artifacts    |
 | `contracts/`   | Public OpenAPI document and endpoint descriptions                                         |
 | `diagnostics/` | Protected feed diagnostics, allowlisted analytics and deployed-version reporting          |
 
@@ -27,18 +28,15 @@ archive. Public map requests read materialized data; live requests use the bound
 recorder's persisted singleton publication and POP cache. Account ownership comes from verified sessions,
 never request fields.
 
-## Map generator
+## Map generator (in-process, Epic 7)
 
-`workers/map-generator/src/index.ts` handles the internal service binding and
-protected debug rendering. `generate.ts` orchestrates load → build → persist.
-
-| Directory    | Responsibility                                                      |
-| ------------ | ------------------------------------------------------------------- |
-| `source/`    | D1 reads, audited physical tracks, shoreline and service selection  |
-| `topology/`  | Canonical track graph, shared corridors and traversals              |
-| `layout/`    | Public map bundle construction                                      |
-| `rendering/` | Debug contracts, runtime validation, label placement and SVG markup |
-| `artifacts/` | Artifact hashing, chunking and persistence                          |
+The map generator is no longer a second Worker: `workers/api/src/mapgen/`
+holds the generator core (`generate.ts` orchestrating load → build → persist,
+plus `source/`, `topology/`, `layout/`, `rendering/`, `artifacts/`) and the
+sync pipeline and the admin debug route call it as typed functions. The
+directory stays self-contained so a future Queues/Workflows offload (or a
+re-split) stays mechanical. The old generator's HTTP shell (`healthz`, the
+auth glue, the JSON envelope parsing) was deleted with the worker.
 
 Canonical GTFS geometry stays separate from schematic display geometry. Ordinary
 geometric crossings do not establish track junctions. The generator version and

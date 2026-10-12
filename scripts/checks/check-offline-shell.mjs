@@ -58,7 +58,7 @@ try {
     page.on('pageerror', (error) => errors.push(error.message)),
   );
   await installAccountFixture(context);
-  await context.route('**/api/v1/map/ttcstatus', (route) =>
+  await context.route('**/api/v1/map/ttcstatus*', (route) =>
     route.fulfill({ json: map, headers: { etag: '"offline-map"' } }),
   );
   const page = await context.newPage();

@@ -18,8 +18,12 @@ import {
   streetcarBody,
   type PlottedVehicle,
 } from '../../shared/map/live-status';
-import { VehiclePoller, requestVehicleUpdate } from '../../shared/live/polling';
-import { DEFAULT_LIVE_UPDATE_SECONDS } from '../../shared/live/config';
+import { VehiclePoller, requestTickUpdate } from '../../shared/live/polling';
+import {
+  DEFAULT_LIVE_UPDATE_SECONDS,
+  parseLiveTransportConfig,
+} from '../../shared/live/config';
+import type { LiveTransportConfig } from '../../shared/live/config';
 import { vehicleIsStale, type VehicleSnapshot } from '../../shared/live/vehicles';
 
 translateViewerPage();
@@ -435,6 +439,14 @@ function updateSnapshotAge() {
     liveSummary.textContent += t('viewer.valueInvalidGpsFixesOmitted', {
       value1: liveSnapshot.invalidPositions,
     });
+  // Outage honesty lives in the document body now (change 2): an outage doc
+  // is just a snapshot with empty vehicles plus this banner — never a status.
+  if (liveSnapshot.outage)
+    liveSummary.textContent += t('liveFeedStatus.liveServiceUnavailableSinceValue', {
+      value1: new Date(liveSnapshot.outage.since).toLocaleTimeString(getLocale(), {
+        timeZone: 'America/Toronto',
+      }),
+    });
   if (!navigator.onLine)
     liveSummary.textContent += t('viewer.offlineKeepingLastPositions');
   else if (liveFailed)
@@ -580,13 +592,34 @@ function acceptVehicleSnapshot(snapshot: VehicleSnapshot) {
   drawSoon();
 }
 
-// File previews use the public API; HTTP previews use their own Worker.
-const liveEndpoint =
+// Transport discovery, not baked URLs (docs/optimize-transport.md E2S5):
+// the live host, cadence, and path template come from
+// /api/v1/auth/config at launch. File previews use the public API origin;
+// HTTP previews stay same-origin. No fallback endpoint exists.
+const configEndpoint =
   location.protocol === 'file:'
-    ? 'https://api.ttcstatus.ca/api/v1/vehicles/streetcar'
-    : '/api/v1/vehicles/streetcar';
+    ? 'https://api.ttcstatus.ca/api/v1/auth/config'
+    : '/api/v1/auth/config';
+let liveConfig: Promise<LiveTransportConfig> | undefined;
+function transportConfig(): Promise<LiveTransportConfig> {
+  // Fetched once per launch; a failure retries on the next activation —
+  // never a fallback URL (the no-fallback doctrine).
+  liveConfig ??= fetch(configEndpoint, { cache: 'no-store' })
+    .then((response) => {
+      if (!response.ok)
+        throw new Error(`Auth config returned HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(parseLiveTransportConfig);
+  const pending = liveConfig;
+  return pending.catch((error) => {
+    if (liveConfig === pending) liveConfig = undefined;
+    throw error;
+  });
+}
 const livePoller = new VehiclePoller({
-  request: (signal, etag) => requestVehicleUpdate(liveEndpoint, signal, etag),
+  request: (signal, etag) =>
+    transportConfig().then((transport) => requestTickUpdate(transport, signal, etag)),
   onSnapshot: acceptVehicleSnapshot,
   onStatus: (status) => {
     liveFailed = status.failed;

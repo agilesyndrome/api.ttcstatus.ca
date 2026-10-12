@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import { compileModules } from '../helpers/compile.mjs';
 import test from 'node:test';
-const { api, generator, requestMapGeneration } = await compileModules(`
+const { api, requestMapGeneration } = await compileModules(`
   export { default as api } from './workers/api/src/index';
-  export { default as generator } from './workers/map-generator/src/index';
   export { requestMapGeneration } from './workers/api/src/sync/network-lifecycle';`);
 const ctx = { waitUntil() {} };
 const db = {
@@ -98,73 +97,54 @@ test('protected routes keep authorization and service calls use the migrated pat
     ).status,
     200,
   );
-  let requested;
-  const env = {
-    SYNC_TOKEN: 'test',
-    MAP_GENERATOR: {
-      fetch: async (url, init) => {
-        requested = { url, init };
-        return new Response('<svg/>');
-      },
+  // In-process since Epic 7 (E7S4): the debug route renders locally with the
+  // exact enforcement the old generator hop carried — auth, 2 MB cap, CSP,
+  // nosniff — and no internal service call exists to be spoofed.
+  const debugEnv = { SYNC_TOKEN: 'test' };
+  const debugRequest = (body) =>
+    api.fetch(
+      new Request('https://example.test/api/v1/debug/map/streetcar.svg', {
+        method: 'POST',
+        headers: { authorization: 'Bearer test' },
+        ...(body === undefined ? {} : { body }),
+      }),
+      debugEnv,
+      ctx,
+    );
+  assert.equal((await debugRequest('{}')).status, 400);
+  assert.equal((await debugRequest(JSON.stringify({
+    display: { width: 1600, height: 1100 },
+    routes: [],
+    stops: [],
+    graph: { nodes: [], edges: [] },
+    context: { labels: [], shoreline: [], north: { angle: -90 } },
+  }))).status, 200);
+  // E7S3: generation is a typed function call, not an internal HTTP hop —
+  // the pending → running → failed bookkeeping survives in requestMapGeneration.
+  let latestJobQuery;
+  const trackingDb = {
+    prepare(query) {
+      const text = String(query);
+      return {
+        bind() {
+          return this;
+        },
+        async run() {
+          if (text.includes('INSERT INTO map_generation_jobs')) latestJobQuery = 'pending';
+          else if (text.includes(`SET status = 'running'`)) latestJobQuery = 'running';
+          else if (text.includes(`SET status = 'failed'`)) latestJobQuery = 'failed';
+          return { meta: { changes: 0 } };
+        },
+        first: async () => null,
+        all: async () => ({ results: [] }),
+      };
     },
   };
-  const response = await api.fetch(
-    new Request('https://example.test/api/v1/debug/map/streetcar.svg', {
-      method: 'POST',
-      headers: { authorization: 'Bearer test' },
-      body: '{}',
-    }),
-    env,
-    ctx,
+  await assert.rejects(
+    requestMapGeneration({ DB: trackingDb, SYNC_TOKEN: 'test' }, 7),
+    /loadMapSourceData|Unable|Error|failed|SQLite|prepare|SELECT/i,
   );
-  assert.equal(response.status, 200);
-  assert.equal(requested.url, 'https://map-generator.internal/api/debug/render');
-  assert.equal(requested.init.headers.authorization, 'Bearer test');
-  const id = await requestMapGeneration(
-    {
-      DB: db,
-      SYNC_TOKEN: 'test',
-      MAP_GENERATOR: {
-        fetch: async (url, init) => {
-          requested = url;
-          assert.equal(init.headers.authorization, 'Bearer test');
-          return Response.json({ artifactId: 42 });
-        },
-      },
-    },
-    7,
-  );
-  assert.equal(id, 42);
-  assert.equal(requested, 'https://map-generator.internal/api/internal/generate');
-  assert.equal(
-    (await generator.fetch(new Request('https://example.test/api/healthz'), {}, ctx))
-      .status,
-    200,
-  );
-  assert.equal(
-    (
-      await generator.fetch(
-        new Request('https://example.test/api/debug/render', { method: 'POST' }),
-        {},
-        ctx,
-      )
-    ).status,
-    404,
-  );
-  assert.equal(
-    (
-      await generator.fetch(
-        new Request('https://example.test/api/internal/generate', {
-          method: 'POST',
-          headers: { authorization: 'Bearer test' },
-          body: '{}',
-        }),
-        { SYNC_TOKEN: 'test' },
-        ctx,
-      )
-    ).status,
-    400,
-  );
+  assert.equal(latestJobQuery, 'failed', 'a broken generation marks the job failed, then throws');
 });
 
 test('manual sync runs the pipeline inline and reports the real outcome', async () => {
@@ -181,7 +161,6 @@ test('manual sync runs the pipeline inline and reports the real outcome', async 
         STATIC_GTFS_URL: 'https://feed.test/static.zip',
         SOURCE_ATTRIBUTION: 'test',
         GTFS_BUCKET: {},
-        MAP_GENERATOR: { fetch: async () => new Response('{}') },
       },
       ctx,
     );

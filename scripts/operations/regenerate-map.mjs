@@ -183,11 +183,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const compiled = await build({
     stdin: {
       contents: `
-    export { loadMapSourceData } from './workers/map-generator/src/source/repository';
-    export { buildStreetcarMapBundle } from './workers/map-generator/src/layout/build-map';
-    export { generateStreetcarMap } from './workers/map-generator/src/generate';
+    export { loadMapSourceData } from './workers/api/src/mapgen/source/repository';
+    export { buildStreetcarMapBundle } from './workers/api/src/mapgen/layout/build-map';
+    export { generateStreetcarMap } from './workers/api/src/mapgen/generate';
     export { buildViewerData } from './shared/map/model';
-    export { GENERATOR_VERSION, STREETCAR_MAP_NAME, SNAKE_MAP_NAME, TTCSTATUS_MAP_NAME } from './workers/map-generator/src/config';`,
+    export { GENERATOR_VERSION, STREETCAR_MAP_NAME, SNAKE_MAP_NAME, TTCSTATUS_MAP_NAME } from './workers/api/src/mapgen/config';`,
       resolveDir: process.cwd(),
       loader: 'ts',
     },
@@ -233,15 +233,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
 }
 
 async function regenerateRemote(modules, getPlatformProxy, { dryRun }) {
-  const configPath = 'workers/map-generator/wrangler.jsonc';
+  // Single worker since Epic 7 (docs/optimize-transport.md): map generation
+  // runs inside the API Worker, so its D1 binding is the one to repair with.
+  const configPath = 'workers/api/wrangler.jsonc';
   const { config, error } = ts.parseConfigFileTextToJson(
     configPath,
     await readFile(configPath, 'utf8'),
   );
-  if (error) throw new Error('Unable to read map-generator Wrangler configuration');
+  if (error) throw new Error('Unable to read the API Wrangler configuration');
   const binding = config.d1_databases.find((binding) => binding.binding === 'DB');
   if (!binding?.database_id)
-    throw new Error('Map-generator DB binding is not configured');
+    throw new Error('API DB binding is not configured');
   const dir = await mkdtemp(join(tmpdir(), 'ttc-map-repair-'));
   let platform;
   try {

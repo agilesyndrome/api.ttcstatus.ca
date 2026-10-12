@@ -1,6 +1,6 @@
 import { layoutLabels } from './labels';
 import { escapeXml, safeColor, polyline, routeLabel } from './svg';
-import { PALETTE } from '../../../../shared/map/palette';
+import { PALETTE } from '../../../../../shared/map/palette';
 /** Pure debug renderer for inspecting a generated map bundle without D1/GTFS. */
 
 import type { DebugMapBundle, RenderPoint } from './debug-types';

@@ -2,7 +2,7 @@
 // Runs a development command with `.env.local` secrets resolved.
 //
 // The repo's `.env.local` stores secrets as `op://` (1Password) references.
-// The dev commands (`npm run dev:viewer`, `dev:api`, `dev:map`, `make dev`)
+// The dev commands (`npm run dev:viewer`, `dev:api`, `make dev`)
 // run through this wrapper so every entry point behaves the same:
 //
 //   - `.env.local` absent, or free of `op://` references → run as-is. A

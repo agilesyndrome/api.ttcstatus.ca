@@ -5,7 +5,22 @@ const CELL_METRES = 500;
 const EARTH_METRES = 6_371_000;
 const key = (x: number, y: number) => `${x}:${y}`;
 
-/** A device-only candidate index. Cell keys are never API parameters or telemetry. */
+/** A device-only candidate index. Cell keys are never API parameters or telemetry.
+ *
+ * BROADCAST-ONLY INVARIANT (docs/optimize-transport.md change 7, E6S2): this
+ * module runs client-side over the broadcast snapshot. Nothing about the
+ * request varies per user — that is the same shape as the transport's cost
+ * fix, which is why the scaling plan and the privacy plan do not conflict.
+ * Rules that hold for any future feature:
+ *  - Device location never crosses the wire on the public/shared transport;
+ *    the Worker rejects location-bearing query parameters on every path.
+ *  - Cell keys (the `${x}:${y}` grid above) are never API parameters,
+ *    telemetry, or log fields — they are a location derivative.
+ *  - Nearest stop, sorting, and personalization are computed locally here;
+ *    any feature needing server-side location is NEW authenticated API work
+ *    with its own privacy and cost review, never a mutation of the transport.
+ * `npm run check:boundaries` keeps native/plugins out of features; this
+ * comment keeps the next contributor out of `?cellKey=`. */
 export class LocalSpatialIndex<T extends Location> {
   private cells = new Map<string, T[]>();
 

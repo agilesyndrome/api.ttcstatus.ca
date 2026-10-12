@@ -15,7 +15,20 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
       saved === 'signed-out' ? null : (saved ?? (value ? 'user_a' : null));
   }, signedIn);
   await context.route('**/api/v1/auth/config', (route) =>
-    route.fulfill({ json: { enabled: true, publishableKey: 'pk_test_fixture' } }),
+    // The live transport block ships with every auth-config response
+    // (optimize-transport.md change 1b) — without it the client has no
+    // transport and fails closed (never a fallback URL).
+    route.fulfill({
+      json: {
+        enabled: true,
+        publishableKey: 'pk_test_fixture',
+        live: {
+          base: '',
+          pathTemplate: '/live/t/{tick}/vehicles.json',
+          updateSeconds: 30,
+        },
+      },
+    }),
   );
   await context.route('**/@clerk_react.js*', async (route) => {
     // Reuse Vite's resolved React import so the fixture shares the renderer's instance.

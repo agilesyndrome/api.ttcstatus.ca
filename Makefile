@@ -1,13 +1,13 @@
 MAP_INPUT ?= $(if $(wildcard dist/streetcarmap.json),dist/streetcarmap.json,data/fixtures/streetcarmap.json)
 API_PORT ?= 8787
-GEN_PORT ?= 8788
 API_LOCAL ?= http://localhost:$(API_PORT)
 
 .PHONY: dev dev/stop dev/status dev/new dev/bootstrap admin/sync admin/sync/status map/streetcar
 
-# Dev/prod parity: both Workers run from their production wrangler configs in
-# `wrangler dev` (the real Worker code in workerd; the MAP_GENERATOR service
-# binding connects the two processes), local D1/R2 apply the same migrations,
+# Dev/prod parity: the Worker runs from its production wrangler config in
+# `wrangler dev` (the real Worker code in workerd; map generation runs
+# in-process since Epic 7 — docs/optimize-transport.md — so there is no
+# second Worker), local D1/R2 apply the same migrations,
 # and dev/bootstrap provisions the map through the same POST /api/v1/admin/sync
 # endpoint production operators use. Ports are pinned so 8787 is always the
 # API Worker. --test-scheduled exposes /__scheduled for cron-path parity.
@@ -22,7 +22,7 @@ API_LOCAL ?= http://localhost:$(API_PORT)
 # disabled otherwise), and dev:headers widens dist/_headers' CSP for Clerk's
 # *.clerk.accounts.dev dev instance.
 dev:
-	@node scripts/dev/dev-stack.mjs start $(API_PORT) $(GEN_PORT)
+	@node scripts/dev/dev-stack.mjs start $(API_PORT)
 
 dev/stop:
 	@node scripts/dev/dev-stack.mjs stop

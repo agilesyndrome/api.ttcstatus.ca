@@ -4,7 +4,7 @@ import { ownedProfileResponse } from './profiles';
 import { ownedJournalResponse } from './journal';
 import { ownedSavedStopsResponse } from './saved-stops';
 import { ownedFeaturesResponse } from './features';
-export { authenticateAccount, authConfig } from './auth';
+export { authenticateAccount, authConfig, liveConfig } from './auth';
 export { publicProfileResponse } from './profiles';
 export { validUsername } from '../../../../shared/accounts/profile';
 export type { AccountEnv } from './env';

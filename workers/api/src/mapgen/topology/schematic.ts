@@ -9,7 +9,7 @@ import {
   metresBetween,
   nearestOnSegment,
   projectToLocalMetres,
-} from '../../../../shared/map/geometry';
+} from '../../../../../shared/map/geometry';
 import type { XY } from '../types';
 import { selectRailService } from '../source/rail-service';
 import { addAuditedPhysicalTracks } from '../source/physical-network';
@@ -17,10 +17,10 @@ import {
   fitGeographicTransform,
   localToMap,
   transformSegment,
-} from '../../../../shared/map/projection';
+} from '../../../../../shared/map/projection';
 import shorelineData from '../source/shoreline.json';
 import { CHORD_MERGE_METRES, consolidateCorridorChords } from './corridor-graph';
-export { nearestOnSegment } from '../../../../shared/map/geometry';
+export { nearestOnSegment } from '../../../../../shared/map/geometry';
 
 export interface MapSeed {
   display: { width: number; height: number; [key: string]: unknown };

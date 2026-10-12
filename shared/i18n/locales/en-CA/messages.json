@@ -925,6 +925,8 @@
   "liveFeedStatus.subwayPredictionsUnavailable": "Subway predictions unavailable.",
   "liveFeedStatus.updatesEvery": "· updates every",
   "liveFeedStatus.updatesPaused": "Updates paused.",
+  "liveFeedStatus.liveServiceUnavailableSinceValue": "Live service unavailable since {value1}. No vehicle positions reported.",
+  "liveFeedStatus.waitingForLiveConfig": "Waiting for live transport config…",
   "liveFeedStatus.valueTrainPredictionsMarkersShowNextReportedStationNotGps": "{value1} train predictions · markers show next reported station, not GPS.",
   "map-export.captured": " · Captured: ",
   "map-export.currentViewOfTheTorontoRailMap": "Current view of the Toronto rail map. ",

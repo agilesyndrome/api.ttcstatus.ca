@@ -18,9 +18,10 @@ const compiled = await build({
 });
 const {
   VehiclePoller,
-  LiveUpdateError,
-  requestVehicleUpdate,
+  requestTickUpdate,
+  liveTickUrl,
   liveUpdateSeconds,
+  parseLiveTransportConfig,
   VehicleSnapshotCache,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
@@ -162,19 +163,21 @@ test('server can change cadence to five minutes without a browser rebuild', asyn
   assert.equal(calls, 3);
   poller.dispose();
 });
-test('clients join the shared cache expiry rather than repeatedly polling a nearly-expired snapshot', async () => {
+test('a shorter cadence from config reschedules the next poll earlier', async () => {
   let calls = 0;
   const { clock, poller } = harness(async () => ({
     snapshot,
-    updateSeconds: 30,
-    nextUpdateAt: ++calls === 1 ? 12000 : 42000,
+    etag: String(++calls),
+    updateSeconds: calls === 1 ? 300 : 30,
   }));
   await poller.refreshOnce();
   poller.setActive(true);
-  await clock.tick(11999);
+  await clock.tick(299999);
   assert.equal(calls, 1);
   await clock.tick(1);
   assert.equal(calls, 2);
+  await clock.tick(30000);
+  assert.equal(calls, 3);
   poller.dispose();
 });
 test('pausing stops requests; returning to an overdue page refreshes immediately', async () => {
@@ -260,6 +263,25 @@ test('failures retain snapshots, back off to five minutes, then reset after reco
   assert.equal(calls, 8);
   poller.dispose();
 });
+test('an unpublished tick keeps the last-good snapshot without backing off', async () => {
+  let calls = 0;
+  const { clock, poller, snapshots, statuses } = harness(async () => {
+    calls++;
+    return calls === 1
+      ? { snapshot, etag: '"tick-1"', updateSeconds: 30 }
+      : { updateSeconds: 30, unpublished: true };
+  });
+  await poller.refreshOnce();
+  poller.setActive(true);
+  await clock.tick(30000);
+  assert.equal(calls, 2);
+  assert.equal(snapshots.length, 1, 'last-good snapshot stands');
+  assert.equal(statuses.at(-1).failed, false, 'unpublished is not a failure');
+  // Retries at the normal cadence — not an error backoff.
+  await clock.tick(30000);
+  assert.equal(calls, 3);
+  poller.dispose();
+});
 test('timeouts report a failure and schedule another attempt', async () => {
   const { clock, poller, statuses } = harness(
     (signal) =>
@@ -292,45 +314,112 @@ test('304 avoids replacing/projecting identical observations and clears previous
   assert.equal(statuses.at(-1).failed, false);
   poller.dispose();
 });
-test('HTTP transport bypasses browser caching and handles 304 and retry/config headers', async () => {
+test('tick transport implements exactly the three-case contract (200, 404→tick−1, network)', async () => {
+  const transport = parseLiveTransportConfig({
+    live: { base: 'https://live.example.ca', pathTemplate: '/live/t/{tick}/vehicles.json', updateSeconds: 30 },
+  });
+  assert.equal(
+    liveTickUrl(transport, 42),
+    'https://live.example.ca/live/t/42/vehicles.json',
+  );
   const original = globalThis.fetch;
-  let options;
+  const seen = [];
+  // A controlled clock: the device sits inside tick 43 (skew scenario).
+  const now = () => 43 * 30_000 + 1000;
   try {
-    globalThis.fetch = async (_url, opts) => {
-      options = opts;
-      return new Response(null, {
-        status: 304,
-        headers: { etag: '"fleet"', 'x-live-update-seconds': '300' },
+    // 200 → use the document (outage included — it is a body field).
+    globalThis.fetch = async (url, opts) => {
+      seen.push([url, opts]);
+      return new Response(JSON.stringify({ ...snapshot, tickId: 43 }), {
+        status: 200,
+        headers: { etag: '"tick-43"' },
       });
     };
-    const result = await requestVehicleUpdate(
-      'fixture',
+    const result = await requestTickUpdate(
+      transport,
       new AbortController().signal,
-      '"fleet"',
+      undefined,
+      undefined,
+      now,
     );
-    assert.equal(result.snapshot, undefined);
-    assert.equal(result.updateSeconds, 300);
-    assert.equal(options.cache, 'no-store');
-    assert.equal(options.headers['if-none-match'], '"fleet"');
-    await assert.rejects(
-      requestVehicleUpdate('fixture', new AbortController().signal),
-      /previous snapshot/,
-    );
+    assert.equal(result.snapshot.tickId, 43);
+    assert.equal(result.etag, '"tick-43"');
+    assert.equal(result.updateSeconds, 30);
+    assert.equal(seen.at(-1)[1].cache, 'no-store');
+    // 304 → same-tick refetch costs no body; ETag retained.
     globalThis.fetch = async () =>
-      new Response('down', {
-        status: 503,
-        headers: { 'x-live-update-seconds': '300', 'retry-after': '300' },
+      new Response(null, { status: 304, headers: { etag: '"tick-43"' } });
+    const same = await requestTickUpdate(
+      transport,
+      new AbortController().signal,
+      '"tick-43"',
+      undefined,
+      now,
+    );
+    assert.equal(same.snapshot, undefined);
+    assert.equal(same.etag, '"tick-43"');
+    // 404 → unpublished tick → retry tick−1 once.
+    let currentTick = 43;
+    globalThis.fetch = async (url) => {
+      const tick = Number(/\/live\/t\/(\d+)\//.exec(url)[1]);
+      if (tick >= currentTick) return new Response('not yet', { status: 404 });
+      return new Response(JSON.stringify({ ...snapshot, tickId: tick }), {
+        status: 200,
+        headers: { etag: `"tick-${tick}"` },
       });
+    };
+    const skewed = await requestTickUpdate(
+      transport,
+      new AbortController().signal,
+      undefined,
+      undefined,
+      now,
+    );
+    assert.equal(skewed.snapshot.tickId, 42, 'falls back to the previous tick once');
+    // 404 twice → unpublished: keep last-good, next scheduled poll retries.
+    currentTick = 42;
+    const unpublished = await requestTickUpdate(
+      transport,
+      new AbortController().signal,
+      undefined,
+      undefined,
+      now,
+    );
+    assert.equal(unpublished.unpublished, true);
+    assert.equal(unpublished.snapshot, undefined);
+    // Any other status (5xx included) is a plain network failure — the
+    // caller's backoff owns it; there is no 5xx/Retry-After parsing.
+    globalThis.fetch = async () => new Response('down', { status: 503 });
     await assert.rejects(
-      requestVehicleUpdate('fixture', new AbortController().signal),
-      (e) =>
-        e instanceof LiveUpdateError &&
-        e.updateSeconds === 300 &&
-        e.retryAfterSeconds === 300,
+      requestTickUpdate(transport, new AbortController().signal, undefined, undefined, now),
+      /HTTP 503/,
+    );
+    // 304 without a previous ETag is a contract violation, not a no-op.
+    globalThis.fetch = async () => new Response(null, { status: 304, headers: { etag: '"x"' } });
+    await assert.rejects(
+      requestTickUpdate(transport, new AbortController().signal, undefined, undefined, now),
+      /previous snapshot/,
     );
   } finally {
     globalThis.fetch = original;
   }
+});
+test('live transport config parses defensively: no fallback URL is ever invented', () => {
+  const good = parseLiveTransportConfig({
+    live: { base: 'https://live.ttcstatus.ca', pathTemplate: '/live/t/{tick}/vehicles.json', updateSeconds: '45', extra: 'ignored' },
+  });
+  assert.equal(good.updateSeconds, 45);
+  // Same-origin base ('') is valid (local preview); HTTP is not.
+  assert.equal(parseLiveTransportConfig({ live: { base: '', pathTemplate: '/live/t/{tick}/vehicles.json' } }).base, '');
+  for (const bad of [
+    null,
+    {},
+    { live: null },
+    { live: { base: 7, pathTemplate: '/live/t/{tick}/vehicles.json' } },
+    { live: { base: 'http://insecure.example', pathTemplate: '/live/t/{tick}/vehicles.json' } },
+    { live: { base: 'https://x', pathTemplate: '/api/v1/vehicles/streetcar' } },
+  ])
+    assert.throws(() => parseLiveTransportConfig(bad));
 });
 test('shared acquisition coalesces simultaneous viewers and refreshes only after configured expiry', async () => {
   let calls = 0,

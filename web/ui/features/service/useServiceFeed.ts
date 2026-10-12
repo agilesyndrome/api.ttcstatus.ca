@@ -1,5 +1,5 @@
 import { useActivity } from '../../services/platform/react';
-import { apiRequest } from '../../services/http/client';
+import { useAccount } from '../accounts/auth';
 import { useEffect, useRef, useState } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 
@@ -17,9 +17,16 @@ const DEFAULT_SECONDS = 30;
 /** One service feed owner per page (the useVehicleFeed rule): polls
  * /api/v1/service/stops at the advertised X-Live cadence, sends If-None-Match
  * with the retained ETag, and pauses when the tab is hidden. Disabled means
- * disabled: no requests are made at all (the overlay gate, sla.md §4.7). */
+ * disabled: no requests are made at all (the overlay gate, sla.md §4.7).
+ * The requests carry the verified session (optimize-transport.md E4S3):
+ * the endpoints are grant-gated server-side, so a signed-out or ungranted
+ * caller makes zero service requests and sees an honest empty state. */
 export function useServiceFeed(enabled: boolean): ServiceFeedState {
   const activity = useActivity();
+  const account = useAccount();
+  // Stable across provider re-render identity churn, like useSlaReport's.
+  const requestRef = useRef(account.request);
+  requestRef.current = account.request;
   const eligible = enabled && activity.active && activity.online;
   const [state, setState] = useState<ServiceFeedState>({
     loading: enabled,
@@ -41,6 +48,10 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       });
       return;
     }
+    // Signed out (or not yet loaded): zero service requests — the endpoints
+    // are grant-gated server-side (E4S3), so a sessionless poll is a
+    // guaranteed 401 and the overlay renders its honest empty state.
+    if (!account.loaded || !account.userId) return;
     if (!eligible) return;
     let stopped = false;
     let timer: number | undefined;
@@ -53,7 +64,7 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       try {
         const headers = new Headers();
         if (etag.current) headers.set('if-none-match', etag.current);
-        const response = await apiRequest('/api/v1/service/stops', {
+        const response = await requestRef.current('/api/v1/service/stops', {
           headers,
           signal: controller.signal,
           cache: 'no-store',
@@ -98,6 +109,6 @@ export function useServiceFeed(enabled: boolean): ServiceFeedState {
       controller.abort();
       if (timer) window.clearTimeout(timer);
     };
-  }, [enabled, eligible]);
+  }, [enabled, eligible, account.loaded, account.userId]);
   return state;
 }

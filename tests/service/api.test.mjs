@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { generateKeyPairSync, createSign } from 'node:crypto';
+import { createDatabase } from '../helpers/database.mjs';
 import { compileModules } from '../helpers/compile.mjs';
 
 // Epic 3 boundary (stories E3S1–E3S3): the service endpoints through the real
 // router, with the recorder singleton faked as a stub namespace serving
 // corpus-derived payloads — exactly the layer contract the DO implements.
+// Epic 4 (E4S2): the endpoints are grant-gated, so every call carries a
+// locally verified fixture session (real RSA key pair; the JWKS rides a
+// data: URL so no global fetch mock is needed) and a `voidOverlay` flag row.
 const { api, scenarioById, serviceStatesAt, serviceConfig, VOID_CORRIDOR_STOPS } =
   await compileModules(`
   export { default as api } from './workers/api/src/index';
@@ -14,6 +20,36 @@ const { api, scenarioById, serviceStatesAt, serviceConfig, VOID_CORRIDOR_STOPS }
 `);
 
 const config = serviceConfig();
+
+// ---- Grant-gate fixture: a real RSA pair plays Clerk's JWKS ----
+const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const publicJwk = publicKey.export({ format: 'jwk' });
+const fixtureJwks = {
+  keys: [{ kty: 'RSA', kid: 'test-key', n: publicJwk.n, e: publicJwk.e }],
+};
+const jwksUrl = `data:application/json,${encodeURIComponent(JSON.stringify(fixtureJwks))}`;
+const b64url = (buffer) =>
+  Buffer.from(buffer).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const sessionToken = (sub = 'user_overlay', expSeconds = 3600) => {
+  const header = { alg: 'RS256', kid: 'test-key', typ: 'JWT' };
+  const claims = {
+    sub,
+    exp: Math.floor(Date.now() / 1000) + expSeconds,
+    iss: 'https://clerk-fixture.test',
+    azp: 'https://ttcstatus.ca',
+  };
+  const input = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(claims))}`;
+  return `${input}.${b64url(createSign('RSA-SHA256').update(input).sign(privateKey))}`;
+};
+const flagsSchema = await readFile('migrations/0005_feature_flags.sql', 'utf8');
+const grantedDb = async () => {
+  const db = createDatabase(flagsSchema);
+  await db
+    .prepare('INSERT INTO feature_flags (subject, flag) VALUES (?, ?)')
+    .bind('user_overlay', 'voidOverlay')
+    .run();
+  return db;
+};
 
 // A Map-backed edge cache, like the realtime suite's. The endpoint always
 // stores a clone, so the stub keeps it as-is.
@@ -87,16 +123,36 @@ const fakeRecorder = (statesPayload, windowPayload) => ({
   }),
 });
 
-const envFor = (recorder) => ({ SERVICE_RECORDER: recorder });
+/** Grant-gated env (E4S2): fixture flags DB (with the `voidOverlay` grant
+ * unless `grant: false`), local-verification JWKS URL, stub recorder. The
+ * flag insert runs synchronously under node:sqlite, so it is visible to the
+ * request without awaiting the wrapper promise. */
+const envFor = (recorder, { grant = true } = {}) => {
+  const db = createDatabase(flagsSchema);
+  if (grant)
+    void db
+      .prepare(
+        'INSERT INTO feature_flags (subject, flag, granted_at, granted_by) VALUES (?, ?, ?, ?)',
+      )
+      .bind('user_overlay', 'voidOverlay', 0, 'fixture')
+      .run();
+  return { DB: db, CLERK_JWKS_URL: jwksUrl, SERVICE_RECORDER: recorder };
+};
 const ctx = () => {
   const pending = [];
   return { waitUntil: (promise) => pending.push(promise), pending };
 };
 const flush = async (context) => Promise.all(context.pending);
-const get = async (path, env, headers = {}) => {
+/** Authed by default with the granted fixture session (E4S2); `auth: false`
+ * drops the Bearer, `token` overrides it. Extra headers merge over. */
+const get = async (path, env, headers = {}, { auth = true, token } = {}) => {
   const context = ctx();
   const response = await api.fetch(
-    new Request(`https://ttcstatus.ca${path}`, { headers }),
+    new Request(`https://ttcstatus.ca${path}`, {
+      headers: auth
+        ? { authorization: `Bearer ${token ?? sessionToken()}`, ...headers }
+        : headers,
+    }),
     env,
     context,
   );
@@ -118,7 +174,8 @@ test('E3S1: /service/stops serves per-direction states with the fleet-endpoint c
   );
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), '*');
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=15');
+  // Authorized data (E4S2): private, never a shared cache.
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=15');
   assert.equal(response.headers.get('x-live-update-seconds'), '30');
   assert.ok(response.headers.get('x-live-next-update-at'));
   const etag = response.headers.get('etag');
@@ -212,7 +269,8 @@ test('E3S2: /service/wave reconstructs the 30-minute space-time plot in one requ
   );
   assert.equal(response.status, 200);
   assert.ok(response.headers.get('etag'));
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=15');
+  // Authorized data (E4S2): private, never a shared cache.
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=15');
   const body = await response.json();
   assert.equal(body.schemaVersion, 1);
   assert.equal(body.windowStart, oneWay.windowStart);
@@ -280,4 +338,40 @@ test('E3S1: an unreachable recorder is an honest 503, never a fabricated payload
   assert.deepEqual(await response.json(), { error: 'service-unavailable' });
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal(response.headers.get('retry-after'), '5');
+});
+
+test('E4S2: service data is grant-gated — 401 without a session, 403 without the voidOverlay grant', async () => {
+  const recorder = fakeRecorder(statesPayload, windowPayload);
+  const granted = envFor(recorder);
+  const ungranted = envFor(recorder, { grant: false });
+  // No session at all: 401, no-store, and the recorder is never touched.
+  const anonymous = await get('/api/v1/service/stops', granted, {}, { auth: false });
+  assert.equal(anonymous.status, 401);
+  assert.deepEqual(await anonymous.json(), { error: 'unauthorized' });
+  // A tampered token is rejected by real verification, not a pattern match.
+  const tampered = await get('/api/v1/service/stops', granted, {
+    authorization: `Bearer ${sessionToken().replace(/.$/, '!')}`,
+  });
+  assert.equal(tampered.status, 401);
+  // A valid session without the grant: 403, honest, no data.
+  const forbidden = await get('/api/v1/service/stops', ungranted);
+  assert.equal(forbidden.status, 403);
+  assert.deepEqual(await forbidden.json(), { error: 'forbidden' });
+  // The same gate covers the whole service family. History reads the
+  // rollups table, so give the granted env that schema too.
+  const rollupsSchema = await readFile('migrations/0006_service_rollups.sql', 'utf8');
+  const historyEnv = envFor(recorder);
+  historyEnv.DB = createDatabase(flagsSchema + '\n' + rollupsSchema);
+  void historyEnv.DB
+    .prepare(
+      'INSERT INTO feature_flags (subject, flag, granted_at, granted_by) VALUES (?, ?, ?, ?)',
+    )
+    .bind('user_overlay', 'voidOverlay', 0, 'fixture')
+    .run();
+  for (const path of ['/api/v1/service/wave', '/api/v1/service/history?stop=st_void_1']) {
+    assert.equal((await get(path, ungranted)).status, 403, `${path} must be gated`);
+    assert.equal((await get(path, historyEnv)).status, 200, `${path} serves granted callers`);
+  }
+  // Authorized data never enters a shared cache (E4S2's privacy rule).
+  assert.equal(cacheStore.size, 0, 'no service response may be cached at the edge');
 });

@@ -14,7 +14,7 @@ const {
 export * from './workers/api/src/realtime/realtime';
 export * from './shared/map/live-status';
 export * from './shared/map/model';
-export * from './workers/map-generator/src/topology/schematic';
+export * from './workers/api/src/mapgen/topology/schematic';
 export * from './workers/shared/gtfs/parser';`);
 const timestamp = 1791132356;
 const encode = (entity, header = {}) =>

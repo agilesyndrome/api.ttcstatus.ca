@@ -70,7 +70,23 @@ export const accountSchemas = {
     badges: array(object({ name: string, icon: string, description: string })),
   }),
   FeatureFlags: object({ schemaVersion: version, flags: array(string) }),
-  AuthConfig: object({ enabled: boolean, publishableKey: { type: ['string', 'null'] } }),
+  // The `live` block is additive transport discovery (optimize-transport.md
+  // change 1b): the only source of the live host, cadence, and path template.
+  AuthConfig: object({
+    enabled: boolean,
+    publishableKey: { type: ['string', 'null'] },
+    live: object(
+      {
+        base: { ...string, description: 'Live host origin; empty string means same-origin.' },
+        pathTemplate: {
+          ...string,
+          description: 'Immutable tick path with {tick} placeholder; never carries query parameters.',
+        },
+        updateSeconds: { type: 'integer', description: 'Client polling cadence in seconds (30–300).' },
+      },
+      ['base', 'pathTemplate', 'updateSeconds'],
+    ),
+  }),
   AnalyticsEvent: object(
     {
       action: {

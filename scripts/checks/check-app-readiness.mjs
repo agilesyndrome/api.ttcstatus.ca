@@ -40,7 +40,7 @@ try {
   });
   let mapCalls = 0;
   let conditional = false;
-  await context.route('**/api/v1/map/ttcstatus', (route) => {
+  await context.route('**/api/v1/map/ttcstatus*', (route) => {
     mapCalls++;
     conditional ||= route.request().headers()['if-none-match'] === '"map-fixture"';
     return route.fulfill({
@@ -50,7 +50,8 @@ try {
     });
   });
   let feedCalls = 0;
-  await context.route('**/api/v1/vehicles/streetcar', (route) => {
+  // Live tick path (Epic 2): config-driven URL; no x-live-* headers.
+  await context.route('**/live/t/*/vehicles.json', (route) => {
     feedCalls++;
     return route.fulfill({
       json: {
@@ -62,7 +63,7 @@ try {
         invalidPositions: 0,
         vehicles: [],
       },
-      headers: { 'x-live-update-seconds': '30' },
+      headers: { etag: '"feed-fixture"' },
     });
   });
   const page = await context.newPage();

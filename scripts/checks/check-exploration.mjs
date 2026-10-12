@@ -64,11 +64,12 @@ try {
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
   );
-  await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
-  await context.route('**/api/v1/vehicles/streetcar', (route) => {
+  await context.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
+  // Live tick path (Epic 2): config-driven URL; no x-live-* headers.
+  await context.route('**/live/t/*/vehicles.json', (route) => {
     feedCalls++;
     return route.fulfill({
-      headers: { 'x-live-update-seconds': '30' },
+      headers: { etag: '"fixture"' },
       json: {
         schemaVersion: 1,
         source: 'exploration-fixture',

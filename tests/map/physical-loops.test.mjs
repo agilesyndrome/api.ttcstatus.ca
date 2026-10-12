@@ -23,7 +23,7 @@ const { buildViewerData, projectSnapshot, projectToLocalMetres, nearestOnSegment
     `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`
   );
 const tracks = JSON.parse(
-  await readFile('workers/map-generator/src/source/physical-tracks.json', 'utf8'),
+  await readFile('workers/api/src/mapgen/source/physical-tracks.json', 'utf8'),
 ).filter((track) => track.verifiedAt === '2026-10-04');
 const loops = [
   'mccaul-loop',

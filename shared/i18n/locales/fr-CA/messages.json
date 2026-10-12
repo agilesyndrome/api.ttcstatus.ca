@@ -255,6 +255,8 @@
   "liveFeedStatus.subwayPredictionsUnavailable": "Prévisions du métro indisponibles.",
   "liveFeedStatus.updatesEvery": "· mises à jour toutes les",
   "liveFeedStatus.updatesPaused": "Mises à jour en pause.",
+  "liveFeedStatus.liveServiceUnavailableSinceValue": "Service en direct indisponible depuis {value1}. Aucune position de véhicule signalée.",
+  "liveFeedStatus.waitingForLiveConfig": "Attente de la configuration du transport en direct…",
   "liveFeedStatus.valueTrainPredictionsMarkersShowNextReportedStationNotGps": "{value1} prévisions de trains · les repères indiquent la prochaine station signalée, pas une position GPS.",
   "map-export.captured": " · Capture : ",
   "map-export.currentViewOfTheTorontoRailMap": "Vue actuelle du réseau ferroviaire de Toronto. ",

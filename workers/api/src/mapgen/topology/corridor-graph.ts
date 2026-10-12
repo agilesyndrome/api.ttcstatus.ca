@@ -1,4 +1,4 @@
-import { nearestOnSegment } from '../../../../shared/map/geometry';
+import { nearestOnSegment } from '../../../../../shared/map/geometry';
 import type { TrackEdge, TrackNode } from './schematic';
 
 export const CHORD_MERGE_METRES = 30;

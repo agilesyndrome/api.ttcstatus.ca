@@ -130,7 +130,10 @@ export const publicPaths = {
     get: cachedGet('ViewerMap', [...selectors, query('format')]),
     head: cachedHead([...selectors, query('format')]),
   },
-  '/api/v1/vehicles/streetcar': { get: cachedGet('VehicleSnapshot') },
+  // No /api/v1/vehicles/streetcar: the public vehicle path moved to the
+  // CDN-served live tick documents (docs/optimize-transport.md change 1/3);
+  // the Worker route is deleted, not flagged. Nothing here can read the
+  // recorder per request.
   '/api/v1/service/stops': { get: cachedGet('ServiceStops', [query('routes')]) },
   '/api/v1/service/wave': { get: cachedGet('ServiceWave', [query('routes')]) },
   '/api/v1/service/history': {

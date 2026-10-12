@@ -2,13 +2,17 @@ import { json } from './responses';
 
 import {
   allowedApiQueries,
+  hasLocationQuery,
   hasUnsupportedApiQuery,
 } from '../../../../shared/http/api-queries';
 
 /** Reject accidental GPS/grid uploads before authentication, storage, or analytics.
- * Bodies are separately bounded and allowlisted by each owning endpoint. */
+ * Bodies are separately bounded and allowlisted by each owning endpoint.
+ * Location-bearing query parameters are rejected on EVERY path (E6S1) —
+ * including paths with no selector allowlist and any future live-host-shaped
+ * route — so device location can never cross the wire as a query. */
 export function privacyQueryResponse(url: URL): Response | undefined {
-  if (hasUnsupportedApiQuery(url)) {
+  if (hasLocationQuery(url) || hasUnsupportedApiQuery(url)) {
     return json({ error: 'unsupported-query-parameter' }, 400, {
       'cache-control': 'no-store',
     });
@@ -40,7 +44,6 @@ const knownRoutes = new Set([
   '/api/v1/auth/config',
   '/api/v1/version',
   '/api/v1/event',
-  '/api/v1/vehicles/streetcar',
   '/api/v1/feed/status',
   '/api/v1/admin/sync',
   '/api/v1/debug/map/streetcar.svg',

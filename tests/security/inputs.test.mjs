@@ -5,14 +5,12 @@ import { readFile } from 'node:fs/promises';
 
 const {
   renderDebugMapSvg,
-  generator,
   api,
   readLimitedBytes,
   BodyTooLargeError,
   csvRows,
 } = await compileModules(`
-  export { renderDebugMapSvg } from './workers/map-generator/src/rendering/debug-render';
-  export { default as generator } from './workers/map-generator/src/index';
+  export { renderDebugMapSvg } from './workers/api/src/mapgen/rendering/debug-render';
   export { default as api } from './workers/api/src/index';
   export { readLimitedBytes, BodyTooLargeError } from './workers/shared/http/streams';
   export { csvRows } from './workers/shared/gtfs/csv';
@@ -104,38 +102,30 @@ test('streamed byte limits cancel oversized input without trusting Content-Lengt
   assert.equal((await readLimitedBytes(exact, 10)).byteLength, 10);
 });
 
-test('debug endpoints bound input before buffering or forwarding it', async () => {
+test('debug endpoints bound input before buffering or rendering it', async () => {
   const request = (path) =>
     new Request(`https://example.test${path}`, {
       method: 'POST',
       headers: { authorization: 'Bearer test' },
       body: new Uint8Array(2_000_001),
     });
-  const env = {
-    SYNC_TOKEN: 'test',
-    MAP_GENERATOR: {
-      fetch() {
-        throw new Error('Oversized bodies must not be forwarded');
-      },
-    },
-  };
+  const env = { SYNC_TOKEN: 'test' };
   assert.equal(
     (await api.fetch(request('/api/v1/debug/map/streetcar.svg'), env, {})).status,
     413,
   );
-  assert.equal(
-    (await generator.fetch(request('/api/debug/render'), env, {})).status,
-    413,
-  );
-  const valid = new Request('https://example.test/api/debug/render', {
+  // In-process since Epic 7 (E7S4): the same route renders a valid bundle
+  // with the exact enforcement the old generator route carried.
+  const valid = new Request('https://example.test/api/v1/debug/map/streetcar.svg', {
     method: 'POST',
     headers: { authorization: 'Bearer test' },
     body: JSON.stringify(seed()),
   });
-  const response = await generator.fetch(valid, env, {});
+  const response = await api.fetch(valid, env, {});
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-security-policy'), /sandbox/);
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('CSV parsing preserves quoted data across byte boundaries and releases cancelled input', async () => {

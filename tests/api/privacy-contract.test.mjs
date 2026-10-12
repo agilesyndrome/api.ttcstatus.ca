@@ -22,12 +22,12 @@ const {
   export { default as api } from './workers/api/src/index';
   export { openApiDocument } from './workers/api/src/contracts/openapi';
   export { createApiClient } from './web/ui/services/http/client';
-  export { buildStreetcarMapBundle } from './workers/map-generator/src/layout/build-map';
+  export { buildStreetcarMapBundle } from './workers/api/src/mapgen/layout/build-map';
   export { buildViewerData } from './shared/map/model';
   export { buildSnakeMap } from './shared/map/game-map';
   export { nearbyStops } from './shared/transit/nearby';
-  export { storeMapArtifact } from './workers/map-generator/src/artifacts/artifact-store';
-  export { storeStopDirectory } from './workers/map-generator/src/artifacts/stop-directory-store';
+  export { storeMapArtifact } from './workers/api/src/mapgen/artifacts/artifact-store';
+  export { storeStopDirectory } from './workers/api/src/mapgen/artifacts/stop-directory-store';
   export { ownedAccountResponse } from './workers/api/src/accounts';
   export { pruneOldNetworkVersions } from './workers/api/src/sync/network-lifecycle';
 `);
@@ -343,8 +343,37 @@ test('retention preserves tagged maps and directories while pruning obsolete raw
   );
 });
 
-test('failure logs omit exception text, query tokens and dynamic identifiers', async () => {
-  const recorded = [],
+test('E6S1: location-bearing query parameters are rejected on every public path', async () => {
+  // The 2027 tripwire: `?lat=&lon=` on ANY path — allowlisted selector or
+  // not, existing route or not, future live-host-shaped route included —
+  // dies before routing, auth, or caching with the same 400.
+  for (const path of [
+    '/api/v1/stops', // allowlist exists (map/tag/artifact) — lat is not in it
+    '/api/v1/stops?map=snake', // legitimate selector alongside the poison
+    '/api/v1/auth/config', // no allowlist entry at all
+    '/live/t/123/vehicles.json', // a live-host-shaped route, if one ever lands here
+    '/anything/else', // unknown paths reject location too
+  ]) {
+    for (const field of ['lat', 'LAT', 'latitude', 'lng', 'longitude', 'geohash', 'cellId']) {
+      const response = await api.fetch(
+        new Request(`https://ttcstatus.ca${path}${path.includes('?') ? '&' : '?'}${field}=43.65`),
+        {},
+        {},
+      );
+      assert.equal(response.status, 400, `${path} ${field}`);
+      assert.equal((await response.json()).error, 'unsupported-query-parameter');
+    }
+  }
+  // Legitimate selectors still pass: the rejection is location-only.
+  const fine = await api.fetch(
+    new Request('https://ttcstatus.ca/api/v1/stops?map=snake'),
+    {},
+    {},
+  );
+  assert.notEqual(fine.status, 400);
+});
+
+test('failure logs omit exception text, query tokens and dynamic identifiers', async () => {  const recorded = [],
     original = console.error;
   console.error = (...args) => recorded.push(args);
   try {

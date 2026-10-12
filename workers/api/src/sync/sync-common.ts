@@ -1,4 +1,4 @@
-import type { D1Database, Fetcher, R2Bucket } from '../../../shared/cloudflare/bindings';
+import type { D1Database, R2Bucket } from '../../../shared/cloudflare/bindings';
 
 export const SOURCE_KEY = 'ttc-surface-gtfs';
 const USER_AGENT =
@@ -10,11 +10,12 @@ export const BATCH_SIZE = 75;
 export interface SyncEnv {
   DB: D1Database;
   GTFS_BUCKET: R2Bucket;
-  MAP_GENERATOR: Fetcher;
   STATIC_GTFS_URL: string;
   SOURCE_ATTRIBUTION: string;
   NO_VALIDATOR_REFETCH_DAYS?: string;
-  /** Shared only between the API and map-generator service binding. */
+  /** Admin/ops credential (manual sync, debug render). Since the map
+   * generator folded into this worker (docs/optimize-transport.md Epic 7)
+   * it is managed once here — no second worker consumes it. */
   SYNC_TOKEN?: string;
 }
 

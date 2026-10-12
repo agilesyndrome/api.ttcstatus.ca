@@ -33,12 +33,13 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 let calls = 0;
 const errors = [];
 async function fixture(context) {
-  await context.route('**/api/v1/map/ttcstatus', (route) => route.fulfill({ json: map }));
-  await context.route('**/api/v1/vehicles/streetcar', (route) => {
+  await context.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
+  // Live tick path (Epic 2): config-driven URL; no x-live-* headers.
+  await context.route('**/live/t/*/vehicles.json', (route) => {
     calls++;
     const now = new Date().toISOString();
     return route.fulfill({
-      headers: { 'x-live-update-seconds': '30' },
+      headers: { etag: '"fixture"' },
       json: {
         schemaVersion: 1,
         source: 'fixture',
