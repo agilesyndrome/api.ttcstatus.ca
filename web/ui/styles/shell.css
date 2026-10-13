@@ -306,7 +306,11 @@
     display: none;
   }
   .topbar .brand {
-    flex: 0 1 auto;
+    /* The brand never shrinks: shrinking it ellipsizes the name ("TTCS…")
+     * while the search keeps its full intrinsic width. It is already small
+     * (menu symbol + short title), so let the search take every leftover
+     * pixel instead (its zero flex-basis below). */
+    flex: 0 0 auto;
     min-width: 0;
   }
   .topbar .brand strong {
@@ -317,7 +321,7 @@
   }
   .topbar .search {
     order: 0;
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     max-width: none;
     min-width: 0;
   }

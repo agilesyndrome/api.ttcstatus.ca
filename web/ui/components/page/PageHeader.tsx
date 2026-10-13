@@ -89,7 +89,12 @@ export function PageHeader({
             onReset();
           }}
         >
-          <strong>{t('header.title')}</strong>
+          {/* Both spellings render and the CSS picks one: phones show the
+           * short name instead of ellipsizing the full title mid-word. */}
+          <strong>
+            <span className="brand-name-full">{t('header.title')}</span>
+            <span className="brand-name-short">{t('header.titleShort')}</span>
+          </strong>
           <small>{t('header.tagline')}</small>
         </a>
       </div>

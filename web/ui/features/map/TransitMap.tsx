@@ -1,7 +1,7 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Feature, Point } from '../../../../shared/map/model';
+import { baseStopName, type Feature, type Point } from '../../../../shared/map/model';
 import { streetcarBody } from '../../../../shared/map/live-status';
 import { STREAM_OFFSET } from '../service/wave-field';
 import type { TransitMapProps } from './types';
@@ -217,6 +217,15 @@ export const TransitMap = memo(function TransitMap({
     // recomputing this O(n²) collision grid per frame is pure waste. The game
     // renders its own HUD/overlay, so empty label layers cost nothing.
     if (driving) return [[], []] as const;
+    // Overview labels drop the direction qualifier ("Keele Station", not
+    // "Keele Station - Westbound Platform"): at that zoom the direction is
+    // noise, and the shorter boxes collide far less. The full name returns
+    // past level 3 and lives in the tooltip and details card meanwhile.
+    const labelText = (feature: Feature) =>
+      level < 3 ? baseStopName(feature.name) : feature.name;
+    // The service legend card occupies the bottom-left corner of narrow
+    // screens; keep labels out from under it.
+    const bottomReserve = underlay && size.width <= 640 ? 88 : 65;
     const occupied: { x: number; y: number; width: number; height: number }[] = [];
     const labelBudget = Math.max(
       8,
@@ -228,12 +237,17 @@ export const TransitMap = memo(function TransitMap({
       if (!priority && placedLabels >= labelBudget) return false;
       const x = (feature.point[0] - camera.x) * scale + 8;
       const y = (feature.point[1] - camera.y) * scale - 19;
-      const box = { x: x - 7, y: y - 7, width: feature.name.length * 6 + 30, height: 34 };
+      const box = {
+        x: x - 7,
+        y: y - 7,
+        width: labelText(feature).length * 6 + 30,
+        height: 34,
+      };
       if (
         x < 8 ||
         y < 35 ||
         x + box.width > size.width - 8 ||
-        y + box.height > size.height - 65
+        y + box.height > size.height - bottomReserve
       )
         return false;
       if (
@@ -307,6 +321,8 @@ export const TransitMap = memo(function TransitMap({
     driving,
     camera,
     scale,
+    level,
+    underlay,
     size.width,
     size.height,
   ]);
@@ -458,7 +474,7 @@ export const TransitMap = memo(function TransitMap({
                 fontSize={11}
                 fill="#43535e"
               >
-                {feature.name}
+                {level < 3 ? baseStopName(feature.name) : feature.name}
               </text>
             </g>
           ))}

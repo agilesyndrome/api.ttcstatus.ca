@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState, type SVGProps } from 'react';
-import { fitCamera, moveCamera, zoomCamera } from '../../../../shared/map/camera';
+import { useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
+import {
+  fitCamera,
+  landingCamera,
+  moveCamera,
+  zoomCamera,
+} from '../../../../shared/map/camera';
 import { boundsOf, type Bounds, type Point } from '../../../../shared/map/model';
 import type { TransitMapProps } from './types';
 
@@ -44,8 +49,20 @@ export function useMapCamera({
 >) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700 });
+  // `initial` is the full-network fit: the reset target and the zoom-out cap.
   const initial = fitCamera(data.bounds, size.width / size.height);
-  const [camera, setCamera] = useState<Bounds>(initial);
+  // Portrait screens land on the dense-core view instead (landingCamera);
+  // the fit stays one gesture (zoom out) or reset away.
+  const landing = useMemo(
+    () =>
+      landingCamera(
+        data.bounds,
+        data.features.map((feature) => feature.point),
+        size.width / size.height,
+      ),
+    [data, size.width, size.height],
+  );
+  const [camera, setCamera] = useState<Bounds>(landing);
   // The ref is the live camera; the state only schedules re-renders. While
   // driving, followPoint advances the ref imperatively every frame, so a
   // render must never copy the (older) state back over the ref: that one-frame
@@ -53,6 +70,11 @@ export function useMapCamera({
   const cameraRef = useRef(camera);
   const initialRef = useRef(initial);
   initialRef.current = initial;
+  // True until the rider deliberately moves the camera (a reset counts: it
+  // states a preference for the full fit). The resize observer only
+  // auto-corrects an untouched camera; otherwise it preserves the zoom.
+  const pristine = useRef(true);
+  const mounted = useRef(false);
   const pointers = useRef(new Map<number, Point>());
   const moved = useRef(false);
   const start = useRef<Point | undefined>(undefined);
@@ -101,11 +123,13 @@ export function useMapCamera({
   }
   function move(next: Bounds) {
     stopTween();
+    pristine.current = false;
     apply(next);
   }
   // Focus and following glide to their target instead of snapping.
   function animate(next: Bounds, duration = 400) {
     stopTween();
+    pristine.current = false;
     const from = { ...cameraRef.current };
     const began = performance.now();
     const step = (now: number) => {
@@ -203,8 +227,17 @@ export function useMapCamera({
           previous = initialRef.current;
         const next = fitCamera(data.bounds, width / height);
         const zoomLevel = previous.width / current.width;
-        const fitted =
-          zoomLevel < 1.01
+        const fitted = pristine.current
+          ? // An untouched camera re-lands at every size (portrait screens
+            // get the core view); this also covers the very first observer
+            // tick and Safari's URL-bar collapse. Deliberate moves set
+            // `pristine` false, and a reset lands on the plain fit below.
+            landingCamera(
+              data.bounds,
+              data.features.map((feature) => feature.point),
+              width / height,
+            )
+          : zoomLevel < 1.01
             ? next
             : {
                 x: current.x + current.width / 2 - next.width / zoomLevel / 2,
@@ -235,6 +268,12 @@ export function useMapCamera({
     };
   }, [data]);
   useEffect(() => {
+    // The mount run is skipped: the camera state already seeds from `initial`
+    // and the resize observer performs the first landing correction.
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     move(initialRef.current);
   }, [resetKey]);
   useEffect(() => {

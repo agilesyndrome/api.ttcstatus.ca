@@ -646,7 +646,7 @@
 @media (max-width: 900px) {
   .map-service-legend {
     left: 10px;
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     max-width: min(480px, calc(100% - 20px));
   }
 }
@@ -659,6 +659,31 @@
   }
   .mobile-details .service-card__arrival strong {
     font-size: 24px;
+  }
+  /* One compact row of self-describing swatches (the container keeps its
+   * aria-label), low enough to leave the map room, clear of the home
+   * indicator. */
+  .map-service-legend {
+    padding: 7px 10px;
+    gap: 4px 10px;
+    font-size: 10.5px;
+  }
+  .map-service-legend strong {
+    display: none;
+  }
+  .map-service-legend i {
+    width: 7px;
+    height: 7px;
+  }
+  /* The snake launcher clears the legend instead of hiding beneath it. */
+  .workspace-map:has(.map-service-legend) .snake-launch {
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-width: 380px) {
+  .map-service-legend {
+    gap: 4px 8px;
+    font-size: 10px;
   }
 }
 .workspace-view {

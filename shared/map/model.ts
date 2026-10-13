@@ -122,6 +122,18 @@ export function boundsOf(points: Point[], padding = 35): Bounds {
   };
 }
 
+/** Terminal and platform stop names read best without their direction suffix
+ * at overview zoom: "Keele Station", not "Keele Station - Westbound Platform".
+ * Only the trailing dash segment is stripped, and only when it names a
+ * platform — station qualifiers such as "Dundas St West at University Ave -
+ * St Patrick Station" stay intact. */
+export function baseStopName(name: string): string {
+  const qualifier = name.lastIndexOf(' - ');
+  return qualifier >= 0 && /platform/i.test(name.slice(qualifier))
+    ? name.slice(0, qualifier)
+    : name;
+}
+
 /** Keep the static page small and give terminals the union of their actual
  * nearby boarding records. Physical loops without records do not gain service. */
 export function buildViewerData(source: ViewerSource): ViewerData {

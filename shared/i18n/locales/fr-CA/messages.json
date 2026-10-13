@@ -149,6 +149,7 @@
   "header.streetcar": "Tramway",
   "header.tagline": "Une ville sur rails",
   "header.title": "Carte non officielle TTCStatus",
+  "header.titleShort": "TTCStatus",
   "header.ttcStatusMap": "Carte de l’état du réseau TTC",
   "journal.addCarToJournal": "Ajouter le véhicule au journal",
   "journal.addYourFirstStreetcar": "Ajoutez votre premier tramway.",

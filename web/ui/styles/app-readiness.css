@@ -13,6 +13,10 @@
   color: inherit;
   text-decoration: none;
 }
+/* Both brand spellings render; the viewport picks one (PageHeader). */
+.brand-name-short {
+  display: none;
+}
 .brand-toggle {
   border: 0;
 }
@@ -73,6 +77,12 @@
   .topbar .brand-title {
     min-width: 0;
     flex: 1;
+  }
+  .brand-name-full {
+    display: none;
+  }
+  .brand-name-short {
+    display: inline;
   }
   .brand-toggle,
   .locate-launch,
