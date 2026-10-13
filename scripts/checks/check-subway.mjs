@@ -50,7 +50,7 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
-  await page.route('**/api/v1/vehicles/streetcar', (route) =>
+  await page.route('**/live/t/*/vehicles.json', (route) =>
     route.fulfill({ json: snapshot }),
   );
   await page.goto(process.env.UI_URL || 'http://127.0.0.1:4173');

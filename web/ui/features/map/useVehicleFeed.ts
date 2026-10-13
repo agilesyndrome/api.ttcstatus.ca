@@ -1,11 +1,15 @@
-import { apiRequest } from '../../services/http/client';
 import { useActivity } from '../../services/platform/react';
+import { liveTransport } from '../../services/http/live-transport';
 import { useEffect, useRef, useState } from 'react';
-import { requestVehicleUpdate, VehiclePoller } from '../../../../shared/live/polling';
+import { requestTickUpdate, VehiclePoller } from '../../../../shared/live/polling';
 import { DEFAULT_LIVE_UPDATE_SECONDS } from '../../../../shared/live/config';
 import type { FeedState } from './LiveFeedStatus';
 
-/** One feed owner per page. Filters and legend never create their own requests. */
+/** One feed owner per page. Filters and legend never create their own requests.
+ * The poller is repointed to the public live path (docs/optimize-transport.md
+ * Epic 2): every request derives its tick URL from the launch-time config —
+ * no Worker vehicle endpoint, no fallback host, no 5xx parsing. A failed
+ * config fetch retries on the next activation, never a fallback URL. */
 export function useVehicleFeed(
   enabled: boolean,
   options: { polling?: boolean } = {},
@@ -15,6 +19,7 @@ export function useVehicleFeed(
   const [state, setState] = useState<FeedState>({
     failed: false,
     active: false,
+    awaitingConfig: true,
     updateSeconds: DEFAULT_LIVE_UPDATE_SECONDS,
     retrySeconds: 0,
     now: Date.now(),
@@ -23,8 +28,10 @@ export function useVehicleFeed(
   const singleShotRequested = useRef(false);
   useEffect(() => {
     const instance = new VehiclePoller({
+      // Config is the only origin source: no transport proceeds without it.
+      // Cadence, host, and path template all come from the fetched block.
       request: (signal, etag) =>
-        requestVehicleUpdate('/api/v1/vehicles/streetcar', signal, etag, apiRequest),
+        liveTransport().then((transport) => requestTickUpdate(transport, signal, etag)),
       onSnapshot: (snapshot) =>
         setState((current) => {
           const timestamp = Date.parse(snapshot.feedTimestamp ?? snapshot.fetchedAt);
@@ -36,7 +43,7 @@ export function useVehicleFeed(
             : { ...current, snapshot, now: Date.now() };
         }),
       onStatus: (status) =>
-        setState((current) => ({ ...current, ...status, now: Date.now() })),
+        setState((current) => ({ ...current, ...status, awaitingConfig: false, now: Date.now() })),
     });
     poller.current = instance;
     const timer = window.setInterval(

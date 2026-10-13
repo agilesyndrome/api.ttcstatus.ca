@@ -78,7 +78,7 @@ configuration and should not be resolved by putting a secret into a `VITE_` vari
 
 The `.env.local` file stores the development keys as 1Password `op://`
 references. The dev commands (`npm run dev:viewer`, `npm run dev:api`,
-`npm run dev:map`, `make dev`) run through `scripts/dev/with-secrets.mjs`,
+`make dev`) run through `scripts/dev/with-secrets.mjs`,
 which resolves them with `op run --env-file=.env.local` when the 1Password CLI
 can resolve them (`op whoami` triggers the usual biometric prompt), and
 otherwise prints one warning and starts without those secrets — the map stays
@@ -114,7 +114,7 @@ With secrets resolved, both dev surfaces carry real Clerk:
   [security notes](security.md#local-development-widening).
 
 `CLERK_AUTHORIZED_PARTIES` in `.env.local` lists the local origins
-(`http://127.0.0.1:8787`, `http://localhost:8787`, and the map-generator's 8788) that may mint sessions against the dev instance. Then run
+(`http://127.0.0.1:8787`, `http://localhost:8787`) that may mint sessions against the dev instance. Then run
 `npm run db:migrate:local`. The local Worker needs an imported map to show the
 transit map; `/profile` and `/u/<username>` can be opened directly without one.
 Use the local port Wrangler reports and adjust the authorized origins to match
@@ -143,7 +143,7 @@ instances started together race for it and the loser dies with workerd's
 inspector port (entry port + 200) and probes those too.
 
 The same single-owner rule applies to the Vite preview
-(`npm run dev:viewer`, port 4173) and the map-generator (8788).
+(`npm run dev:viewer`, port 4173).
 
 To exercise the full account pipeline locally, create `workers/api/.dev.vars`
 (gitignored) containing development keys instead — the Worker reads them when

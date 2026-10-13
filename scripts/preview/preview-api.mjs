@@ -396,14 +396,63 @@ export async function createPreviewMiddleware() {
     updateSeconds,
     fetchRailSnapshot,
   );
+  // Live transport discovery (optimize-transport.md change 1b) — the
+  // preview serves the same block production serves. Same-origin base ('')
+  // so the preview's own /live/t/ route below answers tick requests.
+  const liveBlock = {
+    base: '',
+    pathTemplate: '/live/t/{tick}/vehicles.json',
+    updateSeconds,
+  };
   let sourcePromise;
   return async (request, response, next) => {
     const path = new URL(request.url, 'http://localhost').pathname;
-    if (!path.startsWith('/api/')) return next();
     const json = (value, status = 200, headers = {}) => {
       response.writeHead(status, { 'content-type': 'application/json', ...headers });
       response.end(JSON.stringify(value));
     };
+    // The public live tick path (optimize-transport.md Epic 1/2): immutable
+    // per-tick documents served same-origin in dev. Same three-case client
+    // contract as production: 200 doc (outage included), 404 unpublished
+    // (clock ahead), network error → caller backoff.
+    const tickMatch = /^\/live\/t\/(\d+)\/vehicles\.json$/.exec(path);
+    if (request.method === 'GET' && tickMatch) {
+      const requestedTick = Number(tickMatch[1]);
+      const currentTick = Math.floor(Date.now() / (updateSeconds * 1000));
+      if (requestedTick > currentTick) return json({ error: 'tick-unpublished' }, 404);
+      try {
+        const value = await snapshots.get();
+        // Outage docs (change 2): total upstream failure publishes
+        // { vehicles: [], outage } — a body field, never a status.
+        const doc = value.snapshot
+          ? { ...value.snapshot, tickId: requestedTick }
+          : {
+              schemaVersion: 1,
+              fetchedAt: new Date(requestedTick * updateSeconds * 1000).toISOString(),
+              feedTimestamp: null,
+              source: DEFAULT_VEHICLE_FEED_URL,
+              attribution:
+                'Contains information licensed under the Open Government Licence - Toronto',
+              vehicles: [],
+              invalidPositions: 0,
+              outage: {
+                since: new Date(requestedTick * updateSeconds * 1000).toISOString(),
+                tickId: requestedTick,
+              },
+              tickId: requestedTick,
+            };
+        const etag = `"tick-${requestedTick}-${doc.vehicles.length}`;
+        if (ifNoneMatchMatches(request.headers['if-none-match'], etag)) {
+          response.writeHead(304, { etag, 'cache-control': 'public, max-age=600' });
+          return response.end();
+        }
+        return json(doc, 200, { etag, 'cache-control': 'public, max-age=600' });
+      } catch (error) {
+        console.error('Live preview tick failed', error);
+        return json({ error: 'vehicles-unavailable' }, 503);
+      }
+    }
+    if (!path.startsWith('/api/')) return next();
     // Use Wrangler for Clerk sessions and D1 account data; this preview has no
     // account backend. When dev secrets resolve (scripts/dev/with-secrets.mjs
     // runs `vite` through 1Password), the real publishable key passes through
@@ -412,10 +461,12 @@ export async function createPreviewMiddleware() {
       const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
       return json(
         typeof publishableKey === 'string' && /^pk_(?:test|live)_\S+/.test(publishableKey)
-          ? { enabled: true, publishableKey }
-          : { enabled: false, publishableKey: null },
+          ? { enabled: true, publishableKey, live: liveBlock }
+          : { enabled: false, publishableKey: null, live: liveBlock },
         200,
-        { 'cache-control': 'no-store' },
+        // Mirrors production (optimize-transport.md change 1b): every field
+        // is public by design, so the response is edge-cacheable.
+        { 'cache-control': 'public, max-age=300' },
       );
     }
     if (path.startsWith('/api/v1/me/'))

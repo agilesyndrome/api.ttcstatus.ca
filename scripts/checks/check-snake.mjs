@@ -110,17 +110,18 @@ try {
   context.on('page', (page) =>
     page.on('pageerror', (error) => errors.push(error.message)),
   );
-  await context.route('**/api/v1/map/ttcstatus', (route) => {
+  await context.route('**/api/v1/map/ttcstatus*', (route) => {
     mapCalls++;
     return route.fulfill({ json: map });
   });
   // The game prefers the published prebuilt board; desktop exercises that
   // path with a board derived exactly like the generator publishes it.
-  await context.route('**/api/v1/map/snake', (route) => {
+  await context.route('**/api/v1/map/snake*', (route) => {
     snakeBoardCalls++;
     return route.fulfill({ json: buildSnakeMap(buildViewerData(map)).data });
   });
-  await context.route('**/api/v1/vehicles/streetcar', (route) => {
+  // Live tick path (Epic 2): config-driven URL; no x-live-* headers.
+  await context.route('**/live/t/*/vehicles.json', (route) => {
     feedCalls++;
     const now = new Date().toISOString();
     const vehicles = map.graph.edges
@@ -141,7 +142,7 @@ try {
         };
       });
     return route.fulfill({
-      headers: { 'x-live-update-seconds': '30' },
+      headers: { etag: '"game-fixture"' },
       json: {
         schemaVersion: 1,
         source: 'game-fixture',
@@ -275,15 +276,15 @@ try {
   await mobileContext.addInitScript(() => {
     Math.random = () => 0.5;
   });
-  await mobileContext.route('**/api/v1/map/ttcstatus', (route) =>
+  await mobileContext.route('**/api/v1/map/ttcstatus*', (route) =>
     route.fulfill({ json: forkMap }),
   );
   // No published board here: the game must fall back to deriving the board
   // from the loaded fork map instead of failing to open.
-  await mobileContext.route('**/api/v1/map/snake', (route) =>
+  await mobileContext.route('**/api/v1/map/snake*', (route) =>
     route.fulfill({ status: 503, json: { error: 'map-not-ready' } }),
   );
-  await mobileContext.route('**/api/v1/vehicles/streetcar', (route) =>
+  await mobileContext.route('**/live/t/*/vehicles.json', (route) =>
     route.fulfill({
       json: {
         schemaVersion: 1,

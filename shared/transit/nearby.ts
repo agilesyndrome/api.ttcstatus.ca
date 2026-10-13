@@ -1,3 +1,6 @@
+/** Device-only proximity (see LocalSpatialIndex's broadcast-only invariant):
+ * nearest stop is computed on the device against the broadcast snapshot;
+ * nothing here is ever sent anywhere. */
 import { mapToGps } from '../map/projection';
 import type { PlottedVehicle } from '../map/live-status';
 import type { Feature, Route, ViewerData } from '../map/model';

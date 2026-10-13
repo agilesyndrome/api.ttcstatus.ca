@@ -5,7 +5,7 @@ const compiled = await build({
   stdin: {
     contents: `
       export { syncStaticGtfs } from './workers/api/src/sync/sync';
-      export { generateStreetcarMap } from './workers/map-generator/src/generate';
+      export { generateStreetcarMap } from './workers/api/src/mapgen/generate';
     `,
     resolveDir: process.cwd(),
     loader: 'ts',
@@ -46,59 +46,12 @@ try {
     createMultipartUpload: (...args) =>
       baseEnv.GTFS_BUCKET.createMultipartUpload(...args),
   };
-  const mapGenerator = {
-    async fetch(_input, init = {}) {
-      const body = JSON.parse(String(init.body || '{}'));
-      const versionId = Number(body.versionId);
-      if (!Number.isInteger(versionId) || versionId <= 0)
-        return Response.json({ error: 'invalid-version-id' }, { status: 400 });
 
-      await baseEnv.DB.prepare(
-        `UPDATE map_generation_jobs
-         SET status = 'running', started_at = ?, error = NULL
-         WHERE id = (
-           SELECT id FROM map_generation_jobs
-           WHERE version_id = ? AND mode = 'streetcar'
-           ORDER BY id DESC LIMIT 1
-         )`,
-      )
-        .bind(new Date().toISOString(), versionId)
-        .run();
-
-      try {
-        console.log(
-          `Local bootstrap: generating map for network version ${versionId}...`,
-        );
-        const artifactId = await modules.generateStreetcarMap(
-          {
-            DB: baseEnv.DB,
-            SOURCE_ATTRIBUTION: baseEnv.SOURCE_ATTRIBUTION,
-          },
-          versionId,
-        );
-        console.log(`Local bootstrap: generated map artifact ${artifactId}.`);
-        return Response.json({ artifactId, versionId });
-      } catch (error) {
-        await baseEnv.DB.prepare(
-          `UPDATE map_generation_jobs
-           SET status = 'failed', completed_at = ?, error = ?
-           WHERE id = (
-             SELECT id FROM map_generation_jobs
-             WHERE version_id = ? AND mode = 'streetcar'
-             ORDER BY id DESC LIMIT 1
-           )`,
-        )
-          .bind(new Date().toISOString(), String(error).slice(0, 2000), versionId)
-          .run();
-        throw error;
-      }
-    },
-  };
-
+  // Map generation runs in-process inside the sync pipeline since Epic 7
+  // (docs/optimize-transport.md E7S3) — no service binding shim is needed.
   const result = await modules.syncStaticGtfs({
     ...baseEnv,
     GTFS_BUCKET: localBucket,
-    MAP_GENERATOR: mapGenerator,
   });
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {

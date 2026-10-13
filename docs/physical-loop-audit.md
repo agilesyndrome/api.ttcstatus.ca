@@ -32,7 +32,7 @@ turnback gaps, not a complete survey of every yard, switch or terminal platform.
 Physical corridors were checked against the TTC Streetcar Overhead Operations
 network in [Exhibit 2, page 71 of the City audit](https://www.toronto.ca/legdocs/mmis/2023/au/bgrd/backgroundfile-241155.pdf).
 Coordinates were retrieved from the OpenStreetMap API on 2026-10-04. Each
-overlay in `workers/map-generator/src/source/physical-tracks.json` records the
+overlay in `workers/api/src/mapgen/source/physical-tracks.json` records the
 specific OSM way ID, retrieval date, source and licence. Coordinates retain
 the mapped way vertices; the existing graph generator applies its usual
 12-metre node tolerance. © OpenStreetMap contributors,

@@ -176,7 +176,8 @@ test('E4S3: the history endpoint merges exactly; filters and validation behave',
     { waitUntil: () => {} },
   );
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
+  // Authorized data (E4S2): private, never a shared cache.
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=300');
   const body = await response.json();
   assert.equal(body.summaries.length, 1);
   // Merged moments from the endpoint match the folded ground truth exactly:

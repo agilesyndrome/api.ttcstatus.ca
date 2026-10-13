@@ -50,17 +50,16 @@ try {
   let mapCalls = 0,
     feedCalls = 0,
     conditional = false;
-  await page.route('**/api/v1/map/ttcstatus', (request) => {
+  await page.route('**/api/v1/map/ttcstatus*', (request) => {
     mapCalls++;
     return request.fulfill({ json: map });
   });
-  await page.route('**/api/v1/vehicles/streetcar', async (request) => {
+  // The live path (optimize-transport.md Epic 2): config-driven tick URLs,
+  // no x-live-* headers — cadence comes from /api/v1/auth/config (served by
+  // the preview stack). The second poll (30 s cadence) revalidates its ETag.
+  await page.route('**/live/t/*/vehicles.json', async (request) => {
     feedCalls++;
-    const headers = {
-      etag: '"fixture"',
-      'x-live-update-seconds': '30',
-      'x-live-next-update-at': new Date(Date.now() + 1100).toISOString(),
-    };
+    const headers = { etag: '"fixture"' };
     if (feedCalls === 2) {
       conditional = request.request().headers()['if-none-match'] === '"fixture"';
       await request.fulfill({ status: 304, headers });
@@ -69,10 +68,12 @@ try {
   await page.goto(origin);
   await page.locator('[data-vehicle="4400"]').waitFor();
   assert.equal(mapCalls, 1);
+  // The route-pulse panel is the live-status surface (the old `.live-status`
+  // section no longer ships). One fixture car on a shown route ⇒ "1 total".
   await page.waitForFunction(() =>
-    document.querySelector('.live-status')?.textContent.includes('1 car reported'),
+    document.querySelector('.route-pulse .pulse-total')?.textContent.includes('1 total on routes'),
   );
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(31_000);
   assert.ok(conditional, 'second feed request uses ETag');
   assert.equal(await page.locator('[data-vehicle]').count(), 1, '304 keeps the fleet');
   const before = await page.locator('#map').getAttribute('viewBox');
@@ -89,12 +90,15 @@ try {
   await first.click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
   await page.getByRole('button', { name: 'Close stop details' }).click();
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  // The live toggle is an aria-pressed layer button in the Explore panel now
+  // (the old MapFilters checkbox is gone).
+  const liveToggle = page.getByRole('button', { name: /Show live vehicles/ });
+  await liveToggle.click();
   const paused = feedCalls;
   await page.waitForTimeout(1500);
   assert.equal(feedCalls, paused, 'disabled live layer stops requests');
   assert.equal(await page.locator('[data-vehicle]').count(), 0);
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
+  await liveToggle.click();
   await page.locator('[data-vehicle="4400"]').waitFor();
   const kingRoute = page.getByRole('button', { name: /504 King/ });
   await kingRoute.click();

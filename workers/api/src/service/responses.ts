@@ -90,23 +90,17 @@ function wireReadyStopState(state: StopStateWithRoutes): StopStateWithRoutes {
 
 /** GET /api/v1/service/stops — per directional stop: lastTouchAt,
  * minutesSince, medianHeadwayOwn, irregularity (CV²), expectedWait R(e),
- * dryness r, state, coverage badge; `?routes=` filter (sla.md story 3.1). */
+ * dryness r, state, coverage badge; `?routes=` filter (sla.md story 3.1).
+ * Authorized data (E4S2): responses are `private` and never enter
+ * `caches.default` — no cache may bypass the grant. The ETag/304 per tick
+ * still absorbs granted viewers' same-tick refetches. */
 export async function serviceStopsResponse(
   request: Request,
   env: Env,
-  ctx: ExecutionContextLike,
 ): Promise<Response> {
   const config = serviceConfig(env);
   const url = new URL(request.url);
   const filter = parseRoutesFilter(url.searchParams.get('routes'));
-  const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(
-    `https://ttcstatus-cache.invalid/api/v1/service/stops?routes=${encodeURIComponent(
-      url.searchParams.get('routes') ?? '',
-    )}`,
-  );
-  const cached = await cache.match(key);
-  if (cached) return conditional(request, cached);
   let payload: RecorderStatesPayload;
   try {
     const response = await recorderFetch(env, '/states');
@@ -125,14 +119,13 @@ export async function serviceStopsResponse(
   const body = { schemaVersion: 1 as const, at: payload.at, states };
   const etag = `"stops-${await sha256Hex(JSON.stringify(body))}"`;
   const response = json(body, 200, {
-    'cache-control': `public, max-age=${STOPS_CACHE_SECONDS}`,
+    'cache-control': `private, max-age=${STOPS_CACHE_SECONDS}`,
     etag,
     'x-live-update-seconds': String(config.sampleSeconds),
     'x-live-next-update-at': new Date(
       payload.at + config.sampleSeconds * 1000,
     ).toISOString(),
   });
-  ctx.waitUntil(cache.put(key, response.clone()));
   return conditional(request, response);
 }
 
@@ -143,7 +136,6 @@ export async function serviceStopsResponse(
 export async function serviceHistoryResponse(
   request: Request,
   env: Env,
-  ctx: ExecutionContextLike,
 ): Promise<Response> {
   const config = serviceConfig(env);
   const url = new URL(request.url);
@@ -157,12 +149,6 @@ export async function serviceHistoryResponse(
   const now = Date.now();
   const from =
     Number(url.searchParams.get('from')) || now - config.historyHours * 3_600_000;
-  const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(
-    `https://ttcstatus-cache.invalid/api/v1/service/history${url.search}`,
-  );
-  const cached = await cache.match(key);
-  if (cached) return conditional(request, cached);
   let rows: RollupRow[];
   try {
     const query = stop
@@ -232,11 +218,10 @@ export async function serviceHistoryResponse(
   };
   const etag = `"history-${await sha256Hex(JSON.stringify(body))}"`;
   const response = json(body, 200, {
-    // Cached 1–5 minutes per the story card: history is warm data.
-    'cache-control': 'public, max-age=300',
+    // Warm data, but authorized (E4S2): private, never a shared cache.
+    'cache-control': 'private, max-age=300',
     etag,
   });
-  ctx.waitUntil(cache.put(key, response.clone()));
   return conditional(request, response);
 }
 
@@ -269,19 +254,10 @@ function popcount(bits: number): number {
 export async function serviceWaveResponse(
   request: Request,
   env: Env,
-  ctx: ExecutionContextLike,
 ): Promise<Response> {
   const config = serviceConfig(env);
   const url = new URL(request.url);
   const filter = parseRoutesFilter(url.searchParams.get('routes'));
-  const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(
-    `https://ttcstatus-cache.invalid/api/v1/service/wave?routes=${encodeURIComponent(
-      url.searchParams.get('routes') ?? '',
-    )}`,
-  );
-  const cached = await cache.match(key);
-  if (cached) return conditional(request, cached);
   let payload: RecorderWindowPayload;
   try {
     const response = await recorderFetch(env, '/window');
@@ -319,13 +295,12 @@ export async function serviceWaveResponse(
   };
   const etag = `"wave-${await sha256Hex(JSON.stringify(body))}"`;
   const response = json(body, 200, {
-    'cache-control': `public, max-age=${STOPS_CACHE_SECONDS}`,
+    'cache-control': `private, max-age=${STOPS_CACHE_SECONDS}`,
     etag,
     'x-live-update-seconds': String(config.sampleSeconds),
     'x-live-next-update-at': new Date(
       payload.at + config.sampleSeconds * 1000,
     ).toISOString(),
   });
-  ctx.waitUntil(cache.put(key, response.clone()));
   return conditional(request, response);
 }

@@ -1,60 +1,100 @@
 import { DEFAULT_LIVE_UPDATE_SECONDS, liveUpdateSeconds } from './config';
+import { liveTickPath, tickIdAt } from './config';
+import type { LiveTransportConfig } from './config';
 import type { VehicleSnapshot } from './vehicles';
 
 export interface SnapshotUpdate {
   snapshot?: VehicleSnapshot; // Missing on 304: the current observations still apply.
   etag?: string;
   updateSeconds: number;
-  nextUpdateAt?: number;
+  /** The tick (and tick − 1) is not published yet — the device clock is
+   * ahead of publish. Keep the last-good snapshot with its age; the next
+   * scheduled poll handles it. Never a failure, never a fallback host. */
+  unpublished?: boolean;
 }
 
-export class LiveUpdateError extends Error {
-  constructor(
-    message: string,
-    readonly updateSeconds?: number,
-    readonly retryAfterSeconds?: number,
-  ) {
-    super(message);
-  }
-}
-
-/** Browser HTTP cache is bypassed deliberately: the Worker owns snapshot age.
- * ETags avoid downloading the fleet again when the observations are unchanged. */
-export async function requestVehicleUpdate(
-  endpoint: string,
+/** Fetch one immutable tick document from the public live path.
+ *
+ * TRANSPORT CONTRACT — see docs/optimize-transport.md before changing.
+ * A native (Swift/Kotlin) rewrite implements exactly this:
+ *  1. On launch: GET {apiOrigin}/api/v1/auth/config → { clerk, live }.
+ *     Never bake live hosts into a binary; this fetch is the only origin source.
+ *  2. Poll only while foreground/app-active: tick = floor(now / (live.updateSeconds * 1000));
+ *     GET {live.base} + pathTemplate with {tick} substituted.
+ *  3. 404 ⇒ tick unpublished (clock ahead of publish) ⇒ retry tick−1 once
+ *     ⇒ else keep last-good + age and wait for the next scheduled poll.
+ *  4. Network error ⇒ offline ⇒ keep last-good + age; existing backoff.
+ *  5. Outage is a body field (`outage` + empty `vehicles`), never an HTTP status. No 5xx parsing exists.
+ *  6. This path is broadcast-only: never attach device location, user IDs,
+ *     or query parameters. Nearest stop is computed locally (shared/transit).
+ *
+ * Exactly three cases exist on the live host: 200 → use the document
+ * (outage included), 404 → tick−1 → last-good, anything else (including
+ * any 5xx) is a network failure that the caller's backoff already owns.
+ * There is no fallback host and no dual error contract — the Worker vehicle
+ * route is being removed, and with it the 503/Retry-After/x-live-* header
+ * protocol this module used to parse. The cadence comes from config, never
+ * from per-response headers. */
+export async function requestTickUpdate(
+  transport: LiveTransportConfig,
   signal: AbortSignal,
   etag?: string,
-  request: (path: string, init?: RequestInit) => Promise<Response> = fetch,
+  request: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+  now: () => number = Date.now,
 ): Promise<SnapshotUpdate> {
-  const response = await request(endpoint, {
+  const url = liveTickUrl(transport, tickIdAt(now(), transport.updateSeconds));
+  const response = await request(url, {
     signal,
+    // Deliberate tick-following: each poll checks the freshly published tick;
+    // edge cache hits are free, so browser HTTP caching buys nothing here.
     cache: 'no-store',
     headers: etag ? { 'if-none-match': etag } : {},
   });
-  const intervalHeader = response.headers.get('x-live-update-seconds');
-  const updateSeconds = liveUpdateSeconds(intervalHeader);
-  if (!response.ok && response.status !== 304) {
-    const retryAfter = Number(response.headers.get('retry-after'));
-    throw new LiveUpdateError(
-      `Live status returned HTTP ${response.status}`,
-      intervalHeader ? updateSeconds : undefined,
-      retryAfter > 0 ? retryAfter : undefined,
-    );
-  }
-  const result: SnapshotUpdate = {
-    updateSeconds,
-    etag: response.headers.get('etag') ?? undefined,
-    nextUpdateAt: Date.parse(response.headers.get('x-live-next-update-at') ?? ''),
-  };
   if (response.status === 304) {
     if (!etag) throw new Error('Live status returned 304 without a previous snapshot');
-    return result;
+    // R2/native ETag: identical same-tick refetch (e.g. refresh on
+    // visibility return) costs a 304 and no body.
+    return { etag: response.headers.get('etag') ?? etag, updateSeconds: transport.updateSeconds };
   }
-  const snapshot = (await response.json()) as VehicleSnapshot;
-  if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.vehicles))
-    throw new Error('Invalid live snapshot');
-  result.snapshot = snapshot;
-  return result;
+  if (response.status === 404) {
+    // The clock is ahead of publish: retry the previous tick once, then let
+    // the last-good snapshot stand until the next scheduled poll.
+    const previous = await request(liveTickUrl(transport, tickIdAt(now(), transport.updateSeconds) - 1), {
+      signal,
+      cache: 'no-store',
+    });
+    if (previous.ok) return parseTickDocument(previous, transport);
+    return { updateSeconds: transport.updateSeconds, unpublished: true };
+  }
+  if (!response.ok) throw new Error(`Live status returned HTTP ${response.status}`);
+  return parseTickDocument(response, transport);
+}
+
+/** Build the tick object URL from config: base + path template. The URL is
+ * derived, never stored, and never carries query parameters — broadcast
+ * bytes identical for every user. */
+export function liveTickUrl(transport: LiveTransportConfig, tickId: number): string {
+  return `${transport.base}${liveTickPath(transport.pathTemplate, tickId)}`;
+}
+
+function parseTickDocument(
+  response: Response,
+  transport: LiveTransportConfig,
+): Promise<SnapshotUpdate> {
+  return response
+    .json()
+    .then((snapshot: VehicleSnapshot) => {
+      if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.vehicles))
+        throw new Error('Invalid live snapshot');
+      // Outage is already inside the document (`vehicles: []` + `outage`),
+      // so an outage doc is delivered like any other — never a status.
+      const result: SnapshotUpdate = {
+        snapshot,
+        etag: response.headers.get('etag') ?? undefined,
+        updateSeconds: transport.updateSeconds,
+      };
+      return result;
+    });
 }
 
 type TimerHandle = ReturnType<typeof setTimeout> | number;
@@ -74,7 +114,9 @@ interface PollerOptions {
 
 /** A cancellable, non-overlapping poll loop. Visibility, connectivity and the
  * layer checkbox are owned by the viewer; this module only schedules requests.
- * It retains ETags and backs off failures up to five minutes. No extrapolation
+ * It retains ETags and backs off network failures up to five minutes. An
+ * unpublished tick (404 → 404) is *not* a failure: the last-good snapshot
+ * stands with its age and the next scheduled poll retries. No extrapolation
  * is used: markers move only when a new GPS snapshot arrives. */
 export class VehiclePoller {
   private active = false;
@@ -124,14 +166,22 @@ export class VehiclePoller {
       .then((result) => {
         if (controller.signal.aborted || this.disposed) return;
         this.updateSeconds = liveUpdateSeconds(result.updateSeconds);
+        // An unpublished tick keeps the last-good snapshot and its ETag —
+        // the next scheduled poll retries the (newer) tick grid.
+        if (result.unpublished) {
+          this.nextUpdateAt = this.now() + this.updateSeconds * 1000;
+          this.options.onStatus({
+            failed: false,
+            updateSeconds: this.updateSeconds,
+            retrySeconds: 0,
+          });
+          return;
+        }
         // Project before accepting its ETag; a failed projection must be retried.
         if (result.snapshot) this.options.onSnapshot(result.snapshot);
         this.etag = result.etag;
         this.failures = 0;
-        const normalNext = this.now() + this.updateSeconds * 1000;
-        this.nextUpdateAt = Number.isFinite(result.nextUpdateAt)
-          ? Math.max(this.now() + 1000, Math.min(normalNext, result.nextUpdateAt!))
-          : normalNext;
+        this.nextUpdateAt = this.now() + this.updateSeconds * 1000;
         this.options.onStatus({
           failed: false,
           updateSeconds: this.updateSeconds,
@@ -145,16 +195,8 @@ export class VehiclePoller {
           (controller.signal.aborted && controller.signal.reason?.name === 'AbortError')
         )
           return;
-        if (error instanceof LiveUpdateError && error.updateSeconds)
-          this.updateSeconds = error.updateSeconds;
         this.failures++;
-        const retrySeconds = Math.min(
-          300,
-          Math.max(
-            this.updateSeconds * 2 ** Math.min(4, this.failures - 1),
-            error instanceof LiveUpdateError ? (error.retryAfterSeconds ?? 0) : 0,
-          ),
-        );
+        const retrySeconds = Math.min(300, this.updateSeconds * 2 ** Math.min(4, this.failures - 1));
         this.nextUpdateAt = this.now() + retrySeconds * 1000;
         this.options.onStatus({
           failed: true,

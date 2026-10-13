@@ -38,10 +38,20 @@
   },
   "vars": {
     "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca,capacitor://localhost",
+    // Local session verification (optimize-transport.md E4S1): Clerk's
+    // published JWKS. Fill with the app's frontend-api JWKS URL via the
+    // dashboard/secret store; empty = session verification unavailable.
+    "CLERK_JWKS_URL": "",
     // Live refresh and shared snapshot cache lifetime, in seconds (30–300).
     "REALTIME_SUBWAY_URL": "https://gtfsrt.ttc.ca/trips/subway?format=binary",
     "REALTIME_UPDATE_SECONDS": "30",
     "REALTIME_VEHICLE_URL": "https://bustime.ttc.ca/gtfsrt/vehicles",
+    // Live transport discovery (optimize-transport.md change 1b): served
+    // verbatim from `/api/v1/auth/config` (`public, max-age=300`) so no
+    // client or shipped binary bakes a live host, cadence, or path.
+    "LIVE_PUBLIC_BASE": "https://live.ttcstatus.ca",
+    "LIVE_PATH_TEMPLATE": "/live/t/{tick}/vehicles.json",
+    "LIVE_UPDATE_SECONDS": "30",
     "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/b811ead4-6eaf-4adb-8408-d389fb5a069c/resource/c920e221-7a1c-488b-8c5b-6d8cd4e85eaf/download/completegtfs.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
     "NO_VALIDATOR_REFETCH_DAYS": "7",
@@ -93,11 +103,22 @@
       "binding": "GTFS_BUCKET",
       "bucket_name": "ttcstatus-static-gtfs",
     },
-  ],
-  "services": [
+    // Dedicated PUBLIC live bucket (optimize-transport.md change 1): one
+    // immutable tick document per 30 s tick at `live/t/<tickId>/vehicles.json`.
+    // Never the GTFS archive bucket — this one is world-readable by design.
+    // Dashboard steps (one-time operator runbook, in
+    // docs/optimize-transport-thunks.md):
+    //  1. Attach R2 custom domain `live.ttcstatus.ca`.
+    //  2. Cache rule: host eligible, edge TTL ≥ object `max-age=600`.
+    //  3. Transform Rule: `Access-Control-Allow-Origin: *` on this host.
+    //  4. Lifecycle rule: expire `live/t/` objects after ~1 day.
     {
-      "binding": "MAP_GENERATOR",
-      "service": "ttcstatus-map-generator",
+      "binding": "LIVE_BUCKET",
+      "bucket_name": "ttcstatus-live",
     },
   ],
+  // No MAP_GENERATOR service binding (docs/optimize-transport.md Epic 7):
+  // the generator core lives in src/mapgen/ and runs in-process — one worker,
+  // one deploy artifact, one config. Nothing provisions a second worker.
+  "services": [],
 }

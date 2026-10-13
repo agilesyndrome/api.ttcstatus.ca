@@ -13,6 +13,12 @@ const clerkKey = (value: string | undefined, prefix: 'pk_' | 'sk_') =>
     ? value
     : undefined;
 
+/** The `live` block of `/api/v1/auth/config` — see shared/live/config.ts
+ * (single source: base URL, cadence, path template; never baked into a
+ * binary). Re-exported for the accounts surface. */
+import { liveTransportConfig } from '../../../../shared/live/config';
+export const liveConfig = liveTransportConfig;
+
 export function authConfig(env: AccountEnv) {
   const publishableKey = clerkKey(env.CLERK_PUBLISHABLE_KEY, 'pk_');
   const enabled = Boolean(
@@ -20,7 +26,13 @@ export function authConfig(env: AccountEnv) {
     clerkKey(env.CLERK_SECRET_KEY, 'sk_') &&
     authorizedSessionParties(env).length,
   );
-  return { enabled, publishableKey: enabled ? publishableKey : null };
+  // Additive and backward compatible: existing clients ignore `live` until
+  // their transport is updated; no existing field changes.
+  return {
+    enabled,
+    publishableKey: enabled ? publishableKey : null,
+    live: liveConfig(env),
+  };
 }
 // Only session bearer tokens are accepted. Cookies alone cannot authorize writes.
 export async function authenticateAccount(

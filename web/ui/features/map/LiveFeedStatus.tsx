@@ -6,6 +6,9 @@ export interface FeedState {
   snapshot?: VehicleSnapshot;
   failed: boolean;
   active: boolean;
+  /** True until the launch-time `/api/v1/auth/config` fetch resolves — no
+   * transport may proceed without it (docs/optimize-transport.md E2S1). */
+  awaitingConfig?: boolean;
   updateSeconds: number;
   retrySeconds: number;
   now: number;
@@ -14,6 +17,7 @@ export function LiveFeedStatus({
   snapshot,
   failed,
   active,
+  awaitingConfig,
   updateSeconds,
   retrySeconds,
   now,
@@ -28,6 +32,20 @@ export function LiveFeedStatus({
         <span className="live-dot" aria-hidden="true" />{' '}
         {t('liveFeedStatus.liveTrainsStreetcars')}
       </h2>
+      {awaitingConfig && (
+        <p role="status">{t('liveFeedStatus.waitingForLiveConfig')}</p>
+      )}
+      {/* Outage honesty moved into the document body (change 2): an outage
+       * doc is delivered like any other snapshot, never as a status code. */}
+      {snapshot?.outage && (
+        <p role="status">
+          {t('liveFeedStatus.liveServiceUnavailableSinceValue', {
+            value1: new Date(snapshot.outage.since).toLocaleTimeString(getLocale(), {
+              timeZone: 'America/Toronto',
+            }),
+          })}
+        </p>
+      )}
       <p role="status">
         {snapshot
           ? plural('counts.vehicleReports', snapshot.vehicles.length, {

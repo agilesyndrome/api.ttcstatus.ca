@@ -9,7 +9,7 @@ import { previewMap } from '../../scripts/preview/preview-map.mjs';
 const compiled = await build({
   stdin: {
     contents:
-      'export * from "./workers/map-generator/src/topology/schematic"; export * from "./workers/map-generator/src/layout/build-map"; export * from "./workers/map-generator/src/rendering/debug-render"; export { projectToLocalMetres } from "./shared/map/geometry";',
+      'export * from "./workers/api/src/mapgen/topology/schematic"; export * from "./workers/api/src/mapgen/layout/build-map"; export * from "./workers/api/src/mapgen/rendering/debug-render"; export { projectToLocalMetres } from "./shared/map/geometry";',
     resolveDir: process.cwd(),
     loader: 'ts',
   },

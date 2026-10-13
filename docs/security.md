@@ -11,11 +11,10 @@ Rewriting history would affect other branches and clones; this refactor does
 not rewrite history or mutate production configuration.
 
 Before deploying this branch, generate a new high-entropy `SYNC_TOKEN` and set the
-same value on the API and map-generator Workers through Wrangler's secret prompts:
+the single API Worker through Wrangler's secret prompt (the map generator runs in-process since Epic 7):
 
 ```sh
 npx wrangler secret put SYNC_TOKEN -c workers/api/wrangler.jsonc
-npx wrangler secret put SYNC_TOKEN -c workers/map-generator/wrangler.jsonc
 ```
 
 The laptop can synchronize all runtime secrets from 1Password in one command. The

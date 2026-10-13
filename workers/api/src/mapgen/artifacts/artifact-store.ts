@@ -1,5 +1,5 @@
-import { sha256Hex } from '../../../shared/gtfs/hash';
-import { chunkString } from '../../../shared/storage/chunks';
+import { sha256Hex } from '../../../../shared/gtfs/hash';
+import { chunkString } from '../../../../shared/storage/chunks';
 import {
   ARTIFACT_CHUNK_CHARACTERS,
   GENERATOR_VERSION,

@@ -825,80 +825,6 @@
         }
       }
     },
-    "/api/v1/vehicles/streetcar": {
-      "get": {
-        "parameters": [
-          {
-            "in": "header",
-            "name": "If-None-Match",
-            "required": false,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/VehicleSnapshot" }
-              }
-            },
-            "headers": {
-              "ETag": {
-                "schema": { "type": "string" },
-                "description": "Quoted content validator; weak client validators are accepted."
-              },
-              "X-Network-Version": {
-                "schema": { "type": "integer" },
-                "description": "Static network version for map/directory responses."
-              },
-              "X-Map-Artifact": {
-                "schema": { "type": "integer" },
-                "description": "Matching immutable map/directory identity."
-              },
-              "X-Map-Format": { "schema": { "type": "string" } },
-              "X-Schema-Version": { "schema": { "type": "integer" } },
-              "X-Live-Update-Seconds": {
-                "schema": { "type": "integer" },
-                "description": "Client polling cadence, in seconds."
-              },
-              "X-Live-Next-Update-At": {
-                "schema": { "type": "string", "format": "date-time" },
-                "description": "Next recorder publication boundary for live responses."
-              }
-            }
-          },
-          "304": {
-            "description": "Matching ETag; no body.",
-            "headers": {
-              "ETag": {
-                "schema": { "type": "string" },
-                "description": "Quoted content validator; weak client validators are accepted."
-              },
-              "X-Network-Version": {
-                "schema": { "type": "integer" },
-                "description": "Static network version for map/directory responses."
-              },
-              "X-Map-Artifact": {
-                "schema": { "type": "integer" },
-                "description": "Matching immutable map/directory identity."
-              },
-              "X-Map-Format": { "schema": { "type": "string" } },
-              "X-Schema-Version": { "schema": { "type": "integer" } },
-              "X-Live-Update-Seconds": {
-                "schema": { "type": "integer" },
-                "description": "Client polling cadence, in seconds."
-              },
-              "X-Live-Next-Update-At": {
-                "schema": { "type": "string", "format": "date-time" },
-                "description": "Next recorder publication boundary for live responses."
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/Error" }
-        }
-      }
-    },
     "/api/v1/service/stops": {
       "get": {
         "parameters": [
@@ -1648,9 +1574,28 @@
         "type": "object",
         "properties": {
           "enabled": { "type": "boolean" },
-          "publishableKey": { "type": ["string", "null"] }
+          "publishableKey": { "type": ["string", "null"] },
+          "live": {
+            "type": "object",
+            "properties": {
+              "base": {
+                "type": "string",
+                "description": "Live host origin; empty string means same-origin."
+              },
+              "pathTemplate": {
+                "type": "string",
+                "description": "Immutable tick path with {tick} placeholder; never carries query parameters."
+              },
+              "updateSeconds": {
+                "type": "integer",
+                "description": "Client polling cadence in seconds (30–300)."
+              }
+            },
+            "required": ["base", "pathTemplate", "updateSeconds"],
+            "additionalProperties": true
+          }
         },
-        "required": ["enabled", "publishableKey"],
+        "required": ["enabled", "publishableKey", "live"],
         "additionalProperties": true
       },
       "AnalyticsEvent": {

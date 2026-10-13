@@ -17,10 +17,6 @@ const secretBindings = [
     name: 'SYNC_TOKEN',
     config: 'workers/api/wrangler.jsonc',
   },
-  {
-    name: 'SYNC_TOKEN',
-    config: 'workers/map-generator/wrangler.jsonc',
-  },
 ];
 
 const missing = [

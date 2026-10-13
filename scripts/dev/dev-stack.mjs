@@ -27,9 +27,15 @@
 // server on the same port.
 //
 // Usage:
-//   node scripts/dev/dev-stack.mjs start [apiPort genPort] [--no-bootstrap]
+//   node scripts/dev/dev-stack.mjs start [apiPort] [--no-bootstrap]
 //   node scripts/dev/dev-stack.mjs stop
 //   node scripts/dev/dev-stack.mjs status
+//
+// `start` boots BOTH components: the API Worker (wrangler, [apiPort]) and
+// the Vite viewer (4173, pinned by vite.config.mjs strictPort) — the UI is
+// required, not optional, because the live tick path is same-origin and
+// only the viewer's preview middleware serves it. A previous stack (lock
+// file or tagged orphans) is stopped first.
 import { spawn, spawnSync, execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
@@ -54,7 +60,12 @@ const [command = 'start', ...rest] = process.argv.slice(2);
 const positional = rest.filter((argument) => !argument.startsWith('--'));
 const flags = new Set(rest.filter((argument) => argument.startsWith('--')));
 const apiPort = Number(positional[0] ?? process.env.API_PORT ?? 8787);
-const genPort = Number(positional[1] ?? process.env.GEN_PORT ?? 8788);
+// The Vite preview port is pinned by vite.config.mjs (strictPort) — the UI
+// must be served by Vite, not the worker, because the live tick path is
+// same-origin (optimize-transport.md Epic 2): the preview middleware owns
+// /live/t/<tick>/vehicles.json. The worker SPA cannot serve it (no fallback
+// route, by the no-fallback doctrine).
+const viewerPort = Number(process.env.UI_PORT ?? 4173);
 
 /* ————————————————————————— book-keeping ————————————————————————— */
 
@@ -261,8 +272,7 @@ const start = async () => {
   // with workerd's fatal "bind(): Address already in use". Each Worker gets
   // its own (entry port + 200).
   const apiInspectorPort = apiPort + 200;
-  const genInspectorPort = genPort + 200;
-  for (const port of [apiPort, genPort, apiInspectorPort, genInspectorPort]) {
+  for (const port of [apiPort, apiInspectorPort, viewerPort]) {
     let ready = false;
     for (let attempt = 0; attempt < 5 && !ready; attempt += 1) {
       ready = await bindable(port);
@@ -336,17 +346,11 @@ const start = async () => {
     String(apiInspectorPort),
     '--test-scheduled',
   ]);
-  spawnWorker('map-generator', [
-    'npx',
-    'wrangler',
-    'dev',
-    '-c',
-    'workers/map-generator/wrangler.jsonc',
-    '--port',
-    String(genPort),
-    '--inspector-port',
-    String(genInspectorPort),
-  ]);
+  // The UI: Vite serves the SPA and (via its preview middleware) the same-origin
+  // /api/v1/* and /live/t/* paths the client now needs. One Worker since Epic 7
+  // (map generation runs in-process); the viewer is a full stack component, not
+  // an optional extra — the worker SPA cannot serve the tick path.
+  spawnWorker('viewer', ['npx', 'vite']);
   writeLock({
     version: 1,
     stackId,
@@ -360,31 +364,41 @@ const start = async () => {
       void killStack().then(() => process.exit(0));
     });
 
-  // ——— Wait for the API Worker to answer health checks. ———
-  const deadline = Date.now() + 90_000;
-  for (;;) {
-    if (workers.some((worker) => worker.exited)) {
-      // The exit handler already reported and scheduled the shutdown.
-      await sleep(3_500);
-      process.exit(1);
-    }
+  // ——— Wait for both components to answer health checks. ———
+  const healthy = async (url) => {
     try {
-      const response = await fetch(`http://127.0.0.1:${apiPort}/api/healthz`);
-      if (response.ok && (await response.json()).worker === 'ttcstatus-api') break;
+      const response = await fetch(url);
+      return response.ok;
     } catch {
-      /* not up yet */
+      return false;
     }
-    if (Date.now() > deadline) {
-      console.error(
-        'ERROR: the API Worker did not answer /api/healthz in time — see its output above.',
-      );
-      await killStack();
-      process.exit(1);
+  };
+  const waitFor = async (label, url) => {
+    const deadline = Date.now() + 90_000;
+    for (;;) {
+      if (workers.some((worker) => worker.exited)) {
+        // The exit handler already reported and scheduled the shutdown.
+        await sleep(3_500);
+        process.exit(1);
+      }
+      if (await healthy(url)) break;
+      if (Date.now() > deadline) {
+        console.error(
+          `ERROR: the ${label} did not answer ${url} in time — see its output above.`,
+        );
+        await killStack();
+        process.exit(1);
+      }
+      await sleep(500);
     }
-    await sleep(500);
-  }
+  };
+  await waitFor(
+    'API Worker',
+    `http://127.0.0.1:${apiPort}/api/healthz`,
+  );
+  await waitFor('Vite viewer', `http://127.0.0.1:${viewerPort}/`);
   console.log(
-    `Dev stack ready: api on http://localhost:${apiPort}, map-generator on http://localhost:${genPort}`,
+    `Dev stack ready: api on http://localhost:${apiPort} (single worker — map generation runs in-process), ui on http://localhost:${viewerPort}`,
   );
 
   if (!flags.has('--no-bootstrap')) {

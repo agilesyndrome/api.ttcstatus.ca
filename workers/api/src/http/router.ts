@@ -7,9 +7,12 @@ import {
   ownedAccountResponse,
   publicProfileResponse,
 } from '../accounts';
+import { verifySession } from '../accounts/verify';
+import { callerHasFlag } from '../accounts/features';
+import { VOID_OVERLAY_FLAG } from '../../../../shared/service/contracts';
+import { accountReply } from '../http/responses';
 import { mapResponse, networkResponse } from '../maps/responses';
 import { debugMapResponse } from '../maps/debug';
-import { vehicleResponse } from '../realtime/response';
 import {
   serviceStopsResponse,
   serviceWaveResponse,
@@ -51,7 +54,11 @@ export async function routeRequest(
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/auth/config') {
-    return json(authConfig(env), 200, { 'cache-control': 'no-store' });
+    // Edge-cacheable (optimize-transport.md change 1b): every field is
+    // public by design, and an uncached fetch per launch would bill ~60M
+    // Worker requests/month at scale for nothing. A stale `enabled` flip
+    // costs ≤ 5 minutes.
+    return json(authConfig(env), 200, { 'cache-control': 'public, max-age=300' });
   }
   if (url.pathname.startsWith('/api/v1/me/')) {
     const identity = await authenticateAccount(request, env);
@@ -92,20 +99,26 @@ export async function routeRequest(
     return analyticsEventResponse(request, env);
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/v1/vehicles/streetcar') {
-    return vehicleResponse(request, env, ctx);
-  }
-
   // Delivered-service endpoints (docs/sla.md stories 3.1/3.2): additive,
-  // marked experimental in the README until the overlay is polished.
-  if (request.method === 'GET' && url.pathname === '/api/v1/service/stops') {
-    return serviceStopsResponse(request, env, ctx);
-  }
-  if (request.method === 'GET' && url.pathname === '/api/v1/service/wave') {
-    return serviceWaveResponse(request, env, ctx);
-  }
-  if (request.method === 'GET' && url.pathname === '/api/v1/service/history') {
-    return serviceHistoryResponse(request, env, ctx);
+  // marked experimental. Server-enforced grant (optimize-transport.md
+  // change 4, E4S2): a locally verified session (no per-request Clerk API
+  // call) plus the caller's `voidOverlay` flag. 401 for a missing/invalid
+  // session, 403 for a valid session without the grant; identity comes
+  // exclusively from the verified token, never from query parameters.
+  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/service/')) {
+    const identity = await verifySession(request, env);
+    if (identity instanceof Response) return identity;
+    const granted = await callerHasFlag(env.DB, identity, VOID_OVERLAY_FLAG);
+    if (!granted) return accountReply({ error: 'forbidden' }, 403);
+    if (url.pathname === '/api/v1/service/stops') {
+      return serviceStopsResponse(request, env);
+    }
+    if (url.pathname === '/api/v1/service/wave') {
+      return serviceWaveResponse(request, env);
+    }
+    if (url.pathname === '/api/v1/service/history') {
+      return serviceHistoryResponse(request, env);
+    }
   }
 
   // The SLA report (docs/sla-stories.md Epic 8, E8S4): precomputed-only —

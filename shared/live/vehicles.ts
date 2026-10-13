@@ -23,6 +23,16 @@ export interface SubwayPrediction {
   observedAt: string | null;
   stops: { stopId: string; sequence: number; arrivalAt: string }[];
 }
+/** Outage honesty on the live path (docs/optimize-transport.md change 2):
+ * the recorder publishes `{ vehicles: [], outage }` every tick through a
+ * total upstream failure. An outage is a *body field*, never an HTTP
+ * status — the CDN path cannot speak dynamic 5xx, so the honesty moved
+ * into the document. */
+export interface SnapshotOutage {
+  since: string;
+  tickId: number;
+}
+
 export interface VehicleSnapshot {
   surfaceStatus?: 'available' | 'unavailable';
   subwaySource?: string;
@@ -35,6 +45,11 @@ export interface VehicleSnapshot {
   attribution: string;
   vehicles: LiveVehicle[];
   invalidPositions: number;
+  /** The tick grid id this document was published for (`floor(epoch/cadence)`).
+   * Present on live-path tick documents; lets clients detect clock drift. */
+  tickId?: number;
+  /** Present only while the whole upstream was down at acquisition time. */
+  outage?: SnapshotOutage;
 }
 export const VEHICLE_STALE_AFTER_MS = 120_000;
 export function vehicleIsStale(

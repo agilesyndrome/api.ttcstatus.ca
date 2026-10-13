@@ -16,6 +16,9 @@ import type { DurableObjectStateLike } from '../../../shared/cloudflare/bindings
 import { serviceConfig, SERVICE_WINDOW_SECONDS } from '../../../../shared/service/config';
 import type { ServiceConfig } from '../../../../shared/service/config';
 import { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from '../realtime/realtime';
+import { buildTickDocument } from '../realtime/tick-doc';
+import { liveTickPath, liveTransportConfig } from '../../../../shared/live/config';
+import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
 import { SnapshotPublisher } from './published-snapshot';
 import { RecorderSnapshotStore } from './snapshot-store';
 export { SERVICE_RECORDER_NAME } from './recorder-client';
@@ -70,6 +73,10 @@ export interface RecorderTelemetry {
   rowsPrunedByRetention: number | null;
   foldFailures: number;
   lastFoldError: string | null;
+  /** Live publication (optimize-transport.md E1S3): a failed publish never
+   * breaks acquisition, folds, or retention — it is loud evidence only. */
+  publishFailures: number;
+  lastPublishError: string | null;
 }
 
 const TELEMETRY_KEY = 'telemetry';
@@ -97,6 +104,8 @@ const initialTelemetry: RecorderTelemetry = {
   rowsPrunedByRetention: null,
   foldFailures: 0,
   lastFoldError: null,
+  publishFailures: 0,
+  lastPublishError: null,
 };
 
 export class ServiceRecorder {
@@ -135,9 +144,18 @@ export class ServiceRecorder {
   }
 
   /** Internal routes: telemetry (default), live states, and the raw window —
-   * the data seams Epic 3 reads. The worker gates who may call them. Waking
-   * the DO also arms the alarm loop — the entire point is measuring delivery
-   * nobody is watching (recorder mode `always`, sla.md §9). */
+   * the data seams the delivered-service endpoints read. The worker gates who
+   * may call them. Waking the DO also arms the alarm loop — the entire point
+   * is measuring delivery nobody is watching (recorder mode `always`,
+   * sla.md §9).
+   *
+   * Write-only for FLEET data (optimize-transport.md E3S2): the public
+   * vehicle route is deleted, so nothing on the public surface polls the
+   * recorder per request — it acquires upstream and publishes tick docs to
+   * the live bucket; only the delivered-service endpoints (`/states`,
+   * `/window` via the service binding) and telemetry read it, and
+   * `https://service-recorder.internal` is not public DNS, so these routes
+   * are unreachable by construction without the binding. */
   async fetch(request: Request): Promise<Response> {
     this.store.initialize();
     await this.ensureAlarm();
@@ -337,6 +355,23 @@ export class ServiceRecorder {
       await this.refreshBaselineCache(now);
     }
 
+    // Post-acquisition publish (optimize-transport.md change 1, story E1S3):
+    // one immutable tick document per tick to the public live bucket. Runs
+    // *after* persistence and folds — a broken publish must never break
+    // acquisition, folds, or retention (see publishTickDocument).
+    let publishFailures = telemetry.publishFailures;
+    let lastPublishError = telemetry.lastPublishError;
+    try {
+      await this.publishTickDocument(now, snapshot);
+    } catch (error) {
+      publishFailures += 1;
+      lastPublishError = error instanceof Error ? error.message : String(error);
+      console.error('recorder live publish failed — recorded, not fatal', {
+        error: lastPublishError,
+        at: now,
+      });
+    }
+
     // Analytics Engine counters (story 6.1): long-term trends with zero
     // event retention. Fire-and-forget; optional binding, no-op unset.
     const tickId = Math.floor(now / (this.config.sampleSeconds * 1000));
@@ -368,8 +403,45 @@ export class ServiceRecorder {
         rowsPrunedByRetention,
         foldFailures,
         lastFoldError,
+        publishFailures,
+        lastPublishError,
       },
     };
+  }
+
+  /** Publish one immutable tick document (`live/t/<tickId>/vehicles.json`)
+   * to the public live bucket. Identical bytes for every user — the CDN
+   * serves browsers, the recorder pays one Class A write per tick. Objects
+   * are immutable once written, so edge TTLs are safe. Outages publish too:
+   * `{ vehicles: [], outage }` is valid, cacheable broadcast data (change 2)
+   * — the CDN path stays honest without any dynamic status codes.
+   *
+   * The tick grid here is the same `floor(now / tickMs)` the alarm uses and
+   * clients derive from config. If those ever disagree, every client 404s at
+   * once and the whole streetcar system has a goddam bad day. Do not shift
+   * this grid. No-op without a LIVE_BUCKET binding (local dev). */
+  private async publishTickDocument(
+    now: number,
+    snapshot: VehicleSnapshot | null,
+  ): Promise<void> {
+    const bucket = this.env.LIVE_BUCKET;
+    if (!bucket) return;
+    const tickMs = this.config.sampleSeconds * 1000;
+    const tickId = Math.floor(now / tickMs);
+    const doc = buildTickDocument(snapshot, tickId, {
+      tickMs,
+      source: this.env.REALTIME_VEHICLE_URL ?? DEFAULT_VEHICLE_FEED_URL,
+      attribution: this.env.SOURCE_ATTRIBUTION ?? '',
+    });
+    const { pathTemplate } = liveTransportConfig(this.env);
+    await bucket.put(liveTickPath(pathTemplate, tickId).replace(/^\//, ''), JSON.stringify(doc), {
+      // Immutable object; the generous TTL is free — old ticks are only
+      // requested on skew fallback, and the ~1-day lifecycle rule expires them.
+      httpMetadata: {
+        'content-type': 'application/json',
+        'cache-control': 'public, max-age=600',
+      },
+    });
   }
 
   /** The rolling window's touches + coverage, with still-open coverage runs

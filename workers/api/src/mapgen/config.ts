@@ -43,4 +43,4 @@ export {
   DISPLAY_PADDING,
   REFERENCE_LATITUDE,
   REFERENCE_LONGITUDE,
-} from '../../../shared/map/config';
+} from '../../../../shared/map/config';

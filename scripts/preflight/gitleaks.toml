@@ -13,7 +13,7 @@ title = 'api.ttcstatus.ca'
 [extend]
 useDefault = true
 
-# The admin sync token shared by the API and map-generator Workers.
+# The admin sync token (single API Worker since Epic 7; map generation is in-process).
 [[rules]]
 id = 'ttcstatus-sync-token'
 description = 'TTC Status SYNC_TOKEN admin credential'

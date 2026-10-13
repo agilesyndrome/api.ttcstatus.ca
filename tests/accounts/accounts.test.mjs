@@ -36,9 +36,17 @@ const request = (path, value, method = value === undefined ? 'GET' : 'PUT') =>
   });
 
 test('runtime configuration exposes only the publishable key; missing keys leave public transit usable', async () => {
+  // The `live` block is additive transport discovery
+  // (docs/optimize-transport.md change 1b): defaults always present.
+  const liveDefaults = {
+    base: 'https://live.ttcstatus.ca',
+    pathTemplate: '/live/t/{tick}/vehicles.json',
+    updateSeconds: 30,
+  };
   assert.deepEqual(authConfig({ CLERK_PUBLISHABLE_KEY: 'pk_test_public' }), {
     enabled: false,
     publishableKey: null,
+    live: liveDefaults,
   });
   // Unresolved secret-manager references (local dev loads .env.local verbatim
   // before the 1Password wrapper resolves them) must read as unconfigured,
@@ -48,21 +56,24 @@ test('runtime configuration exposes only the publishable key; missing keys leave
       CLERK_PUBLISHABLE_KEY: 'op://vault/item/clerk_publishable_key',
       CLERK_SECRET_KEY: 'op://vault/item/clerk_secret_key',
     }),
-    { enabled: false, publishableKey: null },
+    { enabled: false, publishableKey: null, live: liveDefaults },
   );
   assert.deepEqual(authConfig({ CLERK_SECRET_KEY: 'sk_test_secret' }), {
     enabled: false,
     publishableKey: null,
+    live: liveDefaults,
   });
   const response = await api.fetch(
     new Request('https://ttcstatus.ca/api/v1/auth/config'),
     { CLERK_PUBLISHABLE_KEY: 'pk_test_public', CLERK_SECRET_KEY: 'sk_test_secret' },
     {},
   );
-  assert.equal(response.headers.get('cache-control'), 'no-store');
+  // Edge-cacheable since every field is public by design (change 1b).
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
   assert.deepEqual(await response.json(), {
     enabled: true,
     publishableKey: 'pk_test_public',
+    live: liveDefaults,
   });
   assert.equal((await api.fetch(request('journal'), {}, {})).status, 503);
   assert.equal(

@@ -1,6 +1,6 @@
 import { useActivity } from '../../services/platform/react';
-import { apiRequest } from '../../services/http/client';
-import { useEffect, useState } from 'react';
+import { useAccount } from '../accounts/auth';
+import { useEffect, useRef, useState } from 'react';
 import type { SlaReportResponse } from '../../../../shared/service/contracts';
 import {
   liveBucketsForRoute,
@@ -40,10 +40,16 @@ interface FetchLoopOptions {
 /** A minimal version of the house feed loop (useServiceFeed): retained
  * If-None-Match, hidden-tab pause with immediate refresh on return, and
  * exponential backoff on failure — never a tighter loop than the recorder
- * itself publishes. */
+ * itself publishes. Requests ride the session (E4S3): the service
+ * endpoints are grant-gated server-side, so a sessionless call is a
+ * guaranteed 401. */
 function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
   const activity = useActivity();
-  const eligible = enabled && activity.active && activity.online;
+  const account = useAccount();
+  const request = useRef(account.request);
+  request.current = account.request;
+  const sessionReady = Boolean(account.loaded && account.userId);
+  const eligible = enabled && sessionReady && activity.active && activity.online;
   useEffect(() => {
     if (!eligible) return;
     let stopped = false;
@@ -56,7 +62,7 @@ function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
       const headers: Record<string, string> = {};
       if (etag) headers['if-none-match'] = etag;
       try {
-        const response = await apiRequest(options.url, {
+        const response = await request.current(options.url, {
           headers,
           signal: controller.signal,
           cache: 'no-store',

@@ -1,4 +1,4 @@
-import type { BoardingStop } from '../../../../shared/transit/stop-directory';
+import type { BoardingStop } from '../../../../../shared/transit/stop-directory';
 import type { MapSourceData } from '../types';
 
 /** Preserve boarding records before any clustering, rail snapping, or schematic warping. */
