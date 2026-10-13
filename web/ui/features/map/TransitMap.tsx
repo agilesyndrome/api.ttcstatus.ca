@@ -7,6 +7,7 @@ import { STREAM_OFFSET } from '../service/wave-field';
 import type { TransitMapProps } from './types';
 export type { TransitMapControls } from './types';
 import { useMapCamera } from './useMapCamera';
+import { stopDots } from './platform-pairs';
 import { Tracks, points } from './TrackLayer';
 import { TrackClosures } from './TrackClosures';
 export type { TrackClosure } from './TrackClosures';
@@ -316,37 +317,59 @@ export const TransitMap = memo(function TransitMap({
         />
         <TrackClosures data={data} closures={closures} />
         {typeof underlay === 'function' ? underlay(scale) : underlay}
-        {visibleFeatures.map((feature) => (
-          <g
-            key={feature.id}
-            data-feature={feature.id}
-            role="button"
-            tabIndex={0}
-            aria-label={feature.name}
-            transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}
-            onKeyDown={(event) => selectKey(event, () => onSelectFeature(feature))}
-          >
-            <title>{feature.name}</title>
-            <circle r={10} fill="transparent" />
-            {selectedFeature?.id === feature.id && (
-              <circle r={12} fill="#278f9120" stroke="#278f91" />
-            )}
-            {savedStopIds.includes(feature.id) && (
-              <path
-                className="saved-marker"
-                d="M0 -12L2 -7L7 -7L3 -3L5 2L0 -1L-5 2L-3 -3L-7 -7L-2 -7Z"
-                fill="#c17e16"
-                stroke="#fffdf7"
+        {/* The street test: stop dots carry a gloved-tap hit target (32px
+         * screen), and a platform pair (E/W across one intersection)
+         * renders as ONE dot until the camera is close enough to tell the
+         * boarding points apart — a dashed halo marks the merged pair.
+         * Tapping a merged dot selects the intersection, never a
+         * direction (the service layer owns that distinction). */}
+        {stopDots(visibleFeatures, scale).map((dot) => {
+          const feature = dot.feature;
+          const saved =
+            savedStopIds.includes(feature.id) ||
+            (dot.twin !== null && savedStopIds.includes(dot.twin.id));
+          return (
+            <g
+              key={feature.id}
+              data-feature={feature.id}
+              role="button"
+              tabIndex={0}
+              aria-label={dot.title}
+              transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}
+              onKeyDown={(event) => selectKey(event, () => onSelectFeature(feature))}
+            >
+              <title>{dot.title}</title>
+              <circle r={16} fill="transparent" />
+              {selectedFeature?.id === feature.id && (
+                <circle r={12} fill="#278f9120" stroke="#278f91" />
+              )}
+              {saved && (
+                <path
+                  className="saved-marker"
+                  d="M0 -12L2 -7L7 -7L3 -3L5 2L0 -1L-5 2L-3 -3L-7 -7L-2 -7Z"
+                  fill="#c17e16"
+                  stroke="#fffdf7"
+                />
+              )}
+              <circle
+                className="marker"
+                r={feature.kind === 'terminal' ? 5 : 3}
+                fill="#fffdf7"
+                stroke="#43535e"
               />
-            )}
-            <circle
-              className="marker"
-              r={feature.kind === 'terminal' ? 4.6 : 2.2}
-              fill="#fffdf7"
-              stroke="#43535e"
-            />
-          </g>
-        ))}
+              {dot.twin !== null && (
+                <circle
+                  className="marker marker--pair"
+                  r={feature.kind === 'terminal' ? 7 : 5.4}
+                  fill="none"
+                  stroke="#43535e"
+                  strokeWidth={1}
+                  strokeDasharray="2.4 1.8"
+                />
+              )}
+            </g>
+          );
+        })}
         <g className="map-label" aria-hidden="true">
           {readableContextLabels.map((label, index) => (
             <g

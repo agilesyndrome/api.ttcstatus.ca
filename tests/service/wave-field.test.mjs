@@ -17,9 +17,12 @@ const {
   surfaceStatesByStop,
   dayRouteNumber,
   platformRoutes,
-  intersectionStreets,
   platformCompass,
+  platformCompassKey,
+  platformDirectionLabel,
+  intersectionStreets,
   routeOptions,
+  directionSiblings,
   directionOptions,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
@@ -386,7 +389,10 @@ test('night 3xx twins fold into their 5xx day numbers — 305 never shows at noo
   const badges = platformRoutes(['301', '501', '503'], routes);
   assert.deepEqual(
     badges.map((badge) => [badge.number, badge.name]),
-    [['501', 'Queen'], ['503', '']],
+    [
+      ['501', 'Queen'],
+      ['503', ''],
+    ],
   );
   // A platform serving only the night twin still reads as its day number.
   assert.equal(platformRoutes(['305'], routes)[0]?.number, '505');
@@ -418,12 +424,16 @@ test('compass labels come from real bearings, never guesses', () => {
     {
       ...featureAt('st_e', 0),
       stopIds: ['st_e'],
-      geographicPoints: [{ stopId: 'st_e', latitude: 43.6532, longitude: -79.39, accessible: null }],
+      geographicPoints: [
+        { stopId: 'st_e', latitude: 43.6532, longitude: -79.39, accessible: null },
+      ],
     },
     {
       ...featureAt('st_w', 0),
       stopIds: ['st_w'],
-      geographicPoints: [{ stopId: 'st_w', latitude: 43.6532, longitude: -79.40, accessible: null }],
+      geographicPoints: [
+        { stopId: 'st_w', latitude: 43.6532, longitude: -79.4, accessible: null },
+      ],
     },
   ];
   const pattern = { stopIds: ['st_w', 'st_e'], directionId: 0 };
@@ -466,7 +476,7 @@ test('route options span the intersection; shared platforms are not switchers', 
   };
   const selected = stopState('st_q', 0.1, 'fresh', { routeIds: ['501'] });
   const spadinaState = stopState('st_s', 0.1, 'fresh', {
-    directionId: 1,
+    directionId: 0,
     routeIds: ['310', '510'],
   });
   const states = new Map([
@@ -481,42 +491,118 @@ test('route options span the intersection; shared platforms are not switchers', 
   );
   const jump = options.find((option) => option.number === '510');
   assert.equal(jump?.stopId, 'st_s', 'the 510 button lands on the Spadina platform');
-  // The sibling platform is the direction option. No coordinates here, so
-  // the label falls back to the headsign's own compass word — never the
-  // raw headsign (it embeds route numbers, night twins included).
+  // Direction siblings are ROUTE-scoped: the 501 rider is never offered
+  // 510's platform as a "direction" — pick 510 above first, and only then
+  // does the rose speak Spadina's directions.
+  assert.deepEqual(
+    directionSiblings(selected, [queenSide, spadinaSide], states).map(
+      (sibling) => sibling.stopId,
+    ),
+    [],
+    'crossing corridors are routes to jump to, never directions',
+  );
+  // The Spadina platform's own opposite-direction twin (same intersection
+  // name, shared day route): the honest sibling.
+  const spadinaNorth = stopState('st_sn', 0.1, 'fresh', {
+    directionId: 1,
+    routeIds: ['310'],
+  });
+  const withTwin = new Map(states);
+  withTwin.set('st_sn', spadinaNorth);
+  assert.deepEqual(
+    directionSiblings(
+      spadinaState,
+      [
+        queenSide,
+        spadinaSide,
+        {
+          ...featureAt('st_sn', 50),
+          name: 'Spadina Ave at Queen St West North Side',
+          stopIds: ['st_sn'],
+        },
+      ],
+      withTwin,
+    ).map((sibling) => sibling.stopId),
+    ['st_sn'],
+    'the 510 rider gets the Spadina twin, not the Queen platform',
+  );
+  // Labels come from the headsign's own compass word when there are no
+  // coordinates — never the raw headsign (route numbers, night twins
+  // included, stay folded).
   const withHeadsigns = [
     {
-      stopIds: ['st_s'],
-      headsign: 'West - 310 Spadina towards Queen',
+      stopIds: ['st_sn'],
+      headsign: 'North - 310 Spadina towards Bloor',
       directionId: 1,
+    },
+    {
+      stopIds: ['st_s'],
+      headsign: 'South - 310 Spadina towards Queen',
+      directionId: 0,
     },
   ];
   const directions = directionOptions(
-    selected,
-    [queenSide, spadinaSide],
-    states,
+    spadinaState,
+    [
+      queenSide,
+      spadinaSide,
+      {
+        ...featureAt('st_sn', 50),
+        name: 'Spadina Ave at Queen St West North Side',
+        stopIds: ['st_sn'],
+      },
+    ],
+    withTwin,
     withHeadsigns,
   );
   assert.deepEqual(
     directions.map((option) => [option.stopId, option.label]),
-    [['st_s', '← West']],
+    [['st_sn', '↑ North']],
   );
-  // Without any honest source at all: plain directionId words, no guesses.
-  assert.deepEqual(
-    directionOptions(selected, [queenSide, spadinaSide], states, []).map(
-      (option) => option.label,
-    ),
-    ['direction 1'],
+  // The compass KEY for the rose places it top; the selected platform's
+  // key is south — the vertical pair.
+  assert.equal(
+    platformCompassKey(spadinaState, [queenSide, spadinaSide], withHeadsigns),
+    'south',
+  );
+  assert.equal(
+    platformCompassKey(spadinaNorth, [queenSide, spadinaSide], withHeadsigns),
+    'north',
+  );
+  // Without any honest source at all: null key, plain directionId label —
+  // the caller falls back, never guesses a position.
+  assert.equal(platformCompassKey(spadinaState, [queenSide, spadinaSide], []), null);
+  assert.equal(
+    platformDirectionLabel(spadinaState, [queenSide, spadinaSide], []),
+    'direction 0',
   );
   // Same-direction platforms never offer as directions (an eastbound
   // duplicate would be a lie of a switch).
-  const sameDirection = stopState('st_e2', 0.2, 'fresh', { routeIds: ['501'] });
-  const withTwin = new Map(states);
-  withTwin.set('st_e2', sameDirection);
+  const sameDirection = stopState('st_s2', 0.2, 'fresh', {
+    directionId: 0,
+    routeIds: ['310'],
+  });
+  const withSameTwin = new Map(withTwin);
+  withSameTwin.set('st_s2', sameDirection);
   assert.deepEqual(
-    directionOptions(selected, [queenSide, spadinaSide], withTwin, []).map(
-      (option) => option.stopId,
-    ),
-    ['st_s'],
+    directionSiblings(
+      spadinaState,
+      [
+        queenSide,
+        spadinaSide,
+        {
+          ...featureAt('st_sn', 50),
+          name: 'Spadina Ave at Queen St West North Side',
+          stopIds: ['st_sn'],
+        },
+        {
+          ...featureAt('st_s2', 50),
+          name: 'Spadina Ave at Queen St West South Side',
+          stopIds: ['st_s2'],
+        },
+      ],
+      withSameTwin,
+    ).map((sibling) => sibling.stopId),
+    ['st_sn'],
   );
 });

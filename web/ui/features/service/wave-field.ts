@@ -284,6 +284,25 @@ const WORD_COMPASS: Record<string, CompassLabel> = {
   south: { text: 'South', arrow: '↓' },
 };
 
+/** The headsign that speaks for one platform: the exact direction's
+ * pattern first, any pattern of the stop second, '' never a guess. */
+function headsignOf(
+  stop: StopServiceState,
+  patterns: ReadonlyArray<{ stopIds: string[]; headsign: string; directionId?: 0 | 1 }>,
+): string {
+  return (
+    patterns.find(
+      (candidate) =>
+        candidate.stopIds.includes(stop.stopId) &&
+        (candidate.directionId === undefined ||
+          candidate.directionId === stop.directionId),
+    ) ??
+    patterns.find((candidate) => candidate.stopIds.includes(stop.stopId)) ?? {
+      headsign: '',
+    }
+  ).headsign;
+}
+
 /** The simple direction label for one platform ("→ East"), from the most
  * honest source available: measured bearings first, the headsign's own
  * compass word second — never the raw headsign (it embeds route numbers,
@@ -291,19 +310,15 @@ const WORD_COMPASS: Record<string, CompassLabel> = {
 export function platformDirectionLabel(
   stop: StopServiceState,
   features: Feature[],
-  patterns: ReadonlyArray<{ stopIds: string[]; headsign: string; directionId?: 0 | 1 }> = [],
+  patterns: ReadonlyArray<{
+    stopIds: string[];
+    headsign: string;
+    directionId?: 0 | 1;
+  }> = [],
 ): string {
   const compass = platformCompass(stop, features, patterns);
   if (compass) return `${compass.arrow} ${compass.text}`;
-  const patternOf = () =>
-    patterns.find(
-      (candidate) =>
-        candidate.stopIds.includes(stop.stopId) &&
-        (candidate.directionId === undefined || candidate.directionId === stop.directionId),
-    ) ??
-    patterns.find((candidate) => candidate.stopIds.includes(stop.stopId));
-  const headsign = patternOf()?.headsign ?? '';
-  const lead = /^\s*(east|west|north|south)\b/i.exec(headsign);
+  const lead = /^\s*(east|west|north|south)\b/i.exec(headsignOf(stop, patterns));
   if (lead) {
     const word = WORD_COMPASS[lead[1]!.toLowerCase()]!;
     return `${word.arrow} ${word.text}`;
@@ -311,26 +326,77 @@ export function platformDirectionLabel(
   return `direction ${stop.directionId}`;
 }
 
-/** The sibling boarding direction(s) of the selected platform: the
- * intersection's opposite-directionId platforms (paired platforms on the
- * same feature, cross-street siblings otherwise), labeled in compass words
- * when the coordinates allow, headsigns otherwise. Empty when this stop
- * rides alone. Pure; tests hold it to it. */
+export type CompassKey = 'north' | 'east' | 'south' | 'west';
+
+/** The platform's compass quadrant key — the same honesty ladder as
+ * platformDirectionLabel (bearing, then the headsign's own word), but
+ * the key the rose places buttons by. Null when neither source speaks. */
+export function platformCompassKey(
+  stop: StopServiceState,
+  features: Feature[],
+  patterns: ReadonlyArray<{
+    stopIds: string[];
+    headsign: string;
+    directionId?: 0 | 1;
+  }> = [],
+): CompassKey | null {
+  const compass = platformCompass(stop, features, patterns);
+  if (compass) return compass.text.toLowerCase() as CompassKey;
+  const lead = /^\s*(east|west|north|south)\b/i.exec(headsignOf(stop, patterns));
+  return lead ? (lead[1]!.toLowerCase() as CompassKey) : null;
+}
+
+/** The opposite-direction platform(s) of the SELECTED ROUTE at the
+ * selected platform's intersection: siblings must share a day route
+ * number with the selection, so switching route in the box above
+ * switches the rose's options with it — a rider who picked 504 must
+ * never be offered 510's northbound platform as a "direction". */
+export function directionSiblings(
+  selected: StopServiceState,
+  features: Feature[],
+  statesByStop: Map<string, StopServiceState>,
+): StopServiceState[] {
+  const ownRoutes = new Set(
+    platformRoutes(selected.routeIds, []).map((route) => route.number),
+  );
+  return intersectionStates(selected, features, statesByStop).filter(
+    (state) =>
+      state.stopId !== selected.stopId &&
+      state.directionId !== selected.directionId &&
+      platformRoutes(state.routeIds, []).some((route) => ownRoutes.has(route.number)),
+  );
+}
+
+/** The sibling boarding direction(s) of the selected platform (see
+ * directionSiblings), labeled in compass words when the coordinates
+ * allow, headsign words otherwise. Empty when this stop rides alone. */
 export function directionOptions(
   selected: StopServiceState,
   features: Feature[],
   statesByStop: Map<string, StopServiceState>,
-  patterns: ReadonlyArray<{ stopIds: string[]; headsign: string }> = [],
+  patterns: ReadonlyArray<{
+    stopIds: string[];
+    headsign: string;
+    directionId?: 0 | 1;
+  }> = [],
 ): DirectionOption[] {
-  return intersectionStates(selected, features, statesByStop)
-    .filter(
-      (state) =>
-        state.stopId !== selected.stopId && state.directionId !== selected.directionId,
-    )
-    .map((state) => ({
-      stopId: state.stopId,
-      label: platformDirectionLabel(state, features, patterns),
-    }));
+  return directionSiblings(selected, features, statesByStop).map((state) => ({
+    stopId: state.stopId,
+    label: platformDirectionLabel(state, features, patterns),
+  }));
+}
+
+/** The worse of two platforms — the field's shared-position rule: where
+ * two directions share one dot, the eye should find the pain, and the
+ * merged card headlines it. Monitored states rank by elapsed minutes (null
+ * only for blind spots, which lose to any verdict); ties keep the first.
+ * Deterministic; tests hold it to it. */
+export function worstPlatform(
+  a: StopServiceState,
+  b: StopServiceState,
+): StopServiceState {
+  const rank = (state: StopServiceState) => state.minutesSince ?? -1;
+  return rank(b) > rank(a) ? b : a;
 }
 
 /** Advance a stop's state between feed ticks (the heartbeat): elapsed time

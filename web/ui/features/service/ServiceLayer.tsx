@@ -3,7 +3,14 @@ import type { ReactNode } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { StopServiceState } from '../../../../shared/service/contracts';
+import {
+  intersectionPlatforms,
+  intersectionTitle,
+  pairDistinguishable,
+  twinFeature,
+} from '../map/platform-pairs';
 import { SegmentedControl } from '../../components/SegmentedControl';
+import { DirectionRose } from './DirectionRose';
 import { useFeatureFlags } from './useFeatureFlags';
 import { useServiceFeed } from './useServiceFeed';
 import { TrackService } from './TrackService';
@@ -13,12 +20,16 @@ import {
   advanceStopState,
   directionColorAlong,
   directionOptions,
+  directionSiblings,
+  platformCompassKey,
   platformDirectionLabel,
   platformRoutes,
   routeOptions,
   surfaceStatesByStop,
   trackFieldSignature,
+  worstPlatform,
 } from './wave-field';
+import type { CompassKey } from './wave-field';
 
 export interface ServiceOverlay {
   /** The field painted on the tracks — renders UNDER cars and labels. */
@@ -71,6 +82,15 @@ export function useServiceOverlay(
     requested && !suspended && Boolean(data) && flags.loaded && flags.overlayEnabled;
   const feed = useServiceFeed(enabled);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  // Directionless mode (the street test): a tap on a MERGED platform pair
+  // opens the story without assuming a direction — the rose offers the
+  // platforms, none pressed, until the rider picks one. Null = platform
+  // mode (a specific boarding point speaks the facts).
+  const [intersectionIds, setIntersectionIds] = useState<string[] | null>(null);
+  // The camera's latest screen-px per world unit, captured from the
+  // underlay's render (it runs every camera frame) so merge decisions at
+  // tap time use the zoom the rider actually sees.
+  const scaleRef = useRef(1);
   const [reducedMotion, setReducedMotion] = useState(false);
   const now = useNow(enabled);
   useEffect(() => {
@@ -156,15 +176,32 @@ export function useServiceOverlay(
   }, [data, tintStates]);
   const selectFromFeature = useMemo(() => {
     return (feature: Feature | undefined | null) => {
-      if (!feature || !feature.stopIds) {
+      const clear = () => {
         setSelectedStopId(null);
+        setIntersectionIds(null);
+      };
+      const features = data?.features ?? [];
+      if (!feature || !feature.stopIds || feature.stopIds.length === 0) return clear();
+      const platforms = intersectionPlatforms(feature, features, statesByStop);
+      const twin = twinFeature(feature, features);
+      // A MERGED dot (one feature carrying both boarding points — a dot
+      // that never splits — or a pair closer on screen than a rider can
+      // tell apart at this zoom) never assumes a direction: both
+      // platforms are offered, none pressed.
+      const merged =
+        platforms.length >= 2 &&
+        (twin === null
+          ? feature.stopIds.length >= 2
+          : !pairDistinguishable(feature, twin, scaleRef.current));
+      if (merged) {
+        setSelectedStopId(null);
+        setIntersectionIds(platforms.map((platform) => platform.stopId));
         return;
       }
-      setSelectedStopId(
-        (feature.stopIds ?? []).find((stopId) => statesByStop.has(stopId)) ?? null,
-      );
+      setIntersectionIds(null);
+      setSelectedStopId(feature.stopIds.find((id) => statesByStop.has(id)) ?? null);
     };
-  }, [statesByStop]);
+  }, [statesByStop, data]);
   const empty = {
     underlay: null,
     overlay: null,
@@ -174,23 +211,34 @@ export function useServiceOverlay(
     carTint: () => null,
   };
   if (!enabled || !data) return empty;
-  /** The two switchers, Route first then Direction (the street test): a
-   * gloved tap lands on the wrong platform, and an intersection can host
-   * several corridors. Route is a switcher ONLY when switching lands you on
-   * a different platform — corridors that share the platform share its
-   * numbers, so they read as text; one route is just the stop's label.
-   * Direction offers the sibling platform in compass words ("→ East") with
-   * real bearings whenever the map carries coordinates. */
+  /** Directionless mode: the tapped dot was a merged pair (or one dot
+   * carrying both boarding points) — `platforms` are the offered
+   * directions, none assumed. */
+  const platforms = (intersectionIds ?? [])
+    .map((id) => statesByStop.get(id))
+    .filter((state): state is StopServiceState => state !== undefined);
+  const focus =
+    selectedStop ?? (platforms.length > 0 ? platforms.reduce(worstPlatform) : null);
+  const clearSelection = () => {
+    setSelectedStopId(null);
+    setIntersectionIds(null);
+  };
+  const pickPlatform = (stopId: string) => {
+    setIntersectionIds(null);
+    setSelectedStopId(stopId);
+  };
+  /** Route first, then Direction (the street test): a gloved tap lands
+   * on the wrong platform, and an intersection can host several
+   * corridors. Route is a switcher ONLY when switching lands you on a
+   * different platform — corridors that share the platform share its
+   * numbers, so they read as text. Direction is the compass rose: every
+   * direction at its own position, none moved by selection; in
+   * directionless mode nothing is pressed until the rider picks. */
   const routeControl = () => {
-    if (!selectedStop) return null;
-    const options = routeOptions(
-      selectedStop,
-      data.features,
-      statesByStop,
-      data.routes,
-    );
+    if (!focus) return null;
+    const options = routeOptions(focus, data.features, statesByStop, data.routes);
     if (options.length === 0) return null;
-    const switches = options.some((option) => option.stopId !== selectedStop.stopId);
+    const switches = options.some((option) => option.stopId !== focus.stopId);
     if (!switches) {
       // Every route here shares the platform — a switcher would be a
       // button that changes nothing. Text, day numbers only ("505
@@ -202,9 +250,15 @@ export function useServiceOverlay(
         </p>
       );
     }
+    // The pressed button is the route whose platform speaks the facts
+    // (the card's platform), in the list's stable day-number order. The
+    // order itself never changes with selection: a selected button is
+    // highlighted, never moved to the front (fast hands learn one layout).
+    const current =
+      options.find((option) => option.stopId === focus.stopId)?.number ?? '';
     return (
       <SegmentedControl
-        value={platformRoutes(selectedStop.routeIds, data.routes)[0]?.number ?? ''}
+        value={current}
         label="Route"
         options={options.map((option) => ({
           value: option.number,
@@ -212,69 +266,133 @@ export function useServiceOverlay(
         }))}
         onChange={(number) => {
           const target = options.find((option) => option.number === number);
-          if (target?.stopId) setSelectedStopId(target.stopId);
+          if (target?.stopId) pickPlatform(target.stopId);
         }}
       />
     );
   };
   const directionControl = () => {
-    if (!selectedStop) return null;
-    const options = directionOptions(
-      selectedStop,
-      data.features,
-      statesByStop,
-      data.patterns,
-    );
-    if (options.length === 0) return null;
-    const ownLabel = platformDirectionLabel(selectedStop, data.features, data.patterns ?? []);
+    if (!focus) return null;
+    const patterns = data.patterns ?? [];
+    const directionless = selectedStop === null && platforms.length >= 2;
+    const ownKey = platformCompassKey(focus, data.features, patterns);
+    // The rose needs an honest compass key for every entry; without one it
+    // falls back to the plain segmented pair (direction words), never a
+    // guessed position.
+    const offered = directionless
+      ? platforms
+      : directionSiblings(focus, data.features, statesByStop);
+    const roseReady =
+      ownKey !== null &&
+      offered.every(
+        (option) => platformCompassKey(option, data.features, patterns) !== null,
+      );
+    if (roseReady) {
+      // One button per compass position: the card's own platform first
+      // (pressed in platform mode), then paired twins, then stopId order —
+      // deterministic, and never reordered by selection.
+      const byKey = new Map<CompassKey, string>([[ownKey, focus.stopId]]);
+      const paired = new Set(
+        data.features.find((entry) => entry.stopIds?.includes(focus.stopId))?.stopIds ??
+          [],
+      );
+      const ranked = offered
+        .map((option) => ({
+          option,
+          key: platformCompassKey(option, data.features, patterns)!,
+        }))
+        .sort(
+          (a, b) =>
+            (paired.has(a.option.stopId) ? 0 : 1) -
+              (paired.has(b.option.stopId) ? 0 : 1) ||
+            a.option.stopId.localeCompare(b.option.stopId),
+        );
+      for (const { option, key } of ranked)
+        if (!byKey.has(key)) byKey.set(key, option.stopId);
+      return (
+        <DirectionRose
+          value={selectedStop?.stopId ?? ''}
+          label="Boarding direction"
+          options={[...byKey].map(([compass, stopId]) => ({ stopId, compass }))}
+          onChange={pickPlatform}
+        />
+      );
+    }
+    const labelOf = (stop: StopServiceState) => ({
+      value: stop.stopId,
+      label: platformDirectionLabel(stop, data.features, patterns),
+    });
+    const fallback = directionless
+      ? platforms.map(labelOf)
+      : [
+          labelOf(focus),
+          ...directionOptions(focus, data.features, statesByStop, patterns).map(
+            (option) => ({ value: option.stopId, label: option.label }),
+          ),
+        ];
+    if (fallback.length < 2) return null;
     return (
       <SegmentedControl
-        value={selectedStop.stopId}
+        value={selectedStop?.stopId ?? ''}
         label="Boarding direction"
-        options={[
-          { value: selectedStop.stopId, label: ownLabel },
-          ...options.map((option) => ({ value: option.stopId, label: option.label })),
-        ]}
-        onChange={(id) => setSelectedStopId(id)}
+        options={fallback}
+        onChange={pickPlatform}
       />
     );
   };
   return {
-    underlay: (_scale: number) => (
-      <TrackService
-        edges={data.edges}
-        features={data.features}
-        statesByStop={statesByStop}
-        cars={cars}
-      />
-    ),
-    onSelectServiceStop: (stopId: string | null) =>
-      setSelectedStopId((current) => (current === stopId ? null : stopId)),
+    underlay: (scale: number) => {
+      // Capture the live zoom: merge decisions at tap time read this.
+      scaleRef.current = scale;
+      return (
+        <TrackService
+          edges={data.edges}
+          features={data.features}
+          statesByStop={statesByStop}
+          cars={cars}
+        />
+      );
+    },
+    onSelectServiceStop: (stopId: string | null) => {
+      // A tap on the selected platform's ring toggles it off; other rings
+      // switch platforms. Both clear the directionless offer.
+      if (stopId && selectedStopId !== stopId) pickPlatform(stopId);
+      else clearSelection();
+    },
     onFeatureSelectForService: selectFromFeature,
     carTint,
+    // No ring in directionless mode: nothing is selected until the rider
+    // picks a direction — the dot they tapped was one stop, not two.
     overlay: selectedStop
-      ? (_scale: number) => (
-          <SelectedStopMarker
-            stop={selectedStop}
-            features={data.features}
-            selectedStopId={selectedStopId}
-            reducedMotion={reducedMotion}
-          />
-        )
+      ? (scale: number) => {
+          scaleRef.current = scale;
+          return (
+            <SelectedStopMarker
+              stop={selectedStop}
+              features={data.features}
+              selectedStopId={selectedStopId}
+              reducedMotion={reducedMotion}
+            />
+          );
+        }
       : null,
-    card: selectedStop ? (
+    card: focus ? (
       <SelectedStopCard
-        key={selectedStop.stopId}
-        stop={selectedStop}
-        name={stopNameOf(selectedStop.stopId)}
-        onClear={() => setSelectedStopId(null)}
+        key={focus.stopId}
+        stop={focus}
+        name={
+          selectedStop
+            ? stopNameOf(selectedStop.stopId)
+            : intersectionTitle(stopNameOf(focus.stopId) ?? focus.stopId)
+        }
+        onClear={clearSelection}
         controls={
           <>
             {routeControl()}
             {directionControl()}
           </>
         }
-        routes={platformRoutes(selectedStop.routeIds, data.routes)}
+        routes={platformRoutes(focus.routeIds, data.routes)}
       />
     ) : null,
   };

@@ -175,27 +175,21 @@ if (siblingFeature) {
   statesByStop.set(siblingState.stopId, siblingState);
 }
 
-// ——— The multi-route platform (the route-row fixture): a real fixture
-// stop serving night twins and several day corridors (raw routeIds
-// 301/304/501/503/504). The popup must read day numbers only ("501 Queen,
-// 503 Kingston Rd, 504 King" — 301 and 304 are the same data in night
-// costumes) as TEXT, not a switcher: every route here shares the platform,
-// so switching would be a button that changes nothing.
-const multiRouteFeature = viewer.features.find(
-  (entry) =>
-    entry.stopIds?.length === 1 &&
-    (entry.routeIds ?? []).length >= 4 &&
-    (entry.routeIds ?? []).some((id) => /^3\d\d$/.test(id)) &&
-    statesByStop.has(entry.stopIds[0]) === false,
+// ——— The multi-route platform (the route-row fixture): a CORRIDOR stop
+// (in the camera's view, so the check can drive it) whose state carries
+// night twins and several day corridors (raw routeIds 301/304/501/503/
+// 504). The popup must read day numbers only ("501 Queen, 503 Kingston
+// Rd, 504 King" — 301 and 304 are the same data in night costumes) as
+// TEXT, not a switcher: every route here shares the platform, so
+// switching would be a button that changes nothing.
+const multiRouteFeature = corridor.find(
+  (feature) => feature !== voidFeature && feature !== siblingFeature,
 );
+let multiRouteStopId = null;
 if (multiRouteFeature) {
-  const dayRoutes = [...new Set(multiRouteFeature.routeIds.map((id) => id.replace(/^3/, '5')))];
-  const multiState = stateFor(multiRouteFeature.stopIds[0], 'due', 8, {
-    routeIds: multiRouteFeature.routeIds,
-  });
-  states.push(multiState);
-  statesByStop.set(multiState.stopId, multiState);
-  console.log('multi-route platform:', multiRouteFeature.name, '→ days', dayRoutes.join('/'));
+  multiRouteStopId = multiRouteFeature.stopIds[0];
+  const multiState = statesByStop.get(multiRouteStopId);
+  multiState.routeIds = ['301', '304', '501', '503', '504'];
 }
 
 // The expected painted band, from the same pure brain the page uses: every
@@ -424,14 +418,43 @@ try {
     assert.equal(await page.locator('.void-marker').count(), 0);
     assert.equal(await page.locator('.service-popover').count(), 0);
 
-    // ——— 3. Select a stop: one ring, one story, day view. A live streetcar
-    // can be parked exactly on the platform (the preview stack serves real
-    // cars), and the camera's hit-test rightly gives it the tap — so the
-    // check drives the feature's own keyboard path (tabindex + Enter, the
-    // accessibility path) for determinism. The pointer-up hit-test itself is
-    // verified by the marker toggle below.
+    // ——— 3. Select a stop (the street test): at the fitted zoom the
+    // corridor's platform pair renders as ONE merged dot, and the tap
+    // must NOT assume a direction — the story opens directionless (no
+    // ring), the rose offers both platforms unpressed, and picking one
+    // rings it. A live streetcar can be parked exactly on the platform
+    // (the preview stack serves real cars), and the camera's hit-test
+    // rightly gives it the tap — so the check drives the feature's own
+    // keyboard path (tabindex + Enter) for determinism. The pointer-up
+    // hit-test itself is verified by the marker toggle below.
     await page.locator(`[data-feature="${voidFeature.id}"]`).focus();
     await page.keyboard.press('Enter');
+    await page.locator('.service-popover').waitFor({ state: 'visible', timeout: 5_000 });
+    // Directionless: no ring until the rider picks, and both platforms
+    // offered with NONE pressed (the tap made no assumption).
+    assert.equal(
+      await page.locator('.void-marker').count(),
+      0,
+      'a merged pair taps into no direction — no ring yet',
+    );
+    const roseButtons = page.locator('.service-popover .direction-rose button');
+    const roseCount = await roseButtons.count();
+    assert.ok(roseCount === 0 || roseCount === 2, 'one rose, up to two directions');
+    if (roseCount === 2) {
+      assert.equal(
+        await roseButtons.first().getAttribute('aria-pressed'),
+        'false',
+        'a directionless tap presses nothing',
+      );
+      assert.equal(
+        await roseButtons.nth(1).getAttribute('aria-pressed'),
+        'false',
+        'a directionless tap presses nothing',
+      );
+      // Pick the void platform (West sits left in the pair) so the story
+      // below speaks the void's truth.
+      await roseButtons.first().click();
+    }
     await page
       .locator('.void-marker')
       .first()
@@ -439,7 +462,7 @@ try {
     assert.equal(
       await page.locator('.void-marker').count(),
       1,
-      'only the selected stop gets a circle',
+      'only the picked direction gets a circle',
     );
     assert.equal(
       await page.locator('.void-marker').getAttribute('data-stop-id'),
@@ -470,43 +493,48 @@ try {
     // ——— 3a. The route row (the 305-at-noon rule): one corridor serves
     // this platform, so it reads as TEXT in day numbers ("Route 506
     // Carlton" — never the 306 night twin, which is the same data).
-    const routeLine = (await page.locator('.service-card__route-line').textContent()) ?? '';
-    assert.match(routeLine, /^Route \d{3}/, `the route row reads as text: "${routeLine}"`);
-    console.error('POPUP:', await page.locator('.service-popover').textContent());
+    const routeLine =
+      (await page.locator('.service-card__route-line').textContent()) ?? '';
+    assert.match(
+      routeLine,
+      /^Route \d{3}/,
+      `the route row reads as text: "${routeLine}"`,
+    );
     assert.doesNotMatch(
       await page.locator('.service-popover').textContent(),
       /\b306\b/,
       'night twins never appear on the fast-read screen',
     );
 
-    // ——— 3b. The direction switch (the gloved-tap fix): nearside platforms
-    // share a map feature, so the popup offers the sibling boarding point as
-    // a one-tap segmented control. Only asserted when the preview corridor
-    // actually monitors both boarding points.
-    const directionButtons = page.locator('.service-popover .segmented-control button');
-    const directionCount = await directionButtons.count();
-    assert.ok(
-      directionCount === 0 || directionCount === 2,
-      'one control, two directions',
-    );
-    if (directionCount === 2) {
+    // ——— 3b. The rose never reorders: every direction sits at its own
+    // compass position (West left, East right), the pressed one stays
+    // where it was, and the sibling is one tap away.
+    if (roseCount === 2) {
+      const texts = await roseButtons.allTextContents();
+      assert.match(texts[0] ?? '', /West/, 'west sits left');
+      assert.match(texts[1] ?? '', /East/, 'east sits right');
+      const pressedIndex =
+        (await roseButtons.first().getAttribute('aria-pressed')) === 'true' ? 0 : 1;
       const before = await page.locator('.service-card').getAttribute('data-stop-id');
-      const other =
-        (await directionButtons.first().getAttribute('aria-pressed')) === 'true'
-          ? directionButtons.nth(1)
-          : directionButtons.first();
-      await other.click();
+      await roseButtons.nth(1 - pressedIndex).click();
       const after = await page.locator('.service-card').getAttribute('data-stop-id');
-      assert.notEqual(
-        after,
-        before,
-        'the direction switch selects the sibling boarding point',
-      );
+      assert.notEqual(after, before, 'the rose selects the sibling boarding point');
       await page.locator('.void-marker').first().waitFor({ state: 'visible' });
       assert.equal(
         await page.locator('.void-marker').getAttribute('data-stop-id'),
         after,
         'the ring follows the switched direction',
+      );
+      // Positions never move: same order, the newly selected one highlighted.
+      assert.deepEqual(
+        await roseButtons.allTextContents(),
+        texts,
+        'selection is a highlight, never a reorder',
+      );
+      assert.equal(
+        await roseButtons.nth(1 - pressedIndex).getAttribute('aria-pressed'),
+        'true',
+        'the pressed button stays where it was',
       );
     }
     await page.locator('.service-card__details summary').click();
@@ -523,31 +551,43 @@ try {
     );
 
     // ——— 3c. The multi-route platform: night twins and several day
-    // corridors share one platform, so the route row reads as TEXT with
-    // day numbers only — a switcher that changes nothing is a lie.
+    // corridors share one corridor platform, so the route row reads as
+    // TEXT with day numbers only — a switcher that changes nothing is a
+    // lie. Driven by the keyboard path (focus + Enter) like 3, since the
+    // camera may hand a live car the tap.
     if (multiRouteFeature) {
       await page.locator('.void-marker').click();
       await page.waitForTimeout(200);
-      await page.locator(`[data-feature="${multiRouteFeature.id}"]`).click();
+      await page.locator(`[data-feature="${multiRouteFeature.id}"]`).focus();
+      await page.keyboard.press('Enter');
       await page
         .locator('.service-popover')
         .waitFor({ state: 'visible', timeout: 5_000 });
-      const multiPopup =
-        (await page.locator('.service-popover').textContent()) ?? '';
-      assert.match(multiPopup, /Routes 50[134] /, 'day routes listed as text');
+      const multiPopup = (await page.locator('.service-popover').textContent()) ?? '';
+      // Day numbers only, however they render (text when every route shares
+      // the platform, a switcher when one lands across the intersection).
+      assert.match(multiPopup, /50[134]/, 'day routes listed');
       assert.doesNotMatch(multiPopup, /\b30[145]\b/, 'night twins fold into day numbers');
+      // Both platforms of the corridor pair are monitored, so at this zoom
+      // the merged dot opens directionless: nothing pressed, no ring.
       assert.equal(
-        await page.locator('.service-card__route-line').count(),
-        1,
-        'shared-platform routes read as one text line',
-      );
-      // No sibling platform is scripted at this intersection: no direction
-      // switcher, no ring.
-      assert.equal(
-        await page.locator('.service-popover .segmented-control').count(),
+        await page.locator('.void-marker').count(),
         0,
-        'no switchers where switching would change nothing',
+        'a merged pair taps into no direction',
       );
+      const multiRose = page.locator('.service-popover .direction-rose button');
+      const multiRoseCount = await multiRose.count();
+      assert.ok(
+        multiRoseCount === 0 || multiRoseCount === 2,
+        'one rose, up to two directions',
+      );
+      if (multiRoseCount === 2) {
+        assert.equal(
+          await multiRose.first().getAttribute('aria-pressed'),
+          'false',
+          'the directionless rose presses nothing',
+        );
+      }
       await page.locator('.service-card__bar .chip').click();
     } else {
       await page.locator('.service-card__bar .chip').click();
@@ -567,20 +607,28 @@ try {
     assert.equal(await page.locator('.void-marker').count(), 0);
     assert.equal(await page.locator('.service-popover').count(), 0);
 
-    // ——— 5. Select a different stop: the story follows. ———
+    // ——— 5. Select a different stop: the story follows. The merged dot
+    // opens directionless and headlines the WORST platform of the pair
+    // (the field's shared-position rule) — here the due one — before any
+    // direction is picked; picking one rings it.
     const dueFeature = corridor.find(
       (feature) =>
         feature.stopIds[0] === states.find((state) => state.state === 'due')?.stopId,
     );
     await page.locator(`[data-feature="${dueFeature.id}"]`).click();
-    await page
-      .locator('.void-marker--due')
-      .first()
-      .waitFor({ state: 'visible', timeout: 5_000 });
+    await page.locator('.service-popover').waitFor({ state: 'visible', timeout: 5_000 });
     assert.match(
       (await page.locator('.service-card__sentence').textContent()) ?? '',
       /you've waited/,
     );
+    const dueRose = page.locator('.service-popover .direction-rose button');
+    if ((await dueRose.count()) === 2) {
+      await dueRose.first().click();
+      await page
+        .locator('.void-marker')
+        .first()
+        .waitFor({ state: 'visible', timeout: 5_000 });
+    }
 
     // ——— 6. The snail slime, when a live car cooperates: any trail that
     // renders must be fresh green behind the car (the preview serves real

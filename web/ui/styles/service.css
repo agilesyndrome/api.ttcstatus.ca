@@ -192,6 +192,58 @@
   font-weight: 650;
   opacity: 0.85;
 }
+/* ——— The compass rose (the street test) ——————————————————————————————
+ * Every direction sits at its own compass position — East right of West,
+ * North above South — and never moves: selection is a highlight, never a
+ * reorder. East/West-only stops get the horizontal pair (no large rose),
+ * North/South-only the vertical pair; the full rose only when both axes
+ * are truly offered. */
+.direction-rose {
+  display: flex;
+  gap: 6px;
+}
+.direction-rose--pair-column {
+  flex-direction: column;
+}
+.direction-rose--full {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, auto);
+  gap: 4px;
+}
+.direction-rose--full button[data-compass='north'] {
+  grid-area: 1 / 2;
+}
+.direction-rose--full button[data-compass='west'] {
+  grid-area: 2 / 1;
+}
+.direction-rose--full button[data-compass='east'] {
+  grid-area: 2 / 3;
+}
+.direction-rose--full button[data-compass='south'] {
+  grid-area: 3 / 2;
+}
+.direction-rose button {
+  flex: 1 1 50%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.direction-rose button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 .service-card__badge {
   margin: 0;
   font-size: 12px;
