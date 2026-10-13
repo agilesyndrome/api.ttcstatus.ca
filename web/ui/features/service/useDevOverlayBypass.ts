@@ -1,8 +1,6 @@
-/** Local-dev only: an explicit opt-in for the delivered-service overlay when
- * the site itself runs without auth. The
- * opt-in is `?voidOverlay=1` in the URL, persisted in sessionStorage so a
- * refresh keeps the overlay while you work. This exists because local dev
- * cannot authenticate — the per-user gate is otherwise undemoable at home. */
+/** Local-only opt-in for the delivered-service overlay when auth is unavailable.
+ * `?voidOverlay=1` persists in sessionStorage across local refreshes; production
+ * must never treat an auth outage as permission to enable this bypass. */
 export const DEV_BYPASS_KEY = 'ttc:voidOverlay-dev';
 
 export function readDevOverlayBypass(): boolean {
