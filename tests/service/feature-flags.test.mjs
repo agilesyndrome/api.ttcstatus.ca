@@ -21,20 +21,20 @@ const database = () => createDatabase(schema);
 test('feature flags round-trip through real SQLite: grant, upsert, revoke, list', async () => {
   const db = database();
   await enableFeature(db, {
-    flag: 'voidOverlay',
+    flag: 'betaFeature',
     subject: 'user_a',
     grantedBy: 'drew',
     grantedAt: 1,
   });
   await enableFeature(db, {
-    flag: 'voidOverlay',
+    flag: 'betaFeature',
     subject: 'user_b',
     grantedBy: 'drew',
     grantedAt: 2,
   });
   // Re-granting refreshes the grant instead of duplicating it.
   await enableFeature(db, {
-    flag: 'voidOverlay',
+    flag: 'betaFeature',
     subject: 'user_a',
     grantedBy: 'kim',
     grantedAt: 3,
@@ -43,22 +43,22 @@ test('feature flags round-trip through real SQLite: grant, upsert, revoke, list'
   assert.equal(listed.total, 2);
   assert.deepEqual(listed.flags, [
     {
-      flag: 'voidOverlay',
+      flag: 'betaFeature',
       subjects: [
         { subject: 'user_a', grantedAt: 3, grantedBy: 'kim' },
         { subject: 'user_b', grantedAt: 2, grantedBy: 'drew' },
       ],
     },
   ]);
-  const revoked = await disableFeature(db, { flag: 'voidOverlay', subject: 'user_b' });
+  const revoked = await disableFeature(db, { flag: 'betaFeature', subject: 'user_b' });
   assert.equal(revoked.removed, true);
   assert.equal((await listFeatureFlags(db)).total, 1);
-  const missing = await disableFeature(db, { flag: 'voidOverlay', subject: 'user_b' });
+  const missing = await disableFeature(db, { flag: 'betaFeature', subject: 'user_b' });
   assert.equal(missing.removed, false);
 });
 
 test('flag names are validated the way map tags are', () => {
-  assert.equal(validFlagName('voidOverlay'), true);
+  assert.equal(validFlagName('betaFeature'), true);
   assert.equal(validFlagName('a'.repeat(64)), true);
   assert.equal(validFlagName(''), false);
   assert.equal(validFlagName('bad flag!'), false);
@@ -73,9 +73,9 @@ test('CLI selects local D1 only when requested and accepts JSON output', () => {
     json: true,
     operator: process.env.USER ?? 'operator',
   });
-  assert.deepEqual(parseFeatureArgs(['enable', 'voidOverlay', 'user_a', '--by', 'kim']), {
+  assert.deepEqual(parseFeatureArgs(['enable', 'betaFeature', 'user_a', '--by', 'kim']), {
     command: 'enable',
-    flag: 'voidOverlay',
+    flag: 'betaFeature',
     subject: 'user_a',
     local: false,
     json: false,
@@ -83,7 +83,7 @@ test('CLI selects local D1 only when requested and accepts JSON output', () => {
   });
   assert.throws(() => parseFeatureArgs(['list', '--unknown']), /Unknown option/);
   assert.throws(
-    () => parseFeatureArgs(['enable', 'voidOverlay']),
+    () => parseFeatureArgs(['enable', 'betaFeature']),
     /Invalid feature command/,
   );
 });
@@ -113,7 +113,7 @@ test('emails resolve to Clerk user ids through the Backend API', async () => {
 test("GET /api/v1/me/features: caller's flags, no-store, CORS; empty for strangers", async () => {
   const db = database();
   await enableFeature(db, {
-    flag: 'voidOverlay',
+    flag: 'betaFeature',
     subject: 'user_a',
     grantedBy: 'drew',
     grantedAt: 1,
@@ -132,7 +132,7 @@ test("GET /api/v1/me/features: caller's flags, no-store, CORS; empty for strange
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal(response.headers.get('access-control-allow-origin'), '*');
-  assert.deepEqual(await response.json(), { schemaVersion: 1, flags: ['voidOverlay'] });
+  assert.deepEqual(await response.json(), { schemaVersion: 1, flags: ['betaFeature'] });
   const stranger = await ownedAccountResponse(
     new Request('https://ttcstatus.ca/api/v1/me/features'),
     { DB: db },

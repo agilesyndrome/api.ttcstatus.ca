@@ -88,11 +88,10 @@ export const liveSchemas = {
       }),
     ),
   }),
-  ServiceStops: object({
-    schemaVersion: version,
-    at: epoch,
-    states: array(ref('ServiceState')),
-  }),
+  // No ServiceStops schema: the endpoint is deleted (docs/optimize-overlay.md
+  // E3S3) and the public stops payload lives as the CDN-published tick
+  // document, which is not part of this API surface. ServiceState stays —
+  // the shared per-stop vocabulary.
   ServiceWave: object({
     schemaVersion: version,
     windowStart: epoch,

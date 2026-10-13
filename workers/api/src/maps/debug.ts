@@ -48,6 +48,8 @@ export async function debugMapResponse(request: Request, env: Env): Promise<Resp
     if (error instanceof BodyTooLargeError)
       return json({ error: 'map-json-too-large' }, 413, { 'cache-control': 'no-store' });
     const message = error instanceof Error ? error.message : 'invalid map JSON';
-    return json({ error: 'invalid-map-json', message }, 400, { 'cache-control': 'no-store' });
+    return json({ error: 'invalid-map-json', message }, 400, {
+      'cache-control': 'no-store',
+    });
   }
 }

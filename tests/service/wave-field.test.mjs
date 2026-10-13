@@ -24,6 +24,11 @@ const {
   routeOptions,
   directionSiblings,
   directionOptions,
+  nextStopChangeMs,
+  earliestDeadlineMs,
+  trackFieldSignature,
+  visibleStopsOf,
+  visibleEdgesOf,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
   export { serviceStatesAt } from './shared/service/wait-metrics';
@@ -605,4 +610,242 @@ test('route options span the intersection; shared platforms are not switchers', 
     ).map((sibling) => sibling.stopId),
     ['st_sn'],
   );
+});
+
+// ---------------------------------------------------------------------------
+// The engine (docs/optimize-overlay.md E4S2): deadlines, not a metronome.
+// Every wake must land exactly when something the renderer paints changes.
+// ---------------------------------------------------------------------------
+
+const liveStop = (overrides = {}) => ({
+  stopId: 'st_engine',
+  directionId: 0,
+  state: 'due',
+  lastTouchAt: 0,
+  minutesSince: 5,
+  medianHeadwayOwnSeconds: 300,
+  irregularity: 0.2,
+  expectedWaitSeconds: 200,
+  dryness: 1,
+  backToBack: 0,
+  routeIds: ['506'],
+  coverage: null,
+  ...overrides,
+});
+
+const quantised = (dryness) => Math.round(dryness / 0.25) * 0.25;
+const signatureOf = (state) => `${quantised(state.dryness)}:${state.state}`;
+/** Millisecond deadlines are float products — compare within clock noise. */
+const nearMs = (actual, expected) =>
+  assert.ok(
+    Math.abs(actual - expected) < 1e-6,
+    `expected ~${expected} ms, got ${actual}`,
+  );
+
+test('E4S2: the deadline is the next quantisation midpoint the signature flips at', () => {
+  // dryness 1.0, median 300 s: the signature (Math.round(d·4)/4) flips at
+  // 1.125, which is (1.125 − 1)·300·1000 ms away.
+  nearMs(nextStopChangeMs(liveStop(), config), 0.125 * 300 * 1000);
+  // Mid-step, dryness 1.1: the same midpoint is only 7.5 s away.
+  nearMs(
+    nextStopChangeMs(liveStop({ minutesSince: 5.5, dryness: 1.1 }), config),
+    0.025 * 300 * 1000,
+  );
+});
+
+test('E4S2: the state boundary wins when it is closer than the midpoint', () => {
+  // dryness 1.9: the due→void boundary (2.0) is 30 s away; the next midpoint
+  // (2.125) is 67.5 s away — the boundary is the visible change.
+  nearMs(
+    nextStopChangeMs(liveStop({ minutesSince: 9.5, dryness: 1.9 }), config),
+    0.1 * 300 * 1000,
+  );
+  // An off-grid boundary (a custom config) fires between midpoints and the
+  // deadline engine still finds it.
+  const offGrid = { ...config, voidDrynessRatio: 1.95 };
+  nearMs(
+    nextStopChangeMs(liveStop({ minutesSince: 9.5, dryness: 1.9 }), offGrid),
+    0.05 * 300 * 1000,
+  );
+  // A fresh stop heads for the fresh→due boundary (0.5), but the nearer
+  // midpoint (0.375) is the first visible change.
+  const fresh = liveStop({ state: 'fresh', minutesSince: 1.5, dryness: 0.3 });
+  nearMs(nextStopChangeMs(fresh, config), 0.075 * 300 * 1000);
+});
+
+test('E4S2: the absolute void horizon can fire before the ratio does', () => {
+  // Median 20 min, waited 14.8 min: dryness 0.74 (due), but the 15-minute
+  // absolute crossing is 12 s away — the state flips void at the true
+  // moment, not at the ratio.
+  const longHeadway = liveStop({
+    state: 'due',
+    medianHeadwayOwnSeconds: 1200,
+    minutesSince: 14.8,
+    dryness: 0.74,
+  });
+  nearMs(nextStopChangeMs(longHeadway, config), 0.2 * 60_000);
+});
+
+test('E4S2: blind and collecting stops never schedule', () => {
+  assert.equal(
+    nextStopChangeMs(
+      liveStop({ state: 'unmonitored', minutesSince: null, dryness: null }),
+      config,
+    ),
+    Infinity,
+  );
+  assert.equal(
+    nextStopChangeMs(liveStop({ state: 'collecting', dryness: null }), config),
+    Infinity,
+  );
+  // A stop with no baseline has no dryness growth to schedule.
+  assert.equal(
+    nextStopChangeMs(liveStop({ medianHeadwayOwnSeconds: null, dryness: null }), config),
+    Infinity,
+  );
+});
+
+test('E4S2: an open card wakes at the next 0.1-minute label crossing', () => {
+  const withCard = liveStop({ minutesSince: 5.05, dryness: 1.01 });
+  // The midpoint (1.125) is 34.5 s away; the label crossing (5.1 min) is 3 s.
+  nearMs(nextStopChangeMs(withCard, config, true), 0.05 * 60_000);
+  // Without the card the label is not a visible change.
+  nearMs(nextStopChangeMs(withCard, config, false), 0.115 * 300 * 1000);
+});
+
+test('E4S2: the earliest deadline across stops, with the card pinned to its stop', () => {
+  const states = new Map([
+    ['st_a', liveStop({ stopId: 'st_a', minutesSince: 5.5, dryness: 1.1 })],
+    ['st_b', liveStop({ stopId: 'st_b', minutesSince: 9.9, dryness: 1.98 })],
+    [
+      'st_blind',
+      liveStop({
+        stopId: 'st_blind',
+        state: 'unmonitored',
+        minutesSince: null,
+        dryness: null,
+      }),
+    ],
+  ]);
+  // st_b's void boundary is 6 s away; st_a's midpoint is 7.5 s; blind never.
+  nearMs(earliestDeadlineMs(states, { config }), 0.02 * 300 * 1000);
+  // Pin the card to st_b with its label closer than everything else.
+  const cardStates = new Map(states);
+  cardStates.set(
+    'st_b',
+    liveStop({ stopId: 'st_b', minutesSince: 9.94, dryness: 1.988 }),
+  );
+  nearMs(
+    earliestDeadlineMs(cardStates, { config, selectedStopId: 'st_b' }),
+    0.06 * 60_000,
+  );
+});
+
+test('E4S2: waking exactly at the deadline changes the quantised field; a moment earlier does not', () => {
+  const stop = liveStop({ minutesSince: 5.1, dryness: 1.02 });
+  const deadline = nextStopChangeMs(stop, config);
+  assert.equal(signatureOf(advanceStopState(stop, deadline - 1)), signatureOf(stop));
+  assert.notEqual(signatureOf(advanceStopState(stop, deadline)), signatureOf(stop));
+  // The absolute-horizon case: the STATE flips exactly at the deadline —
+  // the honest moment, not the next tick of a clock.
+  const longHeadway = liveStop({
+    state: 'due',
+    medianHeadwayOwnSeconds: 1200,
+    minutesSince: 14.8,
+    dryness: 0.74,
+  });
+  const horizon = nextStopChangeMs(longHeadway, config);
+  assert.equal(advanceStopState(longHeadway, horizon).state, 'void');
+  assert.equal(advanceStopState(longHeadway, horizon - 1).state, 'due');
+});
+
+test('E4S1: the visible set is the stops inside the settled camera, plus margin', () => {
+  const features = [
+    { id: 'f1', point: [100, 100], stopIds: ['st_in'] },
+    { id: 'f2', point: [900, 900], stopIds: ['st_far'] },
+    { id: 'f3', point: [260, 100], stopIds: ['st_margin'] },
+  ];
+  const camera = { x: 0, y: 0, width: 200, height: 200 };
+  const visible = visibleStopsOf(features, camera);
+  assert.ok(visible.has('st_in'));
+  assert.ok(!visible.has('st_far'));
+  // A half-viewport margin keeps a fast pan painted past the screen edge.
+  assert.ok(visible.has('st_margin'));
+  // The margin is a fraction of the camera: a wider one keeps more world.
+  const wider = visibleStopsOf(features, camera, 2);
+  assert.ok(wider.has('st_in') && wider.has('st_margin'));
+  assert.ok(!wider.has('st_far'));
+});
+
+test('E4S5: the numeric signature moves exactly when a quantised step or state moves', () => {
+  const features = [{ id: 'f', point: [0, 0], stopIds: ['st_a', 'st_b'] }];
+  const mapOf = (a, b) =>
+    new Map([
+      ['st_a', a],
+      ['st_b', b],
+    ]);
+  const a = liveStop({ stopId: 'st_a', minutesSince: 5, dryness: 1 });
+  const b = liveStop({ stopId: 'st_b', minutesSince: 9.9, dryness: 1.98 });
+  const before = trackFieldSignature(features, mapOf(a, b));
+  // Deterministic: same inputs, same number.
+  assert.equal(trackFieldSignature(features, mapOf(a, b)), before);
+  // A sub-quantum drift (1.0 → 1.02) is invisible — no repaint.
+  assert.equal(trackFieldSignature(features, mapOf({ ...a, dryness: 1.02 }, b)), before);
+  // Crossing a quantisation midpoint (1.0 → 1.2) changes it.
+  assert.notEqual(
+    trackFieldSignature(features, mapOf({ ...a, dryness: 1.2 }, b)),
+    before,
+  );
+  // A state change changes it — colour beats dryness on the wire.
+  assert.notEqual(
+    trackFieldSignature(features, mapOf({ ...a, state: 'void' }, b)),
+    before,
+  );
+  // Blind nulls are their own quantum: null ≠ any number.
+  assert.notEqual(
+    trackFieldSignature(features, mapOf({ ...a, dryness: null }, b)),
+    before,
+  );
+});
+
+test('E5S1: the painted field culls to edges near the camera — conservatively', () => {
+  const edges = [
+    {
+      id: 'e_in',
+      points: [
+        [50, 50],
+        [150, 50],
+      ],
+    },
+    {
+      id: 'e_out',
+      points: [
+        [900, 900],
+        [950, 900],
+      ],
+    },
+    // Both endpoints OUTSIDE the rect, but the stretch crosses it — a
+    // bbox test includes it (over-inclusion, never a hole).
+    {
+      id: 'e_cross',
+      points: [
+        [-100, 100],
+        [300, -100],
+      ],
+    },
+    // Fully outside even with the half-viewport margin.
+    {
+      id: 'e_far',
+      points: [
+        [600, 600],
+        [700, 600],
+      ],
+    },
+  ];
+  const camera = { x: 0, y: 0, width: 200, height: 200 };
+  const visible = visibleEdgesOf(edges, camera);
+  assert.ok(visible.has('e_in'));
+  assert.ok(visible.has('e_cross'));
+  assert.ok(!visible.has('e_far'));
+  assert.ok(!visible.has('e_out'));
 });

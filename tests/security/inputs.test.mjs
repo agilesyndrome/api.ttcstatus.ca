@@ -3,13 +3,8 @@ import test from 'node:test';
 import { compileModules } from '../helpers/compile.mjs';
 import { readFile } from 'node:fs/promises';
 
-const {
-  renderDebugMapSvg,
-  api,
-  readLimitedBytes,
-  BodyTooLargeError,
-  csvRows,
-} = await compileModules(`
+const { renderDebugMapSvg, api, readLimitedBytes, BodyTooLargeError, csvRows } =
+  await compileModules(`
   export { renderDebugMapSvg } from './workers/api/src/mapgen/rendering/debug-render';
   export { default as api } from './workers/api/src/index';
   export { readLimitedBytes, BodyTooLargeError } from './workers/shared/http/streams';

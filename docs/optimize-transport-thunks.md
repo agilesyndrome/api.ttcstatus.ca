@@ -28,7 +28,7 @@ Every story gets a status here, updated the moment it completes:
 `(op)` = Cloudflare dashboard/CLI operator runbook, not doable from this checkout.
 
 - [x] E1S1 — live bucket + custom domain + cache rule + R2 CORS policy — **dashboard steps executed by the user (2026-10-12)**;
-      only the ~1-day `live/t/` lifecycle rule is unconfirmed (see Outstanding)
+      the `live/t/` lifecycle rule is CONFIRMED — 7 days (user, 2026-10-13; see Outstanding)
 - [x] E1S2 — tick-document contract + pure writer + unit tests
 - [x] E1S3 — recorder publishes per-tick docs to R2 (non-fatal failures)
 - [x] E1S4 — `auth/config` live block + `public, max-age=300`
@@ -106,8 +106,11 @@ Status: **DONE — wrangler config in-repo + the user executed the dashboard ste
   3. ✔ Cache rule set (respect origin TTL; objects carry `max-age=600`).
   4. ✔ CORS set **as an R2 bucket CORS policy** (not a Transform Rule) — see
      the Operator runbook section for the exact policy + the `*` rationale.
-     The 1-day `live/t/` lifecycle rule is the one step not yet confirmed
-     (see Outstanding).
+  5. ✔ `live/t/` lifecycle rule CONFIRMED — expires after **7 days** (user,
+     2026-10-13), not the ~1 day this plan sketched. One prefix rule covers
+     both documents (vehicles + `service-stops.json`). The longer window
+     costs ~$0.08/mo of storage and doubles as a 7-day replay tape of the
+     rendered field — see docs/optimize-overlay-thunks.md (E6S3).
 - Accept check (run after first deploy): `cf-cache-status: HIT` on second
   fetch of `live/t/<tick>/vehicles.json`, native `304` with `If-None-Match`,
   CORS headers present cross-origin.
@@ -189,7 +192,7 @@ Status: **E2S1–E2S5 done (code); E2S6 rollout/dashboard = operator runbook.**
 - **E2S3 three-case contract**: `shared/live/polling.ts` rewritten.
   `requestVehicleUpdate`/`LiveUpdateError`/`x-live-*`/`Retry-After`/503
   parsing **deleted**; `requestTickUpdate(transport, signal, etag?, request?,
-  now?)` implements exactly: 200 → doc (outage is a body field), 404 → retry
+now?)` implements exactly: 200 → doc (outage is a body field), 404 → retry
   tick−1 once → `unpublished: true` (keep last-good, normal cadence, NOT a
   failure), anything else → thrown network error (caller backoff).
   `SnapshotUpdate.nextUpdateAt` removed (cadence comes from config).
@@ -217,7 +220,7 @@ Status: **E2S1–E2S5 done (code); E2S6 rollout/dashboard = operator runbook.**
   operator work. The check-script repointing this section used to track as a
   follow-up is **done** — see Final work (the Playwright scripts now fulfill
   `/api/v1/auth/config` + `/live/t/*/vehicles.json`; `grep vehicles/streetcar
-  scripts/checks/` is empty).
+scripts/checks/` is empty).
 
 ## Epic 3 — Worker path removal + hardening
 
@@ -397,9 +400,9 @@ Status: **E7S1–E7S6 done (code); E7S7 boundary needs a deploy + real sync run.
        requested `/api/v1/map/ttcstatus?client=2` since "Nav v2 (#5)" and the
        old globs never matched the query (pre-existing).
      - check-ui: `.live-status` assertion → `.route-pulse .pulse-total`
-     ("1 total on routes"); checkbox toggle → the Explore panel's
-     aria-pressed layer button; second-poll ETag revalidation now waits the
-     config cadence (31 s).
+       ("1 total on routes"); checkbox toggle → the Explore panel's
+       aria-pressed layer button; second-poll ETag revalidation now waits the
+       config cadence (31 s).
    - **Pre-existing breakage found (NOT transport): the whole Playwright
      suite is stale against the "Nav v2 (#5)" UI redesign and was failing
      before this work.** Confirmed failures, all in selectors for UI elements
@@ -457,13 +460,13 @@ Progress as of 2026-10-12 (user did these in the Cloudflare dashboard):
    - `op://easley.ca/api.ttcstatus.ca/clerk_jwks_url` → the **prod**
      instance's `https://<prod-frontend-api-host>/.well-known/jwks.json`
      (Clerk Dashboard → API Keys, or decoded from the `pk_live_…` key).
-   Public material, not secrets — 1Password placement just matches the
-   other Clerk values. Until they resolve, `verifySession` treats an
-   unresolved `op://…` literal as unconfigured → honest `503
-   auth-unavailable` on `/api/v1/service/*` (fail-closed, same convention
-   as `clerkKey()` in `accounts/auth.ts`). Then run the E4S6 accept check:
-   signed-out → 401; valid token without `voidOverlay` → 403; granted →
-   200 `private`.
+     Public material, not secrets — 1Password placement just matches the
+     other Clerk values. Until they resolve, `verifySession` treats an
+     unresolved `op://…` literal as unconfigured → honest `503
+auth-unavailable` on `/api/v1/service/*` (fail-closed, same convention
+     as `clerkKey()` in `accounts/auth.ts`). Then run the E4S6 accept check:
+     signed-out → 401; valid token without `voidOverlay` → 403; granted →
+     200 `private`.
 6. **REVISIT LATER (user instruction): WAF rules + observability**
    (E3S3, E3S4, E4S4) — after the deploy stabilizes and there is real
    traffic to observe:
@@ -503,9 +506,10 @@ Progress as of 2026-10-12 (user did these in the Cloudflare dashboard):
 - **1Password: add the two `clerk_jwks_url` fields** (runbook step 5) —
   `.env.local` / `.env.prod` already reference them; until they resolve,
   `/api/v1/service/*` answers honest 503s (fail-closed).
-- **R2 lifecycle rule** (the one E1S1 sub-step not confirmed): expire
-  `live/t/` objects after ~1 day (~35 MB/day churn — the recorder keeps
-  publishing forever otherwise).
+- **R2 lifecycle rule — DONE (confirmed 2026-10-13)**: `live/t/` objects
+  expire after 7 days (not the ~1 day this plan sketched). Storage stays
+  ~5 GB steady state (~$0.08/mo); see docs/optimize-overlay-thunks.md for
+  what the longer window is (and is not) good for.
 - **Deploy this branch** (`npm run deploy:api` after
   `npm run db:migrate:remote`) — then the accept checks: HIT/304/CORS on
   `live.ttcstatus.ca`, config caching, outage-doc publish (kill the

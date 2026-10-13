@@ -1,5 +1,8 @@
 import tracks from './physical-tracks.json';
-import { nearestOnSegment, projectToLocalMetres } from '../../../../../shared/map/geometry';
+import {
+  nearestOnSegment,
+  projectToLocalMetres,
+} from '../../../../../shared/map/geometry';
 import type { MapSeed } from '../topology/schematic';
 import type { LatLon, XY } from '../types';
 

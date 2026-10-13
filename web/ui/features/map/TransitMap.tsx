@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feature, Point } from '../../../../shared/map/model';
 import { streetcarBody } from '../../../../shared/map/live-status';
 import { STREAM_OFFSET } from '../service/wave-field';
@@ -54,6 +54,39 @@ export const TransitMap = memo(function TransitMap({
   serviceCarTint,
 }: TransitMapProps) {
   useLanguage();
+  // E5S3 (docs/optimize-overlay.md): while the camera is under the rider's
+  // hands, animated map layers pause — `data-gesturing` on the root SVG
+  // tells the CSS to freeze the service dash animations, so no 60 fps paint
+  // fight with the pan/zoom (the static colour field carries the
+  // information while the world moves). Any interaction bumps the idle
+  // window; ~400 ms of quiet resumes the flow.
+  const gestureIdle = useRef<number | undefined>(undefined);
+  const gesturingRef = useRef(false);
+  const [gesturing, setGesturing] = useState(false);
+  const gestureActivity = useCallback(() => {
+    window.clearTimeout(gestureIdle.current);
+    if (!gesturingRef.current) {
+      gesturingRef.current = true;
+      setGesturing(true);
+    }
+    gestureIdle.current = window.setTimeout(() => {
+      gesturingRef.current = false;
+      setGesturing(false);
+    }, 400);
+  }, []);
+  useEffect(() => () => window.clearTimeout(gestureIdle.current), []);
+  // Route the camera's own interaction seams through the gesture pause:
+  // every pan, keyboard move, wheel/double-tap/button zoom and Home reset
+  // already reports through onInteract/onZoomInteract (useMapCamera), so
+  // the host callbacks keep their behaviour untouched beside ours.
+  const handleInteract = useCallback(() => {
+    gestureActivity();
+    onInteract?.();
+  }, [gestureActivity, onInteract]);
+  const handleZoomInteract = useCallback(() => {
+    gestureActivity();
+    onZoomInteract?.();
+  }, [gestureActivity, onZoomInteract]);
   const {
     svg,
     camera,
@@ -78,8 +111,8 @@ export const TransitMap = memo(function TransitMap({
     followPoint,
     resetKey,
     zoomLimits,
-    onInteract,
-    onZoomInteract,
+    onInteract: handleInteract,
+    onZoomInteract: handleZoomInteract,
     driving,
     controlsRef,
     onSelectFeature,
@@ -297,6 +330,7 @@ export const TransitMap = memo(function TransitMap({
             : t('transitMap.torontoSubwayAndStreetcarNetworkArrowKeysPanPlusAnd')
         }
         viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
+        data-gesturing={gesturing ? 'true' : undefined}
         {...handlers}
       >
         <g className="water-context" aria-hidden="true">
@@ -316,7 +350,7 @@ export const TransitMap = memo(function TransitMap({
           showSubway={showSubway}
         />
         <TrackClosures data={data} closures={closures} />
-        {typeof underlay === 'function' ? underlay(scale) : underlay}
+        {typeof underlay === 'function' ? underlay(scale, camera) : underlay}
         {/* The street test: stop dots carry a gloved-tap hit target (32px
          * screen), and a platform pair (E/W across one intersection)
          * renders as ONE dot until the camera is close enough to tell the
@@ -655,7 +689,7 @@ export const TransitMap = memo(function TransitMap({
               </g>
             ),
         )}
-        {typeof overlay === 'function' ? overlay(scale) : overlay}
+        {typeof overlay === 'function' ? overlay(scale, camera) : overlay}
       </svg>
       {mapTools}
       {mapPopup}

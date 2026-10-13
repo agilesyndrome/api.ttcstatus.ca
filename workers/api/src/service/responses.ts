@@ -1,23 +1,37 @@
-/** `GET /api/v1/service/stops` and `GET /api/v1/service/wave` (sla.md stories
- * 3.1–3.3): live delivered-service state with the vehicles-endpoint
- * conventions — ETag/304 per tick, `X-Live-*` cadence headers, ~15 s edge
- * cache, CORS. Data comes from the recorder singleton over its internal
- * stub fetch; the recorder quantizes payloads to the tick so a 30 s tick
- * changes the ETag and 304s work in between. An unreachable recorder is its
- * own honest 503 — never a fabricated payload. */
+/** `GET /api/v1/service/history` and `GET /api/v1/service/wave` (sla.md
+ * stories 3.2/4.3; docs/optimize-overlay.md Epic 3): what remains of the
+ * Worker's delivered-service surface. The stops endpoint is GONE — its
+ * payload is public broadcast data served from the live bucket's per-tick
+ * documents, and the recorder is write-only for states by construction.
+ *
+ *  - History is public broadcast data (identical per stop for every
+ *    caller): the selected stop's card needs it and the overlay is for
+ *    every visitor, so no session, `public, max-age=300`, and the same
+ *    Workers edge-cache pattern the map endpoints use — the second
+ *    identical request is a HIT that never touches D1. The narrowing
+ *    filter requirement (`?stop=` or `?routes=`) stays so queries stay
+ *    bounded. Default windows are quantized to the 5-minute fold grid so
+ *    payloads are fold-stable: 304s work between folds and the ETag stops
+ *    churning per second.
+ *  - Wave is the members-only replay (the E4S5 /sla decision): a verified
+ *    session at the router, `private` — never a shared cache. Its payload
+ *    is tick-stable, so the serialize + hash runs once per tick per
+ *    isolate (E3S4), not per request.
+ *
+ * An unreachable recorder is its own honest 503 — never a fabricated
+ * payload. */
 
 import type { Env } from '../env';
 import type { ExecutionContextLike } from '../../../shared/cloudflare/bindings';
 import { json } from '../http/responses';
 import { ifNoneMatchMatches } from '../../../../shared/http/etag';
 import { sha256Hex } from '../../../shared/gtfs/hash';
-import { serviceConfig } from '../../../../shared/service/config';
+import { serviceConfig, SERVICE_BUCKET_SECONDS } from '../../../../shared/service/config';
 import type {
   CoverageInterval,
   RollupRow,
   ServiceHistoryResponse,
   ServiceWaveResponse,
-  StopServiceState,
   TouchEvent,
   WaveTouch,
 } from '../../../../shared/service/contracts';
@@ -30,17 +44,8 @@ import {
   worstGapSeconds,
 } from '../../../../shared/service/wait-metrics';
 
-/** ~15 s edge cache per the story card; the browser still refreshes per the
- * X-Live cadence, and the shared cache absorbs viewer fan-out. */
-const STOPS_CACHE_SECONDS = 15;
-
-type StopStateWithRoutes = StopServiceState & { routeIds: string[] };
-
-interface RecorderStatesPayload {
-  schemaVersion: 1;
-  at: number;
-  states: StopStateWithRoutes[];
-}
+/** The wave's browser cache hint (private — a members surface). */
+const WAVE_CACHE_SECONDS = 15;
 
 interface RecorderWindowPayload {
   schemaVersion: 1;
@@ -71,71 +76,16 @@ const unavailable = () =>
     'retry-after': '5',
   });
 
-/** Round the continuous fields for the wire: three decimals is far finer
- * than the 30 s sampling resolution, and it keeps worst-case payloads
- * (~3 k active stops) comfortably inside the fleet endpoint's size
- * discipline. */
-function wireReadyStopState(state: StopStateWithRoutes): StopStateWithRoutes {
-  const round = (value: number | null, decimals: number): number | null =>
-    value === null ? null : Number(value.toFixed(decimals));
-  return {
-    ...state,
-    minutesSince: round(state.minutesSince, 3),
-    medianHeadwayOwnSeconds: round(state.medianHeadwayOwnSeconds, 3),
-    irregularity: round(state.irregularity, 4),
-    expectedWaitSeconds: round(state.expectedWaitSeconds, 3),
-    dryness: round(state.dryness, 4),
-  };
-}
-
-/** GET /api/v1/service/stops — per directional stop: lastTouchAt,
- * minutesSince, medianHeadwayOwn, irregularity (CV²), expectedWait R(e),
- * dryness r, state, coverage badge; `?routes=` filter (sla.md story 3.1).
- * Authorized data (E4S2): responses are `private` and never enter
- * `caches.default` — no cache may bypass the grant. The ETag/304 per tick
- * still absorbs granted viewers' same-tick refetches. */
-export async function serviceStopsResponse(
-  request: Request,
-  env: Env,
-): Promise<Response> {
-  const config = serviceConfig(env);
-  const url = new URL(request.url);
-  const filter = parseRoutesFilter(url.searchParams.get('routes'));
-  let payload: RecorderStatesPayload;
-  try {
-    const response = await recorderFetch(env, '/states');
-    if (!response.ok) return unavailable();
-    payload = (await response.json()) as RecorderStatesPayload;
-  } catch {
-    return unavailable();
-  }
-  const states = (
-    filter
-      ? payload.states.filter((state) =>
-          state.routeIds.some((route) => filter.has(route)),
-        )
-      : payload.states
-  ).map(wireReadyStopState);
-  const body = { schemaVersion: 1 as const, at: payload.at, states };
-  const etag = `"stops-${await sha256Hex(JSON.stringify(body))}"`;
-  const response = json(body, 200, {
-    'cache-control': `private, max-age=${STOPS_CACHE_SECONDS}`,
-    etag,
-    'x-live-update-seconds': String(config.sampleSeconds),
-    'x-live-next-update-at': new Date(
-      payload.at + config.sampleSeconds * 1000,
-    ).toISOString(),
-  });
-  return conditional(request, response);
-}
-
 /** GET /api/v1/service/history — merged-moment summaries per stop or route
  * over any sub-window of the 36 hours (sla.md story 4.3). Reads D1 directly
  * (the rollups are the history); requires a narrowing filter (`?stop=` or
- * `?routes=`) so queries stay bounded; cached 1–5 minutes. */
+ * `?routes=`) so queries stay bounded. Public broadcast data since
+ * docs/optimize-overlay.md E3S1: edge-cached by full URL (filter included),
+ * fold-stable between rollup writes. */
 export async function serviceHistoryResponse(
   request: Request,
   env: Env,
+  ctx: ExecutionContextLike,
 ): Promise<Response> {
   const config = serviceConfig(env);
   const url = new URL(request.url);
@@ -146,9 +96,36 @@ export async function serviceHistoryResponse(
       'cache-control': 'no-store',
     });
   }
+  // E3S4: default windows quantize to the 5-minute fold grid — the payload
+  // is fold-stable, so 304s work between folds and edge entries do not churn
+  // per second. An explicit `from` keeps the caller's exact window.
   const now = Date.now();
+  const bucketMs = SERVICE_BUCKET_SECONDS * 1000;
+  const floorBucket = (at: number) => Math.floor(at / bucketMs) * bucketMs;
+  const requestedFrom = Number(url.searchParams.get('from'));
   const from =
-    Number(url.searchParams.get('from')) || now - config.historyHours * 3_600_000;
+    Number.isFinite(requestedFrom) && requestedFrom > 0
+      ? requestedFrom
+      : floorBucket(now - config.historyHours * 3_600_000);
+  const to = floorBucket(now);
+
+  // The edge cache (E3S1): identical questions get identical public bytes —
+  // the second caller never touches D1. Keyed by the full URL, selectors
+  // included, so one filter can never bleed into another's entry.
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cacheKey = new Request(
+    `https://ttcstatus-cache.invalid${url.pathname}${url.search}`,
+    {
+      method: 'GET',
+    },
+  );
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    const headers = new Headers(cached.headers);
+    headers.set('x-ttcstatus-cache', 'HIT');
+    return conditional(request, new Response(cached.body, { status: 200, headers }));
+  }
+
   let rows: RollupRow[];
   try {
     const query = stop
@@ -200,7 +177,7 @@ export async function serviceHistoryResponse(
   const body: ServiceHistoryResponse = {
     schemaVersion: 1,
     from,
-    to: now,
+    to,
     summaries,
     ...(stop
       ? {
@@ -218,10 +195,11 @@ export async function serviceHistoryResponse(
   };
   const etag = `"history-${await sha256Hex(JSON.stringify(body))}"`;
   const response = json(body, 200, {
-    // Warm data, but authorized (E4S2): private, never a shared cache.
-    'cache-control': 'private, max-age=300',
+    'cache-control': 'public, max-age=300',
     etag,
+    'x-ttcstatus-cache': 'MISS',
   });
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return conditional(request, response);
 }
 
@@ -251,10 +229,15 @@ function popcount(bits: number): number {
   }
   return count;
 }
-export async function serviceWaveResponse(
-  request: Request,
-  env: Env,
-): Promise<Response> {
+
+/** The wave payload is tick-stable (the recorder quantizes `/window` to the
+ * tick grid), so the serialize + SHA-256 runs once per tick per isolate —
+ * E3S4 (docs/optimize-overlay.md): same-tick requests — including 304s,
+ * which today pay the full hash — serve the memoized bytes. Keyed by tick
+ * and routes filter, so one filter can never serve another's payload. */
+let waveMemo: { key: string; body: string; etag: string } | null = null;
+
+export async function serviceWaveResponse(request: Request, env: Env): Promise<Response> {
   const config = serviceConfig(env);
   const url = new URL(request.url);
   const filter = parseRoutesFilter(url.searchParams.get('routes'));
@@ -265,6 +248,23 @@ export async function serviceWaveResponse(
     payload = (await response.json()) as RecorderWindowPayload;
   } catch {
     return unavailable();
+  }
+  const memoKey = `${Math.floor(payload.at / (config.sampleSeconds * 1000))}|${url.searchParams.get('routes') ?? ''}`;
+  if (waveMemo && waveMemo.key === memoKey) {
+    // Same tick: the memoized public bytes, served behind the session gate.
+    const hit = new Response(waveMemo.body, {
+      status: 200,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': `private, max-age=${WAVE_CACHE_SECONDS}`,
+        etag: waveMemo.etag,
+        'x-live-update-seconds': String(config.sampleSeconds),
+        'x-live-next-update-at': new Date(
+          payload.at + config.sampleSeconds * 1000,
+        ).toISOString(),
+      },
+    });
+    return conditional(request, hit);
   }
   const routes = payload.patterns
     .filter((pattern) => !filter || filter.has(pattern.routeId))
@@ -293,14 +293,21 @@ export async function serviceWaveResponse(
     routes,
     coverage: payload.coverage,
   };
-  const etag = `"wave-${await sha256Hex(JSON.stringify(body))}"`;
-  const response = json(body, 200, {
-    'cache-control': `private, max-age=${STOPS_CACHE_SECONDS}`,
-    etag,
-    'x-live-update-seconds': String(config.sampleSeconds),
-    'x-live-next-update-at': new Date(
-      payload.at + config.sampleSeconds * 1000,
-    ).toISOString(),
+  const serialized = JSON.stringify(body);
+  const etag = `"wave-${await sha256Hex(serialized)}"`;
+  waveMemo = { key: memoKey, body: serialized, etag };
+  const response = new Response(serialized, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      // Members-only surface (E4S5): private, never a shared cache.
+      'cache-control': `private, max-age=${WAVE_CACHE_SECONDS}`,
+      etag,
+      'x-live-update-seconds': String(config.sampleSeconds),
+      'x-live-next-update-at': new Date(
+        payload.at + config.sampleSeconds * 1000,
+      ).toISOString(),
+    },
   });
   return conditional(request, response);
 }

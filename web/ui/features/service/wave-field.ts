@@ -798,33 +798,229 @@ export function directionColorAlong(
   return drynessColor(sample.blind ? null : sample.dryness, state);
 }
 
+/** Cumulative display distances along a polyline. Geometry is static per
+ * map version (the same `points` array object every repaint), so results
+ * are memoised by array identity (E4S5, docs/optimize-overlay.md): the old
+ * per-recall recompute rebuilt every edge's distances on every repaint. */
+const cumulativeCache = new WeakMap<object, number[]>();
+
 function cumulative(points: Array<[number, number]>): number[] {
+  const cached = cumulativeCache.get(points);
+  if (cached) return cached;
   const distances: number[] = [0];
   for (let index = 1; index < points.length; index += 1) {
     const [x1, y1] = points[index - 1];
     const [x2, y2] = points[index];
     distances.push(distances[index - 1] + Math.hypot(x2 - x1, y2 - y1));
   }
+  cumulativeCache.set(points, distances);
   return distances;
+}
+
+// ---------------------------------------------------------------------------
+// The engine (docs/optimize-overlay.md E4S2): wake on truth, not on a timer.
+// Dryness grows one second per second, so a stop's next *visible* change is
+// computable exactly — the heartbeat schedules at the earliest actual change
+// instead of sampling at 1 Hz. Fewer wakes than a clock AND transitions land
+// at the true moment, not the next tick of an interval.
+// ---------------------------------------------------------------------------
+
+/** The quantisation the field's paint and signature work in (0.25 dryness
+ * steps — see trackFieldSignature): the finest change a wake can serve. */
+export const DRYNESS_STEP = 0.25;
+
+/** The selected stop's card shows elapsed minutes to one decimal, so its
+ * label crossing is a visible change too — the one per-stop cadence the
+ * deadline engine honours beyond the shared steps (bounded to a single
+ * stop: the card, not the whole map). */
+const CARD_MINUTE_STEP = 0.1;
+
+/** The ms until this stop's next *visible* change — the exact inverse of
+ * `advanceStopState`: the earliest of the next 0.25-quantised dryness step
+ * (the repaint gate), the next state boundary the colour ramp speaks in
+ * (fresh→due at freshDrynessRatio, due→void at voidDrynessRatio), and the
+ * void-absolute crossing (minutes, not ratio). A stop whose card is open
+ * also wakes at its next 0.1-minute label crossing. The math is relative —
+ * elapsed grows one second per second from the state itself — so there is
+ * no clock input. Blind and collecting stops never change between ticks —
+ * a blind spot never advances into a verdict — so they never schedule
+ * (Infinity). */
+export function nextStopChangeMs(
+  stop: StopServiceState,
+  config: ServiceConfig = serviceConfig(),
+  cardOpen = false,
+): number {
+  if (stop.state === 'unmonitored' || stop.state === 'collecting') return Infinity;
+  const medianSeconds = stop.medianHeadwayOwnSeconds;
+  if (stop.minutesSince === null || medianSeconds === null || stop.dryness === null) {
+    return Infinity;
+  }
+  // dryness = minutesSince·60 / medianSeconds ⇒ every candidate below is
+  // (target − dryness)·medianSeconds·1000 ms away.
+  const dryness = stop.dryness;
+  // The repaint gate flips when the SIGNATURE'S quantisation moves:
+  // Math.round(dryness / DRYNESS_STEP) increments at the half-steps
+  // (…, 1.125, 1.375 …), not at the 0.25 multiples — schedule at the midpoints.
+  const step = (Math.round(dryness / DRYNESS_STEP) + 0.5) * DRYNESS_STEP;
+  let earliest = (step - dryness) * medianSeconds * 1000;
+  // The state boundary the ramp speaks in — whichever it is heading toward.
+  const boundary =
+    stop.state === 'fresh'
+      ? config.freshDrynessRatio
+      : stop.state === 'due'
+        ? config.voidDrynessRatio
+        : null;
+  if (boundary !== null && boundary > dryness) {
+    earliest = Math.min(earliest, (boundary - dryness) * medianSeconds * 1000);
+  }
+  // The absolute void horizon can fire before the ratio does (a long
+  // headway route left waiting past voidAbsoluteMinutes) — and only then.
+  if (stop.state !== 'void') {
+    const untilAbsolute = (config.voidAbsoluteMinutes - stop.minutesSince) * 60_000;
+    if (untilAbsolute > 0) earliest = Math.min(earliest, untilAbsolute);
+  }
+  if (cardOpen) {
+    const label =
+      (Math.floor(stop.minutesSince / CARD_MINUTE_STEP) + 1) * CARD_MINUTE_STEP;
+    const untilLabel = (label - stop.minutesSince) * 60_000;
+    if (untilLabel > 0) earliest = Math.min(earliest, untilLabel);
+  }
+  return earliest;
+}
+
+/** The earliest next visible change across the stops that matter to the
+ * renderer — the wake deadline the scheduler clamps (≥ 250 ms so a step
+ * never lands early, ≤ 5 s as the safety re-check: camera moves, selection
+ * changes and feed ticks all reschedule sooner). Infinity when nothing can
+ * change (no live stops) — the caller's safety clamp owns that case.
+ * `visibleStopIds` (E4S1) narrows the engine to the on-screen stops —
+ * off-screen anchors are tick-stable by construction (E4S5: they are not
+ * advanced between ticks), so scheduling for them is pure waste; the
+ * selected stop always stays in (its card speaks even from off-screen). */
+export function earliestDeadlineMs(
+  states: ReadonlyMap<string, StopServiceState>,
+  options: {
+    selectedStopId?: string | null;
+    visibleStopIds?: ReadonlySet<string> | null;
+    config?: ServiceConfig;
+  } = {},
+): number {
+  let earliest = Infinity;
+  for (const [stopId, stop] of states) {
+    if (options.visibleStopIds && !options.visibleStopIds.has(stopId)) {
+      if (stopId !== options.selectedStopId) continue;
+    }
+    const ms = nextStopChangeMs(
+      stop,
+      options.config ?? serviceConfig(),
+      stopId === options.selectedStopId,
+    );
+    if (ms < earliest) earliest = ms;
+  }
+  return earliest;
 }
 
 /** A cheap change-signature for the field's track anchors: the quantised
  * dryness (0.25 steps) and state per anchored stop. The track band recomputes
- * only when this string changes — the heartbeat advances every second, but
- * the paint shifts only when the field actually moves a visible step. */
+ * only when this value changes — the heartbeat advances, but the paint
+ * shifts only when the field actually moves a visible step.
+ *
+ * E4S5 (docs/optimize-overlay.md): the value is a NUMBER — a 32-bit FNV-1a
+ * over exactly the fields the old string carried (stop id, quantised
+ * dryness, state), computed with zero per-stop string allocations: the old
+ * O(stops) string join ran on every wake. A collision costs one missed
+ * repaint until the next visible change — benign, and vanishingly rare
+ * against a 32-bit mix. */
+const STATE_HASH_INDEX: Record<StopServiceState['state'], number> = {
+  fresh: 1,
+  due: 2,
+  void: 3,
+  unmonitored: 4,
+  collecting: 5,
+};
+
 export function trackFieldSignature(
   features: Feature[],
   statesByStop: ReadonlyMap<string, StopServiceState>,
-): string {
-  const parts: string[] = [];
+): number {
+  let hash = 2166136261;
   for (const feature of features) {
     for (const stopId of feature.stopIds ?? []) {
       const state = statesByStop.get(stopId);
       if (!state) continue;
+      for (let index = 0; index < stopId.length; index += 1) {
+        hash ^= stopId.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
       const dryness =
-        state.dryness === null ? 'n' : (Math.round(state.dryness * 4) / 4).toFixed(2);
-      parts.push(`${stopId}:${dryness}:${state.state}`);
+        state.dryness === null ? -1 : Math.round(state.dryness / DRYNESS_STEP);
+      hash = Math.imul(hash ^ dryness, 16777619);
+      hash = Math.imul(hash ^ STATE_HASH_INDEX[state.state], 16777619);
     }
   }
-  return parts.join('|');
+  return hash;
+}
+
+/** The stops whose boarding points sit inside (or near) the camera — the
+ * set the engine advances and schedules for (docs/optimize-overlay.md
+ * E4S1). `camera` is the map's viewBox: the visible world rect itself.
+ * `margin` grows the rect by that fraction of its size on every side, so a
+ * fast pan keeps the field painted past the screen edge until the settled
+ * camera recomputes. Pure; no per-frame state. */
+export function visibleStopsOf(
+  features: Feature[],
+  camera: { x: number; y: number; width: number; height: number },
+  margin = 0.5,
+): ReadonlySet<string> {
+  const growX = camera.width * margin;
+  const growY = camera.height * margin;
+  const left = camera.x - growX;
+  const right = camera.x + camera.width + growX;
+  const top = camera.y - growY;
+  const bottom = camera.y + camera.height + growY;
+  const visible = new Set<string>();
+  for (const feature of features) {
+    const [x, y] = feature.point;
+    if (x >= left && x <= right && y >= top && y <= bottom) {
+      for (const stopId of feature.stopIds ?? []) visible.add(stopId);
+    }
+  }
+  return visible;
+}
+
+/** The edges whose geometry comes anywhere near the camera — the cull set
+ * for the painted field (docs/optimize-overlay.md E5S1). Conservative by
+ * construction: an edge qualifies when its bounding box intersects the
+ * margin-grown rect, so a diagonal stretch whose endpoints both sit outside
+ * still paints (over-inclusion costs a few extra static lines; under-
+ * inclusion would leave a hole in the field). O(edge points) per call, and
+ * it only runs when the camera settles — never per frame. */
+export function visibleEdgesOf(
+  edges: ReadonlyArray<{ id: string; points: ReadonlyArray<readonly [number, number]> }>,
+  camera: { x: number; y: number; width: number; height: number },
+  margin = 0.5,
+): ReadonlySet<string> {
+  const growX = camera.width * margin;
+  const growY = camera.height * margin;
+  const left = camera.x - growX;
+  const right = camera.x + camera.width + growX;
+  const top = camera.y - growY;
+  const bottom = camera.y + camera.height + growY;
+  const visible = new Set<string>();
+  for (const edge of edges) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const [x, y] of edge.points) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    if (maxX >= left && minX <= right && maxY >= top && minY <= bottom) {
+      visible.add(edge.id);
+    }
+  }
+  return visible;
 }

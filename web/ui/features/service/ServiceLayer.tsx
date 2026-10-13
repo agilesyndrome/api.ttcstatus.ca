@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Feature, ViewerData } from '../../../../shared/map/model';
+import type { Bounds, Edge, Feature, ViewerData } from '../../../../shared/map/model';
+import { serviceConfig } from '../../../../shared/service/config';
+import { useActivity } from '../../services/platform/react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 import {
@@ -11,7 +13,7 @@ import {
 } from '../map/platform-pairs';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { DirectionRose } from './DirectionRose';
-import { useFeatureFlags } from './useFeatureFlags';
+import { overlayLaunch } from '../../services/http/live-transport';
 import { useServiceFeed } from './useServiceFeed';
 import { TrackService } from './TrackService';
 import { SelectedStopMarker } from './SelectedStopMarker';
@@ -21,21 +23,27 @@ import {
   directionColorAlong,
   directionOptions,
   directionSiblings,
+  earliestDeadlineMs,
   platformCompassKey,
   platformDirectionLabel,
   platformRoutes,
   routeOptions,
   surfaceStatesByStop,
   trackFieldSignature,
+  visibleEdgesOf,
+  visibleStopsOf,
   worstPlatform,
 } from './wave-field';
 import type { CompassKey } from './wave-field';
 
 export interface ServiceOverlay {
-  /** The field painted on the tracks — renders UNDER cars and labels. */
-  underlay: ((scale: number) => ReactNode) | null;
+  /** The field painted on the tracks — renders UNDER cars and labels. The
+   * camera rect (the visible world) rides along since
+   * docs/optimize-overlay.md E4S1: the engine advances and schedules only
+   * what is on screen. */
+  underlay: ((scale: number, camera: Bounds) => ReactNode) | null;
   /** The selected stop's marker — renders above the scene. */
-  overlay: ((scale: number) => ReactNode) | null;
+  overlay: ((scale: number, camera: Bounds) => ReactNode) | null;
   /** The selected stop's story card — render anywhere in the workspace. */
   card: ReactNode | null;
   /** Map-tap selection for the selected marker (the camera's pointer-up
@@ -51,24 +59,51 @@ export interface ServiceOverlay {
   carTint: (car: PlottedVehicle) => string | null;
 }
 
-/** The breathing clock: a 1 Hz `now` while the layer is enabled. Elapsed
- * time genuinely advances one second per second, so the field intensifies
- * in real time between feed ticks — honest interpolation, not animation. */
-function useNow(enabled: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
+/** The breathing clock, promoted to an engine (docs/optimize-overlay.md
+ * E4S1/E4S3/E4S4): no more 1 Hz metronome. The camera's visible rect is
+ * captured from the underlay's render (it runs every camera frame) and
+ * debounced to its settled position — 150 ms after the last frame — because
+ * gestures move the world every frame but the visible set only matters
+ * once the camera rests. The engine then schedules ONE timeout at the
+ * earliest moment any on-screen stop's field actually changes (a quantised
+ * dryness step, a state boundary, the void-absolute horizon, or the
+ * selected card's next label tick), computed exactly because dryness grows
+ * one second per second — fewer wakes than a clock, and transitions land at
+ * the TRUE moment instead of the next tick of an interval. A hidden tab
+ * schedules nothing at all. */
+
+/** The public rollout switch (docs/optimize-overlay.md E2S2): the overlay's
+ * `enabled` flag from the same launch config fetch that owns its transport —
+ * `overlay.enabled` in `/api/v1/auth/config`, never a per-user grant and
+ * never an account state. Null while the config is still in flight means
+ * disabled: nothing renders and no requests are made (the config fetch is
+ * the first request an overlay-on client ever makes). A failed config fetch
+ * reads as off — retried on the next activation by the transport's cache. */
+function useOverlayEnabled(): boolean | null {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   useEffect(() => {
-    if (!enabled) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [enabled]);
-  return now;
+    let cancelled = false;
+    overlayLaunch()
+      .then((launch) => {
+        if (!cancelled) setEnabled(launch.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return enabled;
 }
 
-/** The whole feature-gated service layer (sla.md §4.7): with `voidOverlay`
- * enabled, the dryness field paints the tracks (under cars/labels), the map's
- * own stops become the tap targets, and a selected stop gets one marker plus
- * a story card. Without the flag — or signed out — nothing renders and no
- * /service/* requests are made at all. */
+/** The whole service layer (docs/optimize-overlay.md Epic 2): with the
+ * rollout switch on, the dryness field paints the tracks (under
+ * cars/labels), the map's own stops become the tap targets, and a selected
+ * stop gets one marker plus a story card. For every visitor — signed-out
+ * included (the data is public broadcast bytes from the CDN). Without the
+ * switch — or while it loads — nothing renders and no requests are made
+ * at all. */
 export function useServiceOverlay(
   data: ViewerData | undefined,
   cars?: PlottedVehicle[],
@@ -77,9 +112,8 @@ export function useServiceOverlay(
   suspended = false,
   requested = false,
 ): ServiceOverlay {
-  const flags = useFeatureFlags();
-  const enabled =
-    requested && !suspended && Boolean(data) && flags.loaded && flags.overlayEnabled;
+  const overlayEnabled = useOverlayEnabled();
+  const enabled = requested && !suspended && Boolean(data) && overlayEnabled === true;
   const feed = useServiceFeed(enabled);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   // Directionless mode (the street test): a tap on a MERGED platform pair
@@ -91,8 +125,44 @@ export function useServiceOverlay(
   // underlay's render (it runs every camera frame) so merge decisions at
   // tap time use the zoom the rider actually sees.
   const scaleRef = useRef(1);
+  // E4S1: the same render also debounces the camera's settled position AND
+  // zoom — the timer re-arms every frame and fires 150 ms after the last
+  // one, so gestures cost nothing, and the guard means only a real camera
+  // or zoom change ever lands (feed ticks and engine wakes never churn it).
+  const [settled, setSettled] = useState<{ camera: Bounds; scale: number } | null>(null);
+  const settledRef = useRef<{ camera: Bounds; scale: number } | null>(null);
+  const settleTimer = useRef<number | undefined>(undefined);
+  const settleCamera = (camera: Bounds, scale: number) => {
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => {
+      const previous = settledRef.current;
+      if (previous && previous.camera === camera && previous.scale === scale) return;
+      const next = { camera, scale };
+      settledRef.current = next;
+      setSettled(next);
+    }, 150);
+  };
+  useEffect(() => () => window.clearTimeout(settleTimer.current), []);
+  /** The on-screen stops (with a half-viewport margin, so a fast pan keeps
+   * the field painted past the screen edge until the camera settles). Null
+   * before the camera settles = treat everything as visible once. */
+  const visibleStopIds = useMemo(
+    () => (data && settled ? visibleStopsOf(data.features, settled.camera) : null),
+    [data, settled],
+  );
+  /** The painted field's cull set (E5S1): DOM count scales with the
+   * viewport, not the network. Null before the camera settles = paint all. */
+  const visibleEdges = useMemo(
+    () => (data && settled ? visibleEdgesOf(data.edges, settled.camera) : null),
+    [data, settled],
+  );
   const [reducedMotion, setReducedMotion] = useState(false);
-  const now = useNow(enabled);
+  // E4S4: the engine runs only while the tab is foreground — a hidden tab
+  // performs zero timer work (the feed already pauses there; returning to
+  // an overdue view refreshes immediately through its own seam).
+  const activity = useActivity();
+  const engineOn = enabled && activity.active;
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!enabled) {
       setSelectedStopId(null);
@@ -104,27 +174,49 @@ export function useServiceOverlay(
     query.addEventListener('change', update);
     return () => query.removeEventListener('change', update);
   }, [enabled]);
-  // The heartbeat: advance every stop between ticks (elapsed since its last
+  // The heartbeat: advance stops between ticks (elapsed since their last
   // touch grows in real time), scored with the same shared machine the API
   // uses — a stop crosses fresh → due → void at the true moment, not the
   // next tick. Estimates and coverage stay tick-fresh; a blind spot never
-  // advances into a verdict.
-  // The heartbeat: advance every stop between ticks (elapsed since its last
-  // touch grows in real time), scored with the same shared machine the API
-  // uses — a stop crosses fresh → due → void at the true moment, not the
-  // next tick. Subway-only stops are filtered out entirely (E7S7): no
-  // fields, no tints, no trails, no cards on the subway network.
+  // advances into a verdict. Subway-only stops are filtered out entirely
+  // (E7S7): no fields, no tints, no trails, no cards on the subway network.
+  // E4S5: only the ON-SCREEN stops (and the selected one, whose card speaks
+  // even from off-screen) advance between ticks — off-screen anchors keep
+  // their tick-fresh values until the settled camera brings them back.
   const statesByStop = useMemo(() => {
     const byMs = feed.at === null ? 0 : now - feed.at;
     return surfaceStatesByStop(
       new Map(
         feed.states.map((state) => [
           state.stopId,
-          byMs > 0 ? advanceStopState(state, byMs) : state,
+          byMs > 0 &&
+          (!visibleStopIds ||
+            visibleStopIds.has(state.stopId) ||
+            state.stopId === selectedStopId)
+            ? advanceStopState(state, byMs)
+            : state,
         ]),
       ),
     );
-  }, [feed.states, feed.at, now]);
+  }, [feed.states, feed.at, now, visibleStopIds, selectedStopId]);
+  // The scheduler (E4S3): one timeout at the earliest VISIBLE change — see
+  // the engine comment above the hook. Wakes only ever set `now`; the
+  // states/repaint pipeline gates itself exactly as before. Infinity (no
+  // live stops) falls to the 5 s safety re-check, which also absorbs
+  // anything a camera move or feed tick did not already reschedule.
+  useEffect(() => {
+    if (!engineOn) return;
+    const deadline = earliestDeadlineMs(statesByStop, {
+      selectedStopId,
+      visibleStopIds,
+      config: serviceConfig(),
+    });
+    const delay = Number.isFinite(deadline)
+      ? Math.min(5_000, Math.max(250, deadline))
+      : 5_000;
+    const timer = window.setTimeout(() => setNow(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [engineOn, statesByStop, visibleStopIds, selectedStopId]);
   /** Stop names from the map's own features — the map already knows these. */
   const stopNameOf = useMemo(() => {
     const names = new Map<string, string>();
@@ -134,9 +226,11 @@ export function useServiceOverlay(
     return (stopId: string) => names.get(stopId);
   }, [data]);
   const selectedStop = selectedStopId ? (statesByStop.get(selectedStopId) ?? null) : null;
-  // The car tint rides the field's quantised steps — the signature string is
-  // compared by value, so the callback's identity (and TransitMap's memo)
-  // holds still between visible steps even as the heartbeat ticks 1 Hz.
+  // The car tint rides the field's quantised steps — the signature is a
+  // number compared by value (E4S5: a 32-bit hash over the same fields the
+  // old string carried, no per-stop allocations), so the callback's
+  // identity (and TransitMap's memo) holds still between visible steps even
+  // as the engine wakes.
   const signature = useMemo(
     () => trackFieldSignature(data?.features ?? [], statesByStop),
     [data, statesByStop],
@@ -155,15 +249,21 @@ export function useServiceOverlay(
     }
     return rounded;
   }, [signature]);
+  // E4S5: one edge-id map per map version — the tint's old per-car linear
+  // scan over every edge was O(cars × edges) on every feed tick.
+  const edgesById = useMemo(() => {
+    const byId = new Map<string, Edge>();
+    for (const edge of data?.edges ?? []) byId.set(edge.id, edge);
+    return byId;
+  }, [data]);
   const carTint = useMemo(() => {
-    const edges = data?.edges ?? [];
     const features = data?.features ?? [];
     return (car: PlottedVehicle): string | null => {
       // Subway cars never carry the field (E7S7) — the overlay is
       // surface-only, and their stops no longer anchor anything anyway.
       if (car.vehicle.mode === 'subway') return null;
       if (!car.match || car.stale) return null;
-      const edge = edges.find((entry) => entry.id === car.match?.edgeId);
+      const edge = edgesById.get(car.match.edgeId);
       if (!edge) return null;
       return directionColorAlong(
         edge,
@@ -173,7 +273,7 @@ export function useServiceOverlay(
         tintStates,
       );
     };
-  }, [data, tintStates]);
+  }, [data, tintStates, edgesById]);
   const selectFromFeature = useMemo(() => {
     return (feature: Feature | undefined | null) => {
       const clear = () => {
@@ -341,15 +441,20 @@ export function useServiceOverlay(
     );
   };
   return {
-    underlay: (scale: number) => {
-      // Capture the live zoom: merge decisions at tap time read this.
+    underlay: (scale: number, camera: Bounds) => {
+      // Capture the live zoom: merge decisions at tap time read the zoom;
+      // the engine's settled-camera debounce (E4S1) reads the rect, and the
+      // painted field's cull set (E5S1) reads the settled pair.
       scaleRef.current = scale;
+      settleCamera(camera, scale);
       return (
         <TrackService
           edges={data.edges}
           features={data.features}
           statesByStop={statesByStop}
           cars={cars}
+          visibleEdges={visibleEdges}
+          scale={settled?.scale ?? 0}
         />
       );
     },
@@ -364,8 +469,9 @@ export function useServiceOverlay(
     // No ring in directionless mode: nothing is selected until the rider
     // picks a direction — the dot they tapped was one stop, not two.
     overlay: selectedStop
-      ? (scale: number) => {
+      ? (scale: number, camera: Bounds) => {
           scaleRef.current = scale;
+          settleCamera(camera, scale);
           return (
             <SelectedStopMarker
               stop={selectedStop}

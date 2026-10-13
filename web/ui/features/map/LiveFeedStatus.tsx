@@ -32,9 +32,7 @@ export function LiveFeedStatus({
         <span className="live-dot" aria-hidden="true" />{' '}
         {t('liveFeedStatus.liveTrainsStreetcars')}
       </h2>
-      {awaitingConfig && (
-        <p role="status">{t('liveFeedStatus.waitingForLiveConfig')}</p>
-      )}
+      {awaitingConfig && <p role="status">{t('liveFeedStatus.waitingForLiveConfig')}</p>}
       {/* Outage honesty moved into the document body (change 2): an outage
        * doc is delivered like any other snapshot, never as a status code. */}
       {snapshot?.outage && (

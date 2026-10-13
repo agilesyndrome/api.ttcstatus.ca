@@ -17,4 +17,12 @@ export interface AccountEnv {
   LIVE_PUBLIC_BASE?: string;
   LIVE_PATH_TEMPLATE?: string;
   LIVE_UPDATE_SECONDS?: string;
+  // The overlay block of the same config response (docs/optimize-overlay.md
+  // E1S4): the void overlay's tick-document path, its client poll cadence,
+  // and the public rollout switch. `enabled` gates only the client — the
+  // recorder publishes stops tick docs unconditionally — so the all-users
+  // rollout is this one var flipping to 'true', no client release.
+  OVERLAY_ENABLED?: string;
+  LIVE_SERVICE_PATH_TEMPLATE?: string;
+  OVERLAY_POLL_SECONDS?: string;
 }

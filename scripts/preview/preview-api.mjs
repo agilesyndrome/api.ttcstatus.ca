@@ -404,6 +404,15 @@ export async function createPreviewMiddleware() {
     pathTemplate: '/live/t/{tick}/vehicles.json',
     updateSeconds,
   };
+  // The overlay block (docs/optimize-overlay.md E1S4/E2S3): same-origin
+  // stops tick path + the rollout switch. Dev defaults ON so the overlay is
+  // exercisable from day one; set OVERLAY_ENABLED=false in the preview
+  // environment to rehearse the production off state.
+  const overlayBlock = {
+    enabled: process.env.OVERLAY_ENABLED !== 'false',
+    pathTemplate: '/live/t/{tick}/service-stops.json',
+    pollSeconds: updateSeconds,
+  };
   let sourcePromise;
   return async (request, response, next) => {
     const path = new URL(request.url, 'http://localhost').pathname;
@@ -452,6 +461,40 @@ export async function createPreviewMiddleware() {
         return json({ error: 'vehicles-unavailable' }, 503);
       }
     }
+    // The stops tick path (docs/optimize-overlay.md E2S3): the overlay's
+    // immutable per-tick document, same-origin in dev — the same three-case
+    // contract as the fleet path above. The bytes come from the corpus
+    // through the real shared math (the default one-way-void scenario);
+    // no query strings on this path, ever — the broadcast-only invariant
+    // applies to the preview too.
+    const stopsMatch = /^\/live\/t\/(\d+)\/service-stops\.json$/.exec(path);
+    if (request.method === 'GET' && stopsMatch) {
+      const requestedTick = Number(stopsMatch[1]);
+      const currentTick = Math.floor(Date.now() / (updateSeconds * 1000));
+      if (requestedTick > currentTick) return json({ error: 'tick-unpublished' }, 404);
+      try {
+        const payload = previewStates(
+          scenarioById('one-way-void'),
+          serviceConfig(),
+          serviceStatesAt,
+        );
+        const doc = {
+          schemaVersion: 1,
+          at: payload.at,
+          tickId: requestedTick,
+          states: payload.states,
+        };
+        const etag = `"stops-tick-${requestedTick}-${doc.states.length}"`;
+        if (ifNoneMatchMatches(request.headers['if-none-match'], etag)) {
+          response.writeHead(304, { etag, 'cache-control': 'public, max-age=600' });
+          return response.end();
+        }
+        return json(doc, 200, { etag, 'cache-control': 'public, max-age=600' });
+      } catch (error) {
+        console.error('Stops tick preview failed', error);
+        return json({ error: 'service-preview-unavailable' }, 503);
+      }
+    }
     if (!path.startsWith('/api/')) return next();
     // Use Wrangler for Clerk sessions and D1 account data; this preview has no
     // account backend. When dev secrets resolve (scripts/dev/with-secrets.mjs
@@ -461,8 +504,13 @@ export async function createPreviewMiddleware() {
       const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
       return json(
         typeof publishableKey === 'string' && /^pk_(?:test|live)_\S+/.test(publishableKey)
-          ? { enabled: true, publishableKey, live: liveBlock }
-          : { enabled: false, publishableKey: null, live: liveBlock },
+          ? { enabled: true, publishableKey, live: liveBlock, overlay: overlayBlock }
+          : {
+              enabled: false,
+              publishableKey: null,
+              live: liveBlock,
+              overlay: overlayBlock,
+            },
         200,
         // Mirrors production (optimize-transport.md change 1b): every field
         // is public by design, so the response is edge-cacheable.

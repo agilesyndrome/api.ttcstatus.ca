@@ -354,9 +354,19 @@ test('E6S1: location-bearing query parameters are rejected on every public path'
     '/live/t/123/vehicles.json', // a live-host-shaped route, if one ever lands here
     '/anything/else', // unknown paths reject location too
   ]) {
-    for (const field of ['lat', 'LAT', 'latitude', 'lng', 'longitude', 'geohash', 'cellId']) {
+    for (const field of [
+      'lat',
+      'LAT',
+      'latitude',
+      'lng',
+      'longitude',
+      'geohash',
+      'cellId',
+    ]) {
       const response = await api.fetch(
-        new Request(`https://ttcstatus.ca${path}${path.includes('?') ? '&' : '?'}${field}=43.65`),
+        new Request(
+          `https://ttcstatus.ca${path}${path.includes('?') ? '&' : '?'}${field}=43.65`,
+        ),
         {},
         {},
       );
@@ -373,7 +383,8 @@ test('E6S1: location-bearing query parameters are rejected on every public path'
   assert.notEqual(fine.status, 400);
 });
 
-test('failure logs omit exception text, query tokens and dynamic identifiers', async () => {  const recorded = [],
+test('failure logs omit exception text, query tokens and dynamic identifiers', async () => {
+  const recorded = [],
     original = console.error;
   console.error = (...args) => recorded.push(args);
   try {

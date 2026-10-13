@@ -47,7 +47,8 @@ const b64url = (value: string): Uint8Array<ArrayBuffer> => {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
   const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  for (let index = 0; index < binary.length; index++)
+    bytes[index] = binary.charCodeAt(index);
   return bytes;
 };
 
@@ -120,7 +121,10 @@ export async function verifySessionToken(
 export async function fetchJwks(
   url: string,
   fetcher: typeof fetch = fetch,
-  cache: { value?: { keys: JsonWebKeySet; at: number }; promise?: Promise<JsonWebKeySet> } = {},
+  cache: {
+    value?: { keys: JsonWebKeySet; at: number };
+    promise?: Promise<JsonWebKeySet>;
+  } = {},
   now = Date.now(),
 ): Promise<JsonWebKeySet> {
   if (cache.value && now - cache.value.at < JWKS_CACHE_MS) return cache.value.keys;
@@ -140,8 +144,10 @@ export async function fetchJwks(
 }
 
 /** One isolate-scoped JWKS cache per Worker instance (module state). */
-const jwksCache: { value?: { keys: JsonWebKeySet; at: number }; promise?: Promise<JsonWebKeySet> } =
-  {};
+const jwksCache: {
+  value?: { keys: JsonWebKeySet; at: number };
+  promise?: Promise<JsonWebKeySet>;
+} = {};
 
 /** Verify the request's Bearer session token locally.
  * Returns the verified user ID, or a 503/401 Response for the caller to
@@ -155,8 +161,7 @@ export async function verifySession(
   // fetch attempt — same convention as clerkKey() in auth.ts. Test fixtures
   // may use `data:` URLs.
   const jwksUrl =
-    typeof env.CLERK_JWKS_URL === 'string' &&
-    /^https:\/\/|data:/.test(env.CLERK_JWKS_URL)
+    typeof env.CLERK_JWKS_URL === 'string' && /^https:\/\/|data:/.test(env.CLERK_JWKS_URL)
       ? env.CLERK_JWKS_URL
       : undefined;
   if (!jwksUrl) return accountReply({ error: 'auth-unavailable' }, 503);

@@ -19,7 +19,7 @@ source file locations.
 | `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints           |
 | `sla/`         | SLA status page: hourly Tier 3 folds (daily/weekly) and the precomputed report            |
 | `sync/`        | Static download, import, map generation, delta, publication and retention                 |
-| `mapgen/`      | In-process map generation (Epic 7): source reads, topology, layout, rendering, artifacts    |
+| `mapgen/`      | In-process map generation (Epic 7): source reads, topology, layout, rendering, artifacts  |
 | `contracts/`   | Public OpenAPI document and endpoint descriptions                                         |
 | `diagnostics/` | Protected feed diagnostics, allowlisted analytics and deployed-version reporting          |
 
@@ -77,8 +77,8 @@ mobile, game, and feature styles imported in cascade order.
 fetch per session, plus the per-route stop detail), the pure view helpers in
 `sla-view.ts`, and the tick-strip components. Every daily/weekly number comes
 from `GET /api/v1/sla/report`; the page never computes or polls. The live
-tier (`sla-live.ts` + `useSlaLive.ts`) polls the recorder's existing
-`/service/stops` (30 s) and `/service/wave` (5 min) surfaces and renders the
+tier (`sla-live.ts` + `useSlaLive.ts`) polls the public stops tick documents
+(30 s) and the session-gated `/service/wave` (5 min) surfaces and renders the
 last 30 minutes as thin 5-minute slivers at each strip's right edge — the
 sliver math runs in the browser, never at request time.
 

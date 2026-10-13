@@ -15,7 +15,9 @@ async function chooseLanguage(page, label) {
 }
 async function prepare(context) {
   await installAccountFixture(context);
-  await context.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
+  await context.route('**/api/v1/map/ttcstatus*', (route) =>
+    route.fulfill({ json: map }),
+  );
   await context.route('**/live/t/*/vehicles.json', (route) =>
     route.fulfill({ status: 503, json: {} }),
   );

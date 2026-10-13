@@ -103,7 +103,6 @@ export function RoutePulse({
           </p>
         </div>
       )}
-
     </section>
   );
 }

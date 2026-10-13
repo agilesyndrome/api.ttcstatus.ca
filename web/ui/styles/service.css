@@ -37,6 +37,15 @@
 .service-flow--rev {
   animation: service-flow-rev 1.6s linear infinite;
 }
+/* E5S3 (docs/optimize-overlay.md): while the camera is under the rider's
+   hands the flows pause — `data-gesturing` is set by TransitMap on every
+   interaction, so no 60 fps dash paint fights the pan/zoom. The static
+   colour field carries the information while the world moves; ~400 ms of
+   quiet resumes the current. */
+svg[data-gesturing='true'] .service-track-flow,
+svg[data-gesturing='true'] .service-trail-flow {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .service-track-flow,
   .service-trail-flow,

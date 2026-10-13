@@ -332,22 +332,18 @@ configuration, decided before Epic 1 ships.
    survive version flips; genuinely new stops show _collecting_ until 3+ touches exist.
 6. **Never fabricate.** The system's credibility rests on unmonitored ≠ unserviced.
 
-### 4.7 Feature flags: the per-user debug overlay
+### 4.7 The overlay's rollout gate (superseded by docs/optimize-overlay.md)
 
-The polished overlay is the future product; the debug overlay is scaffolding, and
-scaffolding shouldn't ship to everyone. Flags are keyed by Clerk-verified account
-email, following the `map:tag` precedent for operator CLIs:
-
-```bash
-npm run feature:enable  voidOverlay drew@easleyowl.com
-npm run feature:disable voidOverlay drew@easleyowl.com
-npm run feature:list
-```
-
-`scripts/operations/feature-flags.ts` writes to the `feature_flags` D1 table through a
-remote D1 binding. `GET /api/v1/me/features` (Clerk-authenticated, the existing
-`/api/v1/me/*` machinery) returns the caller's enabled flags; a `useFeatureFlags` hook
-gates the overlay. Signed-out users and everyone else see nothing. When the polished
+**Historical record.** The polished overlay was once the future product and the
+debug overlay was per-user scaffolding, gated by a Clerk-keyed `voidOverlay`
+flag (`feature_flags` D1 table + the `feature:*` CLI + `useFeatureFlags`).
+That gate is **gone**: the overlay shipped to everyone
+(docs/optimize-overlay.md Epic 6) — its rollout is the public `overlay` block
+of `/api/v1/auth/config` (one wrangler var, flipped with the deploy that
+serves it), the per-stop field is public broadcast data from the CDN-published
+live tick documents, and the flag table, CLI and hook remain as generic
+machinery for future needs. Signed-out visitors see the overlay like everyone
+else. When the polished
 overlay epic arrives, the same backbone gates progressive rollout.
 
 ---

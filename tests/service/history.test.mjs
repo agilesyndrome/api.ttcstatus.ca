@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from '../helpers/database.mjs';
 import { compileModules } from '../helpers/compile.mjs';
+import { clearEdgeCache } from '../helpers/edge-cache.mjs';
 
 // The Epic 4 + E2S9 boundary: fold mechanics and retention through the real
 // window store and D1 (SQLite harness), fold-failure grace, the history
@@ -58,8 +59,9 @@ const sqlAdapter = (sqlite) => ({
     return { toArray: () => rows };
   },
 });
-// The history endpoint reads the edge cache; in tests it never hits.
-globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+// The history endpoint reads the edge cache (public since
+// docs/optimize-overlay.md E3S1); each endpoint call below clears the shared
+// stub first so a test's fresh database is never shadowed by a prior entry.
 
 /** A scripted stream: one touch every `headwayMs` inside a bounded span,
  * with an optional silent wound (the void a bunched pair drags behind). */
@@ -147,6 +149,7 @@ test('E4S4: a 40-minute wound spanning buckets is found via the leading gap', as
   const worst = rows.reduce((max, row) => Math.max(max, row.max_gap_seconds), 0);
   assert.ok(worst >= 2300 && worst <= 2500, `expected the ~40-min wound, got ${worst}`);
   // And the endpoint finds it in the merged summary, exactly.
+  clearEdgeCache();
   const response = await serviceHistoryResponse(
     new Request(
       `https://ttcstatus.ca/api/v1/service/history?stop=st_hist&from=${T0 - 12 * BUCKET_MS}`,
@@ -168,6 +171,7 @@ test('E4S3: the history endpoint merges exactly; filters and validation behave',
   const db = createDatabase(rollupsSchema);
   const { store } = scriptedStore({});
   await runFoldCycle(store, db, config, T0 + 3 * BUCKET_MS, coverage());
+  clearEdgeCache();
   const response = await serviceHistoryResponse(
     new Request(
       `https://ttcstatus.ca/api/v1/service/history?routes=506&from=${T0 - 9 * BUCKET_MS}`,
@@ -176,8 +180,9 @@ test('E4S3: the history endpoint merges exactly; filters and validation behave',
     { waitUntil: () => {} },
   );
   assert.equal(response.status, 200);
-  // Authorized data (E4S2): private, never a shared cache.
-  assert.equal(response.headers.get('cache-control'), 'private, max-age=300');
+  // Public broadcast data (docs/optimize-overlay.md E3S1): edge-cached by
+  // full URL — the second identical question never touches D1.
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
   const body = await response.json();
   assert.equal(body.summaries.length, 1);
   // Merged moments from the endpoint match the folded ground truth exactly:
@@ -187,6 +192,7 @@ test('E4S3: the history endpoint merges exactly; filters and validation behave',
   assert.deepEqual(body.summaries[0].routeIds, ['506']);
   assert.ok(body.bucketSeries === undefined, 'route queries do not carry bucket series');
   // Unfiltered queries are rejected with guidance (bounded cost by design).
+  clearEdgeCache();
   const unfiltered = await serviceHistoryResponse(
     new Request('https://ttcstatus.ca/api/v1/service/history'),
     { DB: db },
@@ -195,6 +201,7 @@ test('E4S3: the history endpoint merges exactly; filters and validation behave',
   assert.equal(unfiltered.status, 400);
   assert.deepEqual(await unfiltered.json(), { error: 'history-query-required' });
   // A route that folded nothing returns an empty set, not an error.
+  clearEdgeCache();
   const empty = await serviceHistoryResponse(
     new Request(`https://ttcstatus.ca/api/v1/service/history?routes=999&from=${T0}`),
     { DB: db },

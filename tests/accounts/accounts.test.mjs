@@ -37,16 +37,25 @@ const request = (path, value, method = value === undefined ? 'GET' : 'PUT') =>
 
 test('runtime configuration exposes only the publishable key; missing keys leave public transit usable', async () => {
   // The `live` block is additive transport discovery
-  // (docs/optimize-transport.md change 1b): defaults always present.
+  // (docs/optimize-transport.md change 1b): defaults always present. The
+  // `overlay` block is the same pattern (docs/optimize-overlay.md E1S4):
+  // the void overlay's tick path, poll cadence, and the public rollout
+  // switch — shipped disabled until the all-users flip.
   const liveDefaults = {
     base: 'https://live.ttcstatus.ca',
     pathTemplate: '/live/t/{tick}/vehicles.json',
     updateSeconds: 30,
   };
+  const overlayDefaults = {
+    enabled: false,
+    pathTemplate: '/live/t/{tick}/service-stops.json',
+    pollSeconds: 30,
+  };
   assert.deepEqual(authConfig({ CLERK_PUBLISHABLE_KEY: 'pk_test_public' }), {
     enabled: false,
     publishableKey: null,
     live: liveDefaults,
+    overlay: overlayDefaults,
   });
   // Unresolved secret-manager references (local dev loads .env.local verbatim
   // before the 1Password wrapper resolves them) must read as unconfigured,
@@ -56,12 +65,18 @@ test('runtime configuration exposes only the publishable key; missing keys leave
       CLERK_PUBLISHABLE_KEY: 'op://vault/item/clerk_publishable_key',
       CLERK_SECRET_KEY: 'op://vault/item/clerk_secret_key',
     }),
-    { enabled: false, publishableKey: null, live: liveDefaults },
+    {
+      enabled: false,
+      publishableKey: null,
+      live: liveDefaults,
+      overlay: overlayDefaults,
+    },
   );
   assert.deepEqual(authConfig({ CLERK_SECRET_KEY: 'sk_test_secret' }), {
     enabled: false,
     publishableKey: null,
     live: liveDefaults,
+    overlay: overlayDefaults,
   });
   const response = await api.fetch(
     new Request('https://ttcstatus.ca/api/v1/auth/config'),
@@ -74,6 +89,7 @@ test('runtime configuration exposes only the publishable key; missing keys leave
     enabled: true,
     publishableKey: 'pk_test_public',
     live: liveDefaults,
+    overlay: overlayDefaults,
   });
   assert.equal((await api.fetch(request('journal'), {}, {})).status, 503);
   assert.equal(

@@ -20,6 +20,9 @@
   // Keep sanitized application logs; automatic invocation logs include raw URLs.
   "observability": {
     "enabled": true,
+    "issues": {
+      "enabled": true,
+    },
     "redact_query_string": true,
     "logs": { "enabled": true, "invocation_logs": false },
   },
@@ -48,6 +51,15 @@
     "LIVE_PUBLIC_BASE": "https://live.ttcstatus.ca",
     "LIVE_PATH_TEMPLATE": "/live/t/{tick}/vehicles.json",
     "LIVE_UPDATE_SECONDS": "30",
+    // Void-overlay transport + the public rollout switch
+    // (docs/optimize-overlay.md E1S4, flipped at E6S4). The overlay is ON for
+    // every visitor — signed-out included: the recorder publishes
+    // `live/t/<tick>/service-stops.json` unconditionally, the CDN serves the
+    // bytes, and this var (deployed with this revision) is the only gate.
+    // Set to "false" to rehearse the off state.
+    "OVERLAY_ENABLED": "true",
+    "LIVE_SERVICE_PATH_TEMPLATE": "/live/t/{tick}/service-stops.json",
+    "OVERLAY_POLL_SECONDS": "30",
     "STATIC_GTFS_URL": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/b811ead4-6eaf-4adb-8408-d389fb5a069c/resource/c920e221-7a1c-488b-8c5b-6d8cd4e85eaf/download/completegtfs.zip",
     "SOURCE_ATTRIBUTION": "Contains information licensed under the Open Government Licence - Toronto",
     "NO_VALIDATOR_REFETCH_DAYS": "7",
@@ -107,7 +119,8 @@
     //  1. Attach R2 custom domain `live.ttcstatus.ca`.
     //  2. Cache rule: host eligible, edge TTL ≥ object `max-age=600`.
     //  3. Transform Rule: `Access-Control-Allow-Origin: *` on this host.
-    //  4. Lifecycle rule: expire `live/t/` objects after ~1 day.
+    //  4. Lifecycle rule: expire `live/t/` objects after 7 days (confirmed
+    //     2026-10-13 — one prefix rule covers vehicles + service-stops).
     {
       "binding": "LIVE_BUCKET",
       "bucket_name": "ttcstatus-live",

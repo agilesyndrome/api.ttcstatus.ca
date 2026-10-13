@@ -31,12 +31,13 @@ const { api } = await compileModules(
   `export { default as api } from './workers/api/src/index';`,
 );
 
-// A never-caching edge cache stub (the history suite's pattern): with
-// --test-isolation=none every test file's module code runs before any test,
-// so a real caching stub here would leak entries into the /service suites'
-// keys and theirs into ours. The ETag/304 behaviour is exercised through the
-// fresh-response conditional path.
-globalThis.caches = { default: { match: async () => null, put: async () => {} } };
+// The suite's shared edge-cache stub (tests/helpers/edge-cache.mjs): one
+// store for the whole --test-isolation=none process, so this file's
+// assignment can never null out another suite's HIT assertions and theirs
+// can never shadow our fresh fixtures — the get() below clears it first.
+// The ETag/304 behaviour is exercised through the fresh-response
+// conditional path plus the report's own repeat-fetch test.
+import { clearEdgeCache } from '../helpers/edge-cache.mjs';
 
 // The Clerk JWKS fixture (accounts.test.mjs's pattern), installed for the
 // same reason: every authed router call verifies a real signed session
@@ -278,6 +279,7 @@ const flush = async (context) => Promise.all(context.pending);
 /** Authed by default (the report is members-only); `auth: false` makes the
  * signed-out requests. Extra headers merge over the session's. */
 const get = async (path, env, headers = {}, { auth = true } = {}) => {
+  clearEdgeCache();
   const context = ctx();
   const response = await api.fetch(
     new Request(`https://ttcstatus.ca${path}`, {

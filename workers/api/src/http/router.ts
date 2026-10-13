@@ -8,16 +8,9 @@ import {
   publicProfileResponse,
 } from '../accounts';
 import { verifySession } from '../accounts/verify';
-import { callerHasFlag } from '../accounts/features';
-import { VOID_OVERLAY_FLAG } from '../../../../shared/service/contracts';
-import { accountReply } from '../http/responses';
 import { mapResponse, networkResponse } from '../maps/responses';
 import { debugMapResponse } from '../maps/debug';
-import {
-  serviceStopsResponse,
-  serviceWaveResponse,
-  serviceHistoryResponse,
-} from '../service/responses';
+import { serviceWaveResponse, serviceHistoryResponse } from '../service/responses';
 import { slaReportResponse } from '../sla/responses';
 import { feedStatusResponse } from '../diagnostics/feed-status';
 import { analyticsEventResponse } from '../diagnostics/analytics';
@@ -99,26 +92,28 @@ export async function routeRequest(
     return analyticsEventResponse(request, env);
   }
 
-  // Delivered-service endpoints (docs/sla.md stories 3.1/3.2): additive,
-  // marked experimental. Server-enforced grant (optimize-transport.md
-  // change 4, E4S2): a locally verified session (no per-request Clerk API
-  // call) plus the caller's `voidOverlay` flag. 401 for a missing/invalid
-  // session, 403 for a valid session without the grant; identity comes
-  // exclusively from the verified token, never from query parameters.
-  if (request.method === 'GET' && url.pathname.startsWith('/api/v1/service/')) {
+  // Delivered-service endpoints (docs/optimize-overlay.md Epic 3): the
+  // overlay's live stops data is public broadcast bytes from the live
+  // bucket — nothing here serves it. What remains on the Worker:
+  //  - `/api/v1/service/history` — per-stop expanded details, broadcast
+  //    (identical per stop for every caller) and edge-cached; the selected
+  //    stop's card needs it and the overlay is for every visitor, so it is
+  //    public, no session. The narrowing-filter requirement stays.
+  //  - `/api/v1/service/wave` — the members-only replay (the E4S5 /sla
+  //    decision): a verified session, no per-user grant — the `voidOverlay`
+  //    flag is gone for everyone. Identity comes exclusively from the
+  //    verified token, never from query parameters.
+  // No `/api/v1/service/stops`: the public vehicle-style deletion, not a
+  // flag (the no-fallback doctrine) — the live tick path is the only
+  // transport for the stops payload, and nothing here can read the
+  // recorder's states per request.
+  if (request.method === 'GET' && url.pathname === '/api/v1/service/history') {
+    return serviceHistoryResponse(request, env, ctx);
+  }
+  if (request.method === 'GET' && url.pathname === '/api/v1/service/wave') {
     const identity = await verifySession(request, env);
     if (identity instanceof Response) return identity;
-    const granted = await callerHasFlag(env.DB, identity, VOID_OVERLAY_FLAG);
-    if (!granted) return accountReply({ error: 'forbidden' }, 403);
-    if (url.pathname === '/api/v1/service/stops') {
-      return serviceStopsResponse(request, env);
-    }
-    if (url.pathname === '/api/v1/service/wave') {
-      return serviceWaveResponse(request, env);
-    }
-    if (url.pathname === '/api/v1/service/history') {
-      return serviceHistoryResponse(request, env);
-    }
+    return serviceWaveResponse(request, env);
   }
 
   // The SLA report (docs/sla-stories.md Epic 8, E8S4): precomputed-only —

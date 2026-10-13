@@ -2,7 +2,84 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compileModules } from '../helpers/compile.mjs';
 
-const { authConfig } = await compileModules(`export { authConfig } from './workers/api/src/accounts/auth';`);
+const { authConfig, overlayConfig, parseOverlayTransportConfig } = await compileModules(`
+  export { authConfig, overlayConfig } from './workers/api/src/accounts/auth';
+  export { parseOverlayTransportConfig } from './shared/live/config';
+`);
+
+// ---- The overlay block (docs/optimize-overlay.md E1S4) ----
+
+test('auth/config returns the overlay block additively, disabled by default', () => {
+  const config = authConfig({ DB: null });
+  // The rollout switch ships off: the overlay is not public until the
+  // OVERLAY_ENABLED var flips in the dashboard (E6S4).
+  assert.equal(config.overlay.enabled, false);
+  assert.equal(config.overlay.pathTemplate, '/live/t/{tick}/service-stops.json');
+  assert.equal(config.overlay.pollSeconds, 30);
+  // The recorder consumes the same defaults for its unconditional publish.
+  assert.deepEqual(overlayConfig({}), {
+    enabled: false,
+    pathTemplate: '/live/t/{tick}/service-stops.json',
+    pollSeconds: 30,
+  });
+});
+
+test('overlay block honors env overrides and clamps the poll cadence', () => {
+  const config = authConfig({
+    DB: null,
+    OVERLAY_ENABLED: 'true',
+    LIVE_SERVICE_PATH_TEMPLATE: '/live/t/{tick}/service-stops.min.json',
+    OVERLAY_POLL_SECONDS: '60',
+  });
+  assert.equal(config.overlay.enabled, true);
+  assert.equal(config.overlay.pathTemplate, '/live/t/{tick}/service-stops.min.json');
+  // A slower poll cadence is allowed (tick derivation stays on the grid);
+  // nonsense falls back to the default, never divides by zero.
+  assert.equal(config.overlay.pollSeconds, 60);
+  assert.equal(overlayConfig({ OVERLAY_POLL_SECONDS: 'not-a-number' }).pollSeconds, 30);
+});
+
+test('parseOverlayTransportConfig validates like the live block — never a fallback', () => {
+  const good = parseOverlayTransportConfig({
+    overlay: {
+      enabled: true,
+      pathTemplate: '/live/t/{tick}/service-stops.json',
+      pollSeconds: 60,
+    },
+  });
+  assert.deepEqual(good, {
+    enabled: true,
+    pathTemplate: '/live/t/{tick}/service-stops.json',
+    pollSeconds: 60,
+  });
+  // Unknown extra fields are tolerated (additive evolution).
+  assert.equal(
+    parseOverlayTransportConfig({
+      overlay: {
+        enabled: false,
+        pathTemplate: '/live/t/{tick}/service-stops.json',
+        extra: 1,
+      },
+    }).enabled,
+    false,
+  );
+  // Missing/insane blocks throw before any overlay transport runs.
+  assert.throws(() => parseOverlayTransportConfig({}), /missing overlay block/);
+  assert.throws(
+    () =>
+      parseOverlayTransportConfig({
+        overlay: { enabled: 'yes', pathTemplate: '/live/t/{tick}/x' },
+      }),
+    /overlay.enabled must be boolean/,
+  );
+  assert.throws(
+    () =>
+      parseOverlayTransportConfig({
+        overlay: { enabled: true, pathTemplate: '/api/v1/service/stops?routes=506' },
+      }),
+    /immutable tick path/,
+  );
+});
 
 test('auth/config returns the live transport block additively', () => {
   const config = authConfig({ DB: null });

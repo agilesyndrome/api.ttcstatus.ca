@@ -9,7 +9,12 @@
  * `fetchRailSnapshot()` → pure core (detection, dwell dedupe, coverage
  * honesty) → persist touches/coverage/state to DO SQL → prune the 30-minute
  * window → assemble live states (shared math) → counters to the Analytics
- * Engine → telemetry. Upstream failures are recorded, never fabricated. */
+ * Engine → telemetry. Upstream failures are recorded, never fabricated.
+ *
+ * Since docs/optimize-overlay.md (E1S2/E1S3) the same assembly also produces
+ * the wire-ready stops tick document — serialized once, cached for the
+ * interim /states route, and published beside the vehicles document to the
+ * public live bucket every tick. */
 
 import type { Env } from '../env';
 import type { DurableObjectStateLike } from '../../../shared/cloudflare/bindings';
@@ -17,7 +22,12 @@ import { serviceConfig, SERVICE_WINDOW_SECONDS } from '../../../../shared/servic
 import type { ServiceConfig } from '../../../../shared/service/config';
 import { DEFAULT_VEHICLE_FEED_URL, fetchRailSnapshot } from '../realtime/realtime';
 import { buildTickDocument } from '../realtime/tick-doc';
-import { liveTickPath, liveTransportConfig } from '../../../../shared/live/config';
+import { assembleStopsPayload, buildStopsTickDocument } from './stops-tick-doc';
+import {
+  liveTickPath,
+  liveTransportConfig,
+  overlayTransportConfig,
+} from '../../../../shared/live/config';
 import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
 import { SnapshotPublisher } from './published-snapshot';
 import { RecorderSnapshotStore } from './snapshot-store';
@@ -77,6 +87,11 @@ export interface RecorderTelemetry {
    * breaks acquisition, folds, or retention — it is loud evidence only. */
   publishFailures: number;
   lastPublishError: string | null;
+  /** Stops-doc publication (docs/optimize-overlay.md E1S3): same
+   * non-fatal contract, counted separately so one path's failure can never
+   * masquerade as the other's. */
+  stopsPublishFailures: number;
+  lastStopsPublishError: string | null;
 }
 
 const TELEMETRY_KEY = 'telemetry';
@@ -106,6 +121,8 @@ const initialTelemetry: RecorderTelemetry = {
   lastFoldError: null,
   publishFailures: 0,
   lastPublishError: null,
+  stopsPublishFailures: 0,
+  lastStopsPublishError: null,
 };
 
 export class ServiceRecorder {
@@ -152,10 +169,15 @@ export class ServiceRecorder {
    * Write-only for FLEET data (optimize-transport.md E3S2): the public
    * vehicle route is deleted, so nothing on the public surface polls the
    * recorder per request — it acquires upstream and publishes tick docs to
-   * the live bucket; only the delivered-service endpoints (`/states`,
-   * `/window` via the service binding) and telemetry read it, and
+   * the live bucket; only the delivered-service endpoints (`/window` via
+   * the service binding) and telemetry read it, and
    * `https://service-recorder.internal` is not public DNS, so these routes
-   * are unreachable by construction without the binding. */
+   * are unreachable by construction without the binding.
+   *
+   * Write-only for STATES data too (docs/optimize-overlay.md E3S3): the
+   * `/states` route is deleted — the per-tick states document is published
+   * to the live bucket by the alarm loop, and nothing on the public surface
+   * can make this DO recompute the field per request. */
   async fetch(request: Request): Promise<Response> {
     this.store.initialize();
     await this.ensureAlarm();
@@ -169,28 +191,6 @@ export class ServiceRecorder {
     // ETags and 304s work per tick (story 3.1).
     const sampleMs = this.config.sampleSeconds * 1000;
     const at = Math.floor(Date.now() / sampleMs) * sampleMs;
-    if (path === '/states') {
-      const { states, touches } = await this.currentStates(at);
-      const routesByStop = new Map<string, Set<string>>();
-      for (const touch of touches) {
-        const bucket = routesByStop.get(touch.stopId) ?? new Set<string>();
-        bucket.add(touch.routeId);
-        routesByStop.set(touch.stopId, bucket);
-      }
-      const payloadStates = [...states.values()].map((state) => {
-        const routes = new Set(routesByStop.get(state.stopId));
-        for (const route of this.network?.stops.get(state.stopId)?.routes ?? []) {
-          routes.add(route);
-        }
-        return { ...state, routeIds: [...routes].sort() };
-      });
-      return Response.json(
-        { schemaVersion: 1, at, states: payloadStates },
-        {
-          headers: { 'cache-control': 'no-store' },
-        },
-      );
-    }
     if (path === '/window') {
       const { touches, coverage } = await this.currentWindow(at);
       const touchRoutes = new Set(touches.map((touch) => touch.routeId));
@@ -311,12 +311,38 @@ export class ServiceRecorder {
     // Live states from the shared math (the seam Epic 3 serves), and the
     // void-evidence counter for analytics (story 6.1). Thin-window stops get
     // rollup-stabilized baselines (story 2.6's Stage-3 upgrade, E2S9).
-    const { states } = await this.currentStates(now);
+    // One compute per tick serves two consumers (optimize-overlay.md E1S2):
+    // the void counter and the published stops tick document.
+    const { states, touches } = await this.currentStates(now);
     let voidStops = 0;
     for (const stopState of states.values()) {
       if (stopState.state === 'void') voidStops += 1;
     }
     const windowTouchCount = this.store.touchCount();
+    const tickMs = this.config.sampleSeconds * 1000;
+    const tickId = Math.floor(now / tickMs);
+    // The per-tick stops document (E1S2/E1S3): wire-ready payload, assembled
+    // once, serialized once, published once. An assembly failure still
+    // publishes — the honest outage doc.
+    let stopsBody: string;
+    try {
+      const stopsDoc = buildStopsTickDocument(
+        assembleStopsPayload(
+          states,
+          touches,
+          (stopId) => this.network?.stops.get(stopId)?.routes ?? [],
+        ),
+        tickId,
+        { tickMs },
+      );
+      stopsBody = JSON.stringify(stopsDoc);
+    } catch (error) {
+      stopsBody = JSON.stringify(buildStopsTickDocument(null, tickId, { tickMs }));
+      console.error('recorder stops assembly failed — publishing outage doc', {
+        error: error instanceof Error ? error.message : String(error),
+        at: now,
+      });
+    }
 
     // Fold + retention (stories 4.1/4.2/4.5): fold every completed bucket
     // while its raw rows survive, then the hourly 36-hour prune. A fold
@@ -372,9 +398,25 @@ export class ServiceRecorder {
       });
     }
 
+    // The stops tick document rides the same post-acquisition publish slot
+    // (docs/optimize-overlay.md E1S3) with its own non-fatal accounting: a
+    // broken stops publish must never break acquisition, folds, retention,
+    // or the vehicles publish beside it.
+    let stopsPublishFailures = telemetry.stopsPublishFailures ?? 0;
+    let lastStopsPublishError = telemetry.lastStopsPublishError ?? null;
+    try {
+      await this.publishStopsTickDocument(tickId, stopsBody);
+    } catch (error) {
+      stopsPublishFailures += 1;
+      lastStopsPublishError = error instanceof Error ? error.message : String(error);
+      console.error('recorder stops publish failed — recorded, not fatal', {
+        error: lastStopsPublishError,
+        at: now,
+      });
+    }
+
     // Analytics Engine counters (story 6.1): long-term trends with zero
     // event retention. Fire-and-forget; optional binding, no-op unset.
-    const tickId = Math.floor(now / (this.config.sampleSeconds * 1000));
     this.env.ANALYTICS?.writeDataPoint({
       blobs: ['service-tick'],
       doubles: [
@@ -405,6 +447,8 @@ export class ServiceRecorder {
         lastFoldError,
         publishFailures,
         lastPublishError,
+        stopsPublishFailures,
+        lastStopsPublishError,
       },
     };
   }
@@ -434,9 +478,40 @@ export class ServiceRecorder {
       attribution: this.env.SOURCE_ATTRIBUTION ?? '',
     });
     const { pathTemplate } = liveTransportConfig(this.env);
-    await bucket.put(liveTickPath(pathTemplate, tickId).replace(/^\//, ''), JSON.stringify(doc), {
+    await bucket.put(
+      liveTickPath(pathTemplate, tickId).replace(/^\//, ''),
+      JSON.stringify(doc),
+      {
+        // Immutable object; the generous TTL is free — old ticks are only
+        // requested on skew fallback, and the bucket's `live/t/` lifecycle
+        // rule expires them (7 days — confirmed 2026-10-13).
+        httpMetadata: {
+          'content-type': 'application/json',
+          'cache-control': 'public, max-age=600',
+        },
+      },
+    );
+  }
+
+  /** Publish one immutable service-stops tick document
+   * (`live/t/<tickId>/service-stops.json`) beside the vehicles document —
+   * docs/optimize-overlay.md E1S3. Identical bytes for every user; the CDN
+   * serves overlay viewers, the recorder pays one Class A write per tick.
+   * The body is the exact string the interim /states route serves (E1S2's
+   * one-serialize rule), so the Worker path and the CDN path can never
+   * disagree. The `overlay.enabled` config flag gates only the *client*
+   * rollout — this publish runs unconditionally, so flipping the switch
+   * needs no warmup. Publish failures are the caller's loud telemetry,
+   * never fatal. No-op without a LIVE_BUCKET binding (local dev). */
+  private async publishStopsTickDocument(tickId: number, body: string): Promise<void> {
+    const bucket = this.env.LIVE_BUCKET;
+    if (!bucket) return;
+    const { pathTemplate } = overlayTransportConfig(this.env);
+    await bucket.put(liveTickPath(pathTemplate, tickId).replace(/^\//, ''), body, {
       // Immutable object; the generous TTL is free — old ticks are only
-      // requested on skew fallback, and the ~1-day lifecycle rule expires them.
+      // requested on skew fallback, and the bucket's `live/t/` lifecycle
+      // rule expires them (7 days — confirmed 2026-10-13; the same rule
+      // covers both documents).
       httpMetadata: {
         'content-type': 'application/json',
         'cache-control': 'public, max-age=600',

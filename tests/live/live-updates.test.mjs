@@ -316,7 +316,11 @@ test('304 avoids replacing/projecting identical observations and clears previous
 });
 test('tick transport implements exactly the three-case contract (200, 404→tick−1, network)', async () => {
   const transport = parseLiveTransportConfig({
-    live: { base: 'https://live.example.ca', pathTemplate: '/live/t/{tick}/vehicles.json', updateSeconds: 30 },
+    live: {
+      base: 'https://live.example.ca',
+      pathTemplate: '/live/t/{tick}/vehicles.json',
+      updateSeconds: 30,
+    },
   });
   assert.equal(
     liveTickUrl(transport, 42),
@@ -391,13 +395,26 @@ test('tick transport implements exactly the three-case contract (200, 404→tick
     // caller's backoff owns it; there is no 5xx/Retry-After parsing.
     globalThis.fetch = async () => new Response('down', { status: 503 });
     await assert.rejects(
-      requestTickUpdate(transport, new AbortController().signal, undefined, undefined, now),
+      requestTickUpdate(
+        transport,
+        new AbortController().signal,
+        undefined,
+        undefined,
+        now,
+      ),
       /HTTP 503/,
     );
     // 304 without a previous ETag is a contract violation, not a no-op.
-    globalThis.fetch = async () => new Response(null, { status: 304, headers: { etag: '"x"' } });
+    globalThis.fetch = async () =>
+      new Response(null, { status: 304, headers: { etag: '"x"' } });
     await assert.rejects(
-      requestTickUpdate(transport, new AbortController().signal, undefined, undefined, now),
+      requestTickUpdate(
+        transport,
+        new AbortController().signal,
+        undefined,
+        undefined,
+        now,
+      ),
       /previous snapshot/,
     );
   } finally {
@@ -406,17 +423,32 @@ test('tick transport implements exactly the three-case contract (200, 404→tick
 });
 test('live transport config parses defensively: no fallback URL is ever invented', () => {
   const good = parseLiveTransportConfig({
-    live: { base: 'https://live.ttcstatus.ca', pathTemplate: '/live/t/{tick}/vehicles.json', updateSeconds: '45', extra: 'ignored' },
+    live: {
+      base: 'https://live.ttcstatus.ca',
+      pathTemplate: '/live/t/{tick}/vehicles.json',
+      updateSeconds: '45',
+      extra: 'ignored',
+    },
   });
   assert.equal(good.updateSeconds, 45);
   // Same-origin base ('') is valid (local preview); HTTP is not.
-  assert.equal(parseLiveTransportConfig({ live: { base: '', pathTemplate: '/live/t/{tick}/vehicles.json' } }).base, '');
+  assert.equal(
+    parseLiveTransportConfig({
+      live: { base: '', pathTemplate: '/live/t/{tick}/vehicles.json' },
+    }).base,
+    '',
+  );
   for (const bad of [
     null,
     {},
     { live: null },
     { live: { base: 7, pathTemplate: '/live/t/{tick}/vehicles.json' } },
-    { live: { base: 'http://insecure.example', pathTemplate: '/live/t/{tick}/vehicles.json' } },
+    {
+      live: {
+        base: 'http://insecure.example',
+        pathTemplate: '/live/t/{tick}/vehicles.json',
+      },
+    },
     { live: { base: 'https://x', pathTemplate: '/api/v1/vehicles/streetcar' } },
   ])
     assert.throws(() => parseLiveTransportConfig(bad));

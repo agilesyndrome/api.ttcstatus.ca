@@ -24,7 +24,8 @@ const fleet = {
   fetchedAt: '2026-10-12T14:00:02.000Z',
   feedTimestamp: '2026-10-12T14:00:01.000Z',
   source: 'https://bustime.ttc.ca/gtfsrt/vehicles',
-  attribution: 'Contains information licensed under the Open Government Licence - Toronto',
+  attribution:
+    'Contains information licensed under the Open Government Licence - Toronto',
   vehicles: [
     {
       id: '4401',

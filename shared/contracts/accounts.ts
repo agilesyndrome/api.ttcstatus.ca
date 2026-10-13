@@ -77,12 +77,19 @@ export const accountSchemas = {
     publishableKey: { type: ['string', 'null'] },
     live: object(
       {
-        base: { ...string, description: 'Live host origin; empty string means same-origin.' },
+        base: {
+          ...string,
+          description: 'Live host origin; empty string means same-origin.',
+        },
         pathTemplate: {
           ...string,
-          description: 'Immutable tick path with {tick} placeholder; never carries query parameters.',
+          description:
+            'Immutable tick path with {tick} placeholder; never carries query parameters.',
         },
-        updateSeconds: { type: 'integer', description: 'Client polling cadence in seconds (30–300).' },
+        updateSeconds: {
+          type: 'integer',
+          description: 'Client polling cadence in seconds (30–300).',
+        },
       },
       ['base', 'pathTemplate', 'updateSeconds'],
     ),

@@ -45,10 +45,13 @@ export interface TransitMapProps {
   onInteract?(): void;
   /** Fires instead of onInteract for zoom gestures, so zooming can keep following. */
   onZoomInteract?(): void;
-  overlay?: ReactNode | ((scale: number) => ReactNode);
+  overlay?: ReactNode | ((scale: number, camera: Bounds) => ReactNode);
   /** Renders as the track's skin — UNDER stop labels and cars (the delivered
-   * service field paints the tracks themselves). Same shape as `overlay`. */
-  underlay?: ReactNode | ((scale: number) => ReactNode);
+   * service field paints the tracks themselves). Same shape as `overlay`;
+   * the camera rect (the SVG viewBox — the visible world) rides along since
+   * docs/optimize-overlay.md E4S1: the service engine advances and
+   * schedules only what is on screen. */
+  underlay?: ReactNode | ((scale: number, camera: Bounds) => ReactNode);
   mapTools?: ReactNode;
   /** Screen-space content kept inside the visible map viewport. */
   mapPopup?: ReactNode;

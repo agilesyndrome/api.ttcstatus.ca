@@ -17,7 +17,9 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
   await context.route('**/api/v1/auth/config', (route) =>
     // The live transport block ships with every auth-config response
     // (optimize-transport.md change 1b) — without it the client has no
-    // transport and fails closed (never a fallback URL).
+    // transport and fails closed (never a fallback URL). The overlay block
+    // rides the same response (docs/optimize-overlay.md E1S4/E2S2): same-
+    // origin stops tick path + the rollout switch, on for the checks.
     route.fulfill({
       json: {
         enabled: true,
@@ -26,6 +28,11 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
           base: '',
           pathTemplate: '/live/t/{tick}/vehicles.json',
           updateSeconds: 30,
+        },
+        overlay: {
+          enabled: true,
+          pathTemplate: '/live/t/{tick}/service-stops.json',
+          pollSeconds: 30,
         },
       },
     }),

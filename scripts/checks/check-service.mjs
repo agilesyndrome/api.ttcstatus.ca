@@ -8,7 +8,8 @@ import { chromium } from 'playwright';
 import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 // Run against `npm run dev:viewer`. TTC responses are intercepted with local
-// data — including /service/stops keyed by the REAL stop ids of the map the
+// data — including the live stops tick document keyed by the REAL stop ids
+// of the map the
 // page actually loads, so the field paints the tracks exactly as production
 // would. This is the polish-epic UX (E7S4): no panel, no always-on markers —
 // the dryness field on the tracks, one marker + story card on selection.
@@ -20,6 +21,7 @@ const bundle = await build({
     contents: `
   export { buildViewerData } from './shared/map/model';
   export { edgeServiceSegments, drynessColor } from './web/ui/features/service/wave-field';
+  export { twinFeature } from './web/ui/features/map/platform-pairs';
   export { serviceConfig } from './shared/service/config';`,
     resolveDir: process.cwd(),
     loader: 'ts',
@@ -32,7 +34,7 @@ const bundle = await build({
 });
 const dir = await mkdtemp(join(tmpdir(), 'ttc-check-service-'));
 await writeFile(join(dir, 'model.mjs'), bundle.outputFiles[0].text);
-const { buildViewerData, edgeServiceSegments, drynessColor, serviceConfig } =
+const { buildViewerData, edgeServiceSegments, drynessColor, twinFeature, serviceConfig } =
   await import(pathToFileURL(join(dir, 'model.mjs')).href);
 await rm(dir, { recursive: true, force: true });
 const mapPayload = await (await fetch(`${origin}/api/v1/map/ttcstatus`)).json();
@@ -246,13 +248,31 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
 });
 try {
-  // ——— 1. Flag gated OFF: nothing renders, nothing is even fetched. ———
+  // ——— 1. Rollout switch OFF: nothing renders, nothing is even fetched. ———
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
     await installAccountFixture(context, { signedIn: true });
     let serviceRequests = 0;
-    await context.route('**/api/v1/me/features', (route) =>
-      route.fulfill({ json: { schemaVersion: 1, flags: [] } }),
+    // The overlay's switch is the auth-config `overlay` block now
+    // (docs/optimize-overlay.md E2S2) — a later route wins over the
+    // fixture's, so this context sees the OFF state.
+    await context.route('**/api/v1/auth/config', (route) =>
+      route.fulfill({
+        json: {
+          enabled: true,
+          publishableKey: 'pk_test_fixture',
+          live: {
+            base: '',
+            pathTemplate: '/live/t/{tick}/vehicles.json',
+            updateSeconds: 30,
+          },
+          overlay: {
+            enabled: false,
+            pathTemplate: '/live/t/{tick}/service-stops.json',
+            pollSeconds: 30,
+          },
+        },
+      }),
     );
     await context.route('**/api/v1/service/**', (route) => {
       serviceRequests += 1;
@@ -261,24 +281,28 @@ try {
     const page = await context.newPage();
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
-    assert.equal(serviceRequests, 0, 'flag off must mean zero /service/* requests');
+    assert.equal(serviceRequests, 0, 'overlay off must mean zero /service/* requests');
     assert.equal(await page.locator('.service-track').count(), 0);
     assert.equal(await page.locator('.void-marker').count(), 0);
     assert.equal(await page.locator('.service-card').count(), 0);
     await context.close();
   }
 
-  // ——— 2. Flag ON: the field paints the tracks; no chrome until asked. ———
+  // ——— 2. Switch ON: the field paints the tracks; no chrome until asked. ———
   {
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
     await installAccountFixture(context, { signedIn: true });
-    await context.route('**/api/v1/me/features', (route) =>
-      route.fulfill({ json: { schemaVersion: 1, flags: ['voidOverlay'] } }),
-    );
     let serviceStopRequests = 0;
-    await context.route('**/api/v1/service/stops', (route) => {
+    await context.route('**/live/t/*/service-stops.json', (route) => {
       serviceStopRequests++;
-      return route.fulfill({ json: stopsPayload });
+      return route.fulfill({
+        json: {
+          schemaVersion: 1,
+          at: stopsPayload.at,
+          tickId: Math.floor(stopsPayload.at / 30_000),
+          states: stopsPayload.states,
+        },
+      });
     });
     await context.route('**/api/v1/service/history**', (route) => {
       const historyStop =
@@ -366,48 +390,15 @@ try {
     assert.ok(expectedBand.some((piece) => piece.state === 'fresh'));
     assert.ok(expectedBand.some((piece) => piece.state === 'due'));
     assert.ok(expectedBand.some((piece) => piece.state === 'unmonitored'));
-    // Every piece carries its direction, and each direction's stream flows
-    // in its own travel direction at the speed its state earns.
-    const domFlow = await page.$$eval('.service-track-flow', (elements) =>
-      elements.map((element) => ({
-        fwd: element.classList.contains('service-flow--fwd'),
-        rev: element.classList.contains('service-flow--rev'),
-        seconds: element.style.animationDuration,
-        phase: element.style.getPropertyValue('--dash-start'),
-      })),
-    );
-    // The dash phase rides every flow line as a custom property — the whole
-    // route flows as one continuous current, no seams at the subdivisions.
-    assert.ok(
-      domFlow.every((piece) => piece.phase !== ''),
-      'every flow line carries its dash phase',
-    );
-    const flowPieces = expectedBand.filter((piece) => piece.state !== 'unmonitored');
-    assert.equal(domFlow.length, flowPieces.length, 'every visible piece flows');
-    const fwdCount = flowPieces.filter((piece) => piece.flow === 'fwd').length;
-    const revCount = flowPieces.filter((piece) => piece.flow === 'rev').length;
-    assert.ok(fwdCount > 0 && revCount > 0, 'both directions flow, each its own way');
+    // E5S2 (docs/optimize-overlay.md): at city-wide zoom NO flow dashes
+    // render — every piece is shorter on screen than one dash cycle, so the
+    // static colour field carries the information (and the battery). The
+    // deep flow assertions move below, where selecting a stop zooms the
+    // camera to street level and the flows earn their keep.
     assert.equal(
-      domFlow.filter((piece) => piece.fwd).length,
-      fwdCount,
-      'forward streams match the brain',
-    );
-    // Speed is the service: the void drifts (5.5s), the fresh runs brisk
-    // (1.6s) — both directions independently.
-    const voidSeconds = expectedBand.find(
-      (piece) => piece.direction === 0 && piece.state === 'void',
-    ).speed;
-    const freshSeconds = expectedBand.find(
-      (piece) => piece.direction === 1 && piece.state === 'fresh',
-    ).speed;
-    assert.ok(voidSeconds > freshSeconds, 'void drifts slower than fresh');
-    assert.ok(
-      domFlow.some((piece) => piece.seconds === `${voidSeconds}s`),
-      'a void piece animates at its drift speed',
-    );
-    assert.ok(
-      domFlow.some((piece) => piece.seconds === `${freshSeconds}s`),
-      'a fresh piece animates at its brisk speed',
+      await page.locator('.service-track-flow').count(),
+      0,
+      'city-wide zoom: no flow paint — the static field carries the information',
     );
     // The gradient really grades: fresh and void paint different colours.
     assert.notEqual(
@@ -427,9 +418,66 @@ try {
     // rightly gives it the tap — so the check drives the feature's own
     // keyboard path (tabindex + Enter) for determinism. The pointer-up
     // hit-test itself is verified by the marker toggle below.
-    await page.locator(`[data-feature="${voidFeature.id}"]`).focus();
+    // Merged pairs render under whichever feature the map's own order
+    // picks as the representative (platform-pairs stopDots): drive
+    // whichever of the pair the DOM actually renders — the directionless
+    // story is the same intersection either way, and the merged card
+    // headlines the worst (void) platform.
+    let voidDot = null;
+    for (const feature of [voidFeature, siblingFeature]) {
+      if (!feature) continue;
+      const locator = page.locator(`[data-feature="${feature.id}"]`);
+      if ((await locator.count()) > 0) {
+        voidDot = locator;
+        break;
+      }
+    }
+    assert.ok(voidDot, 'the void intersection renders a dot');
+    await voidDot.focus();
     await page.keyboard.press('Enter');
     await page.locator('.service-popover').waitFor({ state: 'visible', timeout: 5_000 });
+    // The selection zooms the camera to street level (~level 5); wait out
+    // the animation and the 150 ms settle debounce, then the flows reappear
+    // for every piece long enough on screen — the E5S2 gate in reverse.
+    await page.waitForTimeout(1_000);
+    const domFlow = await page.$$eval('.service-track-flow', (elements) =>
+      elements.map((element) => ({
+        fwd: element.classList.contains('service-flow--fwd'),
+        rev: element.classList.contains('service-flow--rev'),
+        seconds: element.style.animationDuration,
+        phase: element.style.getPropertyValue('--dash-start'),
+      })),
+    );
+    assert.ok(domFlow.length > 0, 'street-level zoom: the flows run');
+    assert.ok(
+      domFlow.every((piece) => piece.phase !== ''),
+      'every flow line carries its dash phase',
+    );
+    const flowPieces = expectedBand.filter((piece) => piece.state !== 'unmonitored');
+    assert.ok(
+      domFlow.length <= flowPieces.length,
+      'flow lines are a subset of the painted band',
+    );
+    assert.ok(
+      domFlow.some((piece) => piece.fwd) && domFlow.some((piece) => piece.rev),
+      'both directions flow, each its own way',
+    );
+    // Speed is the service: the void drifts, the fresh runs brisk.
+    const voidSeconds = expectedBand.find(
+      (piece) => piece.direction === 0 && piece.state === 'void',
+    ).speed;
+    const freshSeconds = expectedBand.find(
+      (piece) => piece.direction === 1 && piece.state === 'fresh',
+    ).speed;
+    assert.ok(voidSeconds > freshSeconds, 'void drifts slower than fresh');
+    assert.ok(
+      domFlow.some((piece) => piece.seconds === `${voidSeconds}s`),
+      'a void piece animates at its drift speed',
+    );
+    assert.ok(
+      domFlow.some((piece) => piece.seconds === `${freshSeconds}s`),
+      'a fresh piece animates at its brisk speed',
+    );
     // Directionless: no ring until the rider picks, and both platforms
     // offered with NONE pressed (the tap made no assumption).
     assert.equal(
@@ -558,7 +606,20 @@ try {
     if (multiRouteFeature) {
       await page.locator('.void-marker').click();
       await page.waitForTimeout(200);
-      await page.locator(`[data-feature="${multiRouteFeature.id}"]`).focus();
+      // The same merged-pair rule as 3: drive whichever of the platform's
+      // pair the DOM renders as the representative dot.
+      const multiTwin = twinFeature(multiRouteFeature, viewer.features);
+      let multiDot = null;
+      for (const feature of [multiRouteFeature, multiTwin]) {
+        if (!feature) continue;
+        const locator = page.locator(`[data-feature="${feature.id}"]`);
+        if ((await locator.count()) > 0) {
+          multiDot = locator;
+          break;
+        }
+      }
+      assert.ok(multiDot, 'the multi-route platform renders a dot');
+      await multiDot.focus();
       await page.keyboard.press('Enter');
       await page
         .locator('.service-popover')
@@ -588,10 +649,10 @@ try {
           'the directionless rose presses nothing',
         );
       }
-      await page.locator('.service-card__bar .chip').click();
-    } else {
-      await page.locator('.service-card__bar .chip').click();
     }
+    // Narrow-viewport layout (the phone street test): the open card must
+    // stay inside the map on a phone — so the card closes only AFTER these
+    // assertions, not before (the chip IS the close button).
     await page.setViewportSize({ width: 390, height: 620 });
     const narrowPopup = await page.locator('.service-popover').boundingBox();
     const narrowMap = await page.locator('.map-viewport').boundingBox();
@@ -600,8 +661,20 @@ try {
     assert.ok(narrowPopup.x + narrowPopup.width <= narrowMap.x + narrowMap.width);
     assert.ok(narrowPopup.y + narrowPopup.height <= narrowMap.y + narrowMap.height);
     await page.setViewportSize({ width: 1440, height: 960 });
+    await page.locator('.service-card__bar .chip').click();
 
     // ——— 4. Tap the ring: deselect — back to a clean map. ———
+    // 3c ends with the card closed and nothing picked — a directionless
+    // merged pair carries no ring — so re-open the intersection, press a
+    // platform to ring it, and only then toggle the ring off.
+    await voidDot.focus();
+    await page.keyboard.press('Enter');
+    await page.locator('.service-popover').waitFor({ state: 'visible', timeout: 5_000 });
+    const roseButtons4 = page.locator('.service-popover .direction-rose button');
+    if ((await roseButtons4.count()) > 0) {
+      await roseButtons4.first().click();
+      await page.locator('.void-marker').waitFor({ state: 'visible', timeout: 5_000 });
+    }
     await page.locator('.void-marker').click();
     await page.waitForTimeout(300);
     assert.equal(await page.locator('.void-marker').count(), 0);
@@ -701,7 +774,14 @@ try {
     await page.locator('#map').hover();
     await page.mouse.wheel(0, -240);
     await page.waitForTimeout(250);
-    assert.ok((await page.locator('.service-track-seg').count()) >= expectedBand.length);
+    // Since E5S1 the painted field culls to the viewport: after a zoom-in
+    // the count can fall BELOW the whole-corridor band — the honest
+    // assertion is that the field still paints (and the band equality at
+    // the fitted zoom is already asserted in section 2).
+    assert.ok(
+      (await page.locator('.service-track-seg').count()) > 0,
+      'the field still paints after the zoom',
+    );
     assert.deepEqual(errors, []);
     await context.close();
   }

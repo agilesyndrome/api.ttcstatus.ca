@@ -134,7 +134,11 @@ export const publicPaths = {
   // CDN-served live tick documents (docs/optimize-transport.md change 1/3);
   // the Worker route is deleted, not flagged. Nothing here can read the
   // recorder per request.
-  '/api/v1/service/stops': { get: cachedGet('ServiceStops', [query('routes')]) },
+  // No /api/v1/service/stops: the stops payload is public broadcast data
+  // served from the CDN-published live tick documents
+  // (docs/optimize-overlay.md E3S3); the Worker route is deleted, not
+  // flagged — the live tick path is the only transport, and nothing on
+  // this surface can read the recorder's states per request.
   '/api/v1/service/wave': { get: cachedGet('ServiceWave', [query('routes')]) },
   '/api/v1/service/history': {
     get: cachedGet('ServiceHistory', [

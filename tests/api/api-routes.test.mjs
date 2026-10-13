@@ -112,13 +112,20 @@ test('protected routes keep authorization and service calls use the migrated pat
       ctx,
     );
   assert.equal((await debugRequest('{}')).status, 400);
-  assert.equal((await debugRequest(JSON.stringify({
-    display: { width: 1600, height: 1100 },
-    routes: [],
-    stops: [],
-    graph: { nodes: [], edges: [] },
-    context: { labels: [], shoreline: [], north: { angle: -90 } },
-  }))).status, 200);
+  assert.equal(
+    (
+      await debugRequest(
+        JSON.stringify({
+          display: { width: 1600, height: 1100 },
+          routes: [],
+          stops: [],
+          graph: { nodes: [], edges: [] },
+          context: { labels: [], shoreline: [], north: { angle: -90 } },
+        }),
+      )
+    ).status,
+    200,
+  );
   // E7S3: generation is a typed function call, not an internal HTTP hop —
   // the pending → running → failed bookkeeping survives in requestMapGeneration.
   let latestJobQuery;
@@ -130,7 +137,8 @@ test('protected routes keep authorization and service calls use the migrated pat
           return this;
         },
         async run() {
-          if (text.includes('INSERT INTO map_generation_jobs')) latestJobQuery = 'pending';
+          if (text.includes('INSERT INTO map_generation_jobs'))
+            latestJobQuery = 'pending';
           else if (text.includes(`SET status = 'running'`)) latestJobQuery = 'running';
           else if (text.includes(`SET status = 'failed'`)) latestJobQuery = 'failed';
           return { meta: { changes: 0 } };
@@ -144,7 +152,11 @@ test('protected routes keep authorization and service calls use the migrated pat
     requestMapGeneration({ DB: trackingDb, SYNC_TOKEN: 'test' }, 7),
     /loadMapSourceData|Unable|Error|failed|SQLite|prepare|SELECT/i,
   );
-  assert.equal(latestJobQuery, 'failed', 'a broken generation marks the job failed, then throws');
+  assert.equal(
+    latestJobQuery,
+    'failed',
+    'a broken generation marks the job failed, then throws',
+  );
 });
 
 test('manual sync runs the pipeline inline and reports the real outcome', async () => {

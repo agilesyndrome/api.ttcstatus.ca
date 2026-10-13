@@ -13,7 +13,11 @@ const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 20
 const publicJwk = publicKey.export({ format: 'jwk' });
 const jwks = { keys: [{ kty: 'RSA', kid: 'test-key', n: publicJwk.n, e: publicJwk.e }] };
 const b64url = (buffer) =>
-  Buffer.from(buffer).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  Buffer.from(buffer)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 const encode = (value) => b64url(JSON.stringify(value));
 const signToken = (header, claims) => {
   const input = `${encode(header)}.${encode(claims)}`;
@@ -30,7 +34,11 @@ const validClaims = {
   azp: 'https://ttcstatus.ca',
   sid: 'sess_fixture',
 };
-const options = { now, issuer: validClaims.iss, authorizedParties: ['https://ttcstatus.ca'] };
+const options = {
+  now,
+  issuer: validClaims.iss,
+  authorizedParties: ['https://ttcstatus.ca'],
+};
 const token = signToken(header, validClaims);
 
 test('a correctly signed session token verifies locally and returns its claims', async () => {
@@ -42,7 +50,9 @@ test('a correctly signed session token verifies locally and returns its claims',
 test('tampering with any segment fails closed', async () => {
   // Payload tampering: claim a different subject with the original signature.
   const [head, , signature] = token.split('.');
-  const forgedSub = signToken(header, { ...validClaims, sub: 'user_attacker' }).split('.');
+  const forgedSub = signToken(header, { ...validClaims, sub: 'user_attacker' }).split(
+    '.',
+  );
   const tamperedPayload = `${head}.${forgedSub[1]}.${signature}`;
   assert.equal(await verifySessionToken(tamperedPayload, jwks, options), null);
   // Signature tampering.
@@ -82,12 +92,20 @@ test('tampering with any segment fails closed', async () => {
     null,
   );
   assert.equal(
-    await verifySessionToken(signToken(header, { ...validClaims, sub: '' }), jwks, options),
+    await verifySessionToken(
+      signToken(header, { ...validClaims, sub: '' }),
+      jwks,
+      options,
+    ),
     null,
   );
   // alg=none and unsigned tokens never verify.
   assert.equal(
-    await verifySessionToken(`${encode({ alg: 'none' })}.${encode(validClaims)}.x`, jwks, options),
+    await verifySessionToken(
+      `${encode({ alg: 'none' })}.${encode(validClaims)}.x`,
+      jwks,
+      options,
+    ),
     null,
   );
   assert.equal(await verifySessionToken('not-a-token', jwks, options), null);
@@ -100,10 +118,20 @@ test('JWKS is fetched once and cached per interval', async () => {
     calls++;
     return new Response(JSON.stringify(jwks));
   };
-  const keys = await fetchJwks('https://clerk.example/.well-known/jwks.json', fetcher, cache, 1000);
+  const keys = await fetchJwks(
+    'https://clerk.example/.well-known/jwks.json',
+    fetcher,
+    cache,
+    1000,
+  );
   assert.equal(keys.keys.length, 1);
   await fetchJwks('https://clerk.example/.well-known/jwks.json', fetcher, cache, 2000);
   assert.equal(calls, 1, 'cached within the TTL window');
-  await fetchJwks('https://clerk.example/.well-known/jwks.json', fetcher, cache, 3_601_001);
+  await fetchJwks(
+    'https://clerk.example/.well-known/jwks.json',
+    fetcher,
+    cache,
+    3_601_001,
+  );
   assert.equal(calls, 2, 'refetched after the TTL expires');
 });

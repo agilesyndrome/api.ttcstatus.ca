@@ -242,8 +242,7 @@ async function regenerateRemote(modules, getPlatformProxy, { dryRun }) {
   );
   if (error) throw new Error('Unable to read the API Wrangler configuration');
   const binding = config.d1_databases.find((binding) => binding.binding === 'DB');
-  if (!binding?.database_id)
-    throw new Error('API DB binding is not configured');
+  if (!binding?.database_id) throw new Error('API DB binding is not configured');
   const dir = await mkdtemp(join(tmpdir(), 'ttc-map-repair-'));
   let platform;
   try {

@@ -6,7 +6,6 @@ export const allowedApiQueries: Record<string, readonly string[]> = {
   '/api/v1/map/ttcstatus': ['tag', 'artifact', 'format', 'client'],
   '/api/v1/stops': ['map', 'tag', 'artifact'],
   '/api/v1/manifest': ['map', 'tag'],
-  '/api/v1/service/stops': ['routes'],
   '/api/v1/service/wave': ['routes'],
   '/api/v1/service/history': ['stop', 'routes', 'from'],
   '/api/v1/sla/report': ['route'],

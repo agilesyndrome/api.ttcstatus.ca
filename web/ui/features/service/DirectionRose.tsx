@@ -49,7 +49,9 @@ export function DirectionRose({
     : horizontal
       ? ['west', 'east']
       : ['north', 'west', 'east', 'south'];
-  const entries = order.flatMap((key) => options.filter((option) => option.compass === key));
+  const entries = order.flatMap((key) =>
+    options.filter((option) => option.compass === key),
+  );
   const layout = vertical ? 'pair-column' : horizontal ? 'pair-row' : 'full';
   return (
     <div

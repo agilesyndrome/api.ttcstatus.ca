@@ -606,8 +606,7 @@ function transportConfig(): Promise<LiveTransportConfig> {
   // never a fallback URL (the no-fallback doctrine).
   liveConfig ??= fetch(configEndpoint, { cache: 'no-store' })
     .then((response) => {
-      if (!response.ok)
-        throw new Error(`Auth config returned HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`Auth config returned HTTP ${response.status}`);
       return response.json();
     })
     .then(parseLiveTransportConfig);

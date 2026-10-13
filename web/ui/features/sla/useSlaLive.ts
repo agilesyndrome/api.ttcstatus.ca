@@ -1,6 +1,8 @@
 import { useActivity } from '../../services/platform/react';
 import { useAccount } from '../accounts/auth';
+import { overlayLaunch } from '../../services/http/live-transport';
 import { useEffect, useRef, useState } from 'react';
+import { requestStopsTickUpdate } from '../../../../shared/live/polling';
 import type { SlaReportResponse } from '../../../../shared/service/contracts';
 import {
   liveBucketsForRoute,
@@ -102,6 +104,63 @@ function useFetchLoop(enabled: boolean, options: FetchLoopOptions) {
   }, [eligible]);
 }
 
+/** The stops poll rides the public live tick path (docs/optimize-overlay.md
+ * E2S4): the same broadcast bytes the map overlay reads — config-derived tick
+ * URLs, retained ETag, no session. The /sla page itself stays members-only;
+ * its live slivers consume public data like everything else, so the report's
+ * live tier no longer pays the Worker per member per 30 s. */
+function useStopsLoop(
+  enabled: boolean,
+  onSuccess: (payload: unknown, etag: string | null) => void,
+) {
+  const activity = useActivity();
+  const eligible = enabled && activity.active && activity.online;
+  const success = useRef(onSuccess);
+  success.current = onSuccess;
+  useEffect(() => {
+    if (!eligible) return;
+    let stopped = false;
+    const controller = new AbortController();
+    let etag: string | null = null;
+    let failureBackoff = STATES_POLL_MS;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const run = async () => {
+      try {
+        const launch = await overlayLaunch();
+        const update = await requestStopsTickUpdate(
+          launch.transport,
+          controller.signal,
+          etag ?? undefined,
+        );
+        if (stopped) return;
+        failureBackoff = STATES_POLL_MS;
+        if (update.states) {
+          etag = update.etag ?? null;
+          success.current({ at: update.at, states: update.states }, etag);
+        } else if (update.etag) {
+          etag = update.etag;
+        }
+        // An unpublished tick keeps the last-good slivers — never a failure.
+        schedule(update.updateSeconds * 1000);
+      } catch {
+        if (stopped) return;
+        failureBackoff = Math.min(failureBackoff * 2, BACKOFF_MAX_MS);
+        schedule(failureBackoff);
+      }
+    };
+    const schedule = (delay: number) => {
+      if (stopped) return;
+      timer = setTimeout(run, delay);
+    };
+    run();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      controller.abort();
+    };
+  }, [eligible]);
+}
+
 export function useSlaLive(report: SlaReportResponse | null): SlaLiveState {
   const [wave, setWave] = useState<SlaLiveWave | null>(null);
   const [states, setStates] = useState<SlaLiveStates | null>(null);
@@ -109,11 +168,10 @@ export function useSlaLive(report: SlaReportResponse | null): SlaLiveState {
   const liveRoutes = report?.routes.filter((route) => route.todayHeadways) ?? [];
   const enabled = Boolean(report && report.targets.todayClass && liveRoutes.length > 0);
 
-  useFetchLoop(enabled, {
-    url: '/api/v1/service/stops',
-    intervalMs: STATES_POLL_MS,
-    onSuccess: (payload) => setStates(payload as SlaLiveStates),
-  });
+  // E2S4: the states poll reads the public stops tick docs (broadcast data);
+  // the wave stays on the session-gated Worker route (members-only replay,
+  // 5-minute cadence — re-decide only if the SLA surface goes broader).
+  useStopsLoop(enabled, (payload) => setStates(payload as SlaLiveStates));
   useFetchLoop(enabled, {
     url: '/api/v1/service/wave',
     intervalMs: WAVE_POLL_MS,

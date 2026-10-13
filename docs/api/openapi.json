@@ -825,86 +825,6 @@
         }
       }
     },
-    "/api/v1/service/stops": {
-      "get": {
-        "parameters": [
-          {
-            "in": "query",
-            "name": "routes",
-            "required": false,
-            "schema": { "type": "string" }
-          },
-          {
-            "in": "header",
-            "name": "If-None-Match",
-            "required": false,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ServiceStops" }
-              }
-            },
-            "headers": {
-              "ETag": {
-                "schema": { "type": "string" },
-                "description": "Quoted content validator; weak client validators are accepted."
-              },
-              "X-Network-Version": {
-                "schema": { "type": "integer" },
-                "description": "Static network version for map/directory responses."
-              },
-              "X-Map-Artifact": {
-                "schema": { "type": "integer" },
-                "description": "Matching immutable map/directory identity."
-              },
-              "X-Map-Format": { "schema": { "type": "string" } },
-              "X-Schema-Version": { "schema": { "type": "integer" } },
-              "X-Live-Update-Seconds": {
-                "schema": { "type": "integer" },
-                "description": "Client polling cadence, in seconds."
-              },
-              "X-Live-Next-Update-At": {
-                "schema": { "type": "string", "format": "date-time" },
-                "description": "Next recorder publication boundary for live responses."
-              }
-            }
-          },
-          "304": {
-            "description": "Matching ETag; no body.",
-            "headers": {
-              "ETag": {
-                "schema": { "type": "string" },
-                "description": "Quoted content validator; weak client validators are accepted."
-              },
-              "X-Network-Version": {
-                "schema": { "type": "integer" },
-                "description": "Static network version for map/directory responses."
-              },
-              "X-Map-Artifact": {
-                "schema": { "type": "integer" },
-                "description": "Matching immutable map/directory identity."
-              },
-              "X-Map-Format": { "schema": { "type": "string" } },
-              "X-Schema-Version": { "schema": { "type": "integer" } },
-              "X-Live-Update-Seconds": {
-                "schema": { "type": "integer" },
-                "description": "Client polling cadence, in seconds."
-              },
-              "X-Live-Next-Update-At": {
-                "schema": { "type": "string", "format": "date-time" },
-                "description": "Next recorder publication boundary for live responses."
-              }
-            }
-          },
-          "default": { "$ref": "#/components/responses/Error" }
-        }
-      }
-    },
     "/api/v1/service/wave": {
       "get": {
         "parameters": [
@@ -2305,19 +2225,6 @@
           "routeIds",
           "coverage"
         ],
-        "additionalProperties": true
-      },
-      "ServiceStops": {
-        "type": "object",
-        "properties": {
-          "schemaVersion": { "type": "integer", "const": 1 },
-          "at": { "type": "integer", "description": "UTC epoch milliseconds." },
-          "states": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/ServiceState" }
-          }
-        },
-        "required": ["schemaVersion", "at", "states"],
         "additionalProperties": true
       },
       "ServiceWave": {

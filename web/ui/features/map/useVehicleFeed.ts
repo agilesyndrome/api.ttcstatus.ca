@@ -43,7 +43,12 @@ export function useVehicleFeed(
             : { ...current, snapshot, now: Date.now() };
         }),
       onStatus: (status) =>
-        setState((current) => ({ ...current, ...status, awaitingConfig: false, now: Date.now() })),
+        setState((current) => ({
+          ...current,
+          ...status,
+          awaitingConfig: false,
+          now: Date.now(),
+        })),
     });
     poller.current = instance;
     const timer = window.setInterval(

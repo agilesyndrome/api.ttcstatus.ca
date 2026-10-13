@@ -392,10 +392,7 @@ const start = async () => {
       await sleep(500);
     }
   };
-  await waitFor(
-    'API Worker',
-    `http://127.0.0.1:${apiPort}/api/healthz`,
-  );
+  await waitFor('API Worker', `http://127.0.0.1:${apiPort}/api/healthz`);
   await waitFor('Vite viewer', `http://127.0.0.1:${viewerPort}/`);
   console.log(
     `Dev stack ready: api on http://localhost:${apiPort} (single worker — map generation runs in-process), ui on http://localhost:${viewerPort}`,

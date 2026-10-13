@@ -205,53 +205,63 @@ Acquisition/decoding failures return an uncached `503 vehicles-unavailable` with
 `Retry-After`; the isolate throttles repeated upstream failures for the configured
 interval. No vehicle history is persisted.
 
-### `GET /api/v1/service/stops` · `GET /api/v1/service/wave` (experimental)
+### `live/t/<tickId>/service-stops.json` · `GET /api/v1/service/history` · `GET /api/v1/service/wave`
 
-Delivered-service analytics (docs/sla.md): what the streetcars and trains
-**actually did**, not what they promised. Both endpoints read the recorder
-singleton — a Durable Object sampling both live feeds once every 30 seconds —
-and follow the vehicles-endpoint conventions: `ETag` / `If-None-Match` return an
-empty `304` between 30-second ticks, `X-Live-Update-Seconds` /
-`X-Live-Next-Update-At` advertise the cadence, responses are CORS-exposed with a
-~15 s edge cache, and an unreachable recorder returns an uncached
-`503 service-unavailable` with `Retry-After`. **Experimental until the overlay
-is polished.** Nothing existing routes through these endpoints.
+Delivered-service analytics (docs/sla.md; docs/optimize-overlay.md): what
+the streetcars **actually did**, not what they promised. The live per-stop
+field is **public broadcast data**: the recorder singleton (a Durable Object
+sampling both live feeds once every 30 seconds) publishes one immutable
+tick document per tick beside the fleet document on the same CDN-served
+live host (`live.ttcstatus.ca`), and every viewer — signed-out included —
+joins by the shared tick grid from their own clock. `ETag` /
+`If-None-Match` return empty `304`s between ticks, and a recorder that
+cannot assemble the field publishes the honest
+`{ states: [], outage }` document. No Worker request bills a viewer, and
+the recorder is write-only for states: nothing on the API surface can make
+it recompute the field per request.
 
-- `/api/v1/service/stops` — per **directional** stop: `lastTouchAt`,
-  `minutesSince` (the absolute axis), `medianHeadwayOwnSeconds` (the stop's own
-  delivered baseline), `irregularity` (CV², the bunching tax),
-  `expectedWaitSeconds` (the residual R(e) for a rider who has already waited),
-  `dryness` (the self-relative axis), `state` (`fresh` / `due` / `void` /
-  `unmonitored` / `collecting`), a coverage badge, and `routeIds` for
-  `?routes=` filtering. Unmonitored time is never rendered as a void — a feed
-  outage is a blind spot, not evidence of anything.
-- `/api/v1/service/wave` — delta-encoded windowed touch lists per route
-  pattern; one request reconstructs the full 30-minute space-time plot for the
-  replay view (the wave of void as pure geometry — no detection step).
-- `/api/v1/service/history` — merged-moment summaries (`n`, mean headway,
+- The per **directional** stop payload: `lastTouchAt`, `minutesSince` (the
+  absolute axis), `medianHeadwayOwnSeconds` (the stop's own delivered
+  baseline), `irregularity` (CV², the bunching tax), `expectedWaitSeconds`
+  (the residual R(e) for a rider who has already waited), `dryness` (the
+  self-relative axis), `state` (`fresh` / `due` / `void` / `unmonitored` /
+  `collecting`), a coverage badge, and `routeIds`. Unmonitored time is never
+  rendered as a void — a feed outage is a blind spot, not evidence of
+  anything.
+- `GET /api/v1/service/history` — merged-moment summaries (`n`, mean headway,
   `CV²`, worst wound, back-to-back, coverage ratio) per stop or per route over
   any sub-window of the rolling 36 hours, via `?stop=`, `?routes=`, `?from=`
   (one narrowing filter required; stop-scoped queries also return the
   5-minute per-bucket series for the sparkline). Moments merge exactly;
-  quantiles are gamma approximations, labelled as such. Cached 1–5 minutes.
+  quantiles are gamma approximations, labelled as such. Public and
+  edge-cached by full URL (`public, max-age=300`).
+- `GET /api/v1/service/wave` — delta-encoded windowed touch lists per route
+  pattern; one request reconstructs the full 30-minute space-time plot for
+  the replay view (the wave of void as pure geometry — no detection step).
+  The `/sla` members-only surface (the E4S5 decision): a verified session,
+  `private`, never a shared cache.
 
-The browser surface is a per-user-gated debug overlay: grant it with
-`npm run feature:enable -- voidOverlay <clerk-user-or-email>` and it appears on
-the map for that account only; signed-out visitors see nothing.
+There is no `/api/v1/service/stops` Worker route: it is deleted, not
+feature-flagged — the live tick path is the only transport.
 
-For `make dev`, use the matching local D1 commands:
+The void overlay renders for **every visitor**: the rollout is the
+`overlay` block of `/api/v1/auth/config` (`OVERLAY_ENABLED`, one wrangler
+var flipped with the deploy that serves it — no per-user grant, no CLI).
+Between ticks the browser advances the field with the same shared math the
+recorder uses, waking only when an on-screen stop actually crosses a
+visible step, painting only what the camera sees, and animating flow
+dashes only where they earn their keep (docs/optimize-overlay.md Epics
+4–5). The generic `feature:*` CLI and the `feature_flags` table remain for
+future needs:
 
 ```bash
-npm run feature:enable:local -- voidOverlay <development-clerk-user-or-email>
-npm run feature:list:local
-npm run feature:disable:local -- voidOverlay <development-clerk-user-or-email>
+npm run feature:list:local -- --json
 ```
 
 The commands print tables. Pass `--json` for structured output, for example
 `node scripts/operations/feature-flags.mjs list --local --json`. The local
-enable/disable scripts load `.env.local` so email lookup uses the development
-Clerk key; user ids work without a key. The unsuffixed commands target
-production D1.
+commands load `.env.local` so email lookup uses the development Clerk key;
+user ids work without a key. The unsuffixed commands target production D1.
 
 ### `GET /api/v1/sla/report` (experimental, members-only)
 
@@ -286,11 +296,11 @@ is only reachable behind the gate.
   the page renders one schedule line per distinct class.
 - **The live tier** — the report serves `targets.todayClass` and per-route
   `todayHeadways` (today's advertised targets — table reads, no computation);
-  the page polls the recorder's existing live surfaces (`/service/stops`
-  every 30 s, `/service/wave` every 5 min) and renders the last 30 minutes
-  as thin 5-minute slivers at each strip's right edge. The sliver math runs
-  in the browser; the server still never computes an SLA number at request
-  time.
+  the page polls the public stops tick documents every 30 s and
+  `/service/wave` every 5 min (the members-only replay) and renders the last
+  30 minutes as thin 5-minute slivers at each strip's right edge. The
+  sliver math runs in the browser; the server still never computes an SLA
+  number at request time.
 - Compliance is time-weighted: the share of monitored wait time within the
   scheduled headway × tolerance, estimated from mergeable gamma moments and
   labelled an approximation everywhere. Hours with no scheduled service carry

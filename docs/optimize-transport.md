@@ -72,17 +72,17 @@ bill for egress or CDN cache hits.
 
 ### Baseline monthly cost (current architecture, 2M DAU)
 
-| Line | Assumption | Monthly |
-| --- | --- | --- |
-| Worker requests (vehicle) | 18B − 10M included, $0.30/M | **$5,397** |
-| Worker CPU (vehicle path) | 2–4 ms avg/request, $0.02/M CPU-ms after 30M | $720–1,440 |
-| SLA live polling | 10% of DAU on `/sla` ~30 min/day, ~360M | ~$110 |
-| Session/me/features/report | ~20M | ~$5 |
-| Durable Object requests | per-POP cache misses: ~300 colos × 2,880 ticks/day, ~26M, $0.15/M after 1M | ~$4 |
-| Durable Object duration | always-on alarm loop ≈ 333K GB-s < 400K included | ~$0 |
-| Durable Object SQLite rows written | per-tick touches/coverage/state/folds; 50M rows/mo included, $1.00/M after | measure; est. $10–60 |
-| Workers plan minimum | — | $5 |
-| **Total** | | **≈ $6–7K/mo, linear in DAU** |
+| Line                               | Assumption                                                                 | Monthly                       |
+| ---------------------------------- | -------------------------------------------------------------------------- | ----------------------------- |
+| Worker requests (vehicle)          | 18B − 10M included, $0.30/M                                                | **$5,397**                    |
+| Worker CPU (vehicle path)          | 2–4 ms avg/request, $0.02/M CPU-ms after 30M                               | $720–1,440                    |
+| SLA live polling                   | 10% of DAU on `/sla` ~30 min/day, ~360M                                    | ~$110                         |
+| Session/me/features/report         | ~20M                                                                       | ~$5                           |
+| Durable Object requests            | per-POP cache misses: ~300 colos × 2,880 ticks/day, ~26M, $0.15/M after 1M | ~$4                           |
+| Durable Object duration            | always-on alarm loop ≈ 333K GB-s < 400K included                           | ~$0                           |
+| Durable Object SQLite rows written | per-tick touches/coverage/state/folds; 50M rows/mo included, $1.00/M after | measure; est. $10–60          |
+| Workers plan minimum               | —                                                                          | $5                            |
+| **Total**                          |                                                                            | **≈ $6–7K/mo, linear in DAU** |
 
 ### The 9am rush by itself (baseline)
 
@@ -151,7 +151,7 @@ with the live transport block:
 - `clerk`: `enabled` + `publishableKey` (already present; the publishable key
   is public by design — it ships in every web bundle).
 - `live`: `{ base: "https://live.ttcstatus.ca", pathTemplate:
-  "/live/t/{tick}/vehicles.json", updateSeconds: 30 }` (exact field names
+"/live/t/{tick}/vehicles.json", updateSeconds: 30 }` (exact field names
   settle in implementation; keep the existing response fields additive).
 - Clients fetch it **once per launch/session** and cache in memory; it is the
   only source of the live host, cadence, and path template. A binary can be
@@ -178,14 +178,14 @@ per tick — so the compromise is to move the honesty **into the document body**
   path). An outage doc is still valid, cacheable broadcast data.
 - The client contract becomes exactly three cases:
   1. **`200`** → use the document. Outage is a body field, never a status.
-      `vehicles: []` + `outage.since` renders the existing
-      "service unavailable" state; `fetchedAt`/`tickId` keep staleness honest.
+     `vehicles: []` + `outage.since` renders the existing
+     "service unavailable" state; `fetchedAt`/`tickId` keep staleness honest.
   2. **`404`** → the tick is not published yet (device clock ahead of
-      publish) → retry `tickId − 1` once → if that also 404s, keep the
-      last-good snapshot with its age and let the next scheduled poll handle
-      it. Body `tickId` lets clients detect and resync clock drift.
+     publish) → retry `tickId − 1` once → if that also 404s, keep the
+     last-good snapshot with its age and let the next scheduled poll handle
+     it. Body `tickId` lets clients detect and resync clock drift.
   3. **network error** → offline → keep last-good with age; existing backoff
-      and lifecycle pausing apply unchanged.
+     and lifecycle pausing apply unchanged.
 - No 5xx parsing, no `Retry-After` handling, no fallback host, no second
   transport implementation. Status codes on the live host mean exactly: 200
   doc, 404 not-yet-published, everything else is network failure.
@@ -214,10 +214,18 @@ Per the no-fallback doctrine, the Worker route is **deleted, not feature-flagged
 - The standalone viewer (`web/map/viewer.ts`) repoints to the same config →
   live-tick contract; it keeps no absolute vehicle URL of its own.
 - Client fallback code, once written (config fetch failure → retry config; tick
-  404 → previous tick), covers *this* path's own failures. There is no
+  404 → previous tick), covers _this_ path's own failures. There is no
   fallback **to the Worker**, and no transport code path that could reach it.
 
-### 4. Enforce the overlay grant at the API (kept, config-driven)
+### 4. Enforce the overlay grant at the API (kept, config-driven — **superseded by docs/optimize-overlay.md Epic 6**)
+
+> **Superseded:** the `voidOverlay` grant this change built is retired. The
+> overlay shipped to every visitor (docs/optimize-overlay.md): its live
+> stops data is public broadcast data from the CDN-published tick
+> documents, history is public + edge-cached, wave keeps only its
+> verified-session (members) gate, and the `callerHasFlag` lookup this
+> section specified is deleted. Kept here as the historical record of the
+> gate's design.
 
 The current `voidOverlay` check is a UI gate. `/api/v1/service/stops`,
 `/api/v1/service/wave`, and `/api/v1/service/history` are routed without
@@ -248,7 +256,7 @@ authentication, so anyone who knows the URLs can read the data.
 With vehicles on `live.ttcstatus.ca`, the `/api/*` surface shrinks to: config
 (edge-cached), `me/features`, `sla/report`, the granted service endpoints, and
 accounts. Legitimate per-user volume there is **a handful of calls per
-session** — except the service endpoints, which poll at 30 s per *granted*
+session** — except the service endpoints, which poll at 30 s per _granted_
 user only.
 
 So: yes, but small:
@@ -257,7 +265,7 @@ So: yes, but small:
   ~10/second-class allowance that serving vehicle polls through the Worker
   would have required). NAT math: a granted overlay user generates ~2
   requests/min on `/service/stops`; a config-only user generates ~3 per
-  *session*. Even 50 commuters behind one carrier NAT stay under 100/min.
+  _session_. Even 50 commuters behind one carrier NAT stay under 100/min.
 - **Per-session (JWT `sub`) caps only on the granted service endpoints**
   (~10/min) — they are the sole per-user pollers left on `/api/*`, and this is
   what protects a NAT cohort when one shared IP has many granted users.
@@ -327,8 +335,8 @@ Write it into the transport as a rule, not a side effect:
   data only**: bytes identical for every user, no identity, no location, no
   per-user URLs (no query strings — see change 1's format-variant rule).
 - Nearest stop, sorting, and personalization are client-side computations over
-  the snapshot. They cost the server nothing per user *because nothing about
-  the request varies per user* — this invariant is the same shape as the cost
+  the snapshot. They cost the server nothing per user _because nothing about
+  the request varies per user_ — this invariant is the same shape as the cost
   fix, which is why the scaling plan and the privacy plan do not conflict.
 - Enforcement stays layered: `shared/transit` keeps the device-only comments,
   `npm run check:boundaries` keeps native plugins out of features, and the
@@ -341,7 +349,7 @@ Write it into the transport as a rule, not a side effect:
   in 2027 quietly adds `?lat=&lon=` to the tick URL and breaks the cost
   asymptote and the privacy promise in one PR.
 
-### 8. Defer push (WS/SSE *and* APNs/FCM) — revisit triggers only
+### 8. Defer push (WS/SSE _and_ APNs/FCM) — revisit triggers only
 
 With WebSocket hibernation on sharded DOs, outgoing fan-out messages are free
 and connections are ~$0.15/M — push would cost tens of dollars a month at 1M
@@ -371,17 +379,17 @@ WS/SSE for web — do not "fix" mobile with long-lived sockets.
 
 ## Monthly cost with this plan (2M DAU)
 
-| Line | Assumption | Monthly |
-| --- | --- | --- |
-| Browser/native vehicle requests | 18B/mo, all CDN hits — no Worker, no R2 | **$0** |
-| R2 writes (publish) | 2,880/day, $4.50/M Class A | $0.39 |
-| R2 reads (edge fetches) | ≤ ~300 colos × 86.4K ticks/mo ≈ 26M, $0.36/M Class B; realistically fewer colos with warm entries | ≤ $9.40 (expect less) |
-| R2 storage | lifecycle ~1 day, ~35 MB/day churn | <$0.01 |
-| Config fetches | 1 per launch (~60M/mo), edge-cached `max-age=300` → ~0 reach the Worker | ~$0 |
-| Worker requests + CPU (config misses, overlay, SLA, auth) | residual only | ~$5–30 |
-| Durable Object | alarms 86.4K/mo < 1M included; duration within 400K GB-s; SQLite rows est. $10–60 (unchanged from today, measure) | ~$10–60 |
-| Workers plan minimum | — | $5 |
-| **Total** | | **≈ $20–100/mo, roughly flat vs DAU** |
+| Line                                                      | Assumption                                                                                                        | Monthly                               |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Browser/native vehicle requests                           | 18B/mo, all CDN hits — no Worker, no R2                                                                           | **$0**                                |
+| R2 writes (publish)                                       | 2,880/day, $4.50/M Class A                                                                                        | $0.39                                 |
+| R2 reads (edge fetches)                                   | ≤ ~300 colos × 86.4K ticks/mo ≈ 26M, $0.36/M Class B; realistically fewer colos with warm entries                 | ≤ $9.40 (expect less)                 |
+| R2 storage                                                | lifecycle ~1 day, ~35 MB/day churn                                                                                | <$0.01                                |
+| Config fetches                                            | 1 per launch (~60M/mo), edge-cached `max-age=300` → ~0 reach the Worker                                           | ~$0                                   |
+| Worker requests + CPU (config misses, overlay, SLA, auth) | residual only                                                                                                     | ~$5–30                                |
+| Durable Object                                            | alarms 86.4K/mo < 1M included; duration within 400K GB-s; SQLite rows est. $10–60 (unchanged from today, measure) | ~$10–60                               |
+| Workers plan minimum                                      | —                                                                                                                 | $5                                    |
+| **Total**                                                 |                                                                                                                   | **≈ $20–100/mo, roughly flat vs DAU** |
 
 ### The 9am rush with this plan
 
@@ -400,18 +408,18 @@ after signup), not per request. Included: 50K MRUs per app (Hobby/Pro). Overage
 bands: $0.02/MRU (50–100K), $0.018 (100K–1M), $0.015 (1M+), on Pro at $25/mo —
 see [Clerk pricing].
 
-| Auth scope | MRU | Monthly |
-| --- | --- | --- |
-| Experimental overlay only (today) | < 1K | ~$0–25 |
-| + `/sla` members-only (10% of DAU) | ~200K | **~$2,825** |
-| + half the DAU gated | ~1M | **~$17,225** |
-| Auth on the main experience | ~2M | **~$32,225** |
+| Auth scope                         | MRU   | Monthly      |
+| ---------------------------------- | ----- | ------------ |
+| Experimental overlay only (today)  | < 1K  | ~$0–25       |
+| + `/sla` members-only (10% of DAU) | ~200K | **~$2,825**  |
+| + half the DAU gated               | ~1M   | **~$17,225** |
+| Auth on the main experience        | ~2M   | **~$32,225** |
 
 For comparison: the unoptimized transport bill is ≈ $6–7K/mo and the optimized
 plan is ≈ $20–100/mo. **A blanket auth requirement would cost ~5× the entire
 unoptimized transport bill and ~300× the optimized one.** Native apps change
 nothing in this table — sign-in is sign-in — which is exactly why the transport
-was designed so native never *requires* it.
+was designed so native never _requires_ it.
 
 Rules we will hold ourselves to:
 
@@ -434,7 +442,7 @@ Rules we will hold ourselves to:
 2. Recorder publishes per-tick immutable docs (including outage docs) to the
    dedicated public R2 bucket; add the custom domain, cache rules, the CORS +
    Transform Rule, and the ~1-day lifecycle rule. Verify `cf-cache-status:
-   HIT`, native `304`s, and CORS.
+HIT`, native `304`s, and CORS.
 3. Repoint the browser poller and the standalone viewer: config-driven base +
    tick derivation, `404 → tick−1 → last-good` handling, keep ETag/304, backoff,
    visibility/foreground pausing, and immediate refresh on activation.
@@ -534,45 +542,45 @@ single-worker consolidation). Status: planning, v1.
 
 ## Story map — the attack order
 
-| #  | ID   | Story                                                          | Epic | Size | Depends on            |
-| -- | ---- | -------------------------------------------------------------- | ---- | ---- | --------------------- |
-| 1  | E1S1 | Public live bucket + custom domain + cache/CORS rules          | 1    | S    | —                     |
-| 2  | E1S2 | Tick-document contract + pure writer                           | 1    | S    | —                     |
-| 3  | E1S3 | Recorder publishes per-tick docs to R2                         | 1    | M    | E1S1, E1S2           |
-| 4  | E1S4 | `auth/config` gains the `live` block + edge cache              | 1    | XS   | —                     |
-| 5  | E1S5 | **Epic 1 boundary: validate the live path end-to-end**         | 1    | XS   | E1S1–E1S4             |
-| 6  | E2S1 | Config client: fetch once per launch                           | 2    | S    | E1S5                  |
-| 7  | E2S2 | Tick derivation + path-template URL builder                   | 2    | S    | E2S1                  |
-| 8  | E2S3 | Three-case client fetch contract (no 5xx parsing)             | 2    | M    | E2S2                  |
-| 9  | E2S4 | UI states: outage body field, last-good age                    | 2    | S    | E2S3                  |
-| 10 | E2S5 | Standalone viewer repoint                                      | 2    | S    | E2S3                  |
-| 11 | E2S6 | **Epic 2 boundary: staged rollout + dashboards**               | 2    | XS   | E2S1–E2S5             |
-| 12 | E3S1 | Delete the public vehicle route + `vehicleResponse`            | 3    | S    | E2S6 (traffic ≈ 0)    |
-| 13 | E3S2 | Recorder is write-only (binding-only routes)                   | 3    | XS   | E3S1                  |
-| 14 | E3S3 | WAF per-IP rule ~100/min on `/api/*`                           | 3    | XS   | E3S1                  |
-| 15 | E3S4 | Observability dashboards, alerts, CPU limits                  | 3    | S    | E3S1                  |
-| 16 | E3S5 | **Epic 3 boundary: removal + hardening validated**            | 3    | XS   | E3S1–E3S4             |
-| 17 | E4S1 | Local JWKS/JWT session verification module                     | 4    | M    | —                     |
-| 18 | E4S2 | 401/403 grant gate on the service endpoints                    | 4    | M    | E4S1                  |
-| 19 | E4S3 | Client sends the session; honest unauthorized states           | 4    | S    | E4S2                  |
-| 20 | E4S4 | Per-session caps on granted endpoints                           | 4    | S    | E4S1, E4S2            |
-| 21 | E4S5 | SLA MRU pricing decision (+ optional separate endpoint)        | 4    | XS   | —                     |
-| 22 | E4S6 | **Epic 4 boundary: auth + limits validated**                    | 4    | XS   | E4S1–E4S5             |
-| 23 | E5S1 | `TRANSPORT CONTRACT` comment at the seam                        | 5    | XS   | E2S6                  |
-| 24 | E5S2 | Capacitor platform adapters (lifecycle → `active`)            | 5    | M    | E5S1                  |
-| 25 | E5S3 | Native build config: origins for the config fetch only         | 5    | XS   | —                     |
-| 26 | E5S4 | Native session driver (`credentials: 'omit'`)                   | 5    | S    | E5S3                  |
-| 27 | E5S5 | **Epic 5 boundary: shell validated on a device**                | 5    | XS   | E5S1–E5S4             |
-| 28 | E6S1 | Location-query rejection on every public path                  | 6    | S    | —                     |
-| 29 | E6S2 | `shared/transit` device-only invariant comments                 | 6    | XS   | —                     |
-| 30 | E6S3 | **Epic 6 boundary: final full validation + doc reconcile**     | 6    | XS   | E6S1, E6S2            |
-| 31 | E7S1 | Move generator core into `workers/api/src/mapgen/`            | 7    | M    | E6S3 (order only)     |
-| 32 | E7S2 | Merge env/config — one worker, one `Env`                      | 7    | S    | E7S1                  |
-| 33 | E7S3 | Sync generates in-process (drop the service binding)           | 7    | S    | E7S2                  |
-| 34 | E7S4 | Debug render in-process (admin-gated, unchanged)              | 7    | XS   | E7S2                  |
-| 35 | E7S5 | Delete the map-generator worker                                | 7    | S    | E7S3, E7S4            |
-| 36 | E7S6 | Docs + monitors reconcile                                      | 7    | XS   | E7S5                  |
-| 37 | E7S7 | **Epic 7 boundary: end-to-end regeneration validated**        | 7    | XS   | E7S1–E7S6             |
+| #   | ID   | Story                                                      | Epic | Size | Depends on         |
+| --- | ---- | ---------------------------------------------------------- | ---- | ---- | ------------------ |
+| 1   | E1S1 | Public live bucket + custom domain + cache/CORS rules      | 1    | S    | —                  |
+| 2   | E1S2 | Tick-document contract + pure writer                       | 1    | S    | —                  |
+| 3   | E1S3 | Recorder publishes per-tick docs to R2                     | 1    | M    | E1S1, E1S2         |
+| 4   | E1S4 | `auth/config` gains the `live` block + edge cache          | 1    | XS   | —                  |
+| 5   | E1S5 | **Epic 1 boundary: validate the live path end-to-end**     | 1    | XS   | E1S1–E1S4          |
+| 6   | E2S1 | Config client: fetch once per launch                       | 2    | S    | E1S5               |
+| 7   | E2S2 | Tick derivation + path-template URL builder                | 2    | S    | E2S1               |
+| 8   | E2S3 | Three-case client fetch contract (no 5xx parsing)          | 2    | M    | E2S2               |
+| 9   | E2S4 | UI states: outage body field, last-good age                | 2    | S    | E2S3               |
+| 10  | E2S5 | Standalone viewer repoint                                  | 2    | S    | E2S3               |
+| 11  | E2S6 | **Epic 2 boundary: staged rollout + dashboards**           | 2    | XS   | E2S1–E2S5          |
+| 12  | E3S1 | Delete the public vehicle route + `vehicleResponse`        | 3    | S    | E2S6 (traffic ≈ 0) |
+| 13  | E3S2 | Recorder is write-only (binding-only routes)               | 3    | XS   | E3S1               |
+| 14  | E3S3 | WAF per-IP rule ~100/min on `/api/*`                       | 3    | XS   | E3S1               |
+| 15  | E3S4 | Observability dashboards, alerts, CPU limits               | 3    | S    | E3S1               |
+| 16  | E3S5 | **Epic 3 boundary: removal + hardening validated**         | 3    | XS   | E3S1–E3S4          |
+| 17  | E4S1 | Local JWKS/JWT session verification module                 | 4    | M    | —                  |
+| 18  | E4S2 | 401/403 grant gate on the service endpoints                | 4    | M    | E4S1               |
+| 19  | E4S3 | Client sends the session; honest unauthorized states       | 4    | S    | E4S2               |
+| 20  | E4S4 | Per-session caps on granted endpoints                      | 4    | S    | E4S1, E4S2         |
+| 21  | E4S5 | SLA MRU pricing decision (+ optional separate endpoint)    | 4    | XS   | —                  |
+| 22  | E4S6 | **Epic 4 boundary: auth + limits validated**               | 4    | XS   | E4S1–E4S5          |
+| 23  | E5S1 | `TRANSPORT CONTRACT` comment at the seam                   | 5    | XS   | E2S6               |
+| 24  | E5S2 | Capacitor platform adapters (lifecycle → `active`)         | 5    | M    | E5S1               |
+| 25  | E5S3 | Native build config: origins for the config fetch only     | 5    | XS   | —                  |
+| 26  | E5S4 | Native session driver (`credentials: 'omit'`)              | 5    | S    | E5S3               |
+| 27  | E5S5 | **Epic 5 boundary: shell validated on a device**           | 5    | XS   | E5S1–E5S4          |
+| 28  | E6S1 | Location-query rejection on every public path              | 6    | S    | —                  |
+| 29  | E6S2 | `shared/transit` device-only invariant comments            | 6    | XS   | —                  |
+| 30  | E6S3 | **Epic 6 boundary: final full validation + doc reconcile** | 6    | XS   | E6S1, E6S2         |
+| 31  | E7S1 | Move generator core into `workers/api/src/mapgen/`         | 7    | M    | E6S3 (order only)  |
+| 32  | E7S2 | Merge env/config — one worker, one `Env`                   | 7    | S    | E7S1               |
+| 33  | E7S3 | Sync generates in-process (drop the service binding)       | 7    | S    | E7S2               |
+| 34  | E7S4 | Debug render in-process (admin-gated, unchanged)           | 7    | XS   | E7S2               |
+| 35  | E7S5 | Delete the map-generator worker                            | 7    | S    | E7S3, E7S4         |
+| 36  | E7S6 | Docs + monitors reconcile                                  | 7    | XS   | E7S5               |
+| 37  | E7S7 | **Epic 7 boundary: end-to-end regeneration validated**     | 7    | XS   | E7S1–E7S6          |
 
 Explicit non-stories: WS/SSE and APNs/FCM stay deferred (change 8); a
 Queues/Workflows offload of map generation stays deferred until nightly
@@ -596,7 +604,7 @@ untouched on the Worker path.
   `snapshot → tick document` function implementing the change-2 body shape —
   `schemaVersion`, `vehicles`, `fetchedAt`, `tickId`, optional `outage` —
   where total upstream failure yields `{ vehicles: [], outage: { since,
-  tickId } }`. Pure means unit-testable with fixtures; no I/O in this file.
+tickId } }`. Pure means unit-testable with fixtures; no I/O in this file.
   Accept: unit tests cover fleet, outage, and empty snapshots.
 - **E1S3 — Recorder publishes per-tick docs to R2 (M).** In the recorder's
   post-acquisition step (not inside `runTick`'s critical path — see the

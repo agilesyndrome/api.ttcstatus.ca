@@ -88,7 +88,8 @@ export interface StopCoverageBadge {
 }
 
 /** Live delivered-service state for one directional stop — the per-stop payload of
- * `GET /api/v1/service/stops` (sla.md story 3.1). Both truth axes are always
+ * the published stops tick document (optimize-overlay.md Epic 1; the old
+ * `GET /api/v1/service/stops` route is deleted). Both truth axes are always
  * present: self-relative dryness AND absolute minutes. */
 export interface StopServiceState {
   stopId: string;
@@ -186,7 +187,11 @@ export interface ServiceHistoryResponse {
   bucketSeries?: ServiceHistoryStopBuckets[];
 }
 
-/** Per-user feature flags — `GET /api/v1/me/features` (sla-epics.md §0B). */
+/** Per-user feature flags — `GET /api/v1/me/features` (sla-epics.md §0B).
+ * The `voidOverlay` flag is GONE (docs/optimize-overlay.md E6S1): the
+ * overlay is a public feature whose rollout switch is the `overlay` block
+ * of `/api/v1/auth/config`, never a per-user grant. The flags surface stays
+ * as generic machinery for future needs. */
 export interface FeatureFlagsResponse {
   schemaVersion: 1;
   flags: string[];
@@ -292,5 +297,5 @@ export interface SlaReportResponse {
   stops?: SlaStopReport[];
 }
 
-/** The debug overlay's flag (sla.md §4.7). Scaffolding shouldn't ship to everyone. */
-export const VOID_OVERLAY_FLAG = 'voidOverlay';
+// The debug overlay's per-user flag is deleted (docs/optimize-overlay.md
+// E6S1) — the overlay ships to everyone via the auth-config rollout switch.

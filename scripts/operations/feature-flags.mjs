@@ -1,8 +1,8 @@
 /** Per-user feature-flag CLI (sla-epics.md §0B; sla.md §4.7):
  *
- *   npm run feature:enable -- voidOverlay drew@easleyowl.com
- *   npm run feature:enable:local -- voidOverlay user_local
- *   npm run feature:disable -- voidOverlay drew@easleyowl.com
+ *   npm run feature:enable -- betaFeature drew@easleyowl.com
+ *   npm run feature:enable:local -- betaFeature user_local
+ *   npm run feature:disable -- betaFeature drew@easleyowl.com
  *   npm run feature:list
  *
  * The subject is the Clerk user id — the Stage 0 spike (E5S1) confirmed the
@@ -32,10 +32,10 @@ to user ids via the Clerk Backend API when CLERK_SECRET_KEY is exported;
 otherwise pass the user id directly.
 
 Examples:
-  npm run feature:enable -- voidOverlay user_2qzGkAFpXqXmZ8pQ3zLmAoCnEJ
-  npm run feature:enable -- voidOverlay drew@easleyowl.com
-  npm run feature:enable:local -- voidOverlay user_local
-  npm run feature:disable -- voidOverlay drew@easleyowl.com
+  npm run feature:enable -- betaFeature user_2qzGkAFpXqXmZ8pQ3zLmAoCnEJ
+  npm run feature:enable -- betaFeature drew@easleyowl.com
+  npm run feature:enable:local -- betaFeature user_local
+  npm run feature:disable -- betaFeature drew@easleyowl.com
   npm run feature:list:local
 `);
 };

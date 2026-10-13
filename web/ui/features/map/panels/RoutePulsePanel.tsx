@@ -1,7 +1,6 @@
 import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
 import { RoutePulse } from '../RoutePulse';
-import { LiveFeedStatus } from '../LiveFeedStatus';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** The live network view, kept separate from Explore so the rail has one job per panel. */
@@ -25,7 +24,6 @@ export function RoutePulsePanel({ workspace }: { workspace: HomeWorkspaceState }
         selectedRoute={selectedRoute}
         onSelect={(id) => selectRoute(selectedRoute === id ? undefined : id)}
       />
-
     </div>
   );
 }

@@ -378,7 +378,8 @@ export function windowBaseline(
 }
 
 // ---------------------------------------------------------------------------
-// Live assembly: the per-stop state served by /api/v1/service/stops (E3S1).
+// Live assembly: the per-stop state the recorder computes once per tick and
+// publishes as the stops tick document (optimize-overlay.md Epic 1).
 // ---------------------------------------------------------------------------
 
 export interface StateAssemblyOptions {

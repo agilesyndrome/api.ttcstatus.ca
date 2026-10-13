@@ -70,7 +70,7 @@ test('window and bucket are design invariants: 5 divides 30, folds land on bound
   assert.equal(config.SERVICE_WINDOW_SECONDS / config.SERVICE_BUCKET_SECONDS, 6);
 });
 
-test('contracts expose the five states and the voidOverlay flag name', () => {
+test('contracts expose the five states (the per-user overlay flag is retired)', () => {
   assert.deepEqual(contracts.SERVICE_STATES, [
     'fresh',
     'due',
@@ -78,5 +78,7 @@ test('contracts expose the five states and the voidOverlay flag name', () => {
     'unmonitored',
     'collecting',
   ]);
-  assert.equal(contracts.VOID_OVERLAY_FLAG, 'voidOverlay');
+  // The overlay's rollout is the auth-config switch, not a flag name
+  // (docs/optimize-overlay.md E6S1).
+  assert.equal('VOID_OVERLAY_FLAG' in contracts, false);
 });

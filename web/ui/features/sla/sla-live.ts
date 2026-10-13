@@ -4,9 +4,10 @@
  * distinct from the thicker daily and weekly boxes.
  *
  * Honesty rules, unchanged (sla.md §3.6): every number here is either the
- * recorder's already-computed live state (per-stop `lastTouchAt` from
- * /api/v1/service/stops, refreshed on its own 30-second tick) or a raw
- * windowed touch (from /api/v1/service/wave) — the server computes NOTHING
+ * recorder's already-computed live state (per-stop `lastTouchAt` from the
+ * public stops tick document, refreshed on its own 30-second tick —
+ * docs/optimize-overlay.md E2S4) or a raw windowed touch (from
+ * /api/v1/service/wave) — the server computes NOTHING
  * at request time; this module runs in the browser, exactly like the map
  * overlay's field (wave-field.ts) does. A stop the feeds couldn't see is
  * excluded, never counted against the route; an hour with no scheduled

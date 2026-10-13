@@ -16,8 +16,15 @@ const clerkKey = (value: string | undefined, prefix: 'pk_' | 'sk_') =>
 /** The `live` block of `/api/v1/auth/config` — see shared/live/config.ts
  * (single source: base URL, cadence, path template; never baked into a
  * binary). Re-exported for the accounts surface. */
-import { liveTransportConfig } from '../../../../shared/live/config';
+import {
+  liveTransportConfig,
+  overlayTransportConfig,
+} from '../../../../shared/live/config';
 export const liveConfig = liveTransportConfig;
+/** The `overlay` block of the same response (docs/optimize-overlay.md
+ * E1S4) — the overlay's tick path, poll cadence, and the public rollout
+ * switch. Re-exported for the service surfaces. */
+export const overlayConfig = overlayTransportConfig;
 
 export function authConfig(env: AccountEnv) {
   const publishableKey = clerkKey(env.CLERK_PUBLISHABLE_KEY, 'pk_');
@@ -26,12 +33,13 @@ export function authConfig(env: AccountEnv) {
     clerkKey(env.CLERK_SECRET_KEY, 'sk_') &&
     authorizedSessionParties(env).length,
   );
-  // Additive and backward compatible: existing clients ignore `live` until
-  // their transport is updated; no existing field changes.
+  // Additive and backward compatible: existing clients ignore `live` and
+  // `overlay` until their transport is updated; no existing field changes.
   return {
     enabled,
     publishableKey: enabled ? publishableKey : null,
     live: liveConfig(env),
+    overlay: overlayConfig(env),
   };
 }
 // Only session bearer tokens are accepted. Cookies alone cannot authorize writes.
