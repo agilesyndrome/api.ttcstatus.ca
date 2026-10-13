@@ -483,6 +483,19 @@ Progress as of 2026-10-12 (user did these in the Cloudflare dashboard):
   `check-i18n`, `check-subway`, `check-snake`, `check-hackathon`,
   `check-exploration` against the current "Nav v2" UI (failure inventory in
   Final work #1). `check-offline-shell` + `check-service` already pass.
+- **`make dev` now boots the full stack** (2026-10-12):
+  `scripts/dev/dev-stack.mjs start` spawns the API Worker (8787, wrangler,
+  single worker) **and the Vite viewer** (4173, `strictPort`) — the viewer is
+  a required component since Epic 2 (the tick path is same-origin and only
+  the preview middleware serves `/live/t/<tick>/vehicles.json`; the worker
+  SPA cannot, by the no-fallback doctrine). Both ports are bind-probed,
+  both health checks are awaited (`/api/healthz`, `/`), a death of either
+  component tears the whole stack down loudly, and the existing
+  lock-file + `TTC_DEV_STACK_ID` + process-group machinery stops any
+  previous stack (and orphans) before starting. `make dev/status` /
+  `dev/stop` list/stop the viewer automatically (generic over lock workers).
+  **Dev flow: `make dev/new` (first time) → `make dev` → open
+  http://127.0.0.1:4173** — no second terminal needed anymore.
 
 ### User one-time steps (1Password / dashboard)
 
