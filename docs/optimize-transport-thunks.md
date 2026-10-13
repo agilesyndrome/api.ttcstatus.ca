@@ -27,7 +27,8 @@ Every story gets a status here, updated the moment it completes:
 `[ ]` not started · `[~]` in progress · `[x]` code-complete (operator items noted) ·
 `(op)` = Cloudflare dashboard/CLI operator runbook, not doable from this checkout.
 
-- [x] E1S1 (op) — live bucket binding + vars in wrangler; dashboard steps are runbook
+- [x] E1S1 — live bucket + custom domain + cache rule + R2 CORS policy — **dashboard steps executed by the user (2026-10-12)**;
+      only the ~1-day `live/t/` lifecycle rule is unconfirmed (see Outstanding)
 - [x] E1S2 — tick-document contract + pure writer + unit tests
 - [x] E1S3 — recorder publishes per-tick docs to R2 (non-fatal failures)
 - [x] E1S4 — `auth/config` live block + `public, max-age=300`
@@ -40,13 +41,13 @@ Every story gets a status here, updated the moment it completes:
 - [x] E2S6 — code boundary done; staged-rollout dashboards = runbook
 - [x] E3S1 — public vehicle route + `vehicleResponse` deleted; OpenAPI regenerated
 - [x] E3S2 — recorder write-only confirmed + commented
-- [ ] E3S3 (op) — WAF ~100/min/IP on `/api/*` (dashboard rule)
-- [ ] E3S4 (op) — observability dashboards/alerts + CPU limits (limits already set)
+- [ ] E3S3 (op) — WAF ~100/min/IP on `/api/*` (dashboard rule) — **REVISIT after deploy stabilizes (user instruction)**
+- [ ] E3S4 (op) — observability dashboards/alerts + CPU limits (limits already set) — **REVISIT (user instruction)**
 - [ ] E3S5 — boundary: verify removal under a rush (needs deploy + traffic)
 - [x] E4S1 — local JWKS/JWT verification module + fixture-token tests
 - [x] E4S2 — 401/403 grant gate on `/api/v1/service/*`; `private`; no edge cache
 - [x] E4S3 — client sends the session; signed-out = zero service requests
-- [ ] E4S4 (op) — per-session caps keyed on JWT `sub` (WAF rule, dashboard)
+- [ ] E4S4 (op) — per-session caps keyed on JWT `sub` (WAF rule, dashboard) — **REVISIT after deploy stabilizes (user instruction)**
 - [x] E4S5 — SLA MRU pricing decision — **decided**: keep `/sla` members-only
       (~200K MRU ≈ $2,825/mo at 10% adoption is priced-before-shipped, per §Clerk
       caveat; a broader audience would get a separate endpoint with its own policy)
@@ -93,23 +94,23 @@ Every story gets a status here, updated the moment it completes:
 
 ### E1S1 — Public live bucket + custom domain + rules (S)
 
-Status: **wrangler config done in-repo; dashboard steps are operator runbook.**
+Status: **DONE — wrangler config in-repo + the user executed the dashboard steps (2026-10-12).**
 
 - `workers/api/wrangler.jsonc`: added `LIVE_BUCKET` R2 binding
   (`bucket_name: ttcstatus-live`), a `live` var block
   (`LIVE_PUBLIC_BASE`, `LIVE_UPDATE_SECONDS`, `LIVE_PATH_TEMPLATE`),
-  and commented runbook for the R2 custom domain (`live.ttcstatus.ca`),
-  edge cache eligibility, CORS transform rule, and 1-day lifecycle rule.
-- Operator steps (Cloudflare dashboard, one-time):
-  1. Create bucket `ttcstatus-live` (public, dedicated — never the GTFS archive bucket).
-  2. Attach custom domain `live.ttcstatus.ca` (R2 public bucket custom domain).
-  3. Cache rule: host `live.ttcstatus.ca` eligible, edge TTL ≥ object `max-age=600`.
-  4. Transform Rule: for host `live.ttcstatus.ca`, set response header
-     `Access-Control-Allow-Origin: *` (public broadcast data, no credentials, ever).
-  5. Lifecycle rule: expire `live/t/` objects after 1 day (~35 MB/day churn).
-- Accept check (manual): `PUT` a test object under `live/t/<tick>/vehicles.json`,
-  expect `cf-cache-status: HIT` on second fetch, native `304` with
-  `If-None-Match`, permissive CORS.
+  and commented runbook.
+- Dashboard steps — **all executed by the user (2026-10-12)**:
+  1. ✔ Bucket `ttcstatus-live` created.
+  2. ✔ Custom domain `live.ttcstatus.ca` attached (R2 public bucket).
+  3. ✔ Cache rule set (respect origin TTL; objects carry `max-age=600`).
+  4. ✔ CORS set **as an R2 bucket CORS policy** (not a Transform Rule) — see
+     the Operator runbook section for the exact policy + the `*` rationale.
+     The 1-day `live/t/` lifecycle rule is the one step not yet confirmed
+     (see Outstanding).
+- Accept check (run after first deploy): `cf-cache-status: HIT` on second
+  fetch of `live/t/<tick>/vehicles.json`, native `304` with `If-None-Match`,
+  CORS headers present cross-origin.
 
 ### E1S2 — Tick-document contract + pure writer (S)
 
@@ -412,6 +413,106 @@ Status: **E7S1–E7S6 done (code); E7S7 boundary needs a deploy + real sync run.
    rollout share, E3S3 WAF rule, E3S4 dashboards/alerts + E4S4 per-session
    caps + MRU alert, E3S5/E4S6/E5S5/E7S7 validations) — the runbook lines
    are in each epic's section above.
+
+## Operator runbook — dashboard/deploy steps (user-executed)
+
+Progress as of 2026-10-12 (user did these in the Cloudflare dashboard):
+
+1. **Bucket created** ✔ `ttcstatus-live` — the `LIVE_BUCKET` binding in
+   `workers/api/wrangler.jsonc` now resolves at deploy time.
+2. **Domain attached** ✔ `live.ttcstatus.ca` (R2 custom domain, native
+   ETag/304).
+3. **Cache rule set up** ✔ (respect origin TTL — objects carry
+   `public, max-age=600` from the recorder).
+4. **R2 CORS policy set** ✔ — recommended policy (one source of truth; no
+   Transform Rule needed alongside it):
+   ```json
+   [
+     {
+       "AllowedOrigins": ["*"],
+       "AllowedMethods": ["GET", "HEAD"],
+       "AllowedHeaders": ["if-none-match"],
+       "ExposeHeaders": ["etag"],
+       "MaxAgeSeconds": 300
+     }
+   ]
+   ```
+   **Why `*` (user question, 2026-10-12):** partly the native shell (WebView
+   origins vary — `capacitor://localhost`, `ionic://localhost`,
+   `https://localhost`, custom schemes — and R2 CORS is a dashboard edit, so
+   an allowlist would make every new app ID a release gate), but mostly
+   because these are public broadcast bytes with no credentials, ever:
+   CORS is a browser-read control, not an access control (anyone can fetch
+   the URL sans CORS regardless), so allowlisting buys no security. `*`
+   also keeps the "repoint a shipped binary without an app update" rule
+   true. An allowlist would be right only if this data were authenticated
+   or per-user — the plan forbids both on this path.
+5. **TODO(1Password) — JWKS URLs (E4S1 deploy gate):** `.env.local` and
+   `.env.prod` now carry
+   `CLERK_JWKS_URL=op://easley.ca/<vault item>/clerk_jwks_url`:
+   - `op://easley.ca/ttcstatus.local/clerk_jwks_url` →
+     `https://easley-pipefishl-2286.clerk.accounts.dev/.well-known/jwks.json`
+     (dev instance frontend API host, decoded from the `pk_test_…` key).
+   - `op://easley.ca/api.ttcstatus.ca/clerk_jwks_url` → the **prod**
+     instance's `https://<prod-frontend-api-host>/.well-known/jwks.json`
+     (Clerk Dashboard → API Keys, or decoded from the `pk_live_…` key).
+   Public material, not secrets — 1Password placement just matches the
+   other Clerk values. Until they resolve, `verifySession` treats an
+   unresolved `op://…` literal as unconfigured → honest `503
+   auth-unavailable` on `/api/v1/service/*` (fail-closed, same convention
+   as `clerkKey()` in `accounts/auth.ts`). Then run the E4S6 accept check:
+   signed-out → 401; valid token without `voidOverlay` → 403; granted →
+   200 `private`.
+6. **REVISIT LATER (user instruction): WAF rules + observability**
+   (E3S3, E3S4, E4S4) — after the deploy stabilizes and there is real
+   traffic to observe:
+   - WAF rate limiting: ~100 req/min/IP on
+     `http.request.uri.path contains "/api/"`; a second rule ~10 req/min
+     keyed on the session-token claim for the `/api/v1/service/` paths;
+     nothing on `live.ttcstatus.ca`.
+   - Dashboards + alerts: request volume per endpoint, 304 ratio, cache hit
+     ratio, **MRU count with an alert at 40K** (Clerk Dashboard → usage).
+   - `limits.cpu_ms: 300000` already set in wrangler (denial-of-wallet guard).
+
+## Outstanding — everything not yet done, in order
+
+### Doable by the next agent from this checkout
+
+- **E8S1 — fix the stale Playwright suite** (the last story, by user
+  directive): rewrite `check-ui`, `check-mobile`, `check-auth`,
+  `check-i18n`, `check-subway`, `check-snake`, `check-hackathon`,
+  `check-exploration` against the current "Nav v2" UI (failure inventory in
+  Final work #1). `check-offline-shell` + `check-service` already pass.
+
+### User one-time steps (1Password / dashboard)
+
+- **1Password: add the two `clerk_jwks_url` fields** (runbook step 5) —
+  `.env.local` / `.env.prod` already reference them; until they resolve,
+  `/api/v1/service/*` answers honest 503s (fail-closed).
+- **R2 lifecycle rule** (the one E1S1 sub-step not confirmed): expire
+  `live/t/` objects after ~1 day (~35 MB/day churn — the recorder keeps
+  publishing forever otherwise).
+- **Deploy this branch** (`npm run deploy:api` after
+  `npm run db:migrate:remote`) — then the accept checks: HIT/304/CORS on
+  `live.ttcstatus.ca`, config caching, outage-doc publish (kill the
+  upstream deliberately and watch the honest `{ vehicles: [], outage }` doc
+  appear), lifecycle expiry.
+
+### User / next-agent after deploy stabilizes (REVISIT, per user instruction)
+
+- **E3S3/E3S4/E4S4**: WAF per-IP ~100/min on `/api/*`; per-session ~10/min on
+  the granted service endpoints; dashboards + alerts incl. **MRU alert at
+  40K** (runbook step 6).
+- **E3S5**: watch a real 9am rush — removal held, bill ≈ the modeled table
+  (~$20–100/mo; investigate gaps).
+- **E4S6**: 401/403/`private` against live Clerk tokens.
+- **E7S7**: trigger the nightly sync (`/__scheduled` or `admin/sync`) →
+  import → generation → the atomic `streetcar`+`snake`+`ttcstatus` pointer
+  flip → map loads; rehearse rollback (redeploy previous version, re-run).
+- **E5S5**: real-device checks (foreground transitions, skewed-clock 404
+  path, outage rendering).
+- **E2S6**: watch old-path share ≈ 0 (nothing calls the deleted Worker route
+  anymore; only cached old web shells might until they refresh).
 
 ## Open questions / decisions log
 

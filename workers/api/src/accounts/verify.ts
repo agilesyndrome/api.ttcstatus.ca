@@ -150,12 +150,21 @@ export async function verifySession(
   request: Request,
   env: AccountEnv & { CLERK_JWKS_URL?: string },
 ): Promise<string | Response> {
-  if (!env.CLERK_JWKS_URL) return accountReply({ error: 'auth-unavailable' }, 503);
+  // Unresolved secret-manager references (`op://…`, the local dev pattern
+  // from scripts/dev/with-secrets.mjs) read as "unconfigured", never as a
+  // fetch attempt — same convention as clerkKey() in auth.ts. Test fixtures
+  // may use `data:` URLs.
+  const jwksUrl =
+    typeof env.CLERK_JWKS_URL === 'string' &&
+    /^https:\/\/|data:/.test(env.CLERK_JWKS_URL)
+      ? env.CLERK_JWKS_URL
+      : undefined;
+  if (!jwksUrl) return accountReply({ error: 'auth-unavailable' }, 503);
   const token = /^Bearer (\S+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
   if (!token) return accountReply({ error: 'unauthorized' }, 401);
   let keys: JsonWebKeySet;
   try {
-    keys = await fetchJwks(env.CLERK_JWKS_URL, fetch, jwksCache);
+    keys = await fetchJwks(jwksUrl, fetch, jwksCache);
   } catch {
     return accountReply({ error: 'auth-unavailable' }, 503);
   }
