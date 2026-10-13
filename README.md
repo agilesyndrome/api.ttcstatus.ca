@@ -239,6 +239,20 @@ The browser surface is a per-user-gated debug overlay: grant it with
 `npm run feature:enable -- voidOverlay <clerk-user-or-email>` and it appears on
 the map for that account only; signed-out visitors see nothing.
 
+For `make dev`, use the matching local D1 commands:
+
+```bash
+npm run feature:enable:local -- voidOverlay <development-clerk-user-or-email>
+npm run feature:list:local
+npm run feature:disable:local -- voidOverlay <development-clerk-user-or-email>
+```
+
+The commands print tables. Pass `--json` for structured output, for example
+`node scripts/operations/feature-flags.mjs list --local --json`. The local
+enable/disable scripts load `.env.local` so email lookup uses the development
+Clerk key; user ids work without a key. The unsuffixed commands target
+production D1.
+
 ### `GET /api/v1/sla/report` (experimental, members-only)
 
 The SLA status page's one endpoint (docs/sla-stories.md Epic 8): which
@@ -494,7 +508,6 @@ Vite writes the homepage and hashed JS/CSS into `dist/` for Worker
 asset deployment. Static assets are copied from `public/`. The standalone HTML preview remains at `/map/`. All API Worker
 routes now start with `/api/`, including `/api/healthz`; the previous `/v1/*` and
 `/healthz` paths are retired. Unknown `/api/*` requests return JSON errors.
-
 
 For 100 visible viewers at the default 30-second cadence, the site receives about
 3.3 snapshot requests per second on average. One page hook serves every UI

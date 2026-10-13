@@ -7,6 +7,7 @@ import {
   disableFeature,
   enableFeature,
   listFeatureFlags,
+  parseFeatureArgs,
   resolveSubject,
   validFlagName,
 } from '../../scripts/operations/feature-flags.mjs';
@@ -63,6 +64,28 @@ test('flag names are validated the way map tags are', () => {
   assert.equal(validFlagName('bad flag!'), false);
   assert.equal(validFlagName('.leading-dot'), false);
   assert.equal(validFlagName('-dash'), false);
+});
+
+test('CLI selects local D1 only when requested and accepts JSON output', () => {
+  assert.deepEqual(parseFeatureArgs(['list', '--local', '--json']), {
+    command: 'list',
+    local: true,
+    json: true,
+    operator: process.env.USER ?? 'operator',
+  });
+  assert.deepEqual(parseFeatureArgs(['enable', 'voidOverlay', 'user_a', '--by', 'kim']), {
+    command: 'enable',
+    flag: 'voidOverlay',
+    subject: 'user_a',
+    local: false,
+    json: false,
+    operator: 'kim',
+  });
+  assert.throws(() => parseFeatureArgs(['list', '--unknown']), /Unknown option/);
+  assert.throws(
+    () => parseFeatureArgs(['enable', 'voidOverlay']),
+    /Invalid feature command/,
+  );
 });
 
 test('non-email subjects pass through; emails require CLERK_SECRET_KEY', async () => {

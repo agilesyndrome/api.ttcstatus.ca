@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 import { useServiceHistory } from './useServiceHistory';
 import { Sparkline } from './Sparkline';
 import { StopCard } from './StopCard';
-import { STATE_COLORS } from './wave-field';
+import { STATE_COLORS, platformRoutes } from './wave-field';
+import type { RouteBadge } from './wave-field';
 
 /** Compact stop status on selection; the day view and track legend expand
  * only when requested. The map carries the field. */
@@ -11,10 +13,17 @@ export function SelectedStopCard({
   stop,
   name,
   onClear,
+  controls,
+  routes,
 }: {
   stop: StopServiceState;
   name?: string;
   onClear: () => void;
+  /** Route then direction switchers, rendered by the layer (it owns the
+   * map's routes, patterns, and sibling platforms). */
+  controls?: ReactNode;
+  /** Day routes for this platform — the card's details line. */
+  routes?: RouteBadge[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const { history } = useServiceHistory(expanded, stop.stopId);
@@ -24,7 +33,14 @@ export function SelectedStopCard({
       role="dialog"
       aria-label={`Delivered service for ${name ?? stop.stopId}`}
     >
-      <StopCard stop={stop} name={name} onClear={onClear} onDetailsToggle={setExpanded}>
+      <StopCard
+        stop={stop}
+        name={name}
+        onClear={onClear}
+        onDetailsToggle={setExpanded}
+        controls={controls}
+        routes={routes ?? platformRoutes(stop.routeIds, [])}
+      >
         {history && <Sparkline history={history} />}
         <p className="service-popover__legend">
           {(

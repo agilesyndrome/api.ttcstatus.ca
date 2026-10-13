@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { StopServiceState } from '../../../../shared/service/contracts';
-import { useAccount } from '../accounts/auth';
+import { SegmentedControl } from '../../components/SegmentedControl';
 import { useFeatureFlags } from './useFeatureFlags';
 import { useServiceFeed } from './useServiceFeed';
 import { TrackService } from './TrackService';
@@ -12,10 +12,13 @@ import { SelectedStopCard } from './SelectedStopCard';
 import {
   advanceStopState,
   directionColorAlong,
+  directionOptions,
+  platformDirectionLabel,
+  platformRoutes,
+  routeOptions,
   surfaceStatesByStop,
   trackFieldSignature,
 } from './wave-field';
-import { readDevOverlayBypass } from './useDevOverlayBypass';
 
 export interface ServiceOverlay {
   /** The field painted on the tracks — renders UNDER cars and labels. */
@@ -64,15 +67,8 @@ export function useServiceOverlay(
   requested = false,
 ): ServiceOverlay {
   const flags = useFeatureFlags();
-  const account = useAccount();
-  // Local-dev bypass: only consulted when the site itself runs without auth
-  // (production always has Clerk configured, so this can never fire).
-  const devBypass = account.loaded && !account.enabled ? readDevOverlayBypass() : false;
   const enabled =
-    requested &&
-    !suspended &&
-    Boolean(data) &&
-    (devBypass || (flags.loaded && flags.overlayEnabled));
+    requested && !suspended && Boolean(data) && flags.loaded && flags.overlayEnabled;
   const feed = useServiceFeed(enabled);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -178,11 +174,72 @@ export function useServiceOverlay(
     carTint: () => null,
   };
   if (!enabled || !data) return empty;
+  /** The two switchers, Route first then Direction (the street test): a
+   * gloved tap lands on the wrong platform, and an intersection can host
+   * several corridors. Route is a switcher ONLY when switching lands you on
+   * a different platform — corridors that share the platform share its
+   * numbers, so they read as text; one route is just the stop's label.
+   * Direction offers the sibling platform in compass words ("→ East") with
+   * real bearings whenever the map carries coordinates. */
+  const routeControl = () => {
+    if (!selectedStop) return null;
+    const options = routeOptions(
+      selectedStop,
+      data.features,
+      statesByStop,
+      data.routes,
+    );
+    if (options.length === 0) return null;
+    const switches = options.some((option) => option.stopId !== selectedStop.stopId);
+    if (!switches) {
+      // Every route here shares the platform — a switcher would be a
+      // button that changes nothing. Text, day numbers only ("505
+      // Dundas", never the 305 night twin).
+      return (
+        <p className="service-card__route-line">
+          {options.length === 1 ? 'Route' : 'Routes'}{' '}
+          {options.map((option) => `${option.number} ${option.name}`).join(', ')}
+        </p>
+      );
+    }
+    return (
+      <SegmentedControl
+        value={platformRoutes(selectedStop.routeIds, data.routes)[0]?.number ?? ''}
+        label="Route"
+        options={options.map((option) => ({
+          value: option.number,
+          label: `${option.number} ${option.name}`,
+        }))}
+        onChange={(number) => {
+          const target = options.find((option) => option.number === number);
+          if (target?.stopId) setSelectedStopId(target.stopId);
+        }}
+      />
+    );
+  };
+  const directionControl = () => {
+    if (!selectedStop) return null;
+    const options = directionOptions(
+      selectedStop,
+      data.features,
+      statesByStop,
+      data.patterns,
+    );
+    if (options.length === 0) return null;
+    const ownLabel = platformDirectionLabel(selectedStop, data.features, data.patterns ?? []);
+    return (
+      <SegmentedControl
+        value={selectedStop.stopId}
+        label="Boarding direction"
+        options={[
+          { value: selectedStop.stopId, label: ownLabel },
+          ...options.map((option) => ({ value: option.stopId, label: option.label })),
+        ]}
+        onChange={(id) => setSelectedStopId(id)}
+      />
+    );
+  };
   return {
-    onSelectServiceStop: (stopId: string | null) =>
-      setSelectedStopId((current) => (current === stopId ? null : stopId)),
-    onFeatureSelectForService: selectFromFeature,
-    carTint,
     underlay: (_scale: number) => (
       <TrackService
         edges={data.edges}
@@ -191,6 +248,10 @@ export function useServiceOverlay(
         cars={cars}
       />
     ),
+    onSelectServiceStop: (stopId: string | null) =>
+      setSelectedStopId((current) => (current === stopId ? null : stopId)),
+    onFeatureSelectForService: selectFromFeature,
+    carTint,
     overlay: selectedStop
       ? (_scale: number) => (
           <SelectedStopMarker
@@ -207,6 +268,13 @@ export function useServiceOverlay(
         stop={selectedStop}
         name={stopNameOf(selectedStop.stopId)}
         onClear={() => setSelectedStopId(null)}
+        controls={
+          <>
+            {routeControl()}
+            {directionControl()}
+          </>
+        }
+        routes={platformRoutes(selectedStop.routeIds, data.routes)}
       />
     ) : null,
   };

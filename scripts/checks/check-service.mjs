@@ -152,6 +152,52 @@ const statesByStop = new Map(states.map((state) => [state.stopId, state]));
 const voidStopId = states.find((state) => state.state === 'void').stopId;
 const voidFeature = corridor.find((feature) => feature.stopIds.includes(voidStopId));
 
+// ——— The cross-street sibling (the direction-switch fixture): this map's
+// corridor stops ride alone (one boarding point per feature), so script the
+// void stop's opposite-side platform fresh — the popup must offer it as a
+// one-tap direction switch (the gloved-tap fix).
+const SIDE_WORD = /\s*(east|west|north|south)\s+side$/i;
+const normName = (name) => name.replace(/\s+/g, ' ').trim();
+const voidBase = normName(voidFeature.name).replace(SIDE_WORD, '');
+const siblingFeature = viewer.features.find(
+  (entry) =>
+    entry !== voidFeature &&
+    (entry.stopIds?.length ?? 0) > 0 &&
+    normName(entry.name).replace(SIDE_WORD, '') === voidBase,
+);
+if (siblingFeature) {
+  const siblingState = stateFor(siblingFeature.stopIds[0], 'fresh', 3, {
+    directionId: statesByStop.get(voidStopId).directionId === 0 ? 1 : 0,
+  });
+  states.push(siblingState);
+  // stopsPayload and the expected band both read the live array/map, so the
+  // in-page field and the expectation stay one and the same truth.
+  statesByStop.set(siblingState.stopId, siblingState);
+}
+
+// ——— The multi-route platform (the route-row fixture): a real fixture
+// stop serving night twins and several day corridors (raw routeIds
+// 301/304/501/503/504). The popup must read day numbers only ("501 Queen,
+// 503 Kingston Rd, 504 King" — 301 and 304 are the same data in night
+// costumes) as TEXT, not a switcher: every route here shares the platform,
+// so switching would be a button that changes nothing.
+const multiRouteFeature = viewer.features.find(
+  (entry) =>
+    entry.stopIds?.length === 1 &&
+    (entry.routeIds ?? []).length >= 4 &&
+    (entry.routeIds ?? []).some((id) => /^3\d\d$/.test(id)) &&
+    statesByStop.has(entry.stopIds[0]) === false,
+);
+if (multiRouteFeature) {
+  const dayRoutes = [...new Set(multiRouteFeature.routeIds.map((id) => id.replace(/^3/, '5')))];
+  const multiState = stateFor(multiRouteFeature.stopIds[0], 'due', 8, {
+    routeIds: multiRouteFeature.routeIds,
+  });
+  states.push(multiState);
+  statesByStop.set(multiState.stopId, multiState);
+  console.log('multi-route platform:', multiRouteFeature.name, '→ days', dayRoutes.join('/'));
+}
+
 // The expected painted band, from the same pure brain the page uses: every
 // piece in edge order with its colour and state. The DOM must match exactly.
 const expectedBand = [];
@@ -402,18 +448,67 @@ try {
     const sentence = await page.locator('.service-card__sentence').textContent();
     assert.match(sentence ?? '', /min without a car/);
     assert.match(sentence ?? '', /× the usual/);
-    assert.match(await page.locator('.service-card__facts').textContent(), /waited/);
+    // The fast read (the street test): scan lines for the two numbers a
+    // rider needs first, whole minutes, and no dryness jargon on this screen.
+    const facts = await page.locator('.service-card__facts').textContent();
+    assert.match(facts ?? '', /next car/);
+    assert.match(facts ?? '', /last service/);
+    assert.match(facts ?? '', /min ago/);
+    assert.doesNotMatch(facts ?? '', /dryness/);
     const popup = await page.locator('.service-popover').boundingBox();
     const map = await page.locator('.map-viewport').boundingBox();
     assert.ok(popup && map, 'selected stop popup and map should be visible');
     assert.ok(popup.width <= 281, `popup should stay compact, got ${popup.width}px`);
     assert.ok(
-      popup.height <= 205,
+      popup.height <= 245,
       `collapsed popup should stay compact, got ${popup.height}px`,
     );
     assert.ok(popup.x >= map.x && popup.x + popup.width <= map.x + map.width);
     assert.ok(popup.y >= map.y && popup.y + popup.height <= map.y + map.height);
     assert.equal(await page.locator('.service-sparkline:visible').count(), 0);
+
+    // ——— 3a. The route row (the 305-at-noon rule): one corridor serves
+    // this platform, so it reads as TEXT in day numbers ("Route 506
+    // Carlton" — never the 306 night twin, which is the same data).
+    const routeLine = (await page.locator('.service-card__route-line').textContent()) ?? '';
+    assert.match(routeLine, /^Route \d{3}/, `the route row reads as text: "${routeLine}"`);
+    console.error('POPUP:', await page.locator('.service-popover').textContent());
+    assert.doesNotMatch(
+      await page.locator('.service-popover').textContent(),
+      /\b306\b/,
+      'night twins never appear on the fast-read screen',
+    );
+
+    // ——— 3b. The direction switch (the gloved-tap fix): nearside platforms
+    // share a map feature, so the popup offers the sibling boarding point as
+    // a one-tap segmented control. Only asserted when the preview corridor
+    // actually monitors both boarding points.
+    const directionButtons = page.locator('.service-popover .segmented-control button');
+    const directionCount = await directionButtons.count();
+    assert.ok(
+      directionCount === 0 || directionCount === 2,
+      'one control, two directions',
+    );
+    if (directionCount === 2) {
+      const before = await page.locator('.service-card').getAttribute('data-stop-id');
+      const other =
+        (await directionButtons.first().getAttribute('aria-pressed')) === 'true'
+          ? directionButtons.nth(1)
+          : directionButtons.first();
+      await other.click();
+      const after = await page.locator('.service-card').getAttribute('data-stop-id');
+      assert.notEqual(
+        after,
+        before,
+        'the direction switch selects the sibling boarding point',
+      );
+      await page.locator('.void-marker').first().waitFor({ state: 'visible' });
+      assert.equal(
+        await page.locator('.void-marker').getAttribute('data-stop-id'),
+        after,
+        'the ring follows the switched direction',
+      );
+    }
     await page.locator('.service-card__details summary').click();
     // The day view and legend are available on demand.
     await page
@@ -426,6 +521,37 @@ try {
       (await page.locator('.service-popover__legend').textContent()) ?? '',
       /dry/,
     );
+
+    // ——— 3c. The multi-route platform: night twins and several day
+    // corridors share one platform, so the route row reads as TEXT with
+    // day numbers only — a switcher that changes nothing is a lie.
+    if (multiRouteFeature) {
+      await page.locator('.void-marker').click();
+      await page.waitForTimeout(200);
+      await page.locator(`[data-feature="${multiRouteFeature.id}"]`).click();
+      await page
+        .locator('.service-popover')
+        .waitFor({ state: 'visible', timeout: 5_000 });
+      const multiPopup =
+        (await page.locator('.service-popover').textContent()) ?? '';
+      assert.match(multiPopup, /Routes 50[134] /, 'day routes listed as text');
+      assert.doesNotMatch(multiPopup, /\b30[145]\b/, 'night twins fold into day numbers');
+      assert.equal(
+        await page.locator('.service-card__route-line').count(),
+        1,
+        'shared-platform routes read as one text line',
+      );
+      // No sibling platform is scripted at this intersection: no direction
+      // switcher, no ring.
+      assert.equal(
+        await page.locator('.service-popover .segmented-control').count(),
+        0,
+        'no switchers where switching would change nothing',
+      );
+      await page.locator('.service-card__bar .chip').click();
+    } else {
+      await page.locator('.service-card__bar .chip').click();
+    }
     await page.setViewportSize({ width: 390, height: 620 });
     const narrowPopup = await page.locator('.service-popover').boundingBox();
     const narrowMap = await page.locator('.map-viewport').boundingBox();

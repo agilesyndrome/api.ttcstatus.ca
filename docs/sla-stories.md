@@ -1435,9 +1435,9 @@ recorded. The release is done.
 
 ---
 
-### E7S3 — The local-dev overlay bypass [DONE]
+### E7S3 — The local-dev overlay bypass [RETIRED]
 
-**Status:** Done — 2026-10-09 · Local dev cannot authenticate (no Clerk keys outside `make dev`'s 1Password env), which made the per-user gate undemoable at home. Now, when the site itself runs without auth — production always has Clerk configured, so this can never fire there — `?voidOverlay=1` opts in (sessionStorage-persisted). Verified against the real worker: plain load makes zero /service/* requests; with the bypass, 603 live markers (181 fresh / 242 due / 179 void), the live panel, and the corridor render on real feeds with zero errors; the gated browser check still passes unchanged. Notes in docs/sla-chatter.md.
+**Status:** Retired — 2026-10-13 · Development now uses Clerk authentication and local D1 feature grants. The temporary unauthenticated overlay workaround was removed; use `npm run feature:enable:local -- voidOverlay <user-or-email>` to test the overlay.
 
 ---
 

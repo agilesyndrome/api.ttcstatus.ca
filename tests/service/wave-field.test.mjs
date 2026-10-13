@@ -15,6 +15,12 @@ const {
   carTrailSegments,
   isSubwayOnlyStop,
   surfaceStatesByStop,
+  dayRouteNumber,
+  platformRoutes,
+  intersectionStreets,
+  platformCompass,
+  routeOptions,
+  directionOptions,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
   export { serviceStatesAt } from './shared/service/wait-metrics';
@@ -361,4 +367,156 @@ test('the state ramp keeps fresh and void distinct beyond hue alone', () => {
   };
   assert.ok(luminance(STATE_COLORS.fresh) - luminance(STATE_COLORS.void) > 0.1);
   assert.notEqual(STATE_COLORS.unmonitored, STATE_COLORS.void);
+});
+
+// ——— The two switchers: Route first, then Direction ——————————————————
+
+test('night 3xx twins fold into their 5xx day numbers — 305 never shows at noon', () => {
+  assert.equal(dayRouteNumber('305'), '505');
+  assert.equal(dayRouteNumber('301'), '501');
+  assert.equal(dayRouteNumber('505'), '505');
+  assert.equal(dayRouteNumber('510'), '510');
+  const routes = [
+    { id: '301', number: '301', name: 'Queen' },
+    { id: '305', number: '305', name: 'Dundas' },
+    { id: '501', number: '501', name: 'Queen' },
+    { id: '505', number: '505', name: 'Dundas' },
+  ];
+  // Day and night share the platform: one badge, day number, day name.
+  const badges = platformRoutes(['301', '501', '503'], routes);
+  assert.deepEqual(
+    badges.map((badge) => [badge.number, badge.name]),
+    [['501', 'Queen'], ['503', '']],
+  );
+  // A platform serving only the night twin still reads as its day number.
+  assert.equal(platformRoutes(['305'], routes)[0]?.number, '505');
+});
+
+test('intersections hash by street pair, both name orders and side suffixes', () => {
+  assert.deepEqual(intersectionStreets('Queen St West at Spadina Ave'), [
+    'queen st west',
+    'spadina ave',
+  ]);
+  // The crossing corridor writes its platforms the other way around.
+  assert.deepEqual(intersectionStreets('Spadina Ave at Queen St West'), [
+    'queen st west',
+    'spadina ave',
+  ]);
+  // Whitespace and the platform's side word never count.
+  assert.deepEqual(intersectionStreets('King St West  at John St West Side'), [
+    'john st',
+    'king st west',
+  ]);
+  // Terminals and loops have no cross street: never grouped.
+  assert.equal(intersectionStreets('Long Branch Loop'), null);
+});
+
+test('compass labels come from real bearings, never guesses', () => {
+  // Two platforms 1.1 km apart along an east-west street: the later stop
+  // bears ~90° (east) from the first — travel is eastbound.
+  const geoFeatures = [
+    {
+      ...featureAt('st_e', 0),
+      stopIds: ['st_e'],
+      geographicPoints: [{ stopId: 'st_e', latitude: 43.6532, longitude: -79.39, accessible: null }],
+    },
+    {
+      ...featureAt('st_w', 0),
+      stopIds: ['st_w'],
+      geographicPoints: [{ stopId: 'st_w', latitude: 43.6532, longitude: -79.40, accessible: null }],
+    },
+  ];
+  const pattern = { stopIds: ['st_w', 'st_e'], directionId: 0 };
+  const reverse = { stopIds: ['st_e', 'st_w'], directionId: 1 };
+  const eastbound = stopState('st_w', 0.1, 'fresh');
+  assert.deepEqual(platformCompass(eastbound, geoFeatures, [pattern]), {
+    text: 'East',
+    arrow: '→',
+  });
+  // The reverse pattern is westbound — the pattern's stop order is the
+  // only truth.
+  const westbound = stopState('st_e', 0.1, 'fresh', { directionId: 1 });
+  assert.deepEqual(platformCompass(westbound, geoFeatures, [pattern, reverse]), {
+    text: 'West',
+    arrow: '←',
+  });
+  // No coordinates, no verdict: null, and the caller falls back.
+  assert.equal(platformCompass(eastbound, [featureAt('st_w', 0)], [pattern]), null);
+  // No pattern either: null even with coordinates.
+  assert.equal(platformCompass(eastbound, geoFeatures, []), null);
+});
+
+test('route options span the intersection; shared platforms are not switchers', () => {
+  const routes = [
+    { id: '501', number: '501', name: 'Queen' },
+    { id: '510', number: '510', name: 'Spadina' },
+    { id: '310', number: '310', name: 'Spadina' },
+  ];
+  // Queen crosses Spadina: the 501 platform and the 510 platform name the
+  // same intersection in both orders, side suffixes included.
+  const queenSide = {
+    ...featureAt('st_q', 50),
+    name: 'Queen St West at Spadina Ave West Side',
+    stopIds: ['st_q'],
+  };
+  const spadinaSide = {
+    ...featureAt('st_s', 50),
+    name: 'Spadina Ave at Queen St West South Side',
+    stopIds: ['st_s'],
+  };
+  const selected = stopState('st_q', 0.1, 'fresh', { routeIds: ['501'] });
+  const spadinaState = stopState('st_s', 0.1, 'fresh', {
+    directionId: 1,
+    routeIds: ['310', '510'],
+  });
+  const states = new Map([
+    ['st_q', selected],
+    ['st_s', spadinaState],
+  ]);
+  const options = routeOptions(selected, [queenSide, spadinaSide], states, routes);
+  // Both corridors offered in day numbers; the night 310 twin folded.
+  assert.deepEqual(
+    options.map((option) => option.number),
+    ['501', '510'],
+  );
+  const jump = options.find((option) => option.number === '510');
+  assert.equal(jump?.stopId, 'st_s', 'the 510 button lands on the Spadina platform');
+  // The sibling platform is the direction option. No coordinates here, so
+  // the label falls back to the headsign's own compass word — never the
+  // raw headsign (it embeds route numbers, night twins included).
+  const withHeadsigns = [
+    {
+      stopIds: ['st_s'],
+      headsign: 'West - 310 Spadina towards Queen',
+      directionId: 1,
+    },
+  ];
+  const directions = directionOptions(
+    selected,
+    [queenSide, spadinaSide],
+    states,
+    withHeadsigns,
+  );
+  assert.deepEqual(
+    directions.map((option) => [option.stopId, option.label]),
+    [['st_s', '← West']],
+  );
+  // Without any honest source at all: plain directionId words, no guesses.
+  assert.deepEqual(
+    directionOptions(selected, [queenSide, spadinaSide], states, []).map(
+      (option) => option.label,
+    ),
+    ['direction 1'],
+  );
+  // Same-direction platforms never offer as directions (an eastbound
+  // duplicate would be a lie of a switch).
+  const sameDirection = stopState('st_e2', 0.2, 'fresh', { routeIds: ['501'] });
+  const withTwin = new Map(states);
+  withTwin.set('st_e2', sameDirection);
+  assert.deepEqual(
+    directionOptions(selected, [queenSide, spadinaSide], withTwin, []).map(
+      (option) => option.stopId,
+    ),
+    ['st_s'],
+  );
 });

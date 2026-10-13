@@ -109,7 +109,7 @@ lens is a lens: nothing in the delivered-service pipeline changes its behaviour.
 | E6S6 | Hand-off: polished-overlay epic proposal                               | ⬜ done                                        |
 | E7S1 | The dream overlay (polish epic, part 1)                                | done                                           |
 | E7S2 | The sweep + the heartbeat (polish epic, part 2)                        | done                                           |
-| E7S3 | Local-dev overlay bypass (polish epic, dev UX)                         | done                                           |
+| E7S3 | Local-dev overlay bypass (polish epic, dev UX)                         | retired; dev now uses Clerk                    |
 | E7S4 | Thin dual-direction streams on the track; direction + speed as honesty | done                                           |
 | E7S5 | The 5-minute cadence fix (dev env)                                     | done                                           |
 | E7S6 | The snail slime + gradient softening (polish epic)                     | done                                           |
@@ -495,30 +495,11 @@ live returns aria-pressed false. 277/277 suite, board 9/9, typecheck/lint/
 format clean. One strict-mode lesson: a map stop named "Mount Olive Station"
 collides with getByRole name 'live' — the check uses exact: true.
 
-### 2026-10-09 — E7S3: the local-dev overlay bypass (why the map looked empty)
+### 2026-10-13 — E7S3 retired: local dev uses Clerk
 
-User steer: "Shouldn't I see more on this map, especially around Queen?"
-(They were viewing the 0.0.0.0-bound dev stack from the LAN.) Diagnosis from
-the live stack: the car layer was fine (237 streetcars, 20 on the 501) and
-the delivered-service data was rich (98 Queen stops, 39 in void at that
-moment) — but the overlay never mounts locally because it is per-user gated
-through Clerk, and local dev has no Clerk keys (those come from 1Password
-via make dev's .env.local). Auth disabled -> no sign-in -> no flags -> no
-overlay. The gate was working exactly as designed; it was just undemoable
-at home.
-
-Shipped: an explicit dev-only bypass — when the site itself runs without
-auth (`account.enabled === false`, only true locally since production
-always has Clerk configured), `?voidOverlay=1` opts in, persisted in
-sessionStorage so refreshes keep it. Production can never fire it.
-
-Verified against the REAL worker (no fixtures, no interception): plain load
-= 0 markers, 0 panel, and 0 /service/* requests (the gate still holds);
-`?voidOverlay=1` = 603 live markers (181 fresh / 242 due / 179 void /
-1 collecting), panel live, 38 corridor lanes, zero slow requests, zero page
-errors, and session persistence across a plain reload. The browser check
-still passes (its fixture keeps auth enabled, so the bypass never fires and
-the flag-off assertion still sees zero requests): 277/277, board 9/9.
+The temporary unauthenticated overlay workaround is removed now that the
+development stack can authenticate. Grant the account's `voidOverlay` flag in
+local D1 with `npm run feature:enable:local -- voidOverlay <user-or-email>`.
 
 ### 2026-10-09 — E7S4/E7S5: thin dual streams, and the frozen-streetcars fix
 

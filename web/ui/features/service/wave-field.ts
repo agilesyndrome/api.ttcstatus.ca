@@ -42,7 +42,9 @@ const fmt = (value: number, decimals = 1) =>
 /** Plain language for a stop's state — the grandma test. Every phrase is
  * backed by a number the API serves; nothing editorialises beyond the math. */
 export function stopSentence(stop: StopServiceState, name?: string): string {
-  const label = name ?? stop.stopId;
+  // No name → no prefix: the card's title bar already says the stop, and the
+  // sentence shouldn't repeat it (the street test).
+  const label = name !== undefined ? `${name}: ` : '';
   const med =
     stop.medianHeadwayOwnSeconds !== null ? stop.medianHeadwayOwnSeconds / 60 : null;
   const waited = stop.minutesSince;
@@ -50,16 +52,285 @@ export function stopSentence(stop: StopServiceState, name?: string): string {
   const usual = med !== null ? ` Cars here usually run every ${fmt(med)} min.` : '';
   switch (stop.state) {
     case 'fresh':
-      return `${label}: just serviced.${usual}`;
+      return `${label}just serviced.${usual}`;
     case 'due':
-      return `${label}: you've waited ${fmt(waited ?? 0)} min — usually every ${fmt(med ?? 0)} min (${fmt((waited ?? 0) / (med ?? 1))}× the usual).${est !== null ? ` Next car ≈ ${fmt(est)} min, given recent gaps.` : ''}`;
+      return `${label}you've waited ${fmt(waited ?? 0)} min — usually every ${fmt(med ?? 0)} min (${fmt((waited ?? 0) / (med ?? 1))}× the usual).${est !== null ? ` Next car ≈ ${fmt(est)} min, given recent gaps.` : ''}`;
     case 'void':
-      return `${label}: ${fmt(waited ?? 0)} min without a car — usually every ${fmt(med ?? 0)} min (${fmt(stop.dryness ?? 0)}× the usual).${est !== null ? ` Next car ≈ ${fmt(est)} min, given how gaps have been running.` : ''}`;
+      return `${label}${fmt(waited ?? 0)} min without a car — usually every ${fmt(med ?? 0)} min (${fmt(stop.dryness ?? 0)}× the usual).${est !== null ? ` Next car ≈ ${fmt(est)} min, given how gaps have been running.` : ''}`;
     case 'unmonitored':
-      return `${label}: we can't see this stop right now (${stop.coverage?.kind ?? 'outage'}). No verdict — never a void.`;
+      return `${label}we can't see this stop right now (${stop.coverage?.kind ?? 'outage'}). No verdict — never a void.`;
     case 'collecting':
-      return `${label}: still collecting this stop's rhythm before it speaks.`;
+      return `${label}still collecting this stop's rhythm before it speaks.`;
   }
+}
+
+// ——— The two switchers: Route first, then Direction —————————————————————
+// A platform can serve several day routes, and an intersection can host
+// several corridors (Queen crosses Spadina). The popup offers Route first
+// (a switcher only when switching changes what you'd land on — corridors
+// that share the platform share its numbers, so they read as text), then
+// Direction (the sibling platform across the street).
+//
+// Night 3xx routes ("305 Dundas") fold into their 5xx day twins ("505
+// Dundas") everywhere on this screen — day and night share the same
+// platforms and the same state, so a bare "305" at noon is the same data
+// wearing a costume we never show (model.ts's displayNumber rule).
+
+/** The day twin of a 3xx night route number ("305" → "505"); day passes. */
+export function dayRouteNumber(number: string): string {
+  return /^3\d\d$/.test(number) ? String(Number(number) + 200) : number;
+}
+
+export interface RouteBadge {
+  /** A raw route id (day id when the platform serves both twins). */
+  id: string;
+  /** The day display number — night twins never appear. */
+  number: string;
+  name: string;
+}
+
+/** Day-deduped routes serving one platform, stable day-number order. */
+export function platformRoutes(
+  routeIds: readonly string[],
+  routes: ReadonlyArray<{ id: string; number?: string; name?: string }>,
+): RouteBadge[] {
+  const byNumber = new Map<string, RouteBadge>();
+  for (const id of routeIds) {
+    const route = routes.find((entry) => entry.id === id);
+    const number = dayRouteNumber(route?.number ?? id);
+    if (!byNumber.has(number))
+      byNumber.set(number, {
+        id: route?.id ?? id,
+        number,
+        name: route?.name ?? '',
+      });
+  }
+  return [...byNumber.values()].sort((a, b) => a.number.localeCompare(b.number));
+}
+
+const SIDE_WORD = /\s+(east|west|north|south)\s+side$/i;
+const normName = (name: string) => name.replace(/\s+/g, ' ').trim();
+
+/** The intersection a stop name speaks of: the sorted street pair, so
+ * "Spadina Ave at Queen St West" and "Queen St West at Spadina Ave" hash
+ * alike (whitespace and the platform's "… Side" suffix never count). Null
+ * for names without a cross street (terminals, loops). */
+export function intersectionStreets(name: string): [string, string] | null {
+  const cleaned = normName(name).replace(SIDE_WORD, '').toLowerCase();
+  const parts = cleaned.split(/\s+at\s+/);
+  if (parts.length !== 2) return null;
+  return [parts[0], parts[1]].sort() as [string, string];
+}
+
+const sameIntersection = (a: string, b: string): boolean => {
+  const ka = intersectionStreets(a);
+  const kb = intersectionStreets(b);
+  return ka !== null && kb !== null && ka[0] === kb[0] && ka[1] === kb[1];
+};
+
+/** The monitored platforms at the selected platform's intersection — the
+ * candidates for both switchers. Includes the selected feature's own
+ * paired stopIds and any cross-street sibling features. */
+function intersectionStates(
+  selected: StopServiceState,
+  features: Feature[],
+  statesByStop: Map<string, StopServiceState>,
+): StopServiceState[] {
+  const feature = features.find((entry) => entry.stopIds?.includes(selected.stopId));
+  if (!feature) return [];
+  const states: StopServiceState[] = [];
+  const seen = new Set<string>();
+  const push = (id: string) => {
+    const state = statesByStop.get(id);
+    if (state && !seen.has(id)) {
+      seen.add(id);
+      states.push(state);
+    }
+  };
+  for (const id of feature.stopIds ?? []) push(id);
+  // Cross-street siblings: features whose names speak of the same
+  // intersection — "King St West at John St West Side" pairs with "… East
+  // Side", and (for the route switch) a crossing corridor pairs with its
+  // own name for the same corner.
+  for (const other of features)
+    if (other !== feature && sameIntersection(other.name, feature.name))
+      for (const id of other.stopIds ?? []) push(id);
+  return states;
+}
+
+export interface RouteOption extends RouteBadge {
+  /** The platform this route lands on at the intersection — the current
+   * platform when the route shares it, the route's own platform otherwise
+   * (same directionId preferred). Null when the intersection has no
+   * monitored platform for the route. */
+  stopId: string | null;
+}
+
+/** Day routes across the selected platform's whole intersection, each with
+ * the platform you'd land on. A switcher-worthy list is one where some
+ * route lands elsewhere; shared-platform routes read as text. */
+export function routeOptions(
+  selected: StopServiceState,
+  features: Feature[],
+  statesByStop: Map<string, StopServiceState>,
+  routes: ReadonlyArray<{ id: string; number?: string; name?: string }>,
+): RouteOption[] {
+  const atIntersection = intersectionStates(selected, features, statesByStop);
+  const byNumber = new Map<string, RouteOption>();
+  for (const state of atIntersection) {
+    for (const badge of platformRoutes(state.routeIds, routes)) {
+      const existing = byNumber.get(badge.number);
+      // Prefer the platform that keeps the rider's direction…
+      const better =
+        existing === undefined ||
+        (state.directionId === selected.directionId &&
+          existing.stopId !== selected.stopId) ||
+        state.stopId === selected.stopId;
+      if (!better) continue;
+      byNumber.set(badge.number, { ...badge, stopId: state.stopId });
+    }
+  }
+  return [...byNumber.values()].sort((a, b) => a.number.localeCompare(b.number));
+}
+
+export interface DirectionOption {
+  stopId: string;
+  /** Compass words with an honest arrow ("→ East") when the map's own
+   * coordinates allow the bearing; the pattern headsign otherwise. */
+  label: string;
+}
+
+export interface CompassLabel {
+  text: string;
+  arrow: string;
+}
+
+const ARROWS: readonly CompassLabel[] = [
+  { text: 'North', arrow: '↑' },
+  { text: 'East', arrow: '→' },
+  { text: 'South', arrow: '↓' },
+  { text: 'West', arrow: '←' },
+];
+
+/** A travel bearing (0=N, 90=E) snapped to the four-compass words. */
+function compassOf(deg: number): CompassLabel {
+  const a = ((deg % 360) + 360) % 360;
+  return ARROWS[Math.round(a / 90) % 4]!;
+}
+
+/** The platform's travel direction in compass words, from the route's own
+ * geography: the bearing from this platform to a distant stop later along
+ * its pattern (the pattern's stop order IS the travel direction). Null
+ * without coordinates or a pattern — callers fall back, never guess. */
+export function platformCompass(
+  stop: StopServiceState,
+  features: Feature[],
+  patterns: ReadonlyArray<{ stopIds: string[]; directionId?: 0 | 1 }>,
+): CompassLabel | null {
+  const geoOf = (id: string): [number, number] | null => {
+    for (const feature of features)
+      for (const point of feature.geographicPoints ?? [])
+        if (point.stopId === id) return [point.latitude, point.longitude];
+    return null;
+  };
+  const here = geoOf(stop.stopId);
+  if (!here) return null;
+  const pattern = patterns.find(
+    (candidate) =>
+      candidate.stopIds.includes(stop.stopId) &&
+      (candidate.directionId === undefined || candidate.directionId === stop.directionId),
+  );
+  if (!pattern) return null;
+  const order = pattern.stopIds.indexOf(stop.stopId);
+  const bearingDeg = (to: [number, number]) => {
+    const [lat1, lon1] = here;
+    const [lat2, lon2] = to;
+    const dy = lat2 - lat1;
+    const dx = (lon2 - lon1) * Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180);
+    return (Math.atan2(dx, dy) * 180) / Math.PI;
+  };
+  let best: { deg: number; km: number } | null = null;
+  // Later stops give the travel bearing directly; if none carries geo far
+  // enough to be honest (≥ 0.3 km), a distant earlier stop gives it too,
+  // reversed — the pattern's order is the only truth here.
+  for (const [earlier, sign] of [
+    [false, 1],
+    [true, -1],
+  ] as const) {
+    for (const [index, id] of pattern.stopIds.entries()) {
+      if (index === order || earlier !== index < order) continue;
+      const there = geoOf(id);
+      if (!there) continue;
+      const [lat1, lon1] = here;
+      const [lat2, lon2] = there;
+      const km = Math.hypot(
+        (lat2 - lat1) * 111,
+        (lon2 - lon1) * 111 * Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180),
+      );
+      if (km < 0.3) continue;
+      if (!best || km > best.km) best = { deg: sign * bearingDeg(there), km };
+    }
+    if (best) break;
+  }
+  return best ? compassOf(best.deg) : null;
+}
+
+/** A leading compass word ("West - 306 Carlton…") in headsign words —
+ * real TTC headsigns carry it, and it is simpler than the whole headsign. */
+const WORD_COMPASS: Record<string, CompassLabel> = {
+  east: { text: 'East', arrow: '→' },
+  west: { text: 'West', arrow: '←' },
+  north: { text: 'North', arrow: '↑' },
+  south: { text: 'South', arrow: '↓' },
+};
+
+/** The simple direction label for one platform ("→ East"), from the most
+ * honest source available: measured bearings first, the headsign's own
+ * compass word second — never the raw headsign (it embeds route numbers,
+ * night twins included). Pure. */
+export function platformDirectionLabel(
+  stop: StopServiceState,
+  features: Feature[],
+  patterns: ReadonlyArray<{ stopIds: string[]; headsign: string; directionId?: 0 | 1 }> = [],
+): string {
+  const compass = platformCompass(stop, features, patterns);
+  if (compass) return `${compass.arrow} ${compass.text}`;
+  const patternOf = () =>
+    patterns.find(
+      (candidate) =>
+        candidate.stopIds.includes(stop.stopId) &&
+        (candidate.directionId === undefined || candidate.directionId === stop.directionId),
+    ) ??
+    patterns.find((candidate) => candidate.stopIds.includes(stop.stopId));
+  const headsign = patternOf()?.headsign ?? '';
+  const lead = /^\s*(east|west|north|south)\b/i.exec(headsign);
+  if (lead) {
+    const word = WORD_COMPASS[lead[1]!.toLowerCase()]!;
+    return `${word.arrow} ${word.text}`;
+  }
+  return `direction ${stop.directionId}`;
+}
+
+/** The sibling boarding direction(s) of the selected platform: the
+ * intersection's opposite-directionId platforms (paired platforms on the
+ * same feature, cross-street siblings otherwise), labeled in compass words
+ * when the coordinates allow, headsigns otherwise. Empty when this stop
+ * rides alone. Pure; tests hold it to it. */
+export function directionOptions(
+  selected: StopServiceState,
+  features: Feature[],
+  statesByStop: Map<string, StopServiceState>,
+  patterns: ReadonlyArray<{ stopIds: string[]; headsign: string }> = [],
+): DirectionOption[] {
+  return intersectionStates(selected, features, statesByStop)
+    .filter(
+      (state) =>
+        state.stopId !== selected.stopId && state.directionId !== selected.directionId,
+    )
+    .map((state) => ({
+      stopId: state.stopId,
+      label: platformDirectionLabel(state, features, patterns),
+    }));
 }
 
 /** Advance a stop's state between feed ticks (the heartbeat): elapsed time

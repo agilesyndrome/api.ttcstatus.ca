@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
-import { stopSentence, STATE_COLORS } from './wave-field';
+import { SERVICE_WINDOW_SECONDS } from '../../../../shared/service/config';
+import { platformRoutes, stopSentence, STATE_COLORS } from './wave-field';
+import type { RouteBadge } from './wave-field';
 
 export interface StopCardProps {
   stop: StopServiceState;
@@ -8,25 +10,40 @@ export interface StopCardProps {
   onClear: () => void;
   children?: ReactNode;
   onDetailsToggle?: (open: boolean) => void;
+  /** The two switchers (Route, then Direction), rendered under the title
+   * bar so a mis-tap can be corrected without leaving the popup. */
+  controls?: ReactNode;
+  /** The day routes serving this platform — night 3xx twins fold into
+   * their 5xx day numbers; "305 Dundas" never shows at noon. */
+  routes?: RouteBadge[];
 }
 
-const fmt = (value: number | null, decimals = 1) =>
-  value === null ? '—' : String(Number(value.toFixed(decimals)));
+/** The fast-read screen rounds to whole minutes — here only. The API stays
+ * honest (fractional); a mom holding kids at a stop needs "11 min ago",
+ * not "10.7 min". */
+const wholeMin = (minutes: number | null): string =>
+  minutes === null ? '—' : `${Math.round(minutes)} min`;
 
-/** The stop's story, in words (the grandma test): what happened, what's
- * usual here, how long the next car should be, and the honest blind spots.
- * Every sentence is a number we already serve — no editorialising. */
+/** The rolling window the "usually" numbers average over, in minutes. */
+const WINDOW_MIN = SERVICE_WINDOW_SECONDS / 60;
+
+/** The stop's fast read (the street test): three scan lines, minutes only —
+ * what's coming, what just passed, and whether cars bunched. The name lives
+ * in the title; the story prose waits in "details". Every number is one we
+ * already serve — no editorialising. */
 export function StopCard({
   stop,
   name,
   onClear,
   children,
   onDetailsToggle,
+  controls,
+  routes,
 }: StopCardProps) {
   const med =
     stop.medianHeadwayOwnSeconds !== null ? stop.medianHeadwayOwnSeconds / 60 : null;
   const est = stop.expectedWaitSeconds !== null ? stop.expectedWaitSeconds / 60 : null;
-  const uneven = (stop.irregularity ?? 0) >= 0.5;
+  const nextCar = est === null ? '—' : est < 1 ? 'almost here' : `${wholeMin(est)} away`;
   return (
     <div
       className="service-card"
@@ -46,24 +63,34 @@ export function StopCard({
           ×
         </button>
       </div>
-      <p className="service-card__sentence">{stopSentence(stop, name ?? stop.stopId)}</p>
+      {controls}
       <dl className="service-card__facts">
         <div>
-          <dt>waited</dt>
-          <dd>{stop.minutesSince === null ? '—' : `${fmt(stop.minutesSince)} min`}</dd>
-        </div>
-        <div>
-          <dt>usually</dt>
-          <dd>{med === null ? 'collecting' : `${fmt(med)} min`}</dd>
-        </div>
-        <div>
-          <dt>dryness</dt>
-          <dd>{stop.dryness === null ? '—' : `${fmt(stop.dryness)}×`}</dd>
-        </div>
-        <div>
           <dt>next car</dt>
-          <dd>{est === null ? '—' : `≈ ${fmt(est)} min`}</dd>
+          <dd>{nextCar}</dd>
         </div>
+        <div>
+          <dt>last service</dt>
+          <dd>
+            {stop.minutesSince === null ? '—' : `${wholeMin(stop.minutesSince)} ago`}
+          </dd>
+        </div>
+        {stop.backToBack > 0 && (
+          <div>
+            <dt>bunched cars</dt>
+            <dd>
+              {stop.backToBack} back-to-back passed in the last {WINDOW_MIN} min
+            </dd>
+          </div>
+        )}
+        {med !== null && (
+          <div>
+            <dt>usually</dt>
+            <dd>
+              a car every {wholeMin(med)} (average over the last {WINDOW_MIN} min)
+            </dd>
+          </div>
+        )}
       </dl>
       <details
         className="service-card__details"
@@ -71,16 +98,13 @@ export function StopCard({
       >
         <summary>Service details</summary>
         <div className="service-card__detail-content">
+          <p className="service-card__sentence">{stopSentence(stop)}</p>
           {stop.backToBack > 0 && (
             <p className="service-card__badge">
               A pair passed through here — {stop.backToBack} back-to-back service
-              {stop.backToBack === 1 ? '' : 's'} in the window (shown, never detected).
-            </p>
-          )}
-          {uneven && stop.state !== 'unmonitored' && (
-            <p className="service-card__badge">
-              Service has been uneven here — the gaps vary a lot (CV²{' '}
-              {fmt(stop.irregularity, 2)}), which is exactly what inflates the wait.
+              {stop.backToBack === 1 ? '' : 's'} in the window (shown, never detected). We
+              can’t see what’s still upstream, so this counts what already passed, never
+              what’s coming.
             </p>
           )}
           {stop.state === 'unmonitored' && (
@@ -89,8 +113,19 @@ export function StopCard({
               real one.
             </p>
           )}
-          {stop.routeIds.length > 0 && (
-            <p className="service-card__routes">routes: {stop.routeIds.join(', ')}</p>
+          {stop.state !== 'unmonitored' && (
+            <p className="service-card__badge">
+              Dryness {stop.dryness === null ? '—' : `${stop.dryness.toFixed(1)}×`} the
+              usual (minutes since last car ÷ this stop’s own average).
+            </p>
+          )}
+          {(routes ?? platformRoutes(stop.routeIds, [])).length > 0 && (
+            <p className="service-card__routes">
+              routes:{' '}
+              {(routes ?? platformRoutes(stop.routeIds, []))
+                .map((route) => `${route.number} ${route.name}`.trim())
+                .join(', ')}
+            </p>
           )}
           {children}
         </div>
