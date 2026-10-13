@@ -248,8 +248,11 @@ export function useMapCamera({
   useEffect(() => {
     if (!selectedFeature) return;
     const fitted = initialRef.current,
-      width = fitted.width / 5,
-      height = fitted.height / 5;
+      current = cameraRef.current,
+      width = Math.min(current.width, fitted.width / 5),
+      height = Math.min(current.height, fitted.height / 5);
+    // A location search or manual zoom may already be closer than the
+    // default stop view. Selecting a stop should center it without zooming out.
     animate({
       x: selectedFeature.point[0] - width / 2,
       y: selectedFeature.point[1] - height / 2,
