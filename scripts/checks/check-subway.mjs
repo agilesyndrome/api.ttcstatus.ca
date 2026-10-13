@@ -125,10 +125,11 @@ try {
   assert.ok(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   );
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  const liveMode = page.getByRole('group', { name: 'Live map mode' });
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).click();
   await board.getByText('Enable live vehicles to see arrival predictions.').waitFor();
   assert.equal(await board.locator('time').count(), 0);
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
+  await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
   await board.getByText('Line 1 · Train 15', { exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await board.scrollIntoViewIfNeeded();

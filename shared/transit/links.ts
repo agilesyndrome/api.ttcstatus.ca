@@ -13,7 +13,14 @@ export function readMapLink(hash: string): MapLink {
   const panel = params.get('view');
   if (panel === 'route-pulse' || panel === 'journal' || panel === 'badges')
     tools.panel = panel;
-  for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const) {
+  for (const key of [
+    'live',
+    'serviceOverlay',
+    'labels',
+    'overnight',
+    'streetcar',
+    'subway',
+  ] as const) {
     if (params.get(key) === '1' || params.get(key) === '0')
       filters[key] = params.get(key) === '1';
   }
@@ -42,7 +49,15 @@ export function mapLinkHash(
   if (selection) params.set(selection.kind, selection.id);
   if (contextRoute && selection?.kind !== 'route') params.set('route', contextRoute);
   if (tools?.panel && tools.panel !== 'explore') params.set('view', tools.panel);
-  for (const key of ['live', 'labels', 'overnight', 'streetcar', 'subway'] as const)
-    if (filters[key] !== DEFAULT_FILTERS[key]) params.set(key, filters[key] ? '1' : '0');
+  for (const key of [
+    'live',
+    'serviceOverlay',
+    'labels',
+    'overnight',
+    'streetcar',
+    'subway',
+  ] as const)
+    if ((filters[key] ?? false) !== DEFAULT_FILTERS[key])
+      params.set(key, filters[key] ? '1' : '0');
   return params.size ? `#${params}` : '';
 }

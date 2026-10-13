@@ -50,6 +50,8 @@ export interface TransitMapProps {
    * service field paints the tracks themselves). Same shape as `overlay`. */
   underlay?: ReactNode | ((scale: number) => ReactNode);
   mapTools?: ReactNode;
+  /** Screen-space content kept inside the visible map viewport. */
+  mapPopup?: ReactNode;
   driving?: boolean;
   mapId?: string;
   controlsRef?: RefObject<TransitMapControls | null>;

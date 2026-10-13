@@ -39,6 +39,7 @@ export const TransitMap = memo(function TransitMap({
   overlay,
   underlay,
   mapTools,
+  mapPopup,
   driving = false,
   mapId = 'map',
   controlsRef,
@@ -634,6 +635,7 @@ export const TransitMap = memo(function TransitMap({
         {typeof overlay === 'function' ? overlay(scale) : overlay}
       </svg>
       {mapTools}
+      {mapPopup}
       <div
         className={`map-hint${pickingLabel ? ' picking-hint' : ''}`}
         role={pickingLabel ? 'status' : undefined}

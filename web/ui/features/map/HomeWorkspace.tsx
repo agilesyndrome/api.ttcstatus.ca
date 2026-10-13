@@ -73,7 +73,12 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   // flag off or signed out → nothing renders and no /service/* requests are
   // made. Hard-suspended while the snake game is open (E7S7) — the game
   // renders its own map with no service props, and the base layer sleeps.
-  const service = useServiceOverlay(data, cars, snakeOpen);
+  const service = useServiceOverlay(
+    data,
+    cars,
+    snakeOpen,
+    filters.live && !!filters.serviceOverlay,
+  );
   const compact = useCompactNav();
   const phone = usePhoneLayout();
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
@@ -227,6 +232,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 /* Zooming keeps camera following; only panning takes over. */
               }}
               mapControls={false}
+              mapPopup={service.card}
               savedStopIds={savedStops}
               showLabels={filters.labels}
               includeOvernight={filters.overnight}
@@ -242,7 +248,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
             />
             <CachedMapNotice workspace={workspace} />
             {phone && <MobileDetails workspace={workspace} />}
-            {service.card}
             {/* Below the rail breakpoint the sidebar overlay carries the
              * same panels; above it they live in the rail under their nav
              * item, and the map fills the workspace. */}

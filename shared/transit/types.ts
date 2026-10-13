@@ -1,5 +1,6 @@
 export interface MapFilterValues {
   live: boolean;
+  serviceOverlay?: boolean;
   labels: boolean;
   overnight: boolean;
   streetcar: boolean;
@@ -22,6 +23,7 @@ export interface MapLink extends MapTools {
 }
 export const DEFAULT_FILTERS: MapFilterValues = {
   live: true,
+  serviceOverlay: false,
   labels: false,
   overnight: false,
   streetcar: true,

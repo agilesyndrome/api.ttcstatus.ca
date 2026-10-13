@@ -12,26 +12,35 @@ try {
   await context.route('**/api/v1/map/ttcstatus*', (route) =>
     route.fulfill({ json: map }),
   );
-  const blockLive = (route) => route.abort('failed');
+  let liveCalls = 0;
+  const blockLive = (route) => {
+    liveCalls++;
+    return route.abort('failed');
+  };
   await context.route('**/live/t/*/vehicles.json', blockLive);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(origin);
-  const liveToggle = page.getByRole('button', { name: /Show live vehicles/ });
+  const liveMode = page.getByRole('group', { name: 'Live map mode' });
   await page.waitForFunction(() =>
-    [...document.querySelectorAll('.explore-layers button')].some(
-      (button) => button.textContent.includes('Show live vehicles') && button.disabled,
+    document.querySelector(
+      '.explore-layers [title="Live vehicle status currently unavailable"]',
     ),
   );
-  assert.equal(await liveToggle.isDisabled(), true);
   assert.equal(
-    await liveToggle.locator('..').getAttribute('title'),
+    await liveMode.locator('..').getAttribute('title'),
     'Live vehicle status currently unavailable',
   );
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).click();
+  const callsBeforeReload = liveCalls;
+  await page.reload();
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).waitFor();
+  await page.waitForTimeout(500);
   assert.equal(
-    await liveToggle.getAttribute('aria-description'),
-    'Live vehicle status currently unavailable',
+    liveCalls,
+    callsBeforeReload,
+    'Off does not fetch the live host on reload',
   );
 
   await context.unroute('**/live/t/*/vehicles.json', blockLive);
@@ -51,17 +60,18 @@ try {
   const successfulFeed = page.waitForResponse(
     (response) => response.url().includes('/live/t/') && response.ok(),
   );
-  await page.reload();
+  await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
   await successfulFeed;
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('.explore-layers button')].some(
-      (button) => button.textContent.includes('Show live vehicles') && !button.disabled,
-    ),
+  await page.waitForFunction(
+    () =>
+      !document.querySelector(
+        '.explore-layers [title="Live vehicle status currently unavailable"]',
+      ),
   );
-  assert.equal(await liveToggle.locator('..').getAttribute('title'), null);
+  assert.equal(await liveMode.locator('..').getAttribute('title'), null);
   assert.deepEqual(errors, []);
   console.log(
-    'Live vehicle toggle passed: failed fetch disables the button and shows its hover text.',
+    'Live mode passed: failure is labelled, Off prevents live requests, and Vehicles Only resumes.',
   );
 } finally {
   await browser.close();

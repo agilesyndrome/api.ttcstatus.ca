@@ -61,6 +61,7 @@ export function useServiceOverlay(
   /** Hard suspend: nothing renders, nothing is fetched — the snake game
    * (E7S7). The overlay never appears over the game, by construction. */
   suspended = false,
+  requested = false,
 ): ServiceOverlay {
   const flags = useFeatureFlags();
   const account = useAccount();
@@ -68,7 +69,10 @@ export function useServiceOverlay(
   // (production always has Clerk configured, so this can never fire).
   const devBypass = account.loaded && !account.enabled ? readDevOverlayBypass() : false;
   const enabled =
-    !suspended && Boolean(data) && (devBypass || (flags.loaded && flags.overlayEnabled));
+    requested &&
+    !suspended &&
+    Boolean(data) &&
+    (devBypass || (flags.loaded && flags.overlayEnabled));
   const feed = useServiceFeed(enabled);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -199,6 +203,7 @@ export function useServiceOverlay(
       : null,
     card: selectedStop ? (
       <SelectedStopCard
+        key={selectedStop.stopId}
         stop={selectedStop}
         name={stopNameOf(selectedStop.stopId)}
         onClear={() => setSelectedStopId(null)}

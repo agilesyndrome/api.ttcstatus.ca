@@ -31,6 +31,8 @@ export function validFilters(value: unknown): value is MapFilterValues {
     value !== null &&
     ['live', 'labels', 'overnight', 'streetcar', 'subway'].every(
       (key) => typeof (value as Record<string, unknown>)[key] === 'boolean',
-    )
+    ) &&
+    (typeof (value as Record<string, unknown>).serviceOverlay === 'boolean' ||
+      (value as Record<string, unknown>).serviceOverlay === undefined)
   );
 }

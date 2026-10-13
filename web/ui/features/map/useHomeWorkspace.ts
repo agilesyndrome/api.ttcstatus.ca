@@ -31,7 +31,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   const saved = useSavedStops();
   const accountJournal = useAccountJournal();
   const [snakeOpen, setSnakeOpen] = useState(Boolean(initialSnakeVersion));
-  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data), {
+  const feed = useVehicleFeed(filters.live && Boolean(data), {
     polling: !snakeOpen,
   });
   const previous = useRef<PlottedVehicle[]>([]);
@@ -46,6 +46,12 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     previous.current = cars;
   }, [cars]);
   const selection = useSelection(data, cars, filters, setFilters);
+  // Older saved preferences and links could hide both rail layers. The
+  // three-choice control always has a visible, representable selection.
+  useEffect(() => {
+    if (!filters.streetcar && !filters.subway)
+      setFilters((current) => ({ ...current, streetcar: true, subway: true }));
+  }, [filters.streetcar, filters.subway, setFilters]);
   const location = useLocation({ data, ...selection });
   const shownRoutes =
     data?.routes

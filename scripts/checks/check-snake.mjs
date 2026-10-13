@@ -160,7 +160,10 @@ try {
   if (await notice.count()) await notice.click();
   const launch = page.getByRole('button', { name: 'Play Streetcar Snake', exact: true });
   await launch.waitFor();
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  await page
+    .getByRole('group', { name: 'Live map mode' })
+    .getByRole('button', { name: 'Off', exact: true })
+    .click();
   await launch.click();
   const game = page.getByRole('dialog', { name: 'Streetcar Snake' });
   await game.waitFor();

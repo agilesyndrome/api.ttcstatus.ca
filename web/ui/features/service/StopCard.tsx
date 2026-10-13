@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 import { stopSentence, STATE_COLORS } from './wave-field';
 
@@ -5,6 +6,8 @@ export interface StopCardProps {
   stop: StopServiceState;
   name?: string;
   onClear: () => void;
+  children?: ReactNode;
+  onDetailsToggle?: (open: boolean) => void;
 }
 
 const fmt = (value: number | null, decimals = 1) =>
@@ -13,7 +16,13 @@ const fmt = (value: number | null, decimals = 1) =>
 /** The stop's story, in words (the grandma test): what happened, what's
  * usual here, how long the next car should be, and the honest blind spots.
  * Every sentence is a number we already serve — no editorialising. */
-export function StopCard({ stop, name, onClear }: StopCardProps) {
+export function StopCard({
+  stop,
+  name,
+  onClear,
+  children,
+  onDetailsToggle,
+}: StopCardProps) {
   const med =
     stop.medianHeadwayOwnSeconds !== null ? stop.medianHeadwayOwnSeconds / 60 : null;
   const est = stop.expectedWaitSeconds !== null ? stop.expectedWaitSeconds / 60 : null;
@@ -56,27 +65,36 @@ export function StopCard({ stop, name, onClear }: StopCardProps) {
           <dd>{est === null ? '—' : `≈ ${fmt(est)} min`}</dd>
         </div>
       </dl>
-      {stop.backToBack > 0 && (
-        <p className="service-card__badge">
-          A pair passed through here — {stop.backToBack} back-to-back service
-          {stop.backToBack === 1 ? '' : 's'} in the window (shown, never detected).
-        </p>
-      )}
-      {uneven && stop.state !== 'unmonitored' && (
-        <p className="service-card__badge">
-          Service has been uneven here — the gaps vary a lot (CV²{' '}
-          {fmt(stop.irregularity, 2)}), which is exactly what inflates the wait.
-        </p>
-      )}
-      {stop.state === 'unmonitored' && (
-        <p className="service-card__badge">
-          This is a blind spot, not a verdict — one fabricated void would ruin every real
-          one.
-        </p>
-      )}
-      {stop.routeIds.length > 0 && (
-        <p className="service-card__routes">routes: {stop.routeIds.join(', ')}</p>
-      )}
+      <details
+        className="service-card__details"
+        onToggle={(event) => onDetailsToggle?.(event.currentTarget.open)}
+      >
+        <summary>Service details</summary>
+        <div className="service-card__detail-content">
+          {stop.backToBack > 0 && (
+            <p className="service-card__badge">
+              A pair passed through here — {stop.backToBack} back-to-back service
+              {stop.backToBack === 1 ? '' : 's'} in the window (shown, never detected).
+            </p>
+          )}
+          {uneven && stop.state !== 'unmonitored' && (
+            <p className="service-card__badge">
+              Service has been uneven here — the gaps vary a lot (CV²{' '}
+              {fmt(stop.irregularity, 2)}), which is exactly what inflates the wait.
+            </p>
+          )}
+          {stop.state === 'unmonitored' && (
+            <p className="service-card__badge">
+              This is a blind spot, not a verdict — one fabricated void would ruin every
+              real one.
+            </p>
+          )}
+          {stop.routeIds.length > 0 && (
+            <p className="service-card__routes">routes: {stop.routeIds.join(', ')}</p>
+          )}
+          {children}
+        </div>
+      </details>
     </div>
   );
 }

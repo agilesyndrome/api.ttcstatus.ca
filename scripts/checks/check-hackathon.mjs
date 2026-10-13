@@ -33,7 +33,9 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 let calls = 0;
 const errors = [];
 async function fixture(context) {
-  await context.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
+  await context.route('**/api/v1/map/ttcstatus*', (route) =>
+    route.fulfill({ json: map }),
+  );
   // Live tick path (Epic 2): config-driven URL; no x-live-* headers.
   await context.route('**/live/t/*/vehicles.json', (route) => {
     calls++;
@@ -251,8 +253,9 @@ try {
   // A routine GPS refresh must not reset the camera of a selected stop.
   await zoomIn(page, 2);
   const camera = await page.locator('#map').getAttribute('viewBox');
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).check();
+  const liveMode = page.getByRole('group', { name: 'Live map mode' });
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).click();
+  await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
   await page.waitForTimeout(150);
   assert.equal(
     await page.locator('#map').getAttribute('viewBox'),

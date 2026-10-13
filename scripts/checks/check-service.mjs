@@ -235,9 +235,11 @@ try {
     await context.route('**/api/v1/me/features', (route) =>
       route.fulfill({ json: { schemaVersion: 1, flags: ['voidOverlay'] } }),
     );
-    await context.route('**/api/v1/service/stops', (route) =>
-      route.fulfill({ json: stopsPayload }),
-    );
+    let serviceStopRequests = 0;
+    await context.route('**/api/v1/service/stops', (route) => {
+      serviceStopRequests++;
+      return route.fulfill({ json: stopsPayload });
+    });
     await context.route('**/api/v1/service/history**', (route) => {
       const historyStop =
         new URL(route.request().url()).searchParams.get('stop') ?? 'unknown';
@@ -270,9 +272,21 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(origin, { waitUntil: 'networkidle' });
     await page
+      .getByRole('group', { name: 'Live map mode' })
+      .getByRole('button', { name: 'Service Overlay' })
+      .click();
+    await page
       .locator('.service-track')
       .first()
       .waitFor({ state: 'visible', timeout: 10_000 });
+    const liveMode = page.getByRole('group', { name: 'Live map mode' });
+    await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
+    await page.locator('.service-track').first().waitFor({ state: 'detached' });
+    const pausedServiceRequests = serviceStopRequests;
+    await page.waitForTimeout(500);
+    assert.equal(serviceStopRequests, pausedServiceRequests);
+    await liveMode.getByRole('button', { name: 'Service Overlay' }).click();
+    await page.locator('.service-track').first().waitFor({ state: 'visible' });
 
     // The band: graded pieces, the scripted void run painted red with its
     // drifting flow, blind spot greyed — and NO whole-map circles. The DOM
@@ -389,7 +403,19 @@ try {
     assert.match(sentence ?? '', /min without a car/);
     assert.match(sentence ?? '', /× the usual/);
     assert.match(await page.locator('.service-card__facts').textContent(), /waited/);
-    // The day view and the one-line legend ride along in the card.
+    const popup = await page.locator('.service-popover').boundingBox();
+    const map = await page.locator('.map-viewport').boundingBox();
+    assert.ok(popup && map, 'selected stop popup and map should be visible');
+    assert.ok(popup.width <= 281, `popup should stay compact, got ${popup.width}px`);
+    assert.ok(
+      popup.height <= 205,
+      `collapsed popup should stay compact, got ${popup.height}px`,
+    );
+    assert.ok(popup.x >= map.x && popup.x + popup.width <= map.x + map.width);
+    assert.ok(popup.y >= map.y && popup.y + popup.height <= map.y + map.height);
+    assert.equal(await page.locator('.service-sparkline:visible').count(), 0);
+    await page.locator('.service-card__details summary').click();
+    // The day view and legend are available on demand.
     await page
       .locator('.service-sparkline')
       .first()
@@ -400,6 +426,14 @@ try {
       (await page.locator('.service-popover__legend').textContent()) ?? '',
       /dry/,
     );
+    await page.setViewportSize({ width: 390, height: 620 });
+    const narrowPopup = await page.locator('.service-popover').boundingBox();
+    const narrowMap = await page.locator('.map-viewport').boundingBox();
+    assert.ok(narrowPopup && narrowMap, 'popup and map should remain visible on phones');
+    assert.ok(narrowPopup.x >= narrowMap.x);
+    assert.ok(narrowPopup.x + narrowPopup.width <= narrowMap.x + narrowMap.width);
+    assert.ok(narrowPopup.y + narrowPopup.height <= narrowMap.y + narrowMap.height);
+    await page.setViewportSize({ width: 1440, height: 960 });
 
     // ——— 4. Tap the ring: deselect — back to a clean map. ———
     await page.locator('.void-marker').click();

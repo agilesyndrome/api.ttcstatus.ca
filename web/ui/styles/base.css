@@ -61,9 +61,20 @@
   gap: 8px;
   margin: 12px 0 0;
 }
-.explore-layers .layer-toggle {
+.explore-layers .segmented-control {
   width: 100%;
-  text-align: left;
+  display: flex;
+}
+.explore-layers .segmented-control button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 4px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.explore-layers .segmented-control button + button {
+  border-left: 1px solid var(--border);
 }
 .layer-toggle {
   border: 1px solid var(--line);

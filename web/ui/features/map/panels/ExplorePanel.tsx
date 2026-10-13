@@ -3,6 +3,7 @@ import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
 import { NearbyStops } from '../../stops/NearbyStops';
 import { trackEvent } from '../../../analytics';
+import { SegmentedControl } from '../../../components/SegmentedControl';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** The map workspace's Explore content, shared by the rail and mobile drawer. */
@@ -33,6 +34,17 @@ export function ExplorePanel({
     panel,
   } = workspace;
   if (!data) return null;
+  const railMode =
+    filters.subway && !filters.streetcar
+      ? 'subway'
+      : filters.streetcar && !filters.subway
+        ? 'streetcar'
+        : 'both';
+  const liveMode = !filters.live
+    ? 'off'
+    : filters.serviceOverlay
+      ? 'service'
+      : 'vehicles';
   return (
     <div
       id="panel-explore"
@@ -41,33 +53,34 @@ export function ExplorePanel({
       hidden={panel !== 'explore'}
     >
       <div className="explore-layers" aria-label={t('workspace.exploreRailLayers')}>
-        <button
-          className={`layer-toggle ${filters.streetcar ? 'is-on' : ''}`}
-          aria-pressed={filters.streetcar}
-          onClick={() => setFilters({ ...filters, streetcar: !filters.streetcar })}
-        >
-          <span aria-hidden="true" /> {t('workspace.streetcar')}{' '}
-          {filters.streetcar ? t('workspace.on') : t('workspace.off')}
-        </button>
-        <button
-          className={`layer-toggle ${filters.subway ? 'is-on' : ''}`}
-          aria-pressed={filters.subway}
-          onClick={() => setFilters({ ...filters, subway: !filters.subway })}
-        >
-          <span aria-hidden="true" /> {t('workspace.subway')}{' '}
-          {filters.subway ? t('workspace.on') : t('workspace.off')}
-        </button>
+        <SegmentedControl
+          label={t('workspace.railLayers')}
+          value={railMode}
+          options={[
+            { value: 'subway', label: t('workspace.subwayOnly') },
+            { value: 'streetcar', label: t('workspace.streetcarOnly') },
+            { value: 'both', label: t('workspace.both') },
+          ]}
+          onChange={(value) =>
+            setFilters({
+              ...filters,
+              subway: value !== 'streetcar',
+              streetcar: value !== 'subway',
+            })
+          }
+        />
         <div title={feed.failed ? t('mapFilters.liveVehiclesUnavailable') : undefined}>
-          <button
-            className={`layer-toggle ${filters.live ? 'is-on' : ''}`}
-            aria-pressed={filters.live}
-            aria-description={
-              feed.failed ? t('mapFilters.liveVehiclesUnavailable') : undefined
-            }
-            disabled={feed.failed}
-            onClick={() => {
-              const live = !filters.live;
-              setFilters({ ...filters, live });
+          <SegmentedControl
+            label={t('workspace.liveMapMode')}
+            value={liveMode}
+            options={[
+              { value: 'off', label: t('workspace.off') },
+              { value: 'vehicles', label: t('workspace.vehiclesOnly') },
+              { value: 'service', label: t('workspace.serviceOverlay') },
+            ]}
+            onChange={(value) => {
+              const live = value !== 'off';
+              setFilters({ ...filters, live, serviceOverlay: value === 'service' });
               if (!live && selection?.kind === 'car') {
                 pendingCar.current = undefined;
                 setFollowing(false);
@@ -76,10 +89,7 @@ export function ExplorePanel({
                 );
               }
             }}
-          >
-            <span aria-hidden="true" /> {t('mapFilters.showLiveVehicles')}{' '}
-            {filters.live ? t('workspace.on') : t('workspace.off')}
-          </button>
+          />
         </div>
       </div>
       {showDetails && <SelectionDetails workspace={workspace} />}

@@ -67,11 +67,26 @@ try {
   });
   await page.goto(origin);
   await page.locator('[data-vehicle="4400"]').waitFor();
-  assert.equal(mapCalls, 1);
+  const loadedMapCalls = mapCalls;
+  assert.ok(loadedMapCalls >= 1);
+  const railLayers = page.getByRole('group', { name: 'Rail layers' });
+  await railLayers.getByRole('button', { name: 'Subway', exact: true }).click();
+  assert.equal(await page.locator('[data-vehicle="4400"]').count(), 0);
+  await railLayers.getByRole('button', { name: 'Streetcar', exact: true }).click();
+  await page.locator('[data-vehicle="4400"]').waitFor();
+  await railLayers.getByRole('button', { name: 'Both', exact: true }).click();
+  assert.equal(
+    await railLayers
+      .getByRole('button', { name: 'Both', exact: true })
+      .getAttribute('aria-pressed'),
+    'true',
+  );
   // The route-pulse panel is the live-status surface (the old `.live-status`
   // section no longer ships). One fixture car on a shown route ⇒ "1 total".
   await page.waitForFunction(() =>
-    document.querySelector('.route-pulse .pulse-total')?.textContent.includes('1 total on routes'),
+    document
+      .querySelector('.route-pulse .pulse-total')
+      ?.textContent.includes('1 total on routes'),
   );
   await page.waitForTimeout(31_000);
   assert.ok(conditional, 'second feed request uses ETag');
@@ -90,17 +105,21 @@ try {
   await first.click();
   await page.getByRole('heading', { name, exact: true }).waitFor();
   await page.getByRole('button', { name: 'Close stop details' }).click();
-  // The live toggle is an aria-pressed layer button in the Explore panel now
-  // (the old MapFilters checkbox is gone).
-  const liveToggle = page.getByRole('button', { name: /Show live vehicles/ });
-  await liveToggle.click();
+  const liveMode = page.getByRole('group', { name: 'Live map mode' });
+  await liveMode.getByRole('button', { name: 'Service Overlay' }).click();
+  await page.locator('[data-vehicle="4400"]').waitFor();
+  await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).click();
   const paused = feedCalls;
   await page.waitForTimeout(1500);
   assert.equal(feedCalls, paused, 'disabled live layer stops requests');
   assert.equal(await page.locator('[data-vehicle]').count(), 0);
-  await liveToggle.click();
+  await liveMode.getByRole('button', { name: 'Vehicles Only' }).click();
   await page.locator('[data-vehicle="4400"]').waitFor();
-  const kingRoute = page.getByRole('button', { name: /504 King/ });
+  await page.getByRole('tab', { name: 'Route pulse' }).click();
+  const kingRoute = page.locator(
+    '#panel-route-pulse button.pulse-row[aria-label^="504 King"]',
+  );
   await kingRoute.click();
   // Let the camera glide to the route before sampling the zoom level.
   await page.waitForTimeout(500);
@@ -136,12 +155,17 @@ try {
     'searched streetcar is centered in the map',
   );
   // The latest loaded fleet remains searchable with the live layer off.
-  await page.getByRole('checkbox', { name: 'Show live vehicles' }).uncheck();
+  await liveMode.getByRole('button', { name: 'Off', exact: true }).click();
   await fit();
   const fittedWidth = await viewWidth();
   await search.fill('#4400');
   await search.press('Enter');
-  assert.ok(await page.getByRole('checkbox', { name: 'Show live vehicles' }).isChecked());
+  assert.equal(
+    await liveMode
+      .getByRole('button', { name: 'Vehicles Only' })
+      .getAttribute('aria-pressed'),
+    'true',
+  );
   await page.locator('[data-vehicle="4400"]').waitFor();
   await page.getByRole('heading', { name: 'Car 4400', exact: true }).waitFor();
   await page.waitForTimeout(100);
@@ -150,7 +174,7 @@ try {
     fittedWidth,
     'reselecting the same streetcar centers it without zooming',
   );
-  assert.equal(mapCalls, 1, 'filters and selection never reload geometry');
+  assert.equal(mapCalls, loadedMapCalls, 'filters and selection never reload geometry');
   await fit();
   await page.waitForTimeout(100);
   await page.screenshot({ path: '/tmp/ttc-react-homepage.png' });

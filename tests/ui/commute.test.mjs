@@ -164,6 +164,10 @@ test('map links safely round-trip stops, routes and streetcars with reserved cha
     });
   }
   assert.equal(mapLinkHash(undefined, DEFAULT_FILTERS), '');
+  assert.deepEqual(
+    readMapLink(mapLinkHash(undefined, { ...DEFAULT_FILTERS, serviceOverlay: true })),
+    { filters: { serviceOverlay: true } },
+  );
   assert.deepEqual(readMapLink('#stop=&live=yes&labels=1&overnight=0'), {
     filters: { labels: true, overnight: false },
   });
