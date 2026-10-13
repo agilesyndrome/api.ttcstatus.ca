@@ -949,6 +949,7 @@
   "mapExport.svgWorksOfflineInABrowserAndScalesForPrinting": "SVG works offline in a browser and scales for printing. Streetcars are position reports at capture time, including any dimmed stale reports.",
   "mapExport.takeThisMapWithYou": "Take this map with you.",
   "mapFilters.includeOvernightRoutes": "Include overnight routes",
+  "mapFilters.liveVehiclesUnavailable": "Live vehicle status currently unavailable",
   "mapFilters.mapFilters": "Map filters",
   "mapFilters.mapLayers": "Map layers",
   "mapFilters.moreStopLabels": "More stop labels",

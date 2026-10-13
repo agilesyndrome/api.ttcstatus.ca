@@ -38,10 +38,6 @@
   },
   "vars": {
     "CLERK_AUTHORIZED_PARTIES": "https://ttcstatus.ca,capacitor://localhost",
-    // Local session verification (optimize-transport.md E4S1): Clerk's
-    // published JWKS. Fill with the app's frontend-api JWKS URL via the
-    // dashboard/secret store; empty = session verification unavailable.
-    "CLERK_JWKS_URL": "",
     // Live refresh and shared snapshot cache lifetime, in seconds (30–300).
     "REALTIME_SUBWAY_URL": "https://gtfsrt.ttc.ca/trips/subway?format=binary",
     "REALTIME_UPDATE_SECONDS": "30",

@@ -88,6 +88,10 @@
   color: #176f71;
   background: #e7f5f3;
 }
+.layer-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .live-status h2 {
   display: flex;
   align-items: center;

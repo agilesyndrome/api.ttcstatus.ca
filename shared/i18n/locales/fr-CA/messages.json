@@ -279,6 +279,7 @@
   "mapExport.svgWorksOfflineInABrowserAndScalesForPrinting": "Le format SVG fonctionne hors ligne dans un navigateur et s’adapte à l’impression. Les tramways représentent les positions au moment de la capture, y compris les rapports périmés estompés.",
   "mapExport.takeThisMapWithYou": "Emportez cette carte.",
   "mapFilters.includeOvernightRoutes": "Inclure les lignes de nuit",
+  "mapFilters.liveVehiclesUnavailable": "Statut des véhicules en direct actuellement indisponible",
   "mapFilters.mapFilters": "Filtres de la carte",
   "mapFilters.mapLayers": "Couches de la carte",
   "mapFilters.moreStopLabels": "Plus de noms d’arrêts",

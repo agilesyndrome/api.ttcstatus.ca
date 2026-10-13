@@ -17,6 +17,7 @@ export function ExplorePanel({
   const {
     data,
     filters,
+    feed,
     setFilters,
     selection,
     setSelection,
@@ -56,24 +57,30 @@ export function ExplorePanel({
           <span aria-hidden="true" /> {t('workspace.subway')}{' '}
           {filters.subway ? t('workspace.on') : t('workspace.off')}
         </button>
-        <button
-          className={`layer-toggle ${filters.live ? 'is-on' : ''}`}
-          aria-pressed={filters.live}
-          onClick={() => {
-            const live = !filters.live;
-            setFilters({ ...filters, live });
-            if (!live && selection?.kind === 'car') {
-              pendingCar.current = undefined;
-              setFollowing(false);
-              setSelection(
-                selectedRoute ? { kind: 'route', id: selectedRoute } : undefined,
-              );
+        <div title={feed.failed ? t('mapFilters.liveVehiclesUnavailable') : undefined}>
+          <button
+            className={`layer-toggle ${filters.live ? 'is-on' : ''}`}
+            aria-pressed={filters.live}
+            aria-description={
+              feed.failed ? t('mapFilters.liveVehiclesUnavailable') : undefined
             }
-          }}
-        >
-          <span aria-hidden="true" /> {t('mapFilters.showLiveVehicles')}{' '}
-          {filters.live ? t('workspace.on') : t('workspace.off')}
-        </button>
+            disabled={feed.failed}
+            onClick={() => {
+              const live = !filters.live;
+              setFilters({ ...filters, live });
+              if (!live && selection?.kind === 'car') {
+                pendingCar.current = undefined;
+                setFollowing(false);
+                setSelection(
+                  selectedRoute ? { kind: 'route', id: selectedRoute } : undefined,
+                );
+              }
+            }}
+          >
+            <span aria-hidden="true" /> {t('mapFilters.showLiveVehicles')}{' '}
+            {filters.live ? t('workspace.on') : t('workspace.off')}
+          </button>
+        </div>
       </div>
       {showDetails && <SelectionDetails workspace={workspace} />}
       <NearbyStops

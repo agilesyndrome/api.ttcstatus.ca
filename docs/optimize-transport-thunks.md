@@ -252,7 +252,8 @@ Status: **E4S1–E4S3 done (code); E4S4 operator runbook; E4S5 decision below; E
   tampering — malformed segments are null, never a 500). `fetchJwks` caches
   per-isolate ~1 h with in-flight dedupe. `verifySession(request, env)` is the
   route-facing helper: 503 without `CLERK_JWKS_URL`, 401 without/invalid Bearer.
-  New env: `CLERK_JWKS_URL` (AccountEnv + wrangler var, empty default).
+  New env: `CLERK_JWKS_URL` (AccountEnv + Worker secret, synchronized from
+  `.env.local` or `.env.prod`).
   **No per-request Clerk API call** — the whole point (rate limits + latency).
 - **E4S2 done**: router gates `/api/v1/service/*` (stops/wave/history) behind
   `verifySession` + `callerHasFlag(DB, sub, 'voidOverlay')` (new helper in

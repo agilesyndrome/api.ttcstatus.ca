@@ -17,6 +17,10 @@ const secretBindings = [
     name: 'SYNC_TOKEN',
     config: 'workers/api/wrangler.jsonc',
   },
+  {
+    name: 'CLERK_JWKS_URL',
+    config: 'workers/api/wrangler.jsonc',
+  },
 ];
 
 const missing = [

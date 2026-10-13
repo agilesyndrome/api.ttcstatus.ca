@@ -13,7 +13,9 @@ try {
     page.on('pageerror', (error) => errors.push(error.message)),
   );
   const { journals } = await installAccountFixture(context);
-  await context.route('**/api/v1/map/ttcstatus*', (route) => route.fulfill({ json: map }));
+  await context.route('**/api/v1/map/ttcstatus*', (route) =>
+    route.fulfill({ json: map }),
+  );
   await context.route('**/live/t/*/vehicles.json', (route) =>
     route.fulfill({
       json: {
@@ -28,12 +30,27 @@ try {
     }),
   );
   const page = await context.newPage();
+  let releaseConfig;
+  const delayedConfig = new Promise((resolve) => {
+    releaseConfig = resolve;
+  });
+  const slowConfig = async (route) => {
+    await delayedConfig;
+    return route.fallback();
+  };
+  await context.route('**/api/v1/auth/config', slowConfig);
+  await page.goto(origin);
+  await page.locator('#map').waitFor();
+  assert.equal(await page.locator('.track-work').count(), 0);
+  releaseConfig();
+  await page.goto(origin + '/profile');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).first().waitFor();
+  await context.unroute('**/api/v1/auth/config', slowConfig);
+
   for (const failure of ['disabled', 'http', 'network', 'invalid']) {
-    // Auth is now a launch prerequisite. The first failed config request must
-    // leave the normal app unmounted; the retry recovers through the fixture.
-    let failuresLeft = 1;
+    // Explicit maintenance replaces the app. Other config failures leave the
+    // public map available, with a retry control for account features.
     const configFailure = (route) => {
-      if (failuresLeft-- <= 0) return route.fallback();
       if (failure === 'network') return route.abort('failed');
       return route.fulfill({
         status: failure === 'http' ? 503 : 200,
@@ -45,16 +62,27 @@ try {
     };
     await context.route('**/api/v1/auth/config', configFailure);
     await page.goto(origin);
-    await page
-      .getByRole('heading', {
-        name: 'Please wait while we perform track maintenance',
-        exact: true,
-      })
-      .waitFor();
-    assert.equal(await page.locator('#map').count(), 0);
-    assert.equal(await page.locator('.affiliation-notice').count(), 0);
-    await page.getByRole('button', { name: 'Try again', exact: true }).click();
-    await page.locator('#map').waitFor();
+    if (failure === 'disabled') {
+      await page
+        .getByRole('heading', {
+          name: 'Please wait while we perform track maintenance',
+          exact: true,
+        })
+        .waitFor();
+      assert.equal(await page.locator('#map').count(), 0);
+      assert.equal(await page.locator('.affiliation-notice').count(), 0);
+      await context.unroute('**/api/v1/auth/config', configFailure);
+      await page.getByRole('button', { name: 'Try again', exact: true }).click();
+      await page.locator('#map').waitFor();
+      await page.goto(origin + '/profile');
+    } else {
+      await page.locator('#map').waitFor();
+      assert.equal(await page.locator('.track-work').count(), 0);
+      await page.goto(origin + '/profile');
+      await page.getByText('Accounts unavailable', { exact: true }).first().waitFor();
+      await context.unroute('**/api/v1/auth/config', configFailure);
+      await page.getByRole('button', { name: 'Retry accounts' }).first().click();
+    }
     // Signed-out visitors only get the Explore tab, so the journal gate is
     // verified on the profile page, where the account prompt still lives.
     await page.goto(origin + '/profile');
@@ -63,7 +91,6 @@ try {
       .waitFor();
     assert.ok(!(await page.locator('body').innerText()).includes('coming soon'));
     await page.getByRole('button', { name: 'Sign in', exact: true }).first().waitFor();
-    await context.unroute('**/api/v1/auth/config', configFailure);
   }
   await page.goto(origin);
   await page.locator('#map').waitFor();
@@ -208,7 +235,7 @@ try {
     .waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    'Auth UI passed with an isolated Clerk fixture: configuration failures and recovery, public map, sign-in/sign-up controls, protected Journal, explicit legacy import, account switching/sign-out, private profile defaults, badge sharing settings, public/private profile views and 320–1440px layouts.',
+    'Auth UI passed with an isolated Clerk fixture: progressive startup, maintenance and configuration failures, public map, account recovery, protected Journal, account switching, private profiles and 320–1440px layouts.',
   );
   await context.close();
 } finally {

@@ -26,12 +26,20 @@ ENV=prod npm run secrets:sync
 ENV=local npm run secrets:sync
 ```
 
-Run this after deploying the Workers when Cloudflare has lost a runtime binding.
-The command restores `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` on the API
-Worker, and `SYNC_TOKEN` on both Workers. Cloudflare Build deployments cannot run
+Run this after deploying the Worker when Cloudflare has lost a runtime binding.
+The command restores `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `SYNC_TOKEN`,
+and `CLERK_JWKS_URL` on the API Worker. Cloudflare Build deployments cannot run
 this command because they do not have access to the laptop's 1Password session.
-The deploy commands use Wrangler's `--keep-vars` flag so dashboard-managed
+The deploy command uses Wrangler's `--keep-vars` flag, so dashboard-managed
 variables are retained during a deployment.
+
+When first moving `CLERK_JWKS_URL` from the old empty `vars` binding to a secret,
+deploy the updated Worker config, then delete its **plain text** binding in the
+Cloudflare dashboard under the `ttcstatus-api` Worker's Variables and Secrets.
+Run `ENV=prod npm run secrets:sync` afterward. The secret sync cannot replace an
+existing plain text binding of the same name (Cloudflare error 10053), and
+`--keep-vars` preserves that binding even after removing it from `wrangler.jsonc`.
+Do not delete the other bindings.
 
 Update your ignored local `.env` or secret manager with the replacement credential.
 Keep `.env.example` as placeholders. Verify the old credential returns 401, the new

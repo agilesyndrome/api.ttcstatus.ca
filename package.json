@@ -61,7 +61,7 @@
     "test:i18n": "node scripts/checks/check-i18n.mjs",
     "test:sla": "node scripts/checks/check-sla.mjs",
     "test:app": "node --test --test-isolation=none tests/ui/*.test.mjs tests/live/*.test.mjs",
-    "test:browser": "node scripts/checks/run-browser-suite.mjs ui mobile auth i18n app-readiness offline-shell"
+    "test:browser": "node scripts/checks/run-browser-suite.mjs ui mobile auth i18n app-readiness offline-shell live-unavailable"
   },
   "devDependencies": {
     "@storybook/addon-docs": "^10.6.1",
