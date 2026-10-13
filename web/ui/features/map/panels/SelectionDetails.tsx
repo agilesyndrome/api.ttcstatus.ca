@@ -4,6 +4,7 @@ import { RouteGuide } from '../RouteGuide';
 import { StopDetails } from '../../stops/StopDetails';
 import { JOURNAL_LIMIT } from '../../../../../shared/accounts/journal';
 import { useAccount } from '../../accounts/auth';
+import { rememberPendingJournal } from '../../journal/pendingJournal';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** One details renderer, hosted by the desktop rail or the separate phone card. */
@@ -106,7 +107,13 @@ export function SelectionDetails({
             journalReady={account.loaded && (!account.userId || accountJournal.ready)}
             onJournal={
               car && car.vehicle.mode !== 'subway'
-                ? () => (account.userId ? openCarJournal(car) : account.signIn())
+                ? () => {
+                    if (account.userId) openCarJournal(car);
+                    else {
+                      rememberPendingJournal(car.vehicle.id, car.vehicle.label);
+                      account.signIn();
+                    }
+                  }
                 : undefined
             }
             onSelectVehicle={(car) => selectVehicle(car, true)}

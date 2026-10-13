@@ -26,9 +26,8 @@ const stop = data.features.find(
 );
 const gps = mapToGps(stop.point, data.geographicTransform);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
-try {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
-  const { journals } = await installAccountFixture(context, { signedIn: true });
+async function setup(context, options) {
+  const fixture = await installAccountFixture(context, options);
   await context.route('**/api/v1/map/ttcstatus*', (request) =>
     request.fulfill({ json: map }),
   );
@@ -53,9 +52,10 @@ try {
       },
     }),
   );
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  return fixture;
+}
+
+async function selectCar(page) {
   await page.goto(origin);
   await page.locator('[data-vehicle="4400"]').waitFor();
   const notice = page.getByRole('button', { name: 'Got it', exact: true });
@@ -64,6 +64,16 @@ try {
   await page.locator('#details h1').filter({ hasText: 'Car 4400' }).waitFor();
   const journalAction = page.locator('#details .vehicle-journal-action');
   assert.equal(await journalAction.innerText(), '+ Add to Journal');
+  return journalAction;
+}
+
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+  const { journals } = await setup(context, { signedIn: true });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const journalAction = await selectCar(page);
   await page.screenshot({ path: '/tmp/ttc-car-journal-action.png' });
   await journalAction.click();
   const number = page.getByLabel('Streetcar number', { exact: true });
@@ -107,7 +117,36 @@ try {
   await entry.waitFor();
   assert.equal(await entry.evaluate((node) => node === document.activeElement), true);
   assert.deepEqual(errors, []);
-  console.log('Car journal passed: prefilled add form and Seen/Ridden entry links.');
+
+  for (const signInRedirect of [false, true]) {
+    const guestContext = await browser.newContext({
+      viewport: { width: 1440, height: 960 },
+    });
+    const { journals: guestJournals } = await setup(guestContext, {
+      signedIn: false,
+      signInRedirect,
+    });
+    const guestPage = await guestContext.newPage();
+    const guestErrors = [];
+    guestPage.on('pageerror', (error) => guestErrors.push(error.message));
+    const add = await selectCar(guestPage);
+    await add.click();
+    const number = guestPage.getByLabel('Streetcar number', { exact: true });
+    await number.waitFor();
+    assert.equal(await number.inputValue(), '4400');
+    assert.equal(
+      await guestPage
+        .getByRole('tab', { name: 'Journal', exact: true })
+        .getAttribute('aria-selected'),
+      'true',
+    );
+    assert.equal(guestJournals.get('user_a')?.entries.length ?? 0, 0);
+    assert.deepEqual(guestErrors, []);
+    await guestContext.close();
+  }
+  console.log(
+    'Car journal passed: add form, Seen/Ridden links, and sign-in return with or without redirect.',
+  );
 } finally {
   await browser.close();
 }

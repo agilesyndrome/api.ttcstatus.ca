@@ -111,18 +111,14 @@ try {
   await page.getByRole('button', { name: 'Sign up', exact: true }).click();
   await page.getByRole('tab', { name: 'Journal', exact: true }).waitFor();
   await page.getByRole('tab', { name: 'Journal', exact: true }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   await page.getByLabel('Streetcar number', { exact: true }).fill('4500');
   await page.getByLabel('Private note (optional)').fill('Spotted on King');
   await page.getByRole('button', { name: 'Add car to journal', exact: true }).click();
   const added = page.getByRole('article', { name: 'Collected car 4500', exact: true });
   await added.getByText('Spotted on King', { exact: true }).waitFor();
   await added.getByRole('button', { name: 'Mark ridden' }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   assert.equal(
     journals.get('user_a').entries.find((e) => e.vehicleId === '4500').status,
     'ridden',
@@ -142,24 +138,20 @@ try {
   );
   await context.unroute('**/api/v1/me/journal');
   await page.getByRole('button', { name: 'Retry merge', exact: true }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   await page.reload();
   await page.getByRole('tab', { name: 'Journal', exact: true }).click();
   await added.getByText('A quiet ride', { exact: true }).waitFor();
   assert.ok((await added.innerText()).includes('Ridden'));
   await added.getByRole('button', { name: 'Remove', exact: true }).click();
   await added.getByRole('button', { name: 'Confirm removal' }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   assert.equal(journals.get('user_a').entries.length, 0);
   await page.evaluate(() => {
     window.__testUser = 'user_b';
     window.dispatchEvent(new Event('fixture-account'));
   });
-  await page.getByText('Your first catch is waiting.', { exact: false }).waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   assert.equal(
     await page.locator('.journal-entry').count(),
     0,
@@ -172,9 +164,7 @@ try {
   // The journal panel was snapped back to Explore on sign-out; reopen it.
   await page.getByRole('tab', { name: 'Journal', exact: true }).waitFor();
   await page.getByRole('tab', { name: 'Journal', exact: true }).click();
-  await page
-    .getByText('Your journal is saved to your account.', { exact: true })
-    .waitFor();
+  await page.locator('.journal-fieldset:not([disabled])').waitFor();
   assert.equal(await page.locator('.journal-entry').count(), 0);
   await page.getByRole('link', { name: 'Profile', exact: true }).click();
   await page.getByLabel('Username', { exact: true }).waitFor();
@@ -214,6 +204,13 @@ try {
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.getByRole('heading', { name: 'Make it your journal.' }).waitFor();
   assert.equal(await page.getByLabel('Username', { exact: true }).count(), 0);
+  await page.evaluate(() => {
+    window.__fixtureSignInRedirect = true;
+  });
+  await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
+  await page.getByLabel('Username', { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, '/settings');
+  await page.getByRole('button', { name: 'Sign out' }).click();
 
   await context.route('**/api/v1/profiles/collector', (route) =>
     route.fulfill({

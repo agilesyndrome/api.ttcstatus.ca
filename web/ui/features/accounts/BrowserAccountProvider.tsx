@@ -6,6 +6,7 @@ import { accountLocales } from '../../i18n/clerk';
 import { useLanguage } from '../../i18n/react';
 import { AccountContext, defaultAccount } from './context';
 import { TrackWork } from '../../components/page/TrackWork';
+import { currentRoute } from '../../services/navigation/history';
 
 type AuthConfigState =
   | { status: 'loading' }
@@ -32,10 +33,10 @@ function ClerkAccount({ children }: { children: ReactNode }) {
         error: '',
         retry() {},
         signIn: () => {
-          void clerk.openSignIn();
+          void clerk.openSignIn({ fallbackRedirectUrl: currentRoute() });
         },
         signUp: () => {
-          void clerk.openSignUp();
+          void clerk.openSignUp({ fallbackRedirectUrl: currentRoute() });
         },
         request: createApiClient({ token: getToken, credentials: 'omit' }),
         saveLanguage: async (language) => {

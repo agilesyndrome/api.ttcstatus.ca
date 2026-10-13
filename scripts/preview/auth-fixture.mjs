@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 
 /** Browser-only SDK/session fixture. Server cryptographic verification has separate tests. */
-export async function installAccountFixture(context, { signedIn = false } = {}) {
+export async function installAccountFixture(
+  context,
+  { signedIn = false, signInRedirect = false } = {},
+) {
   const journals = new Map();
   const profiles = new Map();
   await context.addInitScript((value) => {
@@ -14,6 +17,9 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
     window.__testUser =
       saved === 'signed-out' ? null : (saved ?? (value ? 'user_a' : null));
   }, signedIn);
+  await context.addInitScript((redirect) => {
+    window.__fixtureSignInRedirect = redirect;
+  }, signInRedirect);
   await context.route('**/api/v1/auth/config', (route) =>
     // The live transport block ships with every auth-config response
     // (optimize-transport.md change 1b) — without it the client has no
@@ -62,7 +68,16 @@ export async function installAccountFixture(context, { signedIn = false } = {}) 
         return {isLoaded: true, user};
       }
       const switchAccount = value => { window.__testUser = value; window.dispatchEvent(new Event('fixture-account')); };
-      export const useClerk = () => ({openSignIn: () => switchAccount('user_a'), openSignUp: () => switchAccount('user_a')});
+      const signIn = (options) => {
+        if (window.__fixtureSignInRedirect) {
+          sessionStorage.setItem('fixture-account', 'user_a');
+          const destination = options?.fallbackRedirectUrl ?? '/';
+          if (destination === location.pathname + location.search + location.hash)
+            window.location.reload();
+          else window.location.assign(destination);
+        } else switchAccount('user_a');
+      };
+      export const useClerk = () => ({openSignIn: signIn, openSignUp: signIn});
       export const UserButton = () => React.createElement('button', {onClick: () => switchAccount(null), 'aria-label': 'Sign out'}, 'Account');
       export const UserProfile = () => React.createElement('section', null, 'Account settings');
     `,

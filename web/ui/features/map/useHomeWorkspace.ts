@@ -9,6 +9,7 @@ import { useScreenActive } from '../../services/platform/react';
 import { useRoute } from '../../services/navigation/react';
 import { snakeVersionForPath, type SnakeVersion } from '../../snake-route';
 import { useAccountJournal } from '../journal/useAccountJournal';
+import { clearPendingJournal, readPendingJournal } from '../journal/pendingJournal';
 import { useMapExport } from '../export/useMapExport';
 import { trackEvent } from '../../analytics';
 import { useVehicleFeed } from './useVehicleFeed';
@@ -54,6 +55,18 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
       setJournalDraftNumber(undefined);
     }
   }, [selection.panel]);
+  useEffect(() => {
+    if (!accountJournal.userId || !accountJournal.ready) return;
+    const pending = readPendingJournal();
+    if (!pending) return;
+    clearPendingJournal();
+    const saved = accountJournal.entries.some(
+      (entry) => entry.vehicleId === pending.vehicleId,
+    );
+    setJournalTarget(saved ? pending.vehicleId : undefined);
+    setJournalDraftNumber(saved ? undefined : pending.label);
+    selection.setPanel('journal');
+  }, [accountJournal.userId, accountJournal.ready, accountJournal.entries]);
   // Older saved preferences and links could hide both rail layers. The
   // three-choice control always has a visible, representable selection.
   useEffect(() => {

@@ -53,7 +53,7 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
             </p>
           )}
           <StreetcarJournal
-            key={accountJournal.userId}
+            key={`${accountJournal.userId}:${journalTarget ?? journalDraftNumber ?? ''}`}
             entries={journal}
             focusVehicleId={journalTarget}
             prefillCarNumber={journalDraftNumber}
