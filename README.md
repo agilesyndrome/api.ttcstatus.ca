@@ -1,4 +1,4 @@
-# api.ttcstatus.ca
+# ttcstatus.ca
 
 Cloudflare Workers + D1 + R2 backend for TTCstatus.
 
@@ -297,25 +297,6 @@ Worker without `SYNC_TOKEN` returns `404`. Check locally or from the laptop with
 
 ```bash
 make admin/sync/status
-```
-
-### `POST /api/v1/debug/map/streetcar.svg` (debug endpoint)
-
-Renders a previously generated `data/fixtures/streetcarmap.json` bundle as standalone SVG.
-The authenticated API route renders in-process (`workers/api/src/mapgen/rendering/`);
-it does not read D1, fetch GTFS, or invoke the sync pipeline. The
-request body is the map JSON and requires `Authorization: Bearer <SYNC_TOKEN>`.
-The endpoint is disabled with `404` until `SYNC_TOKEN` is configured, and
-accepts bundles up to 2 MB.
-
-For remote rendering of a custom JSON bundle (the local Make targets do not
-need this endpoint):
-
-```bash
-curl -sS -X POST https://api.ttcstatus.ca/api/v1/debug/map/streetcar.svg \
-  -H "Authorization: Bearer $SYNC_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary @data/fixtures/streetcarmap.json > streetcar-debug.svg
 ```
 
 ### `POST /api/v1/admin/sync`

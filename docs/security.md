@@ -27,8 +27,14 @@ ENV=local npm run secrets:sync
 ```
 
 Run this after deploying the Worker when Cloudflare has lost a runtime binding.
-The command restores `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `SYNC_TOKEN`,
-and `CLERK_JWKS_URL` on the API Worker. Cloudflare Build deployments cannot run
+The command identifies undeployed API Worker versions, creates one version
+containing `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `SYNC_TOKEN`, and
+`CLERK_JWKS_URL`, then deletes the earlier drafts and deploys the new version
+at 100% without a prompt. Versions referenced by deployments are preserved.
+Cloudflare does not allow deletion of the latest version, so the new version
+must be created before the earlier drafts can be removed. Set
+`CLOUDFLARE_ACCOUNT_ID` if Wrangler has access to multiple Cloudflare accounts.
+Cloudflare Build deployments cannot run
 this command because they do not have access to the laptop's 1Password session.
 The deploy command uses Wrangler's `--keep-vars` flag, so dashboard-managed
 variables are retained during a deployment.

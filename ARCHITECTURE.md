@@ -6,8 +6,6 @@ This is intentionally an architecture and planning document only. No implementat
 
 ## Product model
 
-`api.ttcstatus.ca` should be the shared transit-data and map engine for both:
-
 - **ttcstatus.ca** — an accurate live transit view showing real routes, stops, vehicles, service state, and eventually buses and subway.
 - **Streetcar Snake** — a whimsical game mode built on the same network model and rendering primitives, with fictional gameplay layered on top.
 
