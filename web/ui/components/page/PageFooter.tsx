@@ -12,7 +12,12 @@ export function PageFooter() {
     : siteSourceUrl;
   return (
     <footer className="site-footer">
-      <p className="site-credit">{t('footer.anOpenSourceProjectByDrewEasley')}</p>
+      <p className="site-credit">
+        {t('footer.anOpenSourceProjectByDrewEasley')} ·{' '}
+        <a href="https://www.cloudflare.com/" target="_blank" rel="noopener noreferrer">
+          Hosted by Cloudflare
+        </a>
+      </p>
       <p className="site-version" title={siteCommit || undefined}>
         {siteCommitShort ? (
           <a href={sourceHref} target="_blank" rel="noopener noreferrer">
