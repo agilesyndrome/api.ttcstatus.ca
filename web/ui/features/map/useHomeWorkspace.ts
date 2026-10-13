@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { JOURNAL_LIMIT, journalEntry } from '../../../../shared/accounts/journal';
 import { english } from '../../../../shared/i18n/messages';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
 import { DEFAULT_FILTERS, validFilters } from '../../commute';
@@ -32,6 +31,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   const saved = useSavedStops();
   const accountJournal = useAccountJournal();
   const [journalTarget, setJournalTarget] = useState<string>();
+  const [journalDraftNumber, setJournalDraftNumber] = useState<string>();
   const [snakeOpen, setSnakeOpen] = useState(Boolean(initialSnakeVersion));
   const feed = useVehicleFeed(filters.live && Boolean(data), {
     polling: !snakeOpen,
@@ -49,7 +49,10 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   }, [cars]);
   const selection = useSelection(data, cars, filters, setFilters);
   useEffect(() => {
-    if (selection.panel !== 'journal') setJournalTarget(undefined);
+    if (selection.panel !== 'journal') {
+      setJournalTarget(undefined);
+      setJournalDraftNumber(undefined);
+    }
   }, [selection.panel]);
   // Older saved preferences and links could hide both rail layers. The
   // three-choice control always has a visible, representable selection.
@@ -106,22 +109,12 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
         : [...current, feature.id],
     );
   }
-  async function openCarJournal(car: PlottedVehicle) {
-    if (!data || !accountJournal.userId || car.vehicle.mode === 'subway') return;
+  function openCarJournal(car: PlottedVehicle) {
+    if (!accountJournal.userId || car.vehicle.mode === 'subway') return;
     const id = car.vehicle.id;
-    if (!accountJournal.entries.some((entry) => entry.vehicleId === id)) {
-      if (!accountJournal.ready || accountJournal.entries.length >= JOURNAL_LIMIT) return;
-      const saved = await accountJournal.change((entries) =>
-        entries.some((entry) => entry.vehicleId === id)
-          ? entries
-          : [...entries, journalEntry(car, data.routes)],
-      );
-      if (!saved) {
-        selection.setNotice('journal.yourChangeCouldNotBeSavedPleaseTryAgain');
-        return;
-      }
-    }
-    setJournalTarget(id);
+    const saved = accountJournal.entries.some((entry) => entry.vehicleId === id);
+    setJournalTarget(saved ? id : undefined);
+    setJournalDraftNumber(saved ? undefined : car.vehicle.label);
     selection.setPanel('journal');
   }
   useShortcuts(active && shortcutsEnabled && !snakeOpen, {
@@ -149,6 +142,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     accountJournal,
     journal: accountJournal.entries,
     journalTarget,
+    journalDraftNumber,
     setJournal: accountJournal.change,
     openCarJournal,
     snakeOpen,

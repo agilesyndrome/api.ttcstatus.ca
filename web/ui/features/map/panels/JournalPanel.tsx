@@ -13,6 +13,7 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
     accountJournal,
     journal,
     journalTarget,
+    journalDraftNumber,
     setJournal,
     cars,
     feed,
@@ -55,6 +56,7 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
             key={accountJournal.userId}
             entries={journal}
             focusVehicleId={journalTarget}
+            prefillCarNumber={journalDraftNumber}
             cars={cars}
             routes={data.routes}
             active={feed.active}

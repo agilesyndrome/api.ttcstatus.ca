@@ -66,10 +66,21 @@ try {
   assert.equal(await journalAction.innerText(), '+ Add to Journal');
   await page.screenshot({ path: '/tmp/ttc-car-journal-action.png' });
   await journalAction.click();
+  const number = page.getByLabel('Streetcar number', { exact: true });
+  await number.waitFor();
+  assert.equal(await number.inputValue(), '4400');
+  assert.equal(
+    await page.locator('.journal-entry').count(),
+    0,
+    'opening the form does not save',
+  );
+  await page.getByLabel('Private note (optional)').fill('Spotted on Queen');
+  await page.getByRole('button', { name: 'Add car to journal', exact: true }).click();
   const entry = page.getByRole('article', { name: 'Collected car 4400', exact: true });
   await entry.waitFor();
   assert.equal(await entry.evaluate((node) => node === document.activeElement), true);
   assert.equal(journals.get('user_a').entries[0].status, 'seen');
+  assert.equal(journals.get('user_a').entries[0].note, 'Spotted on Queen');
 
   await page.getByRole('tab', { name: 'Explore', exact: true }).click();
   assert.match(await journalAction.innerText(), /^✓ Seen on /);
@@ -96,7 +107,7 @@ try {
   await entry.waitFor();
   assert.equal(await entry.evaluate((node) => node === document.activeElement), true);
   assert.deepEqual(errors, []);
-  console.log('Car journal passed: add, Seen and Ridden actions open the saved entry.');
+  console.log('Car journal passed: prefilled add form and Seen/Ridden entry links.');
 } finally {
   await browser.close();
 }

@@ -12,6 +12,7 @@ import {
 interface Props {
   entries: JournalEntry[];
   focusVehicleId?: string;
+  prefillCarNumber?: string;
   cars: PlottedVehicle[];
   routes: Route[];
   active: boolean;
@@ -23,6 +24,7 @@ interface Props {
 export function StreetcarJournal({
   entries,
   focusVehicleId,
+  prefillCarNumber,
   cars,
   routes,
   active,
@@ -41,7 +43,8 @@ export function StreetcarJournal({
   const [editing, setEditing] = useState<string>();
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<'seen' | 'ridden'>('seen');
-  const [newCar, setNewCar] = useState('');
+  const [newCar, setNewCar] = useState(prefillCarNumber ?? '');
+  const [focusAddedEntry, setFocusAddedEntry] = useState(Boolean(prefillCarNumber));
   const [newNote, setNewNote] = useState('');
   const [newStatus, setNewStatus] = useState<'seen' | 'ridden'>('seen');
   const [removing, setRemoving] = useState<string>();
@@ -115,7 +118,12 @@ export function StreetcarJournal({
           if ((await onChange((current) => [...current, entry])) === false) return;
           setNewCar('');
           setNewNote('');
-          setQuery('');
+          if (focusAddedEntry) {
+            setQuery(entry.vehicleId);
+            setTarget(entry.vehicleId);
+            setPage(0);
+            setFocusAddedEntry(false);
+          } else setQuery('');
           setMessage(t('journal.added', { car: vehicleId }));
         }}
       >
@@ -134,6 +142,7 @@ export function StreetcarJournal({
           <label htmlFor={id + '-new-status'}>{t('journal.yourExperience')}</label>
           <select
             id={id + '-new-status'}
+            autoFocus={Boolean(prefillCarNumber)}
             value={newStatus}
             onChange={(event) => setNewStatus(event.target.value as 'seen' | 'ridden')}
           >

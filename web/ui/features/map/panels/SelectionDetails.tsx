@@ -106,7 +106,7 @@ export function SelectionDetails({
             journalReady={account.loaded && (!account.userId || accountJournal.ready)}
             onJournal={
               car && car.vehicle.mode !== 'subway'
-                ? () => (account.userId ? void openCarJournal(car) : account.signIn())
+                ? () => (account.userId ? openCarJournal(car) : account.signIn())
                 : undefined
             }
             onSelectVehicle={(car) => selectVehicle(car, true)}
