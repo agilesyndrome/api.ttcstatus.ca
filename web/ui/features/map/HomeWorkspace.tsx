@@ -9,7 +9,6 @@ import { ExplorePanel } from './panels/ExplorePanel';
 import { JournalPanel } from './panels/JournalPanel';
 import { RoutePulsePanel } from './panels/RoutePulsePanel';
 import { SelectionDetails } from './panels/SelectionDetails';
-import { NearbyStops } from '../stops/NearbyStops';
 import { lazy, Suspense } from 'react';
 
 import { Nav, useCompactNav } from '../../components/nav/Nav';
@@ -243,6 +242,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 }
                 selectedRoute={selectedRoute}
                 highlightRoute={visualRoute}
+                serviceMode={Boolean(service.underlay)}
                 selectedFeature={feature}
                 selectedVehicleId={car?.vehicle.id}
                 focusPoint={focusPoint}
@@ -306,19 +306,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                   workspace={workspace}
                   serviceCard={feature && !car ? service.card : null}
                 />
-              )}
-              {workspace.location && (
-                <aside className="workspace-nearby">
-                  <NearbyStops
-                    data={data}
-                    location={workspace.location}
-                    onClear={() => {
-                      workspace.setLocation(undefined);
-                      workspace.setFocusPoint(undefined);
-                    }}
-                    onSelect={selectFeatureWithService}
-                  />
-                </aside>
               )}
             </div>
             {panel !== 'explore' && (

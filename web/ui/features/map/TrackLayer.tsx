@@ -7,12 +7,18 @@ export const points = (values: Point[]) =>
 export const Tracks = memo(function Tracks({
   data,
   selectedRoute,
+  serviceMode = false,
   includeOvernight,
   showStreetcar = true,
   showSubway = true,
 }: Pick<
   TransitMapProps,
-  'data' | 'selectedRoute' | 'includeOvernight' | 'showStreetcar' | 'showSubway'
+  | 'data'
+  | 'selectedRoute'
+  | 'serviceMode'
+  | 'includeOvernight'
+  | 'showStreetcar'
+  | 'showSubway'
 >) {
   return (
     <g aria-hidden="true">
@@ -38,12 +44,18 @@ export const Tracks = memo(function Tracks({
             className="track"
             points={points(edge.points)}
             fill="none"
-            stroke={dimmed ? 'var(--muted)' : (route?.color ?? '#7b8794')}
+            stroke={
+              serviceMode
+                ? 'var(--muted)'
+                : dimmed
+                  ? 'var(--muted)'
+                  : (route?.color ?? '#7b8794')
+            }
             strokeWidth={activeRoutes.length ? 4.5 : 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray={activeRoutes.length ? undefined : '6 5'}
-            opacity={dimmed ? 0.32 : 1}
+            opacity={dimmed ? 0.25 : serviceMode ? 0.55 : 1}
           />
         );
       })}

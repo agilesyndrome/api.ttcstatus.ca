@@ -460,7 +460,7 @@ export interface TrackSegment {
  * twin streams riding the track, a hairline of the base rail between them. */
 export const STREAM_OFFSET = 1.15;
 /** Stream stroke width (the base track is 4.5). */
-export const STREAM_WIDTH = 1.8;
+export const STREAM_WIDTH = 1.25;
 /** Long pieces subdivide at this many display units so the colour gradient
  * bends along the stretch instead of one flat colour vertex-to-vertex. */
 export const SUBDIVIDE_UNITS = 24;

@@ -9,6 +9,9 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
   const {
     data,
+    savedStops,
+    recentStopIds,
+    selectFeature,
     filters,
     feed,
     setFilters,
@@ -45,6 +48,41 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
       : liveMode === 'vehicles'
         ? t('workspace.vehiclesOnly')
         : t('workspace.off');
+  const featureById = new Map(data.features.map((feature) => [feature.id, feature]));
+  const saved = savedStops
+    .flatMap((id) => {
+      const feature = featureById.get(id);
+      return feature ? [feature] : [];
+    })
+    .slice(-3)
+    .reverse();
+  const recent = recentStopIds
+    .filter((id) => !savedStops.includes(id))
+    .flatMap((id) => {
+      const feature = featureById.get(id);
+      return feature ? [feature] : [];
+    })
+    .slice(0, 3);
+  const stopShortcut = (feature: (typeof saved)[number]) => (
+    <li key={feature.id}>
+      <button
+        className="explore-shortcuts__stop"
+        aria-current={
+          selection?.kind === 'stop' && selection.id === feature.id ? 'true' : undefined
+        }
+        onClick={() => selectFeature(feature)}
+      >
+        <span>{feature.name}</span>
+        <small>
+          {feature.routeIds
+            .map((id) => data.routes.find((route) => route.id === id)?.number)
+            .filter(Boolean)
+            .slice(0, 3)
+            .join(' · ')}
+        </small>
+      </button>
+    </li>
+  );
   return (
     <div
       id="panel-explore"
@@ -102,8 +140,24 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
           </div>
         </div>
       </details>
+      {(saved.length > 0 || recent.length > 0) && (
+        <div className="explore-shortcuts">
+          {saved.length > 0 && (
+            <section aria-label={t('myStops.savedStops')}>
+              <h3>{t('myStops.savedStops')}</h3>
+              <ul>{saved.map(stopShortcut)}</ul>
+            </section>
+          )}
+          {recent.length > 0 && (
+            <section aria-label={t('workspace.recentStops')}>
+              <h3>{t('workspace.recentStops')}</h3>
+              <ul>{recent.map(stopShortcut)}</ul>
+            </section>
+          )}
+        </div>
+      )}
       <div className="explore-tools">
-        <button className="action-button explore-tools__primary" onClick={surprise}>
+        <button className="action-button explore-tools__surprise" onClick={surprise}>
           {t('workspace.surpriseMe')}
         </button>
         <button

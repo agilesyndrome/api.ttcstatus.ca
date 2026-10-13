@@ -64,6 +64,54 @@ export function nearbyStops(
     .sort((a, b) => a.metres - b.metres || a.feature.id.localeCompare(b.feature.id))
     .slice(0, 5);
 }
+
+/** Pick map focus points by real distance, with a different daytime route and
+ * physical stop for the second point. The general nearby list is capped at
+ * five boarding points, which can all be platforms on the first route. */
+export function nearestDistinctRouteStops(
+  data: ViewerData,
+  location: Location,
+): Feature[] {
+  if (
+    !Number.isFinite(location.latitude) ||
+    !Number.isFinite(location.longitude) ||
+    Math.abs(location.latitude) > 90 ||
+    Math.abs(location.longitude) > 180
+  )
+    return [];
+  const dayRoutes = new Set(
+    data.routes
+      .filter((route) => route.scheduled && !route.overnight)
+      .map((route) => route.id),
+  );
+  const candidates = data.features
+    .filter((feature) => feature.boardingPoints > 0)
+    .map((feature) => {
+      const routeIds = feature.routeIds.filter((id) => dayRoutes.has(id));
+      const positions = feature.geographicPoints?.length
+        ? feature.geographicPoints
+        : [mapToGps(feature.point, data.geographicTransform)];
+      const position = positions.reduce((nearest, point) =>
+        distanceMetres(location, point) < distanceMetres(location, nearest)
+          ? point
+          : nearest,
+      );
+      return { feature, routeIds, position, metres: distanceMetres(location, position) };
+    })
+    .filter((candidate) => candidate.routeIds.length && Number.isFinite(candidate.metres))
+    .sort((a, b) => a.metres - b.metres || a.feature.id.localeCompare(b.feature.id));
+  const first = candidates[0];
+  // Outside the mapped service area, preserve the full-map fallback.
+  if (!first || first.metres > 2500) return [];
+  const firstRoutes = new Set(first.routeIds);
+  const second = candidates.find(
+    (candidate) =>
+      candidate.feature.id !== first.feature.id &&
+      candidate.routeIds.every((id) => !firstRoutes.has(id)) &&
+      distanceMetres(first.position, candidate.position) >= 75,
+  );
+  return second ? [first.feature, second.feature] : [first.feature];
+}
 /** Nearby is proximity only: route, direction and trip stop sequence cannot
  * establish arrival predictions from the vehicle-position feed. */
 export function nearbyCars(data: ViewerData, feature: Feature, cars: PlottedVehicle[]) {

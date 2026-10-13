@@ -17,6 +17,7 @@ export const TransitMap = memo(function TransitMap({
   cars = [],
   selectedRoute,
   highlightRoute,
+  serviceMode = false,
   selectedFeature,
   focusPoint,
   focusPointLevel,
@@ -158,28 +159,36 @@ export const TransitMap = memo(function TransitMap({
       ),
     [data, allowedRoutes, showStops, activeRoute, selectedFeature, comparisonStops],
   );
-  // Keep labels readable; reveal ordinary stops at closer zoom levels.
+  // Keep the overview for stations and interchanges. Ordinary boarding points
+  // become useful only when the rider zooms into a neighborhood.
   // Placement depends on the camera, but the inputs are memoized so renders
   // that keep the camera still (feed refreshes, HUD ticks) skip the O(n²)
   // collision work, and per-label rotation math is precomputed once per map.
-  const labelFeatures = useMemo(
-    () =>
-      visibleFeatures
-        .filter(
-          (feature) =>
-            isEndpoint(feature) ||
-            feature.kind === 'terminal' ||
-            selectedFeature?.id === feature.id ||
-            level > (showLabels ? 2.7 : 4.2),
-        )
-        .sort(
-          (a, b) =>
-            Number(isEndpoint(b)) - Number(isEndpoint(a)) ||
-            Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) ||
-            Number(b.kind === 'terminal') - Number(a.kind === 'terminal'),
-        ),
-    [visibleFeatures, selectedFeature, showLabels, level, comparisonStops],
-  );
+  const labelFeatures = useMemo(() => {
+    const dayRoutes = new Set(
+      data.routes.filter((route) => !route.overnight).map((route) => route.id),
+    );
+    const landmark = (feature: Feature) =>
+      feature.kind === 'terminal' ||
+      /station|loop|terminal/i.test(feature.name) ||
+      feature.routeIds.filter((id) => dayRoutes.has(id)).length > 1;
+    return visibleFeatures
+      .filter(
+        (feature) =>
+          isEndpoint(feature) ||
+          selectedFeature?.id === feature.id ||
+          feature.kind === 'terminal' ||
+          (landmark(feature) && level > (showLabels ? 2.7 : 3.7)) ||
+          level > (showLabels ? 5.5 : 7),
+      )
+      .sort(
+        (a, b) =>
+          Number(isEndpoint(b)) - Number(isEndpoint(a)) ||
+          Number(b.id === selectedFeature?.id) - Number(a.id === selectedFeature?.id) ||
+          Number(b.kind === 'terminal') - Number(a.kind === 'terminal') ||
+          Number(landmark(b)) - Number(landmark(a)),
+      );
+  }, [data.routes, visibleFeatures, selectedFeature, showLabels, level, comparisonStops]);
   const contextLabels = useMemo(
     () =>
       data.labels.filter((label) => label.kind === 'street' || label.kind === 'water'),
@@ -209,10 +218,17 @@ export const TransitMap = memo(function TransitMap({
     // renders its own HUD/overlay, so empty label layers cost nothing.
     if (driving) return [[], []] as const;
     const occupied: { x: number; y: number; width: number; height: number }[] = [];
+    const labelBudget = Math.max(
+      8,
+      Math.min(28, Math.floor((size.width * size.height) / 50000)),
+    );
+    let placedLabels = 0;
     const readableLabels = labelFeatures.filter((feature) => {
+      const priority = isEndpoint(feature) || selectedFeature?.id === feature.id;
+      if (!priority && placedLabels >= labelBudget) return false;
       const x = (feature.point[0] - camera.x) * scale + 8;
       const y = (feature.point[1] - camera.y) * scale - 19;
-      const box = { x: x - 4, y: y - 4, width: feature.name.length * 6 + 24, height: 28 };
+      const box = { x: x - 7, y: y - 7, width: feature.name.length * 6 + 30, height: 34 };
       if (
         x < 8 ||
         y < 35 ||
@@ -231,9 +247,16 @@ export const TransitMap = memo(function TransitMap({
       )
         return false;
       occupied.push(box);
+      placedLabels += 1;
       return true;
     });
+    const contextBudget = Math.max(
+      3,
+      Math.min(10, Math.floor((size.width * size.height) / 115000)),
+    );
+    let placedContext = 0;
     const readableContextLabels = contextLabels.filter((label) => {
+      if (placedContext >= contextBudget) return false;
       // Context uses rotated text. Reserve its screen-space bounds so street
       // names do not pile up over terminals when the whole map fits a phone.
       const { width, height, cos, sin } = labelGeometry.get(label)!;
@@ -271,11 +294,14 @@ export const TransitMap = memo(function TransitMap({
       )
         return false;
       occupied.push(box);
+      placedContext += 1;
       return true;
     });
     return [readableLabels, readableContextLabels] as const;
   }, [
     labelFeatures,
+    selectedFeature,
+    comparisonStops,
     contextLabels,
     labelGeometry,
     driving,
@@ -347,6 +373,7 @@ export const TransitMap = memo(function TransitMap({
         <Tracks
           data={data}
           selectedRoute={activeRoute}
+          serviceMode={serviceMode}
           includeOvernight={includeOvernight}
           showStreetcar={showStreetcar}
           showSubway={showSubway}
@@ -451,6 +478,7 @@ export const TransitMap = memo(function TransitMap({
               <g
                 key={car.vehicle.id}
                 data-vehicle={car.vehicle.id}
+                data-selected={selectedVehicleId === car.vehicle.id ? 'true' : undefined}
                 data-mode={car.vehicle.mode ?? 'streetcar'}
                 className={`live-car${car.match ? '' : ' off-track'}${snapped ? ' on-service-stream' : ''}`}
                 role="button"
@@ -626,7 +654,7 @@ export const TransitMap = memo(function TransitMap({
                     />
                   </g>
                 )}
-                {(level >= 4.2 || selectedVehicleId === car.vehicle.id) && (
+                {!driving && (
                   <g
                     transform={`translate(${car.point.join(' ')}) scale(${1 / scale})`}
                     pointerEvents="none"

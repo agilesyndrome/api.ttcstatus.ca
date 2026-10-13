@@ -18,6 +18,7 @@ import {
 } from '../../../commute';
 import { currentRoute } from '../../../services/navigation/history';
 import { useAccount } from '../../accounts/auth';
+import { usePreference } from '../../../hooks/usePreferences';
 import { useWorkspaceLink } from './useWorkspaceLink';
 
 export function useSelection(
@@ -32,6 +33,14 @@ export function useSelection(
   );
   const [selection, setSelection] = useState<Selection | undefined>(
     initialLink.selection,
+  );
+  const [recentStopIds, setRecentStopIds] = usePreference<string[]>(
+    'ttc:recent-stops:v1',
+    [],
+    (value): value is string[] =>
+      Array.isArray(value) &&
+      value.length <= 5 &&
+      value.every((id) => typeof id === 'string'),
   );
   const [selectedRoute, setSelectedRoute] = useState<string | undefined>(() => {
     const link = initialLink;
@@ -152,6 +161,9 @@ export function useSelection(
     setResetKey((key) => key + 1);
   }
   function selectFeature(next: Feature) {
+    setRecentStopIds((current) =>
+      [next.id, ...current.filter((id) => id !== next.id)].slice(0, 5),
+    );
     if (data) setFilters((current) => revealRoutes(current, data.routes, next.routeIds));
     // A selection closes the phone menu on the next frame and reveals its details card.
     pendingCar.current = undefined;
@@ -235,6 +247,7 @@ export function useSelection(
     pendingCar,
     sidebar,
     feature,
+    recentStopIds,
     car,
     reset,
     selectFeature,

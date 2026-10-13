@@ -7,7 +7,7 @@ import {
   type ViewerData,
 } from '../../../../../shared/map/model';
 import { gpsToMap } from '../../../../../shared/map/projection';
-import { nearbyStops, type Location } from '../../../commute';
+import { nearestDistinctRouteStops, type Location } from '../../../commute';
 import { trackEvent } from '../../../analytics';
 import { platform } from '../../../services/platform';
 import { LocationError } from '../../../services/platform/contracts';
@@ -46,9 +46,7 @@ export function useLocation({
     // neighborhood. Out-of-area locations keep the full Toronto map in view
     // instead of panning to empty space.
     const here = gpsToMap(next.latitude, next.longitude, data.geographicTransform);
-    const stations = nearbyStops(data, next)
-      .slice(0, 2)
-      .map((stop) => stop.feature.point);
+    const stations = nearestDistinctRouteStops(data, next).map((stop) => stop.point);
     setFocusPoint(undefined);
     setFocusPointLevel(undefined);
     if (stations.length) {

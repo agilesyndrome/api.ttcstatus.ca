@@ -20,6 +20,7 @@ const {
   distanceMetres,
   formatDistance,
   nearbyStops,
+  nearestDistinctRouteStops,
   nearbyCars,
   routeActivity,
   readMapLink,
@@ -103,6 +104,49 @@ test('near me sorts geographically across compressed regions, excludes physical 
     ['1'],
   );
   assert.deepEqual(nearbyStops(data, { latitude: 0, longitude: 0 }), []);
+});
+
+test('location focus chooses two physical stops served by different daytime routes', () => {
+  const here = { latitude: 43.65, longitude: -79.4 };
+  const feature = (id, latitudeOffset, routeIds) => ({
+    ...demoData.features[0],
+    id,
+    routeIds,
+    point: gpsToMap(
+      here.latitude + latitudeOffset,
+      here.longitude,
+      demoData.geographicTransform,
+    ),
+    geographicPoints: [
+      { latitude: here.latitude + latitudeOffset, longitude: here.longitude },
+    ],
+  });
+  const data = {
+    ...demoData,
+    features: [
+      feature('other-route-nearby', 0.0012, ['504']),
+      feature('same-route-next', 0.0007, ['501']),
+      feature('other-route-same-place', 0.00025, ['504']),
+      feature('night-route', 0.0009, ['301']),
+      feature('closest', 0, ['501']),
+      feature('opposite-platform', 0.0002, ['501']),
+    ],
+  };
+  assert.deepEqual(
+    nearestDistinctRouteStops(data, here).map((stop) => stop.id),
+    ['closest', 'other-route-nearby'],
+  );
+  assert.deepEqual(
+    nearestDistinctRouteStops(
+      {
+        ...data,
+        features: data.features.filter((stop) => stop.id !== 'other-route-nearby'),
+      },
+      here,
+    ).map((stop) => stop.id),
+    ['closest'],
+  );
+  assert.deepEqual(nearestDistinctRouteStops(data, { latitude: 0, longitude: 0 }), []);
 });
 
 test('nearby cars require fresh matching route reports within 2 km; results are capped and sorted', () => {

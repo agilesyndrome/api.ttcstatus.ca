@@ -16,6 +16,8 @@ export interface TransitMapProps {
   selectedRoute?: string;
   /** Visually focus a route without changing the camera to its full extent. */
   highlightRoute?: string;
+  /** Neutralize the route-colored rails while service conditions paint them. */
+  serviceMode?: boolean;
   selectedFeature?: Feature;
   focusPoint?: Point;
   /** Relative map scale for a focus point; 2.5 shows a neighborhood, 5 is detail view. */

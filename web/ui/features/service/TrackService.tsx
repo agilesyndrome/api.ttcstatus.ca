@@ -163,7 +163,7 @@ export const TrackService = memo(function TrackService({
               x2={segment.x2 + dx}
               y2={segment.y2 + dy}
               stroke={STATE_COLORS.fresh}
-              strokeWidth={STREAM_WIDTH + 0.7}
+              strokeWidth={STREAM_WIDTH + 0.4}
               strokeLinecap="round"
               opacity={0.95}
             />
@@ -177,7 +177,7 @@ export const TrackService = memo(function TrackService({
                 x2={segment.x2 + dx}
                 y2={segment.y2 + dy}
                 stroke={STATE_COLORS.fresh}
-                strokeWidth={STREAM_WIDTH + 0.7}
+                strokeWidth={STREAM_WIDTH + 0.4}
                 strokeLinecap="round"
                 strokeDasharray={DASH_PATTERN}
                 style={
