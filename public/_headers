@@ -1,7 +1,8 @@
-# Hardening applied to every static response.
+# Hardening applied to every static response. In the Cloudflare `_headers`
+# format a rule block ends at the next path or blank line — there is no `*/`
+# closer, so don't add one.
 /*
   Cache-Control: no-cache
-*/
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
 /sw.js
