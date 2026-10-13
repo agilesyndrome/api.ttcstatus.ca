@@ -462,6 +462,27 @@
   color: var(--muted);
   font-size: 11px;
 }
+.vehicle-journal-action {
+  flex: 0 0 100%;
+  min-height: 32px;
+  margin-top: -3px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.vehicle-journal-action:hover {
+  text-decoration: underline;
+}
+.vehicle-journal-action:disabled {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
 .vehicle-journey {
   margin-top: 22px;
   padding-top: 18px;

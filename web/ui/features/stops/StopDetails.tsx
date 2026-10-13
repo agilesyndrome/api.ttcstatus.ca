@@ -3,6 +3,7 @@ import { useLanguage } from '../../i18n/react';
 import type { Feature, ViewerData } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
+import type { JournalEntry } from '../../../../shared/accounts/journal';
 import { formatDistance, nearbyCars } from '../../commute';
 import { StationArrivals } from './StationArrivals';
 import { VehicleJourney } from './VehicleJourney';
@@ -18,10 +19,10 @@ interface Props {
   feedFailed?: boolean;
   snapshot?: VehicleSnapshot;
   now?: number;
-  journalSaved?: boolean;
+  journalEntry?: JournalEntry;
   journalFull?: boolean;
+  journalReady?: boolean;
   onJournal?(): void;
-  onOpenJournal?(): void;
   following?: boolean;
   onFollow?(): void;
   onToggleSave?(): void;
@@ -43,10 +44,10 @@ export function StopDetails({
   now = Date.now(),
   following,
   onFollow,
-  journalSaved,
+  journalEntry,
   journalFull,
+  journalReady,
   onJournal,
-  onOpenJournal,
   onToggleSave,
   onSelectVehicle,
   serviceMode = false,
@@ -95,6 +96,33 @@ export function StopDetails({
             <span>
               {following ? t('vehicleJourney.following') : t('vehicleJourney.paused')}
             </span>
+            {onJournal && car.vehicle.mode !== 'subway' && (
+              <button
+                className="vehicle-journal-action"
+                disabled={!journalEntry && (!journalReady || journalFull)}
+                onClick={onJournal}
+              >
+                {journalEntry
+                  ? t('stopDetails.journalEntryStatus', {
+                      status:
+                        journalEntry.status === 'ridden'
+                          ? t('journal.ridden')
+                          : t('journal.seen'),
+                      date: new Date(journalEntry.recordedAt).toLocaleDateString(
+                        getLocale(),
+                        {
+                          timeZone: 'America/Toronto',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        },
+                      ),
+                    })
+                  : journalFull
+                    ? t('stopDetails.journalFull500Cars')
+                    : t('stopDetails.addToJournal')}
+              </button>
+            )}
           </div>
         )}
         {car.vehicle.mode !== 'subway' && (
@@ -130,29 +158,6 @@ export function StopDetails({
             )}
           </dl>
         </details>
-        {onJournal && (
-          <div className="journal-car-actions">
-            <button
-              className="action-button"
-              disabled={journalSaved || journalFull}
-              onClick={onJournal}
-            >
-              {journalSaved
-                ? t('stopDetails.inYourJournal')
-                : journalFull
-                  ? t('stopDetails.journalFull500Cars')
-                  : t('stopDetails.addToJournal')}
-            </button>
-            {onOpenJournal && (
-              <button className="text-button" onClick={onOpenJournal}>
-                {t('stopDetails.openJournal')}
-              </button>
-            )}
-            <p className="microcopy">
-              {t('stopDetails.manuallyCollectThisCarNumberSavedInThisBrowserWithout')}
-            </p>
-          </div>
-        )}
       </section>
     );
   if (!feature) return null;

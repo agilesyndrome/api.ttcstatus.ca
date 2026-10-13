@@ -2,6 +2,8 @@ import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
 import { RouteGuide } from '../RouteGuide';
 import { StopDetails } from '../../stops/StopDetails';
+import { JOURNAL_LIMIT } from '../../../../../shared/accounts/journal';
+import { useAccount } from '../../accounts/auth';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** One details renderer, hosted by the desktop rail or the separate phone card. */
@@ -13,6 +15,7 @@ export function SelectionDetails({
   serviceMode?: boolean;
 }) {
   useLanguage();
+  const account = useAccount();
   const {
     data,
     notice,
@@ -23,6 +26,9 @@ export function SelectionDetails({
     feature,
     car,
     cars,
+    journal,
+    accountJournal,
+    openCarJournal,
     filters,
     toggleSave,
     following,
@@ -93,6 +99,16 @@ export function SelectionDetails({
             onToggleSave={feature ? toggleSave : undefined}
             following={following}
             onFollow={car ? () => setFollowing(!following) : undefined}
+            journalEntry={
+              car && journal.find((entry) => entry.vehicleId === car.vehicle.id)
+            }
+            journalFull={journal.length >= JOURNAL_LIMIT}
+            journalReady={account.loaded && (!account.userId || accountJournal.ready)}
+            onJournal={
+              car && car.vehicle.mode !== 'subway'
+                ? () => (account.userId ? void openCarJournal(car) : account.signIn())
+                : undefined
+            }
             onSelectVehicle={(car) => selectVehicle(car, true)}
             onClose={() => {
               pendingCar.current = undefined;

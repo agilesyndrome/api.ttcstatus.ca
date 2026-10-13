@@ -8,8 +8,17 @@ import type { HomeWorkspaceState } from '../useHomeWorkspace';
 /** The map workspace's Journal content, shared by the rail and mobile drawer. */
 export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
-  const { data, accountJournal, journal, setJournal, cars, feed, panel, selectVehicle } =
-    workspace;
+  const {
+    data,
+    accountJournal,
+    journal,
+    journalTarget,
+    setJournal,
+    cars,
+    feed,
+    panel,
+    selectVehicle,
+  } = workspace;
   if (!data) return null;
   return (
     <div
@@ -45,6 +54,7 @@ export function JournalPanel({ workspace }: { workspace: HomeWorkspaceState }) {
           <StreetcarJournal
             key={accountJournal.userId}
             entries={journal}
+            focusVehicleId={journalTarget}
             cars={cars}
             routes={data.routes}
             active={feed.active}

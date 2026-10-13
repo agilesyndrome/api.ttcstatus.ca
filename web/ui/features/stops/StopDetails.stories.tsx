@@ -2,7 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { StopDetails } from './StopDetails';
 import { projectSnapshot } from '../../../../shared/map/live-status';
+import { journalEntry } from '../../../../shared/accounts/journal';
 import { demoData, demoSnapshot } from '../../stories/fixtures';
+const streetcar = projectSnapshot(
+  demoData,
+  demoSnapshot,
+  Date.parse(demoSnapshot.fetchedAt),
+)[0];
 const meta = {
   component: StopDetails,
   args: { data: demoData, onClose: fn() },
@@ -14,7 +20,7 @@ export const Overview: Story = {};
 export const Stop: Story = { args: { feature: demoData.features[0] } };
 export const Streetcar: Story = {
   args: {
-    car: projectSnapshot(demoData, demoSnapshot, Date.parse(demoSnapshot.fetchedAt))[0],
+    car: streetcar,
   },
 };
 export const SavedWithNearbyCars: Story = {
@@ -41,8 +47,22 @@ export const ComparisonActions: Story = {
 };
 export const FollowingStreetcar: Story = {
   args: {
-    car: projectSnapshot(demoData, demoSnapshot, Date.parse(demoSnapshot.fetchedAt))[0],
+    car: streetcar,
     following: true,
     onFollow: fn(),
+    onJournal: fn(),
+    journalReady: true,
+  },
+};
+export const RiddenStreetcar: Story = {
+  args: {
+    car: streetcar,
+    following: true,
+    onFollow: fn(),
+    onJournal: fn(),
+    journalEntry: {
+      ...journalEntry(streetcar, demoData.routes, new Date(demoSnapshot.fetchedAt)),
+      status: 'ridden',
+    },
   },
 };

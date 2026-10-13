@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { JOURNAL_LIMIT, journalEntry } from '../../../../shared/accounts/journal';
 import { english } from '../../../../shared/i18n/messages';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
 import { DEFAULT_FILTERS, validFilters } from '../../commute';
@@ -30,6 +31,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   );
   const saved = useSavedStops();
   const accountJournal = useAccountJournal();
+  const [journalTarget, setJournalTarget] = useState<string>();
   const [snakeOpen, setSnakeOpen] = useState(Boolean(initialSnakeVersion));
   const feed = useVehicleFeed(filters.live && Boolean(data), {
     polling: !snakeOpen,
@@ -46,6 +48,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     previous.current = cars;
   }, [cars]);
   const selection = useSelection(data, cars, filters, setFilters);
+  useEffect(() => {
+    if (selection.panel !== 'journal') setJournalTarget(undefined);
+  }, [selection.panel]);
   // Older saved preferences and links could hide both rail layers. The
   // three-choice control always has a visible, representable selection.
   useEffect(() => {
@@ -101,6 +106,24 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
         : [...current, feature.id],
     );
   }
+  async function openCarJournal(car: PlottedVehicle) {
+    if (!data || !accountJournal.userId || car.vehicle.mode === 'subway') return;
+    const id = car.vehicle.id;
+    if (!accountJournal.entries.some((entry) => entry.vehicleId === id)) {
+      if (!accountJournal.ready || accountJournal.entries.length >= JOURNAL_LIMIT) return;
+      const saved = await accountJournal.change((entries) =>
+        entries.some((entry) => entry.vehicleId === id)
+          ? entries
+          : [...entries, journalEntry(car, data.routes)],
+      );
+      if (!saved) {
+        selection.setNotice('journal.yourChangeCouldNotBeSavedPleaseTryAgain');
+        return;
+      }
+    }
+    setJournalTarget(id);
+    selection.setPanel('journal');
+  }
   useShortcuts(active && shortcutsEnabled && !snakeOpen, {
     '/': () => document.querySelector<HTMLInputElement>('.search input')?.focus(),
     e: () => selection.setPanel('explore'),
@@ -125,7 +148,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     setFilters,
     accountJournal,
     journal: accountJournal.entries,
+    journalTarget,
     setJournal: accountJournal.change,
+    openCarJournal,
     snakeOpen,
     setSnakeOpen,
     shortcutHelp,

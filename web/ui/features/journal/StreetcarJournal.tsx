@@ -1,7 +1,7 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t, getLocale } from '../../i18n';
 import { useLanguage } from '../../i18n/react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { Route } from '../../../../shared/map/model';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/accounts/journal';
 interface Props {
   entries: JournalEntry[];
+  focusVehicleId?: string;
   cars: PlottedVehicle[];
   routes: Route[];
   active: boolean;
@@ -21,6 +22,7 @@ interface Props {
 }
 export function StreetcarJournal({
   entries,
+  focusVehicleId,
   cars,
   routes,
   active,
@@ -31,7 +33,10 @@ export function StreetcarJournal({
 }: Props) {
   useLanguage();
   const id = useId();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(focusVehicleId ?? '');
+  const [target, setTarget] = useState(focusVehicleId);
+  const targetArticle = useRef<HTMLElement>(null);
+  const focusedTarget = useRef<string | undefined>(undefined);
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<string>();
   const [note, setNote] = useState('');
@@ -45,18 +50,29 @@ export function StreetcarJournal({
     const needle = query.trim().toLowerCase();
     return entries
       .filter((entry) =>
-        [entry.label, entry.vehicleId, entry.routeNumber, entry.routeName, entry.note]
-          .join(' ')
-          .toLowerCase()
-          .includes(needle),
+        target
+          ? entry.vehicleId === target
+          : [entry.label, entry.vehicleId, entry.routeNumber, entry.routeName, entry.note]
+              .join(' ')
+              .toLowerCase()
+              .includes(needle),
       )
       .sort(
         (a, b) =>
           b.recordedAt.localeCompare(a.recordedAt) ||
           a.vehicleId.localeCompare(b.vehicleId, undefined, { numeric: true }),
       );
-  }, [entries, query]);
+  }, [entries, query, target]);
   const currentPage = Math.min(page, Math.max(0, Math.ceil(results.length / 10) - 1));
+  useEffect(() => {
+    if (!target || focusedTarget.current === target || !targetArticle.current) return;
+    const frame = requestAnimationFrame(() => {
+      focusedTarget.current = target;
+      targetArticle.current?.scrollIntoView({ block: 'center' });
+      targetArticle.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target, results]);
   return (
     <section className="streetcar-journal">
       <h1>{t('journal.streetcarJournal')}</h1>
@@ -162,6 +178,7 @@ export function StreetcarJournal({
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
+              setTarget(undefined);
               setPage(0);
             }}
             placeholder={t('journal.carRouteOrNote')}
@@ -186,6 +203,8 @@ export function StreetcarJournal({
             <article
               className="journal-entry"
               key={entry.vehicleId}
+              ref={target === entry.vehicleId ? targetArticle : undefined}
+              tabIndex={target === entry.vehicleId ? -1 : undefined}
               aria-label={t('journal.collectedCar2') + entry.label}
             >
               <div className="section-heading">

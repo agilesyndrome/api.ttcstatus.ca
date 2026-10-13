@@ -231,15 +231,6 @@ select:focus-visible {
   font-size: 12px;
   margin-bottom: 0;
 }
-.journal-car-actions {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-.journal-car-actions .text-button {
-  display: block;
-  margin: 8px 0;
-}
 .auth-controls {
   display: flex;
   align-items: center;
