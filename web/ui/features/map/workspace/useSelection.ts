@@ -124,8 +124,7 @@ export function useSelection(
   useEffect(() => {
     if (!car || pendingCar.current !== car.vehicle.id) return;
     pendingCar.current = undefined;
-    if (selectedRoute && selectedRoute !== car.vehicle.routeId)
-      setSelectedRoute(undefined);
+    if (selectedRoute) setSelectedRoute(undefined);
     setFilters((current) => ({
       ...revealRoutes(current, data?.routes ?? [], [car.vehicle.routeId ?? '']),
       live: true,
@@ -168,6 +167,7 @@ export function useSelection(
   }
   function selectVehicle(next: PlottedVehicle, focus = false) {
     pendingCar.current = undefined;
+    setSelectedRoute(undefined);
     setSelection({ kind: 'car', id: next.vehicle.id });
     setNotice('');
     setPanel('explore');
@@ -175,7 +175,6 @@ export function useSelection(
     // The map centers on it without changing the zoom level.
     setFollowing(true);
     if (focus) {
-      setSelectedRoute(undefined);
       setFilters((current) => ({
         ...revealRoutes(current, data?.routes ?? [], [next.vehicle.routeId ?? '']),
         live: true,

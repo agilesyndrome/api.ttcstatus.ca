@@ -30,17 +30,6 @@ export function SelectedStopMarker({
   const voidThreshold = serviceConfig().voidDrynessRatio;
   const color = STATE_COLORS[stop.state];
   const fill = stop.dryness === null ? 0 : Math.min(1, stop.dryness / voidThreshold);
-  // The label is the NEXT CAR (what a rider waits for), not elapsed time —
-  // "next 3m" reads instantly; elapsed lives in the card. Sub-45 s rounds up
-  // to "next 1m", never "next 0m". Without an honest estimate we fall back to
-  // elapsed for due/void (the ring's own story).
-  const estMin = stop.expectedWaitSeconds !== null ? stop.expectedWaitSeconds / 60 : null;
-  const label =
-    estMin !== null
-      ? `next ${Math.max(1, Math.round(estMin))}m`
-      : stop.state === 'due' || stop.state === 'void'
-        ? `${Math.round(stop.minutesSince ?? 0)}m`
-        : null;
   const pulse = stop.state === 'void' && !reducedMotion;
   return (
     <g
@@ -96,36 +85,6 @@ export function SelectedStopMarker({
           />
           {stop.state === 'fresh' && <circle r={3} fill={color} />}
         </>
-      )}
-      {label !== null && (
-        <text
-          className="void-marker__label"
-          y={-16}
-          textAnchor="middle"
-          fontSize={9}
-          fontWeight={700}
-          fill={color}
-          stroke="var(--surface)"
-          strokeWidth={2.5}
-          paintOrder="stroke"
-        >
-          {label}
-        </text>
-      )}
-      {stop.backToBack > 0 && (
-        <text
-          className="void-marker__b2b"
-          y={19}
-          textAnchor="middle"
-          fontSize={8}
-          fontWeight={700}
-          fill="#7b4bb7"
-          stroke="var(--surface)"
-          strokeWidth={2.5}
-          paintOrder="stroke"
-        >
-          b2b×{stop.backToBack} passed
-        </text>
       )}
     </g>
   );

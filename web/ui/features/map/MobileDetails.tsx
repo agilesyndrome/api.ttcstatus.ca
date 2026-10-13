@@ -1,10 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { t } from '../../i18n';
 import { SelectionDetails } from './panels/SelectionDetails';
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
 /** Non-modal details keep the upper map usable; the full navigation drawer is separate. */
-export function MobileDetails({ workspace }: { workspace: HomeWorkspaceState }) {
+export function MobileDetails({
+  workspace,
+  serviceCard,
+}: {
+  workspace: HomeWorkspaceState;
+  serviceCard?: ReactNode;
+}) {
   const scroll = useRef<HTMLDivElement>(null);
   const { selection, notice, panel, mobilePanelOpen } = workspace;
   useEffect(() => {
@@ -14,7 +20,8 @@ export function MobileDetails({ workspace }: { workspace: HomeWorkspaceState }) 
   return (
     <aside className="mobile-details" aria-label={t('workspace.stopAndRouteDetails')}>
       <div className="mobile-details__content" ref={scroll}>
-        <SelectionDetails workspace={workspace} />
+        {serviceCard}
+        <SelectionDetails workspace={workspace} serviceMode={Boolean(serviceCard)} />
       </div>
     </aside>
   );

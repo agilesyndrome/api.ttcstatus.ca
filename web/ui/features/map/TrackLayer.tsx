@@ -31,18 +31,19 @@ export const Tracks = memo(function Tracks({
           ) ??
           activeRoutes.find((route) => !route.overnight) ??
           activeRoutes[0];
+        const dimmed = Boolean(selectedRoute && !edge.routeIds.includes(selectedRoute));
         return (
           <polyline
             key={edge.id}
             className="track"
             points={points(edge.points)}
             fill="none"
-            stroke={route?.color ?? '#7b8794'}
+            stroke={dimmed ? 'var(--muted)' : (route?.color ?? '#7b8794')}
             strokeWidth={activeRoutes.length ? 4.5 : 3}
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray={activeRoutes.length ? undefined : '6 5'}
-            opacity={selectedRoute && !edge.routeIds.includes(selectedRoute) ? 0.18 : 1}
+            opacity={dimmed ? 0.32 : 1}
           />
         );
       })}

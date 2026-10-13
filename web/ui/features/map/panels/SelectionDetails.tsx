@@ -5,7 +5,13 @@ import { StopDetails } from '../../stops/StopDetails';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** One details renderer, hosted by the desktop rail or the separate phone card. */
-export function SelectionDetails({ workspace }: { workspace: HomeWorkspaceState }) {
+export function SelectionDetails({
+  workspace,
+  serviceMode = false,
+}: {
+  workspace: HomeWorkspaceState;
+  serviceMode?: boolean;
+}) {
   useLanguage();
   const {
     data,
@@ -74,6 +80,7 @@ export function SelectionDetails({ workspace }: { workspace: HomeWorkspaceState 
           <StopDetails
             data={data}
             feature={feature}
+            serviceMode={serviceMode}
             car={car}
             cars={cars}
             saved={Boolean(feature && savedStops.includes(feature.id))}
@@ -85,7 +92,7 @@ export function SelectionDetails({ workspace }: { workspace: HomeWorkspaceState 
             now={feed.now}
             onToggleSave={feature ? toggleSave : undefined}
             following={following}
-            onFollow={car && following ? () => setFollowing(false) : undefined}
+            onFollow={car ? () => setFollowing(!following) : undefined}
             onSelectVehicle={(car) => selectVehicle(car, true)}
             onClose={() => {
               pendingCar.current = undefined;

@@ -26,6 +26,13 @@ const wholeMin = (minutes: number | null): string =>
 
 /** The rolling window the "usually" numbers average over, in minutes. */
 const WINDOW_MIN = SERVICE_WINDOW_SECONDS / 60;
+const stateLabels: Record<StopServiceState['state'], string> = {
+  fresh: 'Recently served',
+  due: 'Getting due',
+  void: 'Service gap',
+  unmonitored: 'Status unavailable',
+  collecting: 'Gathering data',
+};
 
 /** The stop's fast read (the street test): three scan lines, minutes only —
  * what's coming, what just passed, and whether cars bunched. The name lives
@@ -52,23 +59,24 @@ export function StopCard({
       aria-label={`Delivered service for ${name ?? stop.stopId}`}
     >
       <div className="service-card__bar">
-        <span
-          className="service-card__dot"
-          style={{ background: STATE_COLORS[stop.state] }}
-          data-state={stop.state}
-        />
-        <strong className="service-card__name">{name ?? stop.stopId}</strong>
-        <span className="service-card__state">{stop.state}</span>
+        <h2 className="service-card__name">{name ?? stop.stopId}</h2>
         <button className="chip" onClick={onClear} aria-label="Clear selected stop">
           ×
         </button>
       </div>
       {controls}
+      <div className="service-card__arrival">
+        <span>Next car</span>
+        <strong>{nextCar}</strong>
+      </div>
+      <p className="service-card__status" data-state={stop.state}>
+        <span
+          className="service-card__status-dot"
+          style={{ background: STATE_COLORS[stop.state] }}
+        />
+        {stateLabels[stop.state]}
+      </p>
       <dl className="service-card__facts">
-        <div>
-          <dt>next car</dt>
-          <dd>{nextCar}</dd>
-        </div>
         <div>
           <dt>last service</dt>
           <dd>

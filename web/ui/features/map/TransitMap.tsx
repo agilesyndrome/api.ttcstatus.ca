@@ -16,6 +16,7 @@ export const TransitMap = memo(function TransitMap({
   data,
   cars = [],
   selectedRoute,
+  highlightRoute,
   selectedFeature,
   focusPoint,
   focusPointLevel,
@@ -54,6 +55,7 @@ export const TransitMap = memo(function TransitMap({
   serviceCarTint,
 }: TransitMapProps) {
   useLanguage();
+  const activeRoute = highlightRoute ?? selectedRoute;
   // E5S3 (docs/optimize-overlay.md): while the camera is under the rider's
   // hands, animated map layers pause — `data-gesturing` on the root SVG
   // tells the CSS to freeze the service dash animations, so no 60 fps paint
@@ -149,12 +151,12 @@ export const TransitMap = memo(function TransitMap({
             selectedFeature?.id === feature.id ||
             feature.kind === 'terminal' ||
             (showStops && feature.routeIds.some((id) => allowedRoutes.has(id)))) &&
-          (!selectedRoute ||
-            feature.routeIds.includes(selectedRoute) ||
+          (!activeRoute ||
+            feature.routeIds.includes(activeRoute) ||
             selectedFeature?.id === feature.id ||
             isEndpoint(feature)),
       ),
-    [data, allowedRoutes, showStops, selectedRoute, selectedFeature, comparisonStops],
+    [data, allowedRoutes, showStops, activeRoute, selectedFeature, comparisonStops],
   );
   // Keep labels readable; reveal ordinary stops at closer zoom levels.
   // Placement depends on the camera, but the inputs are memoized so renders
@@ -168,7 +170,7 @@ export const TransitMap = memo(function TransitMap({
             isEndpoint(feature) ||
             feature.kind === 'terminal' ||
             selectedFeature?.id === feature.id ||
-            level > (showLabels ? 1.5 : 3),
+            level > (showLabels ? 2.7 : 4.2),
         )
         .sort(
           (a, b) =>
@@ -210,7 +212,7 @@ export const TransitMap = memo(function TransitMap({
     const readableLabels = labelFeatures.filter((feature) => {
       const x = (feature.point[0] - camera.x) * scale + 8;
       const y = (feature.point[1] - camera.y) * scale - 19;
-      const box = { x, y, width: feature.name.length * 6 + 10, height: 20 };
+      const box = { x: x - 4, y: y - 4, width: feature.name.length * 6 + 24, height: 28 };
       if (
         x < 8 ||
         y < 35 ||
@@ -246,10 +248,10 @@ export const TransitMap = memo(function TransitMap({
       const left = Math.min(...corners.map((point) => point[0])),
         top = Math.min(...corners.map((point) => point[1]));
       const box = {
-        x: left - 3,
-        y: top - 3,
-        width: Math.max(...corners.map((point) => point[0])) - left + 6,
-        height: Math.max(...corners.map((point) => point[1])) - top + 6,
+        x: left - 8,
+        y: top - 8,
+        width: Math.max(...corners.map((point) => point[0])) - left + 16,
+        height: Math.max(...corners.map((point) => point[1])) - top + 16,
       };
       if (
         box.x < 8 ||
@@ -344,7 +346,7 @@ export const TransitMap = memo(function TransitMap({
         </g>
         <Tracks
           data={data}
-          selectedRoute={selectedRoute}
+          selectedRoute={activeRoute}
           includeOvernight={includeOvernight}
           showStreetcar={showStreetcar}
           showSubway={showSubway}
@@ -420,7 +422,15 @@ export const TransitMap = memo(function TransitMap({
               key={feature.id}
               transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}
             >
-              <text x={8} y={-7} fontSize={11} fill="#43535e">
+              <text
+                className={
+                  selectedFeature?.id === feature.id ? 'map-label__selected' : undefined
+                }
+                x={8}
+                y={-7}
+                fontSize={11}
+                fill="#43535e"
+              >
                 {feature.name}
               </text>
             </g>
@@ -432,7 +442,7 @@ export const TransitMap = memo(function TransitMap({
               (includeOvernight ||
                 !data.routes.find((route) => route.id === car.vehicle.routeId)
                   ?.overnight) &&
-              (!selectedRoute || car.vehicle.routeId === selectedRoute),
+              (!activeRoute || car.vehicle.routeId === activeRoute),
           )
           .map((car) => {
             const tint = serviceCarTint?.(car) ?? null;
@@ -616,7 +626,7 @@ export const TransitMap = memo(function TransitMap({
                     />
                   </g>
                 )}
-                {(detailedCars || selectedVehicleId === car.vehicle.id) && (
+                {(level >= 4.2 || selectedVehicleId === car.vehicle.id) && (
                   <g
                     transform={`translate(${car.point.join(' ')}) scale(${1 / scale})`}
                     pointerEvents="none"

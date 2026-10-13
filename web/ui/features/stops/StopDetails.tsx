@@ -5,6 +5,7 @@ import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { VehicleSnapshot } from '../../../../shared/live/vehicles';
 import { formatDistance, nearbyCars } from '../../commute';
 import { StationArrivals } from './StationArrivals';
+import { VehicleJourney } from './VehicleJourney';
 interface Props {
   data: ViewerData;
   feature?: Feature;
@@ -25,6 +26,7 @@ interface Props {
   onFollow?(): void;
   onToggleSave?(): void;
   onSelectVehicle?(car: PlottedVehicle): void;
+  serviceMode?: boolean;
   onClose(): void;
 }
 export function StopDetails({
@@ -47,6 +49,7 @@ export function StopDetails({
   onOpenJournal,
   onToggleSave,
   onSelectVehicle,
+  serviceMode = false,
   onClose,
 }: Props) {
   useLanguage();
@@ -71,56 +74,62 @@ export function StopDetails({
             ×
           </button>
         </div>
-        <p>
+        <p className="vehicle-route-line">
           {car.vehicle.routeId &&
             `${data.routes.find((route) => route.id === car.vehicle.routeId)?.number ?? car.vehicle.routeId} · `}
           {data.routes.find((route) => route.id === car.vehicle.routeId)?.name ??
             t('header.routeNotSupplied')}
           {car.stale && t('viewer.stalePosition')}
         </p>
-        <p>
-          {car.vehicle.positionKind === 'next-station'
-            ? t('stopDetails.nextStationValueMarkerShowsThePredictedStationNotA', {
-                value1: car.vehicle.nextStopName ?? t('viewer.notSupplied'),
-              })
-            : car.match
-              ? t('stopDetails.positionMatchedToMappedTrack')
-              : t('stopDetails.offMappedTrackShowingGpsLocation')}
-        </p>
-        <dl className="stop-facts">
-          <dt>{t('viewer.positionReported')}</dt>
-          <dd>
-            {car.vehicle.observedAt
-              ? new Date(car.vehicle.observedAt).toLocaleString(getLocale(), {
-                  timeZone: 'America/Toronto',
-                })
-              : t('viewer.timeNotSupplied')}
-          </dd>
-          {car.vehicle.speedMetresPerSecond !== undefined && (
-            <>
-              <dt>{t('viewer.reportedSpeed')}</dt>
-              <dd>
-                {Math.round(car.vehicle.speedMetresPerSecond * 3.6)} {t('snake.kmH')}
-              </dd>
-            </>
-          )}
-        </dl>
         {onFollow && (
-          <>
-            <button className="action-button follow-car" onClick={onFollow}>
-              {t('stopDetails.unfollowValue', { value1: car.vehicle.label })}
+          <div className="vehicle-follow">
+            <button
+              className="action-button follow-car"
+              aria-pressed={Boolean(following)}
+              onClick={onFollow}
+            >
+              {following
+                ? t('vehicleJourney.pauseFollowing')
+                : t('vehicleJourney.followCar')}
             </button>
-            {following && (
-              <p className="microcopy">
-                {car.stale
-                  ? t('stopDetails.waitingForAFreshPositionBeforeMovingTheMap')
-                  : car.vehicle.positionKind === 'next-station'
-                    ? t('stopDetails.followingPredictedStationsPanOrZoomToPause')
-                    : t('stopDetails.followingFreshGpsFixesPanOrZoomToPauseFollowing')}
-              </p>
-            )}
-          </>
+            <span>
+              {following ? t('vehicleJourney.following') : t('vehicleJourney.paused')}
+            </span>
+          </div>
         )}
+        {car.vehicle.mode !== 'subway' && (
+          <VehicleJourney key={car.vehicle.id} data={data} car={car} />
+        )}
+        <details className="vehicle-telemetry">
+          <summary>{t('vehicleJourney.positionDetails')}</summary>
+          <p>
+            {car.vehicle.positionKind === 'next-station'
+              ? t('stopDetails.nextStationValueMarkerShowsThePredictedStationNotA', {
+                  value1: car.vehicle.nextStopName ?? t('viewer.notSupplied'),
+                })
+              : car.match
+                ? t('stopDetails.positionMatchedToMappedTrack')
+                : t('stopDetails.offMappedTrackShowingGpsLocation')}
+          </p>
+          <dl className="stop-facts">
+            <dt>{t('viewer.positionReported')}</dt>
+            <dd>
+              {car.vehicle.observedAt
+                ? new Date(car.vehicle.observedAt).toLocaleString(getLocale(), {
+                    timeZone: 'America/Toronto',
+                  })
+                : t('viewer.timeNotSupplied')}
+            </dd>
+            {car.vehicle.speedMetresPerSecond !== undefined && (
+              <>
+                <dt>{t('viewer.reportedSpeed')}</dt>
+                <dd>
+                  {Math.round(car.vehicle.speedMetresPerSecond * 3.6)} {t('snake.kmH')}
+                </dd>
+              </>
+            )}
+          </dl>
+        </details>
         {onJournal && (
           <div className="journal-car-actions">
             <button
@@ -154,32 +163,42 @@ export function StopDetails({
       .map((route) => route.id),
   );
   return (
-    <section id="details" aria-live="polite">
-      <p className="eyebrow">
-        {feature.kind === 'terminal'
-          ? t('viewer.stationTerminal')
-          : t('stopDetails.transitStop')}
-      </p>
-      <div className="details-heading">
-        <h1>{feature.name}</h1>
-        <button
-          className="close-details"
-          aria-label={t('viewer.closeStopDetails')}
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </div>
-      <p>
-        {feature.routeIds.length
-          ? feature.routeIds
-              .map((id) => {
-                const route = data.routes.find((route) => route.id === id);
-                return route ? `${route.number} ${route.name}` : id;
-              })
-              .join(' · ')
-          : t('stopDetails.physicalTerminalWithoutScheduledStreetcarBoardingRecords')}
-      </p>
+    <section
+      id="details"
+      className={serviceMode ? 'details--service' : undefined}
+      aria-live="polite"
+    >
+      {!serviceMode && (
+        <p className="eyebrow">
+          {feature.kind === 'terminal'
+            ? t('viewer.stationTerminal')
+            : t('stopDetails.transitStop')}
+        </p>
+      )}
+      {!serviceMode && (
+        <div className="details-heading">
+          <h1>{feature.name}</h1>
+          <button
+            className="close-details"
+            aria-label={t('viewer.closeStopDetails')}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {!serviceMode && (
+        <p>
+          {feature.routeIds.length
+            ? feature.routeIds
+                .map((id) => {
+                  const route = data.routes.find((route) => route.id === id);
+                  return route ? `${route.number} ${route.name}` : id;
+                })
+                .join(' · ')
+            : t('stopDetails.physicalTerminalWithoutScheduledStreetcarBoardingRecords')}
+        </p>
+      )}
       {onToggleSave && (
         <>
           <button

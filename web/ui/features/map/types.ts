@@ -14,6 +14,8 @@ export interface TransitMapProps {
   data: ViewerData;
   cars?: PlottedVehicle[];
   selectedRoute?: string;
+  /** Visually focus a route without changing the camera to its full extent. */
+  highlightRoute?: string;
   selectedFeature?: Feature;
   focusPoint?: Point;
   /** Relative map scale for a focus point; 2.5 shows a neighborhood, 5 is detail view. */

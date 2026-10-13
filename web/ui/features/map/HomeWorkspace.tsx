@@ -25,6 +25,7 @@ import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
 
 import { useServiceOverlay } from '../service/ServiceLayer';
+import { STATE_COLORS } from '../service/wave-field';
 
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
@@ -72,6 +73,15 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     closeExport,
     reset,
   } = workspace;
+  const selectedDayRoutes = feature?.routeIds.filter(
+    (id) => !data?.routes.find((route) => route.id === id)?.overnight,
+  );
+  const visualRoute =
+    car?.vehicle.routeId ??
+    selectedRoute ??
+    (filters.serviceOverlay && selectedDayRoutes?.length === 1
+      ? selectedDayRoutes[0]
+      : undefined);
   // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
   // flag off or signed out → nothing renders and no /service/* requests are
   // made. Hard-suspended while the snake game is open (E7S7) — the game
@@ -81,6 +91,13 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     cars,
     snakeOpen,
     filters.live && !!filters.serviceOverlay,
+    () => {
+      workspace.setSelection(undefined);
+      workspace.setFocusPoint(undefined);
+      workspace.setFollowing(false);
+    },
+    visualRoute,
+    feature,
   );
   const compact = useCompactNav();
   const phone = usePhoneLayout();
@@ -161,7 +178,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         <PageHeader
           data={data}
           cars={cars}
-          onSelect={selectFeature}
+          onSelect={selectFeatureWithService}
           onSelectVehicle={(car) => selectVehicle(car, true)}
           onReset={resetWithService}
           actions={null}
@@ -225,6 +242,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                       : []
                 }
                 selectedRoute={selectedRoute}
+                highlightRoute={visualRoute}
                 selectedFeature={feature}
                 selectedVehicleId={car?.vehicle.id}
                 focusPoint={focusPoint}
@@ -238,7 +256,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                   /* Zooming keeps camera following; only panning takes over. */
                 }}
                 mapControls={false}
-                mapPopup={service.card}
+                mapPopup={workspace.selection ? null : service.card}
                 savedStopIds={savedStops}
                 showLabels={filters.labels}
                 includeOvernight={filters.overnight}
@@ -253,15 +271,42 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 overlay={service.overlay ?? undefined}
               />
               <CachedMapNotice workspace={workspace} />
-            {!compact && (workspace.selection || workspace.notice) && (
+              {service.underlay && (
+                <div className="map-service-legend" aria-label="Service colours">
+                  <strong>Service on tracks</strong>
+                  {(
+                    [
+                      ['fresh', 'Recently served'],
+                      ['due', 'Getting due'],
+                      ['void', 'Service gap'],
+                      ['unmonitored', 'No data'],
+                    ] as const
+                  ).map(([state, label]) => (
+                    <span key={state}>
+                      <i style={{ background: STATE_COLORS[state] }} />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {!compact && (workspace.selection || workspace.notice) && (
                 <aside
                   className="workspace-details"
                   aria-label={t('workspace.stopAndRouteDetails')}
                 >
-                  <SelectionDetails workspace={workspace} />
+                  {feature && !car && service.card}
+                  <SelectionDetails
+                    workspace={workspace}
+                    serviceMode={Boolean(feature && !car && service.card)}
+                  />
                 </aside>
               )}
-              {compact && <MobileDetails workspace={workspace} />}
+              {compact && (
+                <MobileDetails
+                  workspace={workspace}
+                  serviceCard={feature && !car ? service.card : null}
+                />
+              )}
               {workspace.location && (
                 <aside className="workspace-nearby">
                   <NearbyStops

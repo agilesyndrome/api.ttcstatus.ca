@@ -103,26 +103,12 @@ svg[data-gesturing='true'] .service-trail-flow {
   align-items: center;
   gap: 6px;
 }
-.service-card__dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 .service-card__name {
   min-width: 0;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.service-card__state {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  opacity: 0.65;
-  margin-left: auto;
-  flex-shrink: 0;
 }
 .service-card__sentence {
   margin: 0;
@@ -172,11 +158,6 @@ svg[data-gesturing='true'] .service-trail-flow {
   font-size: 13.5px;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-/* The first row is the one a rider needs first — the next car. */
-.service-card__facts > div:first-child dd {
-  font-size: 15px;
-  font-weight: 750;
 }
 /* The direction switch rides compact: gloved fingers need big targets
  * (≥32px), not big text — one line each, ellipsised, never a wrap. */

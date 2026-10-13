@@ -30,6 +30,7 @@ export interface TrackServiceProps {
    * dash cycle — city-wide zoom keeps its static colour field (and its
    * battery); street zoom flows. 0 (default) disables all flows. */
   scale?: number;
+  selectedRoute?: string;
 }
 
 const DASH_PATTERN = '3 11';
@@ -51,6 +52,7 @@ export const TrackService = memo(function TrackService({
   cars,
   visibleEdges = null,
   scale = 0,
+  selectedRoute,
 }: TrackServiceProps) {
   // The heartbeat produces a new states map every second; the signature only
   // changes when a quantised value actually moves — that's the repaint gate.
@@ -66,12 +68,13 @@ export const TrackService = memo(function TrackService({
       // E5S1: only edges near the camera paint — the whole network's DOM
       // never rides a route-level zoom.
       if (visibleEdges && !visibleEdges.has(edge.id)) continue;
+      if (selectedRoute && !edge.routeIds.includes(selectedRoute)) continue;
       const segments = edgeServiceSegments(edge, features, statesRef.current);
       if (segments.length > 0) byEdge.push({ edgeId: edge.id, segments });
     }
     return byEdge;
     // Repaints gate on the field's quantised signature, not the 1 Hz map.
-  }, [edges, features, signature, visibleEdges]);
+  }, [edges, features, signature, visibleEdges, selectedRoute]);
   const trails = useMemo(() => {
     if (!cars || cars.length === 0) return [];
     const edgesById = new Map(edges.map((edge) => [edge.id, edge]));
@@ -80,10 +83,11 @@ export const TrackService = memo(function TrackService({
       const edge = car.match ? edgesById.get(car.match.edgeId) : undefined;
       if (!edge) continue;
       if (visibleEdges && !visibleEdges.has(edge.id)) continue;
+      if (selectedRoute && !edge.routeIds.includes(selectedRoute)) continue;
       collected.push(...carTrailSegments(edge, car, features, statesRef.current));
     }
     return collected;
-  }, [cars, edges, features, signature, visibleEdges]);
+  }, [cars, edges, features, signature, visibleEdges, selectedRoute]);
   /** E5S2: a flow dash renders only when the segment is long enough on
    * screen to carry at least one dash cycle — the colour line always stays. */
   const flows = (segment: TrackSegment) =>

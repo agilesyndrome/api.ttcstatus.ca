@@ -111,6 +111,9 @@ export function useServiceOverlay(
    * (E7S7). The overlay never appears over the game, by construction. */
   suspended = false,
   requested = false,
+  onClearWorkspace?: () => void,
+  selectedRoute?: string,
+  selectedFeature?: Feature,
 ): ServiceOverlay {
   const overlayEnabled = useOverlayEnabled();
   const enabled = requested && !suspended && Boolean(data) && overlayEnabled === true;
@@ -302,6 +305,11 @@ export function useServiceOverlay(
       setSelectedStopId(feature.stopIds.find((id) => statesByStop.has(id)) ?? null);
     };
   }, [statesByStop, data]);
+  const selectFromFeatureRef = useRef(selectFromFeature);
+  selectFromFeatureRef.current = selectFromFeature;
+  useEffect(() => {
+    if (enabled) selectFromFeatureRef.current(selectedFeature);
+  }, [enabled, selectedFeature?.id, feed.states.length]);
   const empty = {
     underlay: null,
     overlay: null,
@@ -322,6 +330,7 @@ export function useServiceOverlay(
   const clearSelection = () => {
     setSelectedStopId(null);
     setIntersectionIds(null);
+    onClearWorkspace?.();
   };
   const pickPlatform = (stopId: string) => {
     setIntersectionIds(null);
@@ -455,6 +464,7 @@ export function useServiceOverlay(
           cars={cars}
           visibleEdges={visibleEdges}
           scale={settled?.scale ?? 0}
+          selectedRoute={selectedRoute}
         />
       );
     },
