@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { english } from '../../../../shared/i18n/messages';
 import { projectSnapshot, type PlottedVehicle } from '../../../../shared/map/live-status';
 import { DEFAULT_FILTERS, validFilters } from '../../commute';
@@ -7,11 +7,13 @@ import { useTheme } from '../../hooks/useTheme';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { useScreenActive } from '../../services/platform/react';
 import { useRoute } from '../../services/navigation/react';
+import { currentRoute } from '../../services/navigation/history';
 import { snakeVersionForPath, type SnakeVersion } from '../../snake-route';
 import { useAccountJournal } from '../journal/useAccountJournal';
 import { clearPendingJournal, readPendingJournal } from '../journal/pendingJournal';
 import { useMapExport } from '../export/useMapExport';
 import { trackEvent } from '../../analytics';
+import { hasDefaultView, readDefaultView, writeDefaultViewTools } from './default-view';
 import { useVehicleFeed } from './useVehicleFeed';
 import { useStaticMap } from './useStaticMap';
 import { useSavedStops } from './workspace/useSavedStops';
@@ -28,6 +30,10 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   // The imperative camera seam: the Save/Reset Default Map View tools read
   // the current view and command the landing view through it.
   const mapControls = useRef<TransitMapControls | null>(null);
+  // The device's saved default (a cookie, read synchronously). Its tools
+  // apply at mount unless the URL carries a share link — links win over
+  // every local choice.
+  const savedDefault = useMemo(() => readDefaultView(), []);
   const [filters, setFilters] = usePreference(
     'ttc:filters:v1',
     DEFAULT_FILTERS,
@@ -77,6 +83,25 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     if (!filters.streetcar && !filters.subway)
       setFilters((current) => ({ ...current, streetcar: true, subway: true }));
   }, [filters.streetcar, filters.subway, setFilters]);
+  // The saved default's tools apply at mount, before first paint, so the map
+  // opens with them (a share link in the URL wins over every local choice).
+  useLayoutEffect(() => {
+    if (!savedDefault?.tools) return;
+    if (new URL(currentRoute(), 'https://ttcstatus.ca').hash) return;
+    setFilters((current) => ({ ...current, ...savedDefault.tools }));
+  }, [savedDefault, setFilters]);
+  // While a saved default exists, its tools stay current: the camera only
+  // moves when Save/Update is pressed, but the tools always track the
+  // visitor's latest choices.
+  useEffect(() => {
+    if (hasDefaultView())
+      writeDefaultViewTools({
+        streetcar: filters.streetcar,
+        subway: filters.subway,
+        live: filters.live,
+        serviceOverlay: Boolean(filters.serviceOverlay),
+      });
+  }, [filters.streetcar, filters.subway, filters.live, filters.serviceOverlay]);
   const location = useLocation({ data, ...selection });
   const shownRoutes =
     data?.routes

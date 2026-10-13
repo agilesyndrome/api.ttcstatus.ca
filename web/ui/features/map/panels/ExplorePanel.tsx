@@ -34,7 +34,16 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   const saveDefault = () => {
     const camera = mapControls?.current?.camera();
     if (!camera) return;
-    writeDefaultView(camera, data.bounds);
+    writeDefaultView(
+      camera,
+      {
+        streetcar: filters.streetcar,
+        subway: filters.subway,
+        live: filters.live,
+        serviceOverlay: Boolean(filters.serviceOverlay),
+      },
+      data.bounds,
+    );
     setHasDefault(hasDefaultView());
     trackEvent('saved-default-view');
   };

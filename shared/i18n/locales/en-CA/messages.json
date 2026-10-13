@@ -1480,7 +1480,7 @@
   "workspace.playStreetcarSnake": "Play Streetcar Snake",
   "workspace.profileAndBadgePrivacySettings": "Profile and badge privacy settings →",
   "workspace.saveDefaultMapView": "Save default map view",
-  "workspace.saveDefaultMapViewTitle": "This device opens the map on the view you see now",
+  "workspace.saveDefaultMapViewTitle": "This device opens the map to this view and these tools",
   "workspace.updateDefaultMapView": "Update default map view",
   "workspace.resetDefaultMapView": "Reset default map view",
   "workspace.resetDefaultMapViewTitle": "Forget this device's saved view; the map picks its own landing view again",

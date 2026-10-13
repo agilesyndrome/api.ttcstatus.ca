@@ -55,7 +55,7 @@ export function useMapCamera({
   const initial = fitCamera(data.bounds, size.width / size.height);
   // The device's saved default view rides a cookie (read synchronously — map
   // init never waits); it wins over the computed landing view.
-  const savedView = useMemo(() => readDefaultView(), [data]);
+  const savedDefault = useMemo(() => readDefaultView(), [data]);
   const landFor = useCallback(
     (aspect: number) => {
       const standard = landingCamera(
@@ -63,9 +63,12 @@ export function useMapCamera({
         data.features.map((feature) => feature.point),
         aspect,
       );
-      return (savedView && defaultViewCamera(savedView, data.bounds, aspect)) ?? standard;
+      return (
+        (savedDefault && defaultViewCamera(savedDefault.view, data.bounds, aspect)) ??
+        standard
+      );
     },
-    [data, savedView],
+    [data, savedDefault],
   );
   // Portrait screens land on the dense-core view instead (landingCamera);
   // the fit stays one gesture (zoom out) or reset away.

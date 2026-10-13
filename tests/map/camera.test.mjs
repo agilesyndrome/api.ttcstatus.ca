@@ -11,6 +11,7 @@ const {
   readDefaultView,
   hasDefaultView,
   writeDefaultView,
+  writeDefaultViewTools,
   clearDefaultView,
 } = await compileModules(`
   export * from './shared/map/camera';
@@ -158,13 +159,27 @@ test('a saved view reconstitutes at the current aspect, keeping centre and zoom'
 });
 
 test('the default view rides a browser cookie and survives round trips', () => {
+  // A browser-shaped cookie jar: the getter returns name=value pairs only,
+  // and setting the same name again replaces the pair (attributes dropped).
+  const sets = [];
   const jar = [];
   globalThis.document = {
     get cookie() {
       return jar.join('; ');
     },
     set cookie(value) {
-      jar.push(value);
+      sets.push(value);
+      const pair = value.split(';')[0];
+      if (pair.endsWith('=')) {
+        // An expired empty pair deletes the cookie.
+        const index = jar.indexOf(pair);
+        if (index >= 0) jar.splice(index, 1);
+        return;
+      }
+      const name = pair.slice(0, pair.indexOf('='));
+      const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
+      if (index >= 0) jar[index] = pair;
+      else jar.push(pair);
     },
   };
   try {
@@ -172,33 +187,128 @@ test('the default view rides a browser cookie and survives round trips', () => {
     assert.equal(readDefaultView(), undefined);
     assert.equal(hasDefaultView(), false);
 
-    writeDefaultView(view(700, 500, 600), network);
+    writeDefaultView(view(700, 500, 600), undefined, network);
     const stored = decodeURIComponent(
-      jar[0].match(/ttc:default-view:v1=([^;]*)/)?.[1] ?? '',
+      sets[0].match(/ttc:default-view:v1=([^;]*)/)?.[1] ?? '',
     );
     assert.deepEqual(JSON.parse(stored), { cx: 700, cy: 500, width: 600 });
-    assert.match(jar[0], /max-age=31536000/);
-    assert.match(jar[0], /SameSite=Lax/);
-    assert.deepEqual(readDefaultView(), { cx: 700, cy: 500, width: 600 });
+    assert.match(sets[0], /max-age=31536000/);
+    assert.match(sets[0], /SameSite=Lax/);
+    const read = readDefaultView();
+    assert.deepEqual(read?.view, { cx: 700, cy: 500, width: 600 });
+    assert.equal(read?.tools, undefined);
     assert.equal(hasDefaultView(), true);
 
     // A corrupt cookie degrades to "no default", never a broken camera.
-    jar.length = 0;
     globalThis.document = {
       get cookie() {
         return 'ttc:default-view:v1=%7B%22cx%22%3A%22junk%22%7D';
       },
       set cookie(value) {
-        jar.push(value);
+        sets.push(value);
       },
     };
     assert.equal(readDefaultView(), undefined);
     assert.equal(hasDefaultView(), false);
 
     // Clearing expires the cookie.
-    jar.length = 0;
+    globalThis.document = {
+      get cookie() {
+        return jar.join('; ');
+      },
+      set cookie(value) {
+        sets.push(value);
+      },
+    };
     clearDefaultView();
-    assert.match(jar[0], /max-age=0/);
+    assert.match(sets.at(-1), /max-age=0/);
+  } finally {
+    delete globalThis.document;
+  }
+});
+
+test('a saved default carries the map tools, and tools update in place', () => {
+  const sets = [];
+  const jar = [];
+  globalThis.document = {
+    get cookie() {
+      return jar.join('; ');
+    },
+    set cookie(value) {
+      sets.push(value);
+      const pair = value.split(';')[0];
+      const name = pair.slice(0, pair.indexOf('='));
+      const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
+      if (index >= 0) jar[index] = pair;
+      else jar.push(pair);
+    },
+  };
+  try {
+    // Tools without a saved view cannot exist: nothing to attach them to.
+    writeDefaultViewTools({
+      streetcar: true,
+      subway: true,
+      live: true,
+      serviceOverlay: false,
+    });
+    assert.equal(jar.length, 0);
+
+    writeDefaultView(
+      view(700, 500, 600),
+      { streetcar: false, subway: true, live: false, serviceOverlay: true },
+      network,
+    );
+    let read = readDefaultView();
+    assert.deepEqual(read?.view, { cx: 700, cy: 500, width: 600 });
+    assert.deepEqual(read?.tools, {
+      streetcar: false,
+      subway: true,
+      live: false,
+      serviceOverlay: true,
+    });
+
+    // Rewriting tools keeps the saved camera exactly as it was.
+    writeDefaultViewTools({
+      streetcar: true,
+      subway: false,
+      live: true,
+      serviceOverlay: false,
+    });
+    read = readDefaultView();
+    assert.deepEqual(read?.view, { cx: 700, cy: 500, width: 600 });
+    assert.deepEqual(read?.tools, {
+      streetcar: true,
+      subway: false,
+      live: true,
+      serviceOverlay: false,
+    });
+
+    // An older view-only cookie reads as no tools.
+    jar.length = 0;
+    globalThis.document = {
+      get cookie() {
+        return `ttc:default-view:v1=${encodeURIComponent(JSON.stringify({ cx: 1, cy: 2, width: 3 }))}`;
+      },
+      set cookie(value) {
+        jar.push(value);
+      },
+    };
+    read = readDefaultView();
+    assert.deepEqual(read?.view, { cx: 1, cy: 2, width: 3 });
+    assert.equal(read?.tools, undefined);
+
+    // Malformed tools are dropped whole, never half-applied.
+    globalThis.document = {
+      get cookie() {
+        return `ttc:default-view:v1=${encodeURIComponent(
+          JSON.stringify({ cx: 1, cy: 2, width: 3, tools: { streetcar: 'yes' } }),
+        )}`;
+      },
+      set cookie(value) {
+        jar.push(value);
+      },
+    };
+    assert.equal(readDefaultView()?.tools, undefined);
   } finally {
     delete globalThis.document;
   }

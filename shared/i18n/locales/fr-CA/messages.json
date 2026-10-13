@@ -793,7 +793,7 @@
   "workspace.playStreetcarSnake": "Jouer à Serpent tramway",
   "workspace.profileAndBadgePrivacySettings": "Paramètres du profil et de confidentialité des badges →",
   "workspace.saveDefaultMapView": "Enregistrer la vue par défaut de la carte",
-  "workspace.saveDefaultMapViewTitle": "Cette ouverture de carte se fait sur la vue actuelle, sur cet appareil",
+  "workspace.saveDefaultMapViewTitle": "Cette ouverture de carte se fait sur cette vue et ces outils, sur cet appareil",
   "workspace.updateDefaultMapView": "Mettre à jour la vue par défaut de la carte",
   "workspace.resetDefaultMapView": "Réinitialiser la vue par défaut de la carte",
   "workspace.resetDefaultMapViewTitle": "Oublier la vue enregistrée sur cet appareil ; la carte retrouve son accueil par défaut",

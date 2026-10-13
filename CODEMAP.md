@@ -87,7 +87,8 @@ redirects into the workspace panel.
 
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
 selection focus, gestures and camera controls; `default-view.ts` persists the
-device's default map view in a cookie (read synchronously at init, never the
+device's default map opening — the camera plus the Explore map tools (rail
+layers, live map mode) — in a cookie (read synchronously at init, never the
 user profile) and the Explore panel's Save/Update/Reset tool drives it through
 the camera controls. `TrackLayer.tsx` renders fixed
 tracks. Frozen export state belongs to `features/export/useMapExport.ts`.
