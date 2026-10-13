@@ -17,6 +17,7 @@ import { useStaticMap } from './useStaticMap';
 import { useSavedStops } from './workspace/useSavedStops';
 import { useSelection } from './workspace/useSelection';
 import { useLocation } from './workspace/useLocation';
+import type { TransitMapControls } from './types';
 
 const validBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
@@ -24,6 +25,9 @@ const validBoolean = (value: unknown): value is boolean => typeof value === 'boo
 export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   const map = useStaticMap();
   const { data } = map;
+  // The imperative camera seam: the Save/Reset Default Map View tools read
+  // the current view and command the landing view through it.
+  const mapControls = useRef<TransitMapControls | null>(null);
   const [filters, setFilters] = usePreference(
     'ttc:filters:v1',
     DEFAULT_FILTERS,
@@ -170,6 +174,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     shownRoutes,
     toggleSave,
     reset,
+    mapControls,
   };
 }
 export type HomeWorkspaceState = ReturnType<typeof useHomeWorkspace>;

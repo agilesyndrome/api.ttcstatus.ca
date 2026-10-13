@@ -72,6 +72,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     changeExportCars,
     closeExport,
     reset,
+    mapControls,
   } = workspace;
   const selectedDayRoutes = feature?.routeIds.filter(
     (id) => !data?.routes.find((route) => route.id === id)?.overnight,
@@ -195,6 +196,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
             <div className="workspace-map" hidden={panel !== 'explore'}>
               <TransitMap
+                controlsRef={mapControls}
                 mapTools={
                   <>
                     <button

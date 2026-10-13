@@ -55,3 +55,55 @@ export function zoomCamera(
 export function moveCamera(camera: Bounds, dx: number, dy: number): Bounds {
   return { ...camera, x: camera.x + dx, y: camera.y + dy };
 }
+
+/** A persisted camera, reduced to what survives a viewport change: the zoom
+ * (view width in map units) and the view centre — the screen's aspect decides
+ * the height at read time. */
+export interface SavedView {
+  cx: number;
+  cy: number;
+  width: number;
+}
+const clamp = (value: number, low: number, high: number) =>
+  Math.min(high, Math.max(low, value));
+
+/** Validate a camera for persistence. Saved views ride a browser cookie, so
+ * anything can arrive in one — a stale or hand-edited value must never strand
+ * the camera. A view that does not overlap the network at all is not a view
+ * of this map. */
+export function saveableView(camera: Bounds, bounds: Bounds): SavedView | undefined {
+  const { x, y, width, height } = camera;
+  if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0)
+    return undefined;
+  const overlapX = Math.min(x + width, bounds.x + bounds.width) - Math.max(x, bounds.x);
+  const overlapY = Math.min(y + height, bounds.y + bounds.height) - Math.max(y, bounds.y);
+  if (overlapX <= 0 || overlapY <= 0) return undefined;
+  return { cx: x + width / 2, cy: y + height / 2, width };
+}
+
+/** Reconstitute a saved view at the current viewport aspect: the saved zoom
+ * and centre hold, the height follows the screen. Slightly out-of-range
+ * values clamp instead of rejecting — the network data may have shifted a
+ * little since the view was saved — but nonsense never yields a camera. */
+export function defaultViewCamera(
+  saved: SavedView,
+  bounds: Bounds,
+  aspect: number,
+): Bounds | undefined {
+  if (!Number.isFinite(aspect) || aspect <= 0) return undefined;
+  if (![saved.cx, saved.cy, saved.width].every(Number.isFinite)) return undefined;
+  const fit = fitCamera(bounds, aspect);
+  const width = clamp(saved.width, fit.width / 40, fit.width);
+  const height = width / aspect;
+  const cx = clamp(
+    saved.cx,
+    bounds.x - bounds.width * 0.2,
+    bounds.x + bounds.width * 1.2,
+  );
+  const cy = clamp(
+    saved.cy,
+    bounds.y - bounds.height * 0.2,
+    bounds.y + bounds.height * 1.2,
+  );
+  return { x: cx - width / 2, y: cy - height / 2, width, height };
+}

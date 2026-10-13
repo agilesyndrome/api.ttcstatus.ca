@@ -9,6 +9,11 @@ export interface TransitMapControls {
   cancelGesture(): void;
   /** The camera's current view width in map units (zoom level for callers). */
   cameraWidth(): number;
+  /** The camera's full current view — the Save Default Map View tool persists it. */
+  camera(): Bounds;
+  /** Glide back to the landing view (the device's saved default view, or the
+   * computed one): the Reset Default Map View tool's way home. */
+  reland(): void;
 }
 export interface TransitMapProps {
   data: ViewerData;

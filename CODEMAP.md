@@ -86,7 +86,10 @@ sliver math runs in the browser, never at request time. The `/sla` path
 redirects into the workspace panel.
 
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
-selection focus, gestures and camera controls. `TrackLayer.tsx` renders fixed
+selection focus, gestures and camera controls; `default-view.ts` persists the
+device's default map view in a cookie (read synchronously at init, never the
+user profile) and the Explore panel's Save/Update/Reset tool drives it through
+the camera controls. `TrackLayer.tsx` renders fixed
 tracks. Frozen export state belongs to `features/export/useMapExport.ts`.
 
 `web/map/` remains the standalone viewer. Its `rendering/` directory contains DOM

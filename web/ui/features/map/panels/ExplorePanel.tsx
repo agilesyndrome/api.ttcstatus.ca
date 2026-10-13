@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
 import { trackEvent } from '../../../analytics';
 import { SegmentedControl } from '../../../components/SegmentedControl';
+import { clearDefaultView, hasDefaultView, writeDefaultView } from '../default-view';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
 /** Explore contains actions that change the map; selected data stays in the main pane. */
 export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
+  // The device's default view lives in a cookie, read synchronously; the
+  // local mirror keeps the three-state tool honest between renders.
+  const [hasDefault, setHasDefault] = useState(hasDefaultView);
   const {
     data,
     savedStops,
@@ -23,8 +28,22 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
     surprise,
     previewMap,
     panel,
+    mapControls,
   } = workspace;
   if (!data) return null;
+  const saveDefault = () => {
+    const camera = mapControls?.current?.camera();
+    if (!camera) return;
+    writeDefaultView(camera, data.bounds);
+    setHasDefault(hasDefaultView());
+    trackEvent('saved-default-view');
+  };
+  const resetDefault = () => {
+    clearDefaultView();
+    setHasDefault(false);
+    mapControls?.current?.reland();
+    trackEvent('reset-default-view');
+  };
   const railMode =
     filters.subway && !filters.streetcar
       ? 'subway'
@@ -157,6 +176,28 @@ export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
         </div>
       )}
       <div className="explore-tools">
+        {hasDefault ? (
+          <>
+            <button className="action-button" onClick={saveDefault}>
+              {t('workspace.updateDefaultMapView')}
+            </button>
+            <button
+              className="action-button"
+              onClick={resetDefault}
+              title={t('workspace.resetDefaultMapViewTitle')}
+            >
+              {t('workspace.resetDefaultMapView')}
+            </button>
+          </>
+        ) : (
+          <button
+            className="action-button"
+            onClick={saveDefault}
+            title={t('workspace.saveDefaultMapViewTitle')}
+          >
+            {t('workspace.saveDefaultMapView')}
+          </button>
+        )}
         <button className="action-button explore-tools__surprise" onClick={surprise}>
           {t('workspace.surpriseMe')}
         </button>

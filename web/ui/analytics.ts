@@ -11,7 +11,9 @@ export type TrackedAction =
   | 'played-snake'
   | 'saved-stop'
   | 'removed-stop'
-  | 'exported-map';
+  | 'exported-map'
+  | 'saved-default-view'
+  | 'reset-default-view';
 
 export function trackEvent(action: TrackedAction) {
   // One report per action per page load is enough for daily distinct counts.

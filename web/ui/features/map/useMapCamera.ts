@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
 import {
+  defaultViewCamera,
   fitCamera,
   landingCamera,
   moveCamera,
   zoomCamera,
 } from '../../../../shared/map/camera';
+import { readDefaultView } from './default-view';
 import { boundsOf, type Bounds, type Point } from '../../../../shared/map/model';
 import type { TransitMapProps } from './types';
 
@@ -51,16 +53,25 @@ export function useMapCamera({
   const [size, setSize] = useState({ width: 1000, height: 700 });
   // `initial` is the full-network fit: the reset target and the zoom-out cap.
   const initial = fitCamera(data.bounds, size.width / size.height);
+  // The device's saved default view rides a cookie (read synchronously — map
+  // init never waits); it wins over the computed landing view.
+  const savedView = useMemo(() => readDefaultView(), [data]);
+  const landFor = useCallback(
+    (aspect: number) => {
+      const standard = landingCamera(
+        data.bounds,
+        data.features.map((feature) => feature.point),
+        aspect,
+      );
+      return (savedView && defaultViewCamera(savedView, data.bounds, aspect)) ?? standard;
+    },
+    [data, savedView],
+  );
   // Portrait screens land on the dense-core view instead (landingCamera);
   // the fit stays one gesture (zoom out) or reset away.
   const landing = useMemo(
-    () =>
-      landingCamera(
-        data.bounds,
-        data.features.map((feature) => feature.point),
-        size.width / size.height,
-      ),
-    [data, size.width, size.height],
+    () => landFor(size.width / size.height),
+    [landFor, size.width, size.height],
   );
   const [camera, setCamera] = useState<Bounds>(landing);
   // The ref is the live camera; the state only schedules re-renders. While
@@ -212,6 +223,10 @@ export function useMapCamera({
         pointers.current.clear();
         moved.current = true;
       },
+      camera: () => cameraRef.current,
+      // Back to the view the map lands on (the device's saved default, or the
+      // computed landing view): the reset-default tool's way home.
+      reland: () => move(landFor(sizeRef.current.width / sizeRef.current.height)),
       cameraWidth: () => cameraRef.current.width,
     };
     return () => {
@@ -229,14 +244,11 @@ export function useMapCamera({
         const zoomLevel = previous.width / current.width;
         const fitted = pristine.current
           ? // An untouched camera re-lands at every size (portrait screens
-            // get the core view); this also covers the very first observer
-            // tick and Safari's URL-bar collapse. Deliberate moves set
-            // `pristine` false, and a reset lands on the plain fit below.
-            landingCamera(
-              data.bounds,
-              data.features.map((feature) => feature.point),
-              width / height,
-            )
+            // get the core view, a saved default view holds); this also
+            // covers the very first observer tick and Safari's URL-bar
+            // collapse. Deliberate moves set `pristine` false, and a reset
+            // lands on the plain fit below.
+            landFor(width / height)
           : zoomLevel < 1.01
             ? next
             : {
