@@ -29,7 +29,7 @@ const feed = {
   now: Date.parse(demoSnapshot.fetchedAt),
 };
 
-function makeWorkspace(panel: 'explore' | 'journal' | 'badges') {
+function makeWorkspace(panel: 'explore' | 'journal' | 'badges' | 'sla') {
   const journal = panel === 'badges' ? expandedEntries : entries;
   return {
     data: demoData,
@@ -77,6 +77,7 @@ function makeWorkspace(panel: 'explore' | 'journal' | 'badges') {
 export const exploreWorkspace = makeWorkspace('explore');
 export const journalWorkspace = makeWorkspace('journal');
 export const badgesWorkspace = makeWorkspace('badges');
+export const slaWorkspace = makeWorkspace('sla');
 
 export const storyAccount: Account = {
   enabled: true,

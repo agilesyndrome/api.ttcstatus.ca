@@ -292,20 +292,11 @@ svg[data-gesturing='true'] .service-trail-flow {
   border-radius: 3px;
 }
 
-/* --- SLA status page (/sla; docs/sla-stories.md Epic 8, E8S5) ------------
- * A USA-status.com-style status page: banner, filterable route rows with
- * tick strips, expandable stop rows. Band colours match the map overlay's
- * state ramp (wave-field.ts STATE_COLORS) so map and page read the same. */
-.sla-page {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 32px 24px 64px;
-}
-.sla-page h1 {
-  font-size: 26px;
-  margin: 8px 0 16px;
-  overflow-wrap: anywhere;
-}
+/* --- SLA status report (the workspace Status panel; docs/sla-stories.md
+ * Epic 8, E8S5): A USA-status.com-style status report: banner, filterable
+ * route rows with tick strips, expandable stop rows. Band colours match the
+ * map overlay's state ramp (wave-field.ts STATE_COLORS) so map and panel
+ * read the same. */
 .sla-loading,
 .sla-failed,
 .sla-empty {
@@ -658,9 +649,6 @@ svg[data-gesturing='true'] .service-trail-flow {
   line-height: 1.55;
 }
 @media (max-width: 640px) {
-  .sla-page {
-    padding: 20px 14px 48px;
-  }
   .tick-strip__tick {
     width: 10px;
     height: 22px;

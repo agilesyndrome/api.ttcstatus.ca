@@ -32,10 +32,6 @@
 .app-nav .main-nav__section {
   margin: 0;
 }
-.app-nav .main-nav__pages {
-  margin-top: 8px;
-  padding-top: 8px;
-}
 .app-nav .main-nav [data-nav-item],
 .app-nav .main-nav__link {
   min-height: 43px;
@@ -699,12 +695,14 @@
   margin: 0 auto;
 }
 .workspace-view .streetcar-journal h1,
-.workspace-view .route-pulse h2 {
+.workspace-view .route-pulse h2,
+.workspace-view .sla-panel h2 {
   font-size: clamp(26px, 3vw, 38px);
   letter-spacing: -0.035em;
 }
 .workspace-view .route-pulse,
-.workspace-view .streetcar-journal {
+.workspace-view .streetcar-journal,
+.workspace-view .sla-panel {
   padding: clamp(20px, 3vw, 34px);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -748,11 +746,6 @@
     display: grid;
     gap: 2px;
   }
-  .sidebar .main-nav__pages {
-    margin: 6px 0 0;
-    padding: 6px 0 0;
-    border-top: 1px solid var(--border);
-  }
   .sidebar .main-nav [role='tabpanel']#panel-explore:not([hidden]) {
     display: block;
     margin: 16px 0 0;
@@ -768,7 +761,8 @@
     padding: 16px;
   }
   .workspace-view .route-pulse,
-  .workspace-view .streetcar-journal {
+  .workspace-view .streetcar-journal,
+  .workspace-view .sla-panel {
     padding: 18px;
   }
   .sidebar [role='tabpanel'] > .explore-tools,

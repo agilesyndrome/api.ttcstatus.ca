@@ -93,15 +93,6 @@
   min-width: 0;
   margin-bottom: 4px;
 }
-.app-nav .main-nav__pages {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  gap: 4px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
 /* The rail's tabs and page links — scoped so the panel tool buttons below
  * keep their own component styles. */
 .app-nav .main-nav [data-nav-item],

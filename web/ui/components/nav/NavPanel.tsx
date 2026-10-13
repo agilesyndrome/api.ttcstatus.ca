@@ -5,7 +5,7 @@ import type { SidebarPanel } from '../../commute';
 import { useId, type ReactNode } from 'react';
 import { navigate } from '../../services/navigation/history';
 
-export type NavCurrent = 'explore' | 'sla' | 'settings';
+export type NavCurrent = 'explore' | 'settings';
 
 export interface NavPanelProps {
   /** Single-panel story/usage props. */
@@ -30,10 +30,13 @@ export interface NavPanelProps {
 }
 
 type Destination = {
-  key: SidebarPanel | 'sla' | 'settings';
+  key: SidebarPanel | 'settings';
   label: () => string;
   href: string;
   logo: ReactNode;
+  /** Personal-collection destinations hide entirely until signed in; public
+   * ones (Status) stay visible and show their own sign-in gate. */
+  signedInOnly?: boolean;
 };
 
 export const navLogos: Record<Destination['key'], ReactNode> = {
@@ -108,21 +111,25 @@ const panelItems: readonly Destination[] = [
     logo: navLogos['route-pulse'],
   },
   {
+    key: 'sla',
+    label: () => t('navigation.status'),
+    href: '/#view=sla',
+    logo: navLogos.sla,
+  },
+  {
     key: 'journal',
+    signedInOnly: true,
     label: () => t('navigation.journal'),
     href: '/#view=journal',
     logo: navLogos.journal,
   },
   {
     key: 'badges',
+    signedInOnly: true,
     label: () => t('navigation.badges'),
     href: '/#view=badges',
     logo: navLogos.badges,
   },
-];
-
-const pageItems: readonly Destination[] = [
-  { key: 'sla', label: () => t('navigation.status'), href: '/sla', logo: navLogos.sla },
 ];
 
 function titleFor(label: string, collapsed?: boolean) {
@@ -251,7 +258,7 @@ export function NavPanel(props: NavPanelProps) {
     );
 
   const signedIn = Boolean(account.userId);
-  const visiblePanels = signedIn ? panelItems : panelItems.slice(0, 2);
+  const visiblePanels = panelItems.filter((item) => !item.signedInOnly || signedIn);
 
   if (panel === undefined || onPanel === undefined) {
     return (
@@ -261,13 +268,6 @@ export function NavPanel(props: NavPanelProps) {
             item,
             { title: titleFor(item.label(), collapsed) },
             current === 'explore' && item.key === 'explore',
-          ),
-        )}
-        {pageItems.map((item) =>
-          renderItem(
-            item,
-            { title: titleFor(item.label(), collapsed) },
-            current === item.key,
           ),
         )}
       </nav>
@@ -318,11 +318,6 @@ export function NavPanel(props: NavPanelProps) {
             })}
           </div>
         ))}
-      </div>
-      <div className="main-nav__pages">
-        {pageItems.map((item) =>
-          renderItem(item, { title: titleFor(item.label(), collapsed) }),
-        )}
       </div>
       {panels?.[panel] ?? null}
     </nav>

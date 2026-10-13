@@ -695,10 +695,6 @@ input:focus-visible,
   color: var(--accent);
   font-weight: 650;
 }
-.main-nav__pages {
-  display: flex;
-  gap: 5px;
-}
 /* Page links read exactly like the tabs beside them — one strip, one look. */
 .main-nav__link {
   display: block;

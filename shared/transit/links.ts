@@ -11,7 +11,12 @@ export function readMapLink(hash: string): MapLink {
   const filters: Partial<MapFilterValues> = {};
   const tools: MapTools = {};
   const panel = params.get('view');
-  if (panel === 'route-pulse' || panel === 'journal' || panel === 'badges')
+  if (
+    panel === 'route-pulse' ||
+    panel === 'journal' ||
+    panel === 'badges' ||
+    panel === 'sla'
+  )
     tools.panel = panel;
   for (const key of [
     'live',

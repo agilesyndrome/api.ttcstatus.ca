@@ -16,6 +16,7 @@ import { navLogos } from '../../components/nav/NavPanel';
 import { PageHeader } from '../../components/page/PageHeader';
 import { PageFooter } from '../../components/page/PageFooter';
 
+import { SlaPanel } from './panels/SlaPanel';
 import { TransitMap } from '../map/TransitMap';
 
 import { KeyboardHelp } from '../../components/KeyboardHelp';
@@ -316,12 +317,15 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                     ? t('routePulse.routePulse')
                     : panel === 'journal'
                       ? t('navigation.journal')
-                      : t('navigation.badges')
+                      : panel === 'badges'
+                        ? t('navigation.badges')
+                        : t('navigation.status')
                 }
               >
                 {panel === 'route-pulse' && <RoutePulsePanel workspace={workspace} />}
                 {panel === 'journal' && <JournalPanel workspace={workspace} />}
                 {panel === 'badges' && <BadgesPanel workspace={workspace} />}
+                {panel === 'sla' && <SlaPanel workspace={workspace} />}
               </section>
             )}
             {/* Compact screens open the same navigation and Explore controls

@@ -68,19 +68,22 @@ selection, location, saved-stop and link owners in `workspace/`; `HomeWorkspace.
 and `HomeSidebar.tsx` composes tool panels. `useStaticMap.ts` owns public map loading.
 
 `web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export,
-service (delivered-service overlay) and sla (the /sla status page), and Snake code
-with its component stories. `components/` contains shared page chrome; `hooks/`
+service (delivered-service overlay) and sla (the workspace Status panel), and Snake
+code with its component stories. `components/` contains shared page chrome; `hooks/`
 contains preferences, viewport, theme and shortcuts. `styles/` contains shell,
 mobile, game, and feature styles imported in cascade order.
 
-`features/sla/` is the non-map SLA status page: `useSlaReport.ts` (one cached
+`features/sla/` is the SLA status report, rendered inside the map workspace as the
+Status panel (`features/map/panels/SlaPanel.tsx`, shareable as `/#view=sla`):
+`useSlaReport.ts` (one cached
 fetch per session, plus the per-route stop detail), the pure view helpers in
 `sla-view.ts`, and the tick-strip components. Every daily/weekly number comes
-from `GET /api/v1/sla/report`; the page never computes or polls. The live
+from `GET /api/v1/sla/report`; the panel never computes or polls. The live
 tier (`sla-live.ts` + `useSlaLive.ts`) polls the public stops tick documents
 (30 s) and the session-gated `/service/wave` (5 min) surfaces and renders the
 last 30 minutes as thin 5-minute slivers at each strip's right edge — the
-sliver math runs in the browser, never at request time.
+sliver math runs in the browser, never at request time. The `/sla` path
+redirects into the workspace panel.
 
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
 selection focus, gestures and camera controls. `TrackLayer.tsx` renders fixed

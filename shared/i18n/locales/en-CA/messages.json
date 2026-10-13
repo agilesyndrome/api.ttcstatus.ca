@@ -1130,7 +1130,6 @@
   "sla.methodologyBody": "Every number is delivered service the recorder actually observed — a vehicle touching a boarding point — compared against the schedule the TTC publishes in its GTFS feed. A segment is green when at least {value1}% of monitored wait time fell within the scheduled headway (×{value2} tolerance), yellow between {value3}% and {value1}%, red below. Time the feeds could not observe never counts for or against a route, and hours with no scheduled service carry no promise. Compliance is estimated from mergeable headway moments — a gamma approximation, labelled as such everywhere. Route rows roll up their stops; a stop shared by corridors contributes to each route that serves it.",
   "sla.monitoredShare": "monitored {value1}% of scheduled segments",
   "sla.noDataYet": "No recorded data yet.",
-  "sla.pageTitle": "TTC SLA — delivered service report",
   "sla.publishedEvery": "every {value1} min ({value2}–{value3})",
   "sla.publishedHoliday": "Holiday",
   "sla.publishedNoSchedule": "No schedule published for this route",

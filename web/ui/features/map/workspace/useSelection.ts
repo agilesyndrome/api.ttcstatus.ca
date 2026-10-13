@@ -85,7 +85,10 @@ export function useSelection(
       account.loaded &&
       !account.userId &&
       panel !== 'explore' &&
-      panel !== 'route-pulse'
+      panel !== 'route-pulse' &&
+      // Status gates itself with its sign-in card; the personal panels
+      // cannot show anything without an account, so they bounce home.
+      panel !== 'sla'
     )
       setPanel('explore');
   }, [account.loaded, account.userId, panel]);

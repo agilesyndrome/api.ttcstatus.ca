@@ -103,8 +103,7 @@
     padding-inline: max(12px, env(safe-area-inset-left))
       max(12px, env(safe-area-inset-right));
   }
-  .profile-page,
-  .sla-page {
+  .profile-page {
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 }

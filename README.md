@@ -265,7 +265,7 @@ user ids work without a key. The unsuffixed commands target production D1.
 
 ### `GET /api/v1/sla/report` (experimental, members-only)
 
-The SLA status page's one endpoint (docs/sla-stories.md Epic 8): which
+The Status panel's one endpoint (docs/sla-stories.md Epic 8): which
 streetcar routes and stops have been meeting the schedule the TTC's own GTFS
 publishes — precomputed, never computed for the visitor. The nightly static
 import derives per-stop and per-route scheduled-headway bands from the same
@@ -306,10 +306,12 @@ is only reachable behind the gate.
   labelled an approximation everywhere. Hours with no scheduled service carry
   no promise; unmonitored time never counts for or against anyone.
 
-The page itself sits at **`/sla`** — a filterable routes-and-stops
-status page (the USA-status.com anatomy), with daily tick marks and wider
-weekly boxes — behind the same sign-in gate as the report: signed-out
-visitors meet the gate and no report request is made at all.
+The report itself renders inside the map workspace as the **Status**
+destination — a filterable routes-and-stops status panel (the
+USA-status.com anatomy), with daily tick marks and wider weekly boxes —
+behind the same sign-in gate as the report: signed-out visitors meet the
+gate and no report request is made at all. The old `/sla` path redirects
+into the workspace panel.
 
 ### `GET /api/v1/feed/status`
 

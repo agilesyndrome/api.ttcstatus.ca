@@ -353,9 +353,7 @@ try {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
     };
-    const items = [
-      ...nav.querySelectorAll('.main-nav [role="tab"], .main-nav__pages a'),
-    ].map((node) => ({
+    const items = [...nav.querySelectorAll('.main-nav [role="tab"]')].map((node) => ({
       name: node.getAttribute('data-nav-item') ?? node.getAttribute('href'),
       ...box(node),
     }));

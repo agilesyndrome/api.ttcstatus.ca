@@ -1,7 +1,8 @@
 import { useViewportHeight } from './hooks/useViewportHeight';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { HomePage } from './pages/HomePage';
 import { useRoute } from './services/navigation/react';
+import { navigate } from './services/navigation/history';
 import { ScreenActiveContext } from './services/platform/react';
 import { snakeVersionForPath } from './snake-route';
 import { t } from './i18n';
@@ -15,9 +16,15 @@ const ProfilePage = lazy(() =>
 const PublicProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((module) => ({ default: module.PublicProfilePage })),
 );
-const SlaPage = lazy(() =>
-  import('./pages/SlaPage').then((module) => ({ default: module.SlaPage })),
-);
+
+/** The former /sla page now lives in the workspace as the Status panel; old
+ * links land there directly (replaced, so Back skips the redirect hop). */
+function SlaRedirect() {
+  useEffect(() => {
+    navigate('/#view=sla', true);
+  }, []);
+  return <p role="status">{t('workspace.loadingTheStreetcarNetwork')}</p>;
+}
 
 export function App() {
   useViewportHeight();
@@ -34,7 +41,7 @@ export function App() {
     ) : path === '/profile' ? (
       <ProfilePage />
     ) : path === '/sla' ? (
-      <SlaPage />
+      <SlaRedirect />
     ) : publicProfile ? (
       <PublicProfilePage key={publicProfile[1]} username={publicProfile[1]} />
     ) : null;
