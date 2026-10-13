@@ -1,19 +1,11 @@
-import { SelectionDetails } from './SelectionDetails';
 import { t } from '../../../i18n';
 import { useLanguage } from '../../../i18n/react';
-import { NearbyStops } from '../../stops/NearbyStops';
 import { trackEvent } from '../../../analytics';
 import { SegmentedControl } from '../../../components/SegmentedControl';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
-/** The map workspace's Explore content, shared by the rail and mobile drawer. */
-export function ExplorePanel({
-  workspace,
-  showDetails = true,
-}: {
-  workspace: HomeWorkspaceState;
-  showDetails?: boolean;
-}) {
+/** Explore contains actions that change the map; selected data stays in the main pane. */
+export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
   const {
     data,
@@ -24,11 +16,7 @@ export function ExplorePanel({
     setSelection,
     selectedRoute,
     setFollowing,
-    setFocusPoint,
-    location,
-    setLocation,
     pendingCar,
-    selectFeature,
     surprise,
     previewMap,
     panel,
@@ -52,7 +40,12 @@ export function ExplorePanel({
       aria-label={t('workspace.exploreTools')}
       hidden={panel !== 'explore'}
     >
+      <div className="explore-intro">
+        <span className="explore-intro__eyebrow">{t('workspace.exploreTools')}</span>
+        <h2>{t('navigation.mapTools')}</h2>
+      </div>
       <div className="explore-layers" aria-label={t('workspace.exploreRailLayers')}>
+        <span className="explore-control-label">{t('workspace.railLayers')}</span>
         <SegmentedControl
           label={t('workspace.railLayers')}
           value={railMode}
@@ -70,6 +63,7 @@ export function ExplorePanel({
           }
         />
         <div title={feed.failed ? t('mapFilters.liveVehiclesUnavailable') : undefined}>
+          <span className="explore-control-label">{t('workspace.liveMapMode')}</span>
           <SegmentedControl
             label={t('workspace.liveMapMode')}
             value={liveMode}
@@ -92,18 +86,8 @@ export function ExplorePanel({
           />
         </div>
       </div>
-      {showDetails && <SelectionDetails workspace={workspace} />}
-      <NearbyStops
-        data={data}
-        location={location}
-        onClear={() => {
-          setLocation(undefined);
-          setFocusPoint(undefined);
-        }}
-        onSelect={selectFeature}
-      />
       <div className="explore-tools">
-        <button className="action-button" onClick={surprise}>
+        <button className="action-button explore-tools__primary" onClick={surprise}>
           {t('workspace.surpriseMe')}
         </button>
         <button

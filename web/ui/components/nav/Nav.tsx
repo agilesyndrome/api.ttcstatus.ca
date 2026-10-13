@@ -6,7 +6,7 @@ import { usePreference } from '../../hooks/usePreferences';
 import { useTheme } from '../../hooks/useTheme';
 import { AuthControls } from '../../features/accounts/auth';
 import { PageFooter } from '../page/PageFooter';
-import { NavPanel, type NavCurrent } from './NavPanel';
+import { NavPanel, navLogos, type NavCurrent } from './NavPanel';
 import type { SidebarPanel } from '../../commute';
 
 export const NAV_RAIL_QUERY = '(max-width: 900px)';
@@ -71,22 +71,31 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
             panels={panels}
             collapsed={collapsed}
           />
-          {variant === 'page' && (
-            <div className="app-nav__quick">
-              <a
-                className="utility-button language-link"
-                href="/settings#language"
-                aria-label={t('language.settings')}
-                title={t('language.settings')}
-              >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <circle cx="10" cy="10" r="7" />
-                  <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
-                </svg>
-              </a>
-              <AuthControls />
-            </div>
-          )}
+          <div className="app-nav__quick">
+            <a
+              className="app-nav__settings"
+              href="/settings"
+              aria-current={current === 'settings' ? 'page' : undefined}
+              title={t('navigation.settings')}
+            >
+              <span className="main-nav__icon" aria-hidden="true">
+                {navLogos.settings}
+              </span>
+              <span className="app-nav__settings-label">{t('navigation.settings')}</span>
+            </a>
+            <a
+              className="utility-button language-link"
+              href="/settings#language"
+              aria-label={t('language.settings')}
+              title={t('language.settings')}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="7" />
+                <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
+              </svg>
+            </a>
+            <AuthControls />
+          </div>
           <PageFooter />
         </aside>
       )}
@@ -104,6 +113,14 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
             </a>
             <div className="site-header__nav">
               <NavPanel current={current} />
+              <a
+                className="utility-button"
+                href="/settings"
+                aria-label={t('navigation.settings')}
+                title={t('navigation.settings')}
+              >
+                {navLogos.settings}
+              </a>
               <a
                 className="utility-button language-link"
                 href="/settings#language"

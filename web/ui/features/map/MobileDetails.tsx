@@ -6,11 +6,11 @@ import type { HomeWorkspaceState } from './useHomeWorkspace';
 /** Non-modal details keep the upper map usable; the full navigation drawer is separate. */
 export function MobileDetails({ workspace }: { workspace: HomeWorkspaceState }) {
   const scroll = useRef<HTMLDivElement>(null);
-  const { selection, panel, mobilePanelOpen } = workspace;
+  const { selection, notice, panel, mobilePanelOpen } = workspace;
   useEffect(() => {
     scroll.current?.scrollTo({ top: 0 });
   }, [selection]);
-  if (!selection || panel !== 'explore' || mobilePanelOpen) return null;
+  if ((!selection && !notice) || panel !== 'explore' || mobilePanelOpen) return null;
   return (
     <aside className="mobile-details" aria-label={t('workspace.stopAndRouteDetails')}>
       <div className="mobile-details__content" ref={scroll}>

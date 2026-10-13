@@ -3,6 +3,7 @@ import { useLanguage } from '../../i18n/react';
 import { useAccount } from '../../features/accounts/auth';
 import type { SidebarPanel } from '../../commute';
 import { useId, type ReactNode } from 'react';
+import { navigate } from '../../services/navigation/history';
 
 export type NavCurrent = 'explore' | 'sla' | 'settings';
 
@@ -122,12 +123,6 @@ const panelItems: readonly Destination[] = [
 
 const pageItems: readonly Destination[] = [
   { key: 'sla', label: () => t('navigation.status'), href: '/sla', logo: navLogos.sla },
-  {
-    key: 'settings',
-    label: () => t('navigation.settings'),
-    href: '/settings',
-    logo: navLogos.settings,
-  },
 ];
 
 function titleFor(label: string, collapsed?: boolean) {
@@ -212,7 +207,19 @@ function PanelLink({
       href={href}
       title={title}
       aria-current={current ? 'page' : undefined}
-      onClick={onClick}
+      onClick={(event) => {
+        if (onClick) return onClick();
+        if (
+          href &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey
+        ) {
+          event.preventDefault();
+          navigate(href);
+        }
+      }}
     >
       {content}
     </a>
@@ -309,7 +316,6 @@ export function NavPanel(props: NavPanelProps) {
               title: titleFor(item.label(), collapsed),
               onClick: () => onPanel(item.key as SidebarPanel),
             })}
-            {panels?.[item.key as SidebarPanel] ?? null}
           </div>
         ))}
       </div>
@@ -318,6 +324,7 @@ export function NavPanel(props: NavPanelProps) {
           renderItem(item, { title: titleFor(item.label(), collapsed) }),
         )}
       </div>
+      {panels?.[panel] ?? null}
     </nav>
   );
 }

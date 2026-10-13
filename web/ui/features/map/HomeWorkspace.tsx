@@ -8,9 +8,12 @@ import { BadgesPanel } from './panels/BadgesPanel';
 import { ExplorePanel } from './panels/ExplorePanel';
 import { JournalPanel } from './panels/JournalPanel';
 import { RoutePulsePanel } from './panels/RoutePulsePanel';
+import { SelectionDetails } from './panels/SelectionDetails';
+import { NearbyStops } from '../stops/NearbyStops';
 import { lazy, Suspense } from 'react';
 
 import { Nav, useCompactNav } from '../../components/nav/Nav';
+import { navLogos } from '../../components/nav/NavPanel';
 import { PageHeader } from '../../components/page/PageHeader';
 import { PageFooter } from '../../components/page/PageFooter';
 
@@ -91,6 +94,14 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   };
   const headerActions = (
     <div className="header-actions">
+      <a
+        className="utility-button"
+        href="/settings"
+        aria-label={t('navigation.settings')}
+        title={t('navigation.settings')}
+      >
+        {navLogos.settings}
+      </a>
       {/* The globe is a shortcut to Settings → language (/settings#language);
        * the day/night control lives in Settings itself. */}
       <a
@@ -137,20 +148,14 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           />
         </Suspense>
       )}
-      {/* The one app shell (nav-v3): the collapsible left nav rail lives on
-       * wide screens and hosts the tool panels directly under their nav item,
-       * with the map filling the remaining width; the top bar keeps search
-       * and the quick controls. Narrower screens keep the compact top bar +
-       * the sidebar overlay with the same panels. */}
+      {/* The rail keeps destinations and map controls in one place. Each data
+       * destination uses the main pane; Explore keeps the map mounted. */}
       <Nav
         variant="map"
         panel={panel}
         onPanel={setPanel}
         panels={{
           explore: <ExplorePanel workspace={workspace} />,
-          'route-pulse': <RoutePulsePanel workspace={workspace} />,
-          journal: <JournalPanel workspace={workspace} />,
-          badges: <BadgesPanel workspace={workspace} />,
         }}
       >
         <PageHeader
@@ -171,86 +176,124 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         />
         {data ? (
           <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
-            <TransitMap
-              mapTools={
-                <>
-                  <button
-                    className="locate-launch"
-                    aria-label={t('nearbyStops.locateMeCenterMap')}
-                    title={t('nearbyStops.locateMeCenterMap')}
-                    aria-busy={locating}
-                    onClick={requestLocate}
-                    disabled={locating}
-                  >
-                    ◎
-                    {locating && (
-                      <span className="sr-only" role="status">
-                        {t('nearbyStops.findingYourLocation')}
-                      </span>
+            <div className="workspace-map" hidden={panel !== 'explore'}>
+              <TransitMap
+                mapTools={
+                  <>
+                    <button
+                      className="locate-launch"
+                      aria-label={t('nearbyStops.locateMeCenterMap')}
+                      title={t('nearbyStops.locateMeCenterMap')}
+                      aria-busy={locating}
+                      onClick={requestLocate}
+                      disabled={locating}
+                    >
+                      ◎
+                      {locating && (
+                        <span className="sr-only" role="status">
+                          {t('nearbyStops.findingYourLocation')}
+                        </span>
+                      )}
+                    </button>
+                    {locateError && (
+                      <p role="alert" className="locate-error">
+                        {t(locateError)}
+                      </p>
                     )}
-                  </button>
-                  {locateError && (
-                    <p role="alert" className="locate-error">
-                      {t(locateError)}
-                    </p>
-                  )}
-                  <button
-                    className="snake-launch"
-                    aria-label={t('workspace.playStreetcarSnake')}
-                    title={t('workspace.playStreetcarSnake')}
-                    onClick={() => setSnakeOpen(true)}
-                  >
-                    🐍
-                  </button>
-                </>
-              }
-              data={data}
-              followPoint={car && following ? car.point : undefined}
-              cars={
-                // A followed car gets the map to itself; anything else unfollows.
-                car && following
-                  ? [car]
-                  : filters.live
-                    ? cars.filter((car) =>
-                        car.vehicle.mode === 'subway'
-                          ? filters.subway
-                          : filters.streetcar,
-                      )
-                    : []
-              }
-              selectedRoute={selectedRoute}
-              selectedFeature={feature}
-              selectedVehicleId={car?.vehicle.id}
-              focusPoint={focusPoint}
-              focusPointLevel={focusPointLevel}
-              focusBounds={focusBounds}
-              locationPoint={locationPoint}
-              comparisonStops={undefined}
-              pickingLabel={undefined}
-              onInteract={() => setFollowing(false)}
-              onZoomInteract={() => {
-                /* Zooming keeps camera following; only panning takes over. */
-              }}
-              mapControls={false}
-              mapPopup={service.card}
-              savedStopIds={savedStops}
-              showLabels={filters.labels}
-              includeOvernight={filters.overnight}
-              showStreetcar={filters.streetcar}
-              showSubway={filters.subway}
-              resetKey={resetKey}
-              onSelectFeature={selectFeatureWithService}
-              onSelectVehicle={(car) => selectVehicle(car)}
-              onSelectServiceStop={service.onSelectServiceStop}
-              serviceCarTint={service.carTint}
-              underlay={service.underlay ?? undefined}
-              overlay={service.overlay ?? undefined}
-            />
-            <CachedMapNotice workspace={workspace} />
-            {phone && <MobileDetails workspace={workspace} />}
-            {/* Below the rail breakpoint the sidebar overlay carries the
-             * same panels; above it they live in the rail under their nav
-             * item, and the map fills the workspace. */}
+                    <button
+                      className="snake-launch"
+                      aria-label={t('workspace.playStreetcarSnake')}
+                      title={t('workspace.playStreetcarSnake')}
+                      onClick={() => setSnakeOpen(true)}
+                    >
+                      🐍
+                    </button>
+                  </>
+                }
+                data={data}
+                followPoint={car && following ? car.point : undefined}
+                cars={
+                  // A followed car gets the map to itself; anything else unfollows.
+                  car && following
+                    ? [car]
+                    : filters.live
+                      ? cars.filter((car) =>
+                          car.vehicle.mode === 'subway'
+                            ? filters.subway
+                            : filters.streetcar,
+                        )
+                      : []
+                }
+                selectedRoute={selectedRoute}
+                selectedFeature={feature}
+                selectedVehicleId={car?.vehicle.id}
+                focusPoint={focusPoint}
+                focusPointLevel={focusPointLevel}
+                focusBounds={focusBounds}
+                locationPoint={locationPoint}
+                comparisonStops={undefined}
+                pickingLabel={undefined}
+                onInteract={() => setFollowing(false)}
+                onZoomInteract={() => {
+                  /* Zooming keeps camera following; only panning takes over. */
+                }}
+                mapControls={false}
+                mapPopup={service.card}
+                savedStopIds={savedStops}
+                showLabels={filters.labels}
+                includeOvernight={filters.overnight}
+                showStreetcar={filters.streetcar}
+                showSubway={filters.subway}
+                resetKey={resetKey}
+                onSelectFeature={selectFeatureWithService}
+                onSelectVehicle={(car) => selectVehicle(car)}
+                onSelectServiceStop={service.onSelectServiceStop}
+                serviceCarTint={service.carTint}
+                underlay={service.underlay ?? undefined}
+                overlay={service.overlay ?? undefined}
+              />
+              <CachedMapNotice workspace={workspace} />
+            {!compact && (workspace.selection || workspace.notice) && (
+                <aside
+                  className="workspace-details"
+                  aria-label={t('workspace.stopAndRouteDetails')}
+                >
+                  <SelectionDetails workspace={workspace} />
+                </aside>
+              )}
+              {compact && <MobileDetails workspace={workspace} />}
+              {workspace.location && (
+                <aside className="workspace-nearby">
+                  <NearbyStops
+                    data={data}
+                    location={workspace.location}
+                    onClear={() => {
+                      workspace.setLocation(undefined);
+                      workspace.setFocusPoint(undefined);
+                    }}
+                    onSelect={selectFeatureWithService}
+                  />
+                </aside>
+              )}
+            </div>
+            {panel !== 'explore' && (
+              <section
+                className="workspace-view"
+                aria-label={
+                  panel === 'route-pulse'
+                    ? t('routePulse.routePulse')
+                    : panel === 'journal'
+                      ? t('navigation.journal')
+                      : t('navigation.badges')
+                }
+              >
+                {panel === 'route-pulse' && <RoutePulsePanel workspace={workspace} />}
+                {panel === 'journal' && <JournalPanel workspace={workspace} />}
+                {panel === 'badges' && <BadgesPanel workspace={workspace} />}
+              </section>
+            )}
+            {/* Compact screens open the same navigation and Explore controls
+             * over the main pane. */}
             {compact && <HomeSidebar workspace={workspace} settings={headerActions} />}
           </main>
         ) : (

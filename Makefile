@@ -66,7 +66,7 @@ sla/fold:
 	@curl -s '$(API_LOCAL)/__scheduled?cron=41+*+*+*+*' ; echo ""
 
 admin/sync/status:
-	op run --env-file=.env.prod -- ./bin/api GET /api/v1/feed/status | jq
+	@op run --env-file=.env.prod -- ./bin/api GET /api/v1/feed/status | jq
 
 map/streetcar:
 	@./bin/api GET /api/v1/map/streetcar --fail --show-error

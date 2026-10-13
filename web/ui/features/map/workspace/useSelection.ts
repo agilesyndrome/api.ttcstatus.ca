@@ -64,7 +64,7 @@ export function useSelection(
     return () => cancelAnimationFrame(frame);
   }, [selection, panel]);
   useEffect(() => {
-    if (panel !== 'explore') setMobilePanelOpen(true);
+    setMobilePanelOpen(false);
     sidebar.current?.scrollTo({ top: 0 });
     if (panel !== 'explore') {
       setFollowing(false);

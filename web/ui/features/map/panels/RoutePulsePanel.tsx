@@ -3,10 +3,11 @@ import { useLanguage } from '../../../i18n/react';
 import { RoutePulse } from '../RoutePulse';
 import type { HomeWorkspaceState } from '../useHomeWorkspace';
 
-/** The live network view, kept separate from Explore so the rail has one job per panel. */
+/** The live network view in the main pane. Selecting a route opens it on the map. */
 export function RoutePulsePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
-  const { data, shownRoutes, cars, feed, selectedRoute, selectRoute, panel } = workspace;
+  const { data, shownRoutes, cars, feed, selectedRoute, selectRoute, setPanel, panel } =
+    workspace;
   if (!data) return null;
   return (
     <div
@@ -22,7 +23,10 @@ export function RoutePulsePanel({ workspace }: { workspace: HomeWorkspaceState }
         active={feed.active}
         failed={feed.failed}
         selectedRoute={selectedRoute}
-        onSelect={(id) => selectRoute(selectedRoute === id ? undefined : id)}
+        onSelect={(id) => {
+          selectRoute(id);
+          setPanel('explore');
+        }}
       />
     </div>
   );

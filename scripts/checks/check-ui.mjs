@@ -81,13 +81,17 @@ try {
       .getAttribute('aria-pressed'),
     'true',
   );
-  // The route-pulse panel is the live-status surface (the old `.live-status`
-  // section no longer ships). One fixture car on a shown route ⇒ "1 total".
+  // Data views occupy the main pane; the navigation rail stays stable.
+  await page.getByRole('tab', { name: 'Route pulse' }).click();
+  assert.equal(await page.locator('.workspace-map').isVisible(), false);
+  assert.equal(await page.locator('.app-nav .route-pulse').count(), 0);
   await page.waitForFunction(() =>
     document
       .querySelector('.route-pulse .pulse-total')
       ?.textContent.includes('1 total on routes'),
   );
+  await page.getByRole('tab', { name: 'Explore' }).click();
+  assert.ok(await page.locator('.workspace-map').isVisible());
   await page.waitForTimeout(31_000);
   assert.ok(conditional, 'second feed request uses ETag');
   assert.equal(await page.locator('[data-vehicle]').count(), 1, '304 keeps the fleet');
@@ -121,6 +125,7 @@ try {
     '#panel-route-pulse button.pulse-row[aria-label^="504 King"]',
   );
   await kingRoute.click();
+  await page.getByRole('tab', { name: 'Explore' }).waitFor();
   // Let the camera glide to the route before sampling the zoom level.
   await page.waitForTimeout(500);
   const zoomBeforeSearch = await viewWidth();
@@ -136,11 +141,7 @@ try {
     zoomBeforeSearch,
     'streetcar search centers without changing the zoom level',
   );
-  assert.equal(
-    await kingRoute.getAttribute('aria-pressed'),
-    'false',
-    'streetcar search clears a conflicting route filter',
-  );
+  assert.equal(await page.locator('#panel-route-pulse').count(), 0);
   const [x, y, width, height] = (await page.locator('#map').getAttribute('viewBox'))
     .split(' ')
     .map(Number);
@@ -175,6 +176,14 @@ try {
     'reselecting the same streetcar centers it without zooming',
   );
   assert.equal(mapCalls, loadedMapCalls, 'filters and selection never reload geometry');
+  await page.evaluate(() => {
+    window.__navigationMarker = 'kept';
+  });
+  await page.getByRole('link', { name: 'Status', exact: true }).click();
+  await page.waitForURL('**/sla');
+  assert.equal(await page.evaluate(() => window.__navigationMarker), 'kept');
+  await page.getByRole('link', { name: 'Explore', exact: true }).click();
+  await page.waitForURL((url) => url.pathname === '/');
   await fit();
   await page.waitForTimeout(100);
   await page.screenshot({ path: '/tmp/ttc-react-homepage.png' });
