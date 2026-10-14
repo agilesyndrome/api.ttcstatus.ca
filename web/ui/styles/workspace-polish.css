@@ -769,7 +769,11 @@
   }
 }
 @media (max-width: 640px) {
-  .workspace-map:has(.mobile-details) .map-service-legend {
+  /* The map remains the priority on phones; both map legends are available
+   * on larger screens, but consume too much of the limited phone viewport. */
+  .map-service-legend,
+  .service-legend-bar,
+  .route-colour-key {
     display: none;
   }
   .mobile-details .service-card__arrival {
