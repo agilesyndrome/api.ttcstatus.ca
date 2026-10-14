@@ -6,6 +6,7 @@ import { navigate } from './services/navigation/history';
 import { ScreenActiveContext } from './services/platform/react';
 import { snakeVersionForPath } from './snake-route';
 import { t } from './i18n';
+import { ColourModeProvider } from './hooks/useColourMode';
 
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
@@ -46,23 +47,25 @@ export function App() {
       <PublicProfilePage key={publicProfile[1]} username={publicProfile[1]} />
     ) : null;
   return (
-    <>
-      {(visitedHome || home) && (
-        <ScreenActiveContext.Provider value={home}>
-          <div className="route-screen" hidden={!home}>
-            <HomePage initialSnakeVersion={snakeVersion} />
+    <ColourModeProvider>
+      <>
+        {(visitedHome || home) && (
+          <ScreenActiveContext.Provider value={home}>
+            <div className="route-screen" hidden={!home}>
+              <HomePage initialSnakeVersion={snakeVersion} />
+            </div>
+          </ScreenActiveContext.Provider>
+        )}
+        {!home && (
+          <div className="route-screen route-page">
+            <Suspense
+              fallback={<p role="status">{t('workspace.loadingTheStreetcarNetwork')}</p>}
+            >
+              {page}
+            </Suspense>
           </div>
-        </ScreenActiveContext.Provider>
-      )}
-      {!home && (
-        <div className="route-screen route-page">
-          <Suspense
-            fallback={<p role="status">{t('workspace.loadingTheStreetcarNetwork')}</p>}
-          >
-            {page}
-          </Suspense>
-        </div>
-      )}
-    </>
+        )}
+      </>
+    </ColourModeProvider>
   );
 }

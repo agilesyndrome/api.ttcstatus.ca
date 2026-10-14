@@ -29,6 +29,10 @@ const {
   trackFieldSignature,
   visibleStopsOf,
   visibleEdgesOf,
+  edgeNeighboursByRoute,
+  streamWidth,
+  pointAtDisplayDistance,
+  severityCrossings,
 } = await compileModules(`export * from './web/ui/features/service/wave-field';`);
 const shared = await compileModules(`
   export { serviceStatesAt } from './shared/service/wait-metrics';
@@ -120,7 +124,7 @@ test('the field grades the track between stop anchors', () => {
   assert.ok(segments[1].dryness > 2);
   // And between the two anchors the ramp passes through amber territory.
   const mid = drynessColor(1.5);
-  assert.ok(mid.startsWith('rgb('), 'interpolated colours are continuous');
+  assert.match(mid, /^#[0-9a-f]{6}$/i, 'interpolated colours are continuous');
   assert.notEqual(mid, STATE_COLORS.fresh);
   assert.notEqual(mid, STATE_COLORS.void);
 });
@@ -181,6 +185,87 @@ test('edges without service anchors paint nothing (no data, no opinion)', () => 
       0,
     ).length,
     0,
+  );
+});
+
+test('edge adjacency only joins route-continuous physical seams', () => {
+  assert.deepEqual(
+    edgeNeighboursByRoute([
+      { id: 'a', a: 'west', b: 'corner', routeIds: ['501'] },
+      { id: 'b', a: 'corner', b: 'east', routeIds: ['501', '504'] },
+      { id: 'c', a: 'corner', b: 'north', routeIds: ['506'] },
+    ]),
+    new Map([
+      ['a', ['b']],
+      ['b', ['a']],
+      ['c', []],
+    ]),
+  );
+});
+
+test('a route-continuous seam supplies a real boundary for one-anchor bridging', () => {
+  const states = new Map([
+    ['st_fresh', stopState('st_fresh', 0.1, 'fresh')],
+    [
+      'st_blind',
+      stopState('st_blind', null, 'unmonitored', {
+        coverage: { kind: 'outage', unmonitoredSeconds: 900, since: oneWay.at - 900_000 },
+      }),
+    ],
+  ]);
+  const features = [featureAt('st_fresh', 40), featureAt('st_blind', 160)];
+  const segments = edgeServiceSegments(edge, features, states, config, 0, [
+    { directionId: 0, at: 'end', dryness: 1.2 },
+  ]);
+  const forward = segments.filter((segment) => segment.directionId === 0);
+  assert.ok(forward.every((segment) => segment.state !== 'unmonitored'));
+  assert.ok(forward.some((segment) => (segment.dryness ?? 0) > 0.5));
+});
+
+test('service streams retain a three-pixel screen floor as the map zooms out', () => {
+  assert.equal(streamWidth(1), 3);
+  assert.equal(streamWidth(2), 1.5);
+  assert.equal(streamWidth(0.1), 30);
+});
+
+test('geometry helpers place directional glyphs and severity fronts deterministically', () => {
+  const segments = [
+    {
+      directionId: 0,
+      x1: 0,
+      y1: 0,
+      x2: 10,
+      y2: 0,
+      dryness: 0.2,
+      state: 'fresh',
+      flowsForward: true,
+      flowSeconds: 1,
+      phase: 0,
+    },
+    {
+      directionId: 0,
+      x1: 10,
+      y1: 0,
+      x2: 20,
+      y2: 0,
+      dryness: 2.2,
+      state: 'void',
+      flowsForward: true,
+      flowSeconds: 1,
+      phase: 10,
+    },
+  ];
+  assert.deepEqual(pointAtDisplayDistance(segments[0], 5), {
+    x: 5,
+    y: 0,
+    angle: 0,
+  });
+  assert.deepEqual(
+    severityCrossings(segments).map(({ kind, x, y }) => ({ kind, x, y })),
+    [
+      { kind: 'fresh-due', x: 6.5, y: 0 },
+      { kind: 'due-void', x: 14, y: 0 },
+    ],
   );
 });
 

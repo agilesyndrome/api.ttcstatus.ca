@@ -10,13 +10,46 @@ import {
   parseFeatureArgs,
   resolveSubject,
   validFlagName,
+  setFeatureCohort,
+  disableFeatureCohort,
 } from '../../scripts/operations/feature-flags.mjs';
-
-const { ownedAccountResponse } = await compileModules(
-  `export * from './workers/api/src/accounts/index';`,
-);
+const { ownedAccountResponse, featureCohortBucket, featureCohortIncludes } =
+  await compileModules(
+    `export * from './workers/api/src/accounts/index'; export { featureCohortBucket, featureCohortIncludes } from './shared/accounts/feature-flags';`,
+  );
 const schema = await readFile('migrations/0005_feature_flags.sql', 'utf8');
-const database = () => createDatabase(schema);
+const cohortSchema = await readFile('migrations/0010_feature_flag_cohorts.sql', 'utf8');
+const database = () => createDatabase(`${schema}\n${cohortSchema}`);
+
+test('cohort assignment is deterministic and percentage updates are idempotent', async () => {
+  assert.equal(
+    featureCohortBucket('overlay', 'user_a'),
+    featureCohortBucket('overlay', 'user_a'),
+  );
+  assert.notEqual(
+    featureCohortBucket('overlay', 'user_a'),
+    featureCohortBucket('other', 'user_a'),
+  );
+  assert.equal(featureCohortIncludes('overlay', 'user_a', 100), true);
+  assert.equal(featureCohortIncludes('overlay', 'user_a', 0), false);
+  const db = database();
+  await setFeatureCohort(db, {
+    flag: 'overlay',
+    percentage: 25,
+    updatedBy: 'drew',
+    updatedAt: 1,
+  });
+  await setFeatureCohort(db, {
+    flag: 'overlay',
+    percentage: 50,
+    updatedBy: 'kim',
+    updatedAt: 2,
+  });
+  assert.deepEqual((await listFeatureFlags(db)).cohorts, [
+    { flag: 'overlay', percentage: 50, updatedAt: 2, updatedBy: 'kim' },
+  ]);
+  assert.equal((await disableFeatureCohort(db, { flag: 'overlay' })).removed, true);
+});
 
 test('feature flags round-trip through real SQLite: grant, upsert, revoke, list', async () => {
   const db = database();
@@ -50,6 +83,7 @@ test('feature flags round-trip through real SQLite: grant, upsert, revoke, list'
       ],
     },
   ]);
+  assert.deepEqual(listed.cohorts, []);
   const revoked = await disableFeature(db, { flag: 'betaFeature', subject: 'user_b' });
   assert.equal(revoked.removed, true);
   assert.equal((await listFeatureFlags(db)).total, 1);
@@ -80,6 +114,23 @@ test('CLI selects local D1 only when requested and accepts JSON output', () => {
     local: false,
     json: false,
     operator: 'kim',
+  });
+  assert.deepEqual(parseFeatureArgs(['enable', 'betaFeature', '--percent', '25']), {
+    command: 'enable',
+    flag: 'betaFeature',
+    percentage: '25',
+    local: false,
+    json: false,
+    operator: process.env.USER ?? 'operator',
+    cohort: true,
+  });
+  assert.deepEqual(parseFeatureArgs(['disable', 'betaFeature', '--percent']), {
+    command: 'disable',
+    flag: 'betaFeature',
+    local: false,
+    json: false,
+    operator: process.env.USER ?? 'operator',
+    cohort: true,
   });
   assert.throws(() => parseFeatureArgs(['list', '--unknown']), /Unknown option/);
   assert.throws(
@@ -139,4 +190,15 @@ test("GET /api/v1/me/features: caller's flags, no-store, CORS; empty for strange
     'user_c',
   );
   assert.deepEqual(await stranger.json(), { schemaVersion: 1, flags: [] });
+});
+
+test('GET /api/v1/me/features includes deterministic cohort membership', async () => {
+  const db = database();
+  await setFeatureCohort(db, { flag: 'cohortFeature', percentage: 100, updatedAt: 1 });
+  const response = await ownedAccountResponse(
+    new Request('https://ttcstatus.ca/api/v1/me/features'),
+    { DB: db },
+    'user_cohort',
+  );
+  assert.deepEqual(await response.json(), { schemaVersion: 1, flags: ['cohortFeature'] });
 });

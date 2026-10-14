@@ -5,6 +5,7 @@ import { serviceConfig } from '../../../../shared/service/config';
 import { useActivity } from '../../services/platform/react';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { StopServiceState } from '../../../../shared/service/contracts';
+import type { ColourMode, FieldTheme } from '../../../../shared/map/field-palette';
 import {
   intersectionPlatforms,
   intersectionTitle,
@@ -36,6 +37,19 @@ import {
 } from './wave-field';
 import type { CompassKey } from './wave-field';
 
+function medianHeadwayMinutes(
+  states: ReadonlyMap<string, StopServiceState>,
+  routeId: string,
+): number | undefined {
+  const values = [...states.values()]
+    .filter((state) => state.routeIds.includes(routeId))
+    .map((state) => state.medianHeadwayOwnSeconds)
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+  if (!values.length) return undefined;
+  return values[Math.floor(values.length / 2)]! / 60;
+}
+
 export interface ServiceOverlay {
   /** The field painted on the tracks — renders UNDER cars and labels. The
    * camera rect (the visible world) rides along since
@@ -57,6 +71,7 @@ export interface ServiceOverlay {
    * the quantised field holds still, so TransitMap's memo survives the
    * heartbeat. */
   carTint: (car: PlottedVehicle) => string | null;
+  selectedHeadwayMinutes?: number;
 }
 
 /** The breathing clock, promoted to an engine (docs/optimize-overlay.md
@@ -114,6 +129,8 @@ export function useServiceOverlay(
   onClearWorkspace?: () => void,
   selectedRoute?: string,
   selectedFeature?: Feature,
+  theme: FieldTheme = 'light',
+  colourMode: ColourMode = 'standard',
 ): ServiceOverlay {
   const overlayEnabled = useOverlayEnabled();
   const enabled = requested && !suspended && Boolean(data) && overlayEnabled === true;
@@ -274,9 +291,12 @@ export function useServiceOverlay(
         car.match.distanceAlongMetres,
         features,
         tintStates,
+        serviceConfig(),
+        theme,
+        colourMode,
       );
     };
-  }, [data, tintStates, edgesById]);
+  }, [data, tintStates, edgesById, theme, colourMode]);
   const selectFromFeature = useMemo(() => {
     return (feature: Feature | undefined | null) => {
       const clear = () => {
@@ -317,6 +337,7 @@ export function useServiceOverlay(
     onSelectServiceStop: () => {},
     onFeatureSelectForService: () => {},
     carTint: () => null,
+    selectedHeadwayMinutes: undefined,
   };
   if (!enabled || !data) return empty;
   /** Directionless mode: the tapped dot was a merged pair (or one dot
@@ -327,6 +348,9 @@ export function useServiceOverlay(
     .filter((state): state is StopServiceState => state !== undefined);
   const focus =
     selectedStop ?? (platforms.length > 0 ? platforms.reduce(worstPlatform) : null);
+  const selectedHeadwayMinutes = selectedRoute
+    ? medianHeadwayMinutes(statesByStop, selectedRoute)
+    : undefined;
   const clearSelection = () => {
     setSelectedStopId(null);
     setIntersectionIds(null);
@@ -465,6 +489,8 @@ export function useServiceOverlay(
           visibleEdges={visibleEdges}
           scale={settled?.scale ?? 0}
           selectedRoute={selectedRoute}
+          theme={theme}
+          colourMode={colourMode}
         />
       );
     },
@@ -476,6 +502,7 @@ export function useServiceOverlay(
     },
     onFeatureSelectForService: selectFromFeature,
     carTint,
+    selectedHeadwayMinutes,
     // No ring in directionless mode: nothing is selected until the rider
     // picks a direction — the dot they tapped was one stop, not two.
     overlay: selectedStop

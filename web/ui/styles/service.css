@@ -1,56 +1,61 @@
 .service-track {
   pointer-events: none;
 }
+.service-track > g[data-context='muted'] {
+  filter: grayscale(1);
+  opacity: 0.42;
+}
 .service-track-seg,
 .service-trail-seg {
   transition:
     stroke 1200ms ease,
     opacity 1200ms ease;
 }
-/* The flow IS the service: dashes drift in this direction's travel
-   direction, at a speed set per piece (fresh brisk, void slow). Each piece
-   carries a --dash-start phase so a whole route flows as ONE current — the
-   gradient can subdivide without seams. */
-@keyframes service-flow-fwd {
+.service-chevron {
+  dominant-baseline: central;
+  font-family: system-ui, sans-serif;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+  animation: service-chevron-drift-fwd linear infinite;
+}
+.service-chevron[data-city-zoom='true'],
+.service-terminus-chevron {
+  animation: none;
+}
+.service-severity-front {
+  color: var(--text);
+  opacity: 0.72;
+  pointer-events: none;
+}
+@keyframes service-chevron-drift-fwd {
   from {
-    stroke-dashoffset: var(--dash-start, 0px);
+    opacity: 0.65;
+    transform: translateX(-3px);
   }
   to {
-    stroke-dashoffset: calc(var(--dash-start, 0px) - 28px);
+    opacity: 1;
+    transform: translateX(3px);
   }
 }
-@keyframes service-flow-rev {
+.service-chevron--rev {
+  animation-name: service-chevron-drift-rev;
+}
+@keyframes service-chevron-drift-rev {
   from {
-    stroke-dashoffset: var(--dash-start, 0px);
+    opacity: 0.65;
+    transform: translateX(3px);
   }
   to {
-    stroke-dashoffset: calc(var(--dash-start, 0px) + 28px);
+    opacity: 1;
+    transform: translateX(-3px);
   }
 }
-.service-track-flow,
-.service-trail-flow {
-  stroke-dasharray: 3 11;
-}
-.service-flow--fwd {
-  animation: service-flow-fwd 1.6s linear infinite;
-}
-.service-flow--rev {
-  animation: service-flow-rev 1.6s linear infinite;
-}
-/* E5S3 (docs/optimize-overlay.md): while the camera is under the rider's
-   hands the flows pause — `data-gesturing` is set by TransitMap on every
-   interaction, so no 60 fps dash paint fights the pan/zoom. The static
-   colour field carries the information while the world moves; ~400 ms of
-   quiet resumes the current. */
-svg[data-gesturing='true'] .service-track-flow,
-svg[data-gesturing='true'] .service-trail-flow {
+svg[data-gesturing='true'] .service-chevron {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-  .service-track-flow,
-  .service-trail-flow,
-  .service-flow--fwd,
-  .service-flow--rev {
+  .service-chevron {
     animation: none;
   }
   .service-track-seg,

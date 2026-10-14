@@ -1,7 +1,10 @@
 import type { Feature } from '../../../../shared/map/model';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 import { serviceConfig } from '../../../../shared/service/config';
-import { STATE_COLORS, stopSentence } from './wave-field';
+import { stopSentence } from './wave-field';
+import { fieldColour } from '../../../../shared/map/field-palette';
+import { useColourMode } from '../../hooks/useColourMode';
+import { useTheme } from '../../hooks/useTheme';
 
 export interface SelectedStopMarkerProps {
   stop: StopServiceState;
@@ -24,11 +27,13 @@ export function SelectedStopMarker({
   selectedStopId,
   reducedMotion,
 }: SelectedStopMarkerProps) {
+  const { colourMode } = useColourMode();
+  const { dark } = useTheme();
   if (selectedStopId === null || selectedStopId !== stop.stopId) return null;
   const feature = features.find((entry) => entry.stopIds?.includes(stop.stopId));
   if (!feature) return null;
   const voidThreshold = serviceConfig().voidDrynessRatio;
-  const color = STATE_COLORS[stop.state];
+  const color = fieldColour(stop.state, dark ? 'dark' : 'light', colourMode);
   const fill = stop.dryness === null ? 0 : Math.min(1, stop.dryness / voidThreshold);
   const pulse = stop.state === 'void' && !reducedMotion;
   return (
@@ -58,9 +63,9 @@ export function SelectedStopMarker({
           width={14}
           height={14}
           rx={2}
-          fill={STATE_COLORS.unmonitored}
+          fill={fieldColour('unmonitored', dark ? 'dark' : 'light', colourMode)}
           opacity={0.3}
-          stroke={STATE_COLORS.unmonitored}
+          stroke={fieldColour('unmonitored', dark ? 'dark' : 'light', colourMode)}
           strokeWidth={1.5}
         />
       ) : (

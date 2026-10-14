@@ -1446,18 +1446,20 @@
         "type": "object",
         "properties": {
           "username": { "type": "string" },
-          "publicBadges": { "type": "boolean" }
+          "publicBadges": { "type": "boolean" },
+          "colorMode": { "enum": ["standard", "redgreen", "full"] }
         },
-        "required": ["username", "publicBadges"],
+        "required": ["username", "publicBadges", "colorMode"],
         "additionalProperties": true
       },
       "ProfileWrite": {
         "type": "object",
         "properties": {
           "username": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,29}$" },
-          "publicBadges": { "type": "boolean" }
+          "publicBadges": { "type": "boolean" },
+          "colorMode": { "enum": ["standard", "redgreen", "full"] }
         },
-        "required": ["username", "publicBadges"],
+        "required": ["username", "publicBadges", "colorMode"],
         "additionalProperties": false
       },
       "PublicProfile": {
@@ -1528,7 +1530,10 @@
               "played-snake",
               "saved-stop",
               "removed-stop",
-              "exported-map"
+              "exported-map",
+              "legend-highlight",
+              "legend-row-select",
+              "colour-mode-change"
             ]
           }
         },

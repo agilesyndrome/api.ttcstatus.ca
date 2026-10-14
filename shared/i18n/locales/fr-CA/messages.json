@@ -832,5 +832,20 @@
   "accountDraft.retry": "Réessayer la fusion",
   "accountDraft.keepMine": "Garder mes modifications",
   "accountDraft.discard": "Abandonner les modifications",
-  "trackWork.pleaseWaitWhileWePerformTrackMaintenance": "Veuillez patienter pendant que nous effectuons des travaux d’entretien sur les voies"
+  "trackWork.pleaseWaitWhileWePerformTrackMaintenance": "Veuillez patienter pendant que nous effectuons des travaux d’entretien sur les voies",
+  "colourVision.title": "Vision des couleurs",
+  "colourVision.description": "Choisissez une palette de service dont la gravité reste lisible pour vous.",
+  "colourVision.standard": "Standard",
+  "colourVision.redgreen": "Rouge–vert sûr",
+  "colourVision.full": "Bleu–jaune",
+  "serviceLegend.title": "Service sur les voies",
+  "serviceLegend.selectedRoute": "Ligne sélectionnée",
+  "serviceLegend.frequentRoute": "Ligne fréquente (trams aux 3 min)",
+  "serviceLegend.localRoute": "Ligne locale (trams aux 12 min)",
+  "serviceLegend.justWent": "Vient de passer",
+  "serviceLegend.longerThanUsual": "Plus long que d’habitude",
+  "serviceLegend.realGap": "Un vrai intervalle",
+  "serviceLegend.beyondTwoTimes": "≥ 2× l’habitude",
+  "serviceLegend.noData": "Aucune donnée",
+  "serviceLegend.minutes": "min"
 }

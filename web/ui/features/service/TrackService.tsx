@@ -2,12 +2,16 @@ import { memo, useMemo, useRef } from 'react';
 import type { Edge, Feature } from '../../../../shared/map/model';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type { StopServiceState } from '../../../../shared/service/contracts';
+import type { ColourMode, FieldTheme } from '../../../../shared/map/field-palette';
 import {
   carTrailSegments,
   drynessColor,
+  edgeBoundaryAnchors,
+  edgeNeighboursByRoute,
   edgeServiceSegments,
-  STATE_COLORS,
-  STREAM_WIDTH,
+  pointAtDisplayDistance,
+  severityCrossings,
+  streamWidth,
   streamOffset,
   trackFieldSignature,
 } from './wave-field';
@@ -18,33 +22,72 @@ export interface TrackServiceProps {
   edges: Edge[];
   features: Feature[];
   statesByStop: Map<string, StopServiceState>;
-  /** Live plotted cars — each matched, non-stale one drags its green snail
-   * slime from its head back to the last stop it passed. */
   cars?: PlottedVehicle[];
-  /** The cull set (docs/optimize-overlay.md E5S1): only edges near the
-   * camera are painted — DOM count scales with the viewport, not the
-   * network. Null paints everything (the pre-culling behaviour). */
   visibleEdges?: ReadonlySet<string> | null;
-  /** The settled screen scale, px per world unit (E5S2): a flow dash line
-   * renders only for segments long enough ON SCREEN to carry at least one
-   * dash cycle — city-wide zoom keeps its static colour field (and its
-   * battery); street zoom flows. 0 (default) disables all flows. */
+  /** Settled screen scale in pixels per map unit. */
   scale?: number;
   selectedRoute?: string;
+  theme?: FieldTheme;
+  colourMode?: ColourMode;
 }
 
-const DASH_PATTERN = '3 11';
+/** Chevrons are the sole direction/motion layer; they remain meaningful when static. */
+function chevronPositions(segment: TrackSegment, scale: number) {
+  const length = Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
+  if (scale <= 0 || scale * length < DASH_CYCLE) return [];
+  const totalPixels = scale * length;
+  const count = Math.min(8, Math.max(1, Math.floor(totalPixels / DASH_CYCLE)));
+  const angle =
+    (Math.atan2(segment.y2 - segment.y1, segment.x2 - segment.x1) * 180) / Math.PI;
+  const phasePixels = ((segment.phase * scale) % DASH_CYCLE + DASH_CYCLE) % DASH_CYCLE;
+  const positions = [];
+  for (let index = -1; index <= count; index += 1) {
+    const pixel = DASH_CYCLE / 2 - phasePixels + index * DASH_CYCLE;
+    if (pixel < 0 || pixel > totalPixels) continue;
+    const ratio = pixel / totalPixels;
+    positions.push({
+      x: segment.x1 + (segment.x2 - segment.x1) * ratio,
+      y: segment.y1 + (segment.y2 - segment.y1) * ratio,
+      angle: segment.flowsForward ? angle : angle + 180,
+    });
+  }
+  return positions.slice(0, count);
+}
 
-/** The field on the track (E7S4–E7S6): every direction paints its own thin
- * stream riding the track — side by side, never overriding each other. Each
- * stream is coloured by ITS direction's dryness field, flows in ITS travel
- * direction, and its speed is the service itself: brisk when cars come
- * quickly, a slow drift through the void. Long stretches subdivide so the
- * gradient bends, and every flow dash carries a phase so a whole route moves
- * as ONE continuous current. Cars that just passed a stretch drag a green
- * trail behind them — the clearing car visible, advancing into the red.
- * Sits UNDER cars and labels (the TransitMap underlay slot). Repaints only
- * when the field's quantised signature or the car positions move. */
+function Chevrons({
+  segment,
+  scale,
+  colour,
+  trail = false,
+}: {
+  segment: TrackSegment;
+  scale: number;
+  colour: string;
+  trail?: boolean;
+}) {
+  return chevronPositions(segment, scale).map((position, index) => (
+    <g
+      key={`${trail ? 'trail-' : ''}chevron-${index}`}
+      transform={`rotate(${position.angle} ${position.x} ${position.y})`}
+      aria-hidden="true"
+    >
+      <text
+        className={`service-chevron service-chevron--${segment.flowsForward ? 'fwd' : 'rev'}${
+          trail ? ' service-chevron--trail' : ''
+        }`}
+        x={position.x}
+        y={position.y}
+        fill={colour}
+        fontSize={(scale < 1.5 ? 9 : 7) / Math.max(scale, 0.25)}
+        data-city-zoom={scale < 1.5 ? 'true' : undefined}
+        style={{ animationDuration: `${segment.flowSeconds}s` }}
+      >
+        ›
+      </text>
+    </g>
+  ));
+}
+
 export const TrackService = memo(function TrackService({
   edges,
   features,
@@ -53,9 +96,9 @@ export const TrackService = memo(function TrackService({
   visibleEdges = null,
   scale = 0,
   selectedRoute,
+  theme = 'light',
+  colourMode = 'standard',
 }: TrackServiceProps) {
-  // The heartbeat produces a new states map every second; the signature only
-  // changes when a quantised value actually moves — that's the repaint gate.
   const signature = useMemo(
     () => trackFieldSignature(features, statesByStop),
     [features, statesByStop],
@@ -63,45 +106,103 @@ export const TrackService = memo(function TrackService({
   const statesRef = useRef(statesByStop);
   statesRef.current = statesByStop;
   const painted = useMemo(() => {
-    const byEdge: Array<{ edgeId: string; segments: TrackSegment[] }> = [];
+    const byEdge: Array<{ edgeId: string; context: boolean; segments: TrackSegment[] }> =
+      [];
+    const neighbours = edgeNeighboursByRoute(edges);
+    const boundaries = new Map(
+      edges.map((edge) => [
+        edge.id,
+        edgeBoundaryAnchors(edge, features, statesRef.current),
+      ]),
+    );
+    const seamValuesFor = (edge: Edge) => {
+      const values: Array<{ directionId: 0 | 1; at: 'start' | 'end'; dryness: number }> =
+        [];
+      for (const neighbourId of neighbours.get(edge.id) ?? []) {
+        const neighbour = edges.find((candidate) => candidate.id === neighbourId);
+        if (!neighbour) continue;
+        const at =
+          edge.a === neighbour.a || edge.a === neighbour.b
+            ? 'start'
+            : edge.b === neighbour.a || edge.b === neighbour.b
+              ? 'end'
+              : null;
+        if (!at) continue;
+        const neighbourAt =
+          at === 'start'
+            ? edge.a === neighbour.a
+              ? 'start'
+              : 'end'
+            : edge.b === neighbour.a
+              ? 'start'
+              : 'end';
+        for (const boundary of boundaries.get(neighbour.id) ?? [])
+          if (boundary.at === neighbourAt)
+            values.push({
+              directionId: boundary.directionId,
+              at,
+              dryness: boundary.dryness,
+            });
+      }
+      return values;
+    };
     for (const edge of edges) {
-      // E5S1: only edges near the camera paint — the whole network's DOM
-      // never rides a route-level zoom.
       if (visibleEdges && !visibleEdges.has(edge.id)) continue;
-      if (selectedRoute && !edge.routeIds.includes(selectedRoute)) continue;
-      const segments = edgeServiceSegments(edge, features, statesRef.current);
-      if (segments.length > 0) byEdge.push({ edgeId: edge.id, segments });
+      const segments = edgeServiceSegments(
+        edge,
+        features,
+        statesRef.current,
+        undefined,
+        undefined,
+        seamValuesFor(edge),
+      );
+      if (segments.length > 0)
+        byEdge.push({
+          edgeId: edge.id,
+          context: Boolean(selectedRoute && !edge.routeIds.includes(selectedRoute)),
+          segments,
+        });
     }
     return byEdge;
-    // Repaints gate on the field's quantised signature, not the 1 Hz map.
-  }, [edges, features, signature, visibleEdges, selectedRoute]);
+  }, [edges, features, signature, visibleEdges, selectedRoute, theme, colourMode]);
   const trails = useMemo(() => {
-    if (!cars || cars.length === 0) return [];
+    if (!cars?.length) return [];
     const edgesById = new Map(edges.map((edge) => [edge.id, edge]));
     const collected: TrackSegment[] = [];
     for (const car of cars) {
       const edge = car.match ? edgesById.get(car.match.edgeId) : undefined;
       if (!edge) continue;
       if (visibleEdges && !visibleEdges.has(edge.id)) continue;
-      if (selectedRoute && !edge.routeIds.includes(selectedRoute)) continue;
       collected.push(...carTrailSegments(edge, car, features, statesRef.current));
     }
     return collected;
   }, [cars, edges, features, signature, visibleEdges, selectedRoute]);
-  /** E5S2: a flow dash renders only when the segment is long enough on
-   * screen to carry at least one dash cycle — the colour line always stays. */
-  const flows = (segment: TrackSegment) =>
-    scale > 0 &&
-    scale * Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) >= DASH_CYCLE;
   if (painted.length === 0 && trails.length === 0) return null;
   return (
     <g className="service-track" aria-hidden="true">
-      {painted.map(({ edgeId, segments }) => (
-        <g key={edgeId}>
+      {painted.map(({ edgeId, context, segments }) => (
+        <g key={edgeId} data-context={context ? 'muted' : undefined}>
           {segments.map((segment, index) => {
             const { dx, dy } = streamOffset(segment);
+            const colour = drynessColor(
+              segment.dryness,
+              segment.state,
+              theme,
+              colourMode,
+            );
+            const width = streamWidth(scale);
             return (
               <g key={index}>
+                <line
+                  className="service-track-casing"
+                  x1={segment.x1 + dx}
+                  y1={segment.y1 + dy}
+                  x2={segment.x2 + dx}
+                  y2={segment.y2 + dy}
+                  stroke="var(--surface)"
+                  strokeWidth={width + 2 / Math.max(scale, 0.25)}
+                  strokeLinecap="round"
+                />
                 <line
                   className="service-track-seg"
                   data-state={segment.state}
@@ -110,85 +211,78 @@ export const TrackService = memo(function TrackService({
                   y1={segment.y1 + dy}
                   x2={segment.x2 + dx}
                   y2={segment.y2 + dy}
-                  stroke={drynessColor(segment.dryness, segment.state)}
-                  strokeWidth={STREAM_WIDTH}
+                  stroke={colour}
+                  strokeWidth={width}
                   strokeLinecap="round"
                   strokeDasharray={segment.state === 'unmonitored' ? '3 3' : undefined}
-                  opacity={segment.state === 'unmonitored' ? 0.6 : 0.95}
                 />
-                {/* The flow: this direction's own stream, moving in its
-                    travel direction, at the speed its service earns. Blind
-                    stretches never flow; at city-wide zoom nothing flows
-                    (E5S2 — the static colour carries the information, the
-                    battery stays). The --dash-start phase keeps the
-                    dashes continuous across the whole route. */}
-                {segment.state !== 'unmonitored' && flows(segment) && (
-                  <line
-                    className={`service-track-flow service-flow--${
-                      segment.flowsForward ? 'fwd' : 'rev'
-                    }`}
-                    data-state={segment.state}
-                    x1={segment.x1 + dx}
-                    y1={segment.y1 + dy}
-                    x2={segment.x2 + dx}
-                    y2={segment.y2 + dy}
-                    stroke={drynessColor(segment.dryness, segment.state)}
-                    strokeWidth={STREAM_WIDTH}
-                    strokeLinecap="round"
-                    strokeDasharray={DASH_PATTERN}
-                    style={
-                      {
-                        '--dash-start': `${segment.phase}px`,
-                        animationDuration: `${segment.flowSeconds}s`,
-                      } as React.CSSProperties
-                    }
-                    opacity={0.55}
-                  />
+                {segment.state !== 'unmonitored' && (
+                  <g transform={`translate(${dx} ${dy})`}>
+                    <Chevrons segment={segment} scale={scale} colour={colour} />
+                  </g>
                 )}
               </g>
             );
           })}
+          {severityCrossings(segments).map((front, index) => (
+            <line
+              key={`front-${index}`}
+              className="service-severity-front"
+              data-front={front.kind}
+              x1={front.x - Math.sin((front.angle * Math.PI) / 180) * 2}
+              y1={front.y + Math.cos((front.angle * Math.PI) / 180) * 2}
+              x2={front.x + Math.sin((front.angle * Math.PI) / 180) * 2}
+              y2={front.y - Math.cos((front.angle * Math.PI) / 180) * 2}
+              stroke="currentColor"
+              strokeWidth={1 / Math.max(scale, 0.25)}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {[0, 1].map((directionId) => {
+            const directed = segments.filter(
+              (segment) => segment.directionId === directionId,
+            );
+            if (!directed.length) return null;
+            const first = directed[0]!;
+            const last = directed.at(-1)!;
+            return [first, last].map((segment, index) => {
+              const length = Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
+              const point = pointAtDisplayDistance(segment, index === 0 ? 0 : length);
+              const offset = streamOffset(segment);
+              return (
+                <text
+                  key={`terminus-${directionId}-${index}`}
+                  className="service-terminus-chevron"
+                  x={point.x + offset.dx}
+                  y={point.y + offset.dy}
+                  fill={drynessColor(segment.dryness, segment.state, theme, colourMode)}
+                  fontSize={8 / Math.max(scale, 0.25)}
+                  transform={`rotate(${point.angle} ${point.x + offset.dx} ${point.y + offset.dy})`}
+                  aria-hidden="true"
+                >
+                  ›
+                </text>
+              );
+            });
+          })}
         </g>
       ))}
-      {/* The snail slime: freshly serviced track behind each car, green and
-          brisk — the delay being cleared, visible. */}
       {trails.map((segment, index) => {
         const { dx, dy } = streamOffset(segment);
+        const colour = drynessColor(0, 'fresh', theme, colourMode);
         return (
-          <g key={`trail-${index}`}>
+          <g key={`trail-${index}`} transform={`translate(${dx} ${dy})`}>
             <line
               className="service-trail-seg"
-              x1={segment.x1 + dx}
-              y1={segment.y1 + dy}
-              x2={segment.x2 + dx}
-              y2={segment.y2 + dy}
-              stroke={STATE_COLORS.fresh}
-              strokeWidth={STREAM_WIDTH + 0.4}
+              x1={segment.x1}
+              y1={segment.y1}
+              x2={segment.x2}
+              y2={segment.y2}
+              stroke={colour}
+              strokeWidth={streamWidth(scale) + 0.4}
               strokeLinecap="round"
-              opacity={0.95}
             />
-            {flows(segment) && (
-              <line
-                className={`service-trail-flow service-flow--${
-                  segment.flowsForward ? 'fwd' : 'rev'
-                }`}
-                x1={segment.x1 + dx}
-                y1={segment.y1 + dy}
-                x2={segment.x2 + dx}
-                y2={segment.y2 + dy}
-                stroke={STATE_COLORS.fresh}
-                strokeWidth={STREAM_WIDTH + 0.4}
-                strokeLinecap="round"
-                strokeDasharray={DASH_PATTERN}
-                style={
-                  {
-                    '--dash-start': `${segment.phase}px`,
-                    animationDuration: `${segment.flowSeconds}s`,
-                  } as React.CSSProperties
-                }
-                opacity={0.5}
-              />
-            )}
+            <Chevrons segment={segment} scale={scale} colour={colour} trail />
           </g>
         );
       })}

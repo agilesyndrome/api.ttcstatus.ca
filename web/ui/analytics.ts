@@ -14,6 +14,9 @@ const TRACKED_ACTIONS = [
   'exported-map',
   'saved-default-view',
   'reset-default-view',
+  'legend-highlight',
+  'legend-row-select',
+  'colour-mode-change',
 ] as const;
 
 export type TrackedAction = (typeof TRACKED_ACTIONS)[number];

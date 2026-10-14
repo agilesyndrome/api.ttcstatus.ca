@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import type { StopServiceState } from '../../../../shared/service/contracts';
 import { SERVICE_WINDOW_SECONDS } from '../../../../shared/service/config';
-import { platformRoutes, stopSentence, STATE_COLORS } from './wave-field';
+import { platformRoutes, stopSentence } from './wave-field';
+import { fieldColour } from '../../../../shared/map/field-palette';
+import { useColourMode } from '../../hooks/useColourMode';
+import { useTheme } from '../../hooks/useTheme';
 import type { RouteBadge } from './wave-field';
 
 export interface StopCardProps {
@@ -47,6 +50,8 @@ export function StopCard({
   controls,
   routes,
 }: StopCardProps) {
+  const { colourMode } = useColourMode();
+  const { dark } = useTheme();
   const med =
     stop.medianHeadwayOwnSeconds !== null ? stop.medianHeadwayOwnSeconds / 60 : null;
   const est = stop.expectedWaitSeconds !== null ? stop.expectedWaitSeconds / 60 : null;
@@ -72,7 +77,9 @@ export function StopCard({
       <p className="service-card__status" data-state={stop.state}>
         <span
           className="service-card__status-dot"
-          style={{ background: STATE_COLORS[stop.state] }}
+          style={{
+            background: fieldColour(stop.state, dark ? 'dark' : 'light', colourMode),
+          }}
         />
         {stateLabels[stop.state]}
       </p>

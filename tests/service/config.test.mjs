@@ -18,6 +18,8 @@ test('service config defaults are the Stage 0 frozen decisions (sla.md §9)', ()
   assert.equal(config.serviceBaselineMinTouches(), 3);
   assert.equal(config.serviceResidualMinSamples(), 3);
   assert.equal(config.serviceWaitShrinkPrior(), 4);
+  assert.equal(config.serviceBridgeMaxMetres(), 600);
+  assert.equal(config.serviceVoidBridgeMaxMetres(), 150);
   assert.equal(config.serviceRecorderMode(), 'always');
   assert.equal(config.serviceRecorderMode('demand-warm'), 'demand-warm');
 });
@@ -42,6 +44,10 @@ test('out-of-range values fall back to the safe default (the liveUpdateSeconds p
   assert.equal(config.serviceBackToBackSeconds('0'), 45);
   assert.equal(config.serviceBaselineMinTouches('1'), 3);
   assert.equal(config.serviceWaitShrinkPrior('-3'), 4);
+  assert.equal(config.serviceBridgeMaxMetres('99'), 600);
+  assert.equal(config.serviceBridgeMaxMetres('1501'), 600);
+  assert.equal(config.serviceVoidBridgeMaxMetres('49'), 150);
+  assert.equal(config.serviceVoidBridgeMaxMetres('601'), 150);
   // Boundary values are in range and accepted, not rejected.
   assert.equal(config.serviceSampleSeconds('5'), 5);
   assert.equal(config.serviceSampleSeconds('60'), 60);
@@ -58,6 +64,7 @@ test('serviceConfig(env) assembles one validated object from env vars', () => {
   assert.equal(whole.sampleSeconds, 30);
   assert.equal(whole.touchRadiusMetres, 35);
   assert.equal(whole.voidDrynessRatio, 2.5);
+  assert.equal(whole.bridgeMaxMetres, 600);
   assert.equal(whole.recorderMode, 'always');
   // Unset fields fall back to defaults.
   assert.equal(whole.dwellDedupeSeconds, 120);

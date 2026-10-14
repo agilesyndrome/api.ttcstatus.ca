@@ -20,7 +20,9 @@ const usage = () => {
 
 Usage:
   npm run feature:enable[:local] -- <flag> <subject> [--by <operator>]
+  npm run feature:enable[:local] -- <flag> --percent <0-100> [--by <operator>]
   npm run feature:disable[:local] -- <flag> <subject>
+  npm run feature:disable[:local] -- <flag> --percent
   npm run feature:list[:local]
 
 The :local commands use the same D1 state as make dev. Other commands use
@@ -76,6 +78,34 @@ export async function disableFeature(db, { flag, subject }) {
   return { flag, subject: String(subject), removed: Boolean(result.meta?.changes) };
 }
 
+export async function setFeatureCohort(db, { flag, percentage, updatedBy, updatedAt }) {
+  if (!validFlagName(flag)) throw new Error(`Invalid flag '${flag}'.`);
+  const value = Number(percentage);
+  if (!Number.isInteger(value) || value < 0 || value > 100)
+    throw new Error(`Invalid cohort percentage '${percentage}'.`);
+  const at = updatedAt ?? Date.now();
+  const by = updatedBy ?? 'operator';
+  await db
+    .prepare(
+      `INSERT INTO feature_flag_cohorts (flag, percentage, updated_at, updated_by)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(flag) DO UPDATE SET percentage = excluded.percentage,
+       updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+    )
+    .bind(String(flag), value, at, String(by))
+    .run();
+  return { flag: String(flag), percentage: value, updatedAt: at, updatedBy: String(by) };
+}
+
+export async function disableFeatureCohort(db, { flag }) {
+  if (!validFlagName(flag)) throw new Error(`Invalid flag '${flag}'.`);
+  const result = await db
+    .prepare('DELETE FROM feature_flag_cohorts WHERE flag = ?')
+    .bind(flag)
+    .run();
+  return { flag, removed: Boolean(result.meta?.changes) };
+}
+
 export async function listFeatureFlags(db) {
   const rows = await db
     .prepare(
@@ -83,6 +113,14 @@ export async function listFeatureFlags(db) {
     )
     .all();
   const grants = rows.results ?? [];
+  const cohorts =
+    (
+      await db
+        .prepare(
+          'SELECT flag, percentage, updated_at, updated_by FROM feature_flag_cohorts ORDER BY flag',
+        )
+        .all()
+    ).results ?? [];
   const byFlag = new Map();
   for (const row of grants) {
     if (!byFlag.has(row.flag)) byFlag.set(row.flag, []);
@@ -94,6 +132,12 @@ export async function listFeatureFlags(db) {
   }
   return {
     total: grants.length,
+    cohorts: cohorts.map((row) => ({
+      flag: row.flag,
+      percentage: row.percentage,
+      updatedAt: row.updated_at,
+      updatedBy: row.updated_by,
+    })),
     flags: [...byFlag.entries()].map(([flag, subjects]) => ({ flag, subjects })),
   };
 }
@@ -186,12 +230,24 @@ export function parseFeatureArgs(args) {
   const positionals = [];
   let local = false;
   let json = false;
+  let percentage;
   let operator = process.env.USER ?? 'operator';
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
     if (arg === '--local') local = true;
     else if (arg === '--json') json = true;
-    else if (arg === '--by') {
+    else if (arg === '--percent') {
+      percentage = rest[++index];
+      if (
+        command !== 'disable' &&
+        (percentage === undefined || percentage.startsWith('--'))
+      )
+        throw new Error('--percent requires a number.');
+      if (percentage?.startsWith('--')) {
+        index -= 1;
+        percentage = undefined;
+      }
+    } else if (arg === '--by') {
       operator = rest[++index];
       if (!operator || operator.startsWith('--'))
         throw new Error('--by requires an operator.');
@@ -200,7 +256,23 @@ export function parseFeatureArgs(args) {
   }
   if (command === 'list' && positionals.length === 0)
     return { command, local, json, operator };
-  if ((command === 'enable' || command === 'disable') && positionals.length === 2)
+  if (command === 'enable' && positionals.length === 1 && percentage !== undefined)
+    return {
+      command,
+      flag: positionals[0],
+      percentage,
+      local,
+      json,
+      operator,
+      cohort: true,
+    };
+  if (command === 'disable' && positionals.length === 1 && percentage === undefined)
+    return { command, flag: positionals[0], local, json, operator, cohort: true };
+  if (
+    (command === 'enable' || command === 'disable') &&
+    positionals.length === 2 &&
+    percentage === undefined
+  )
     return {
       command,
       flag: positionals[0],
@@ -228,8 +300,19 @@ function printResult(command, result, json) {
     );
     if (rows.length) console.table(rows);
     else console.log('No feature flags granted.');
+    if (result.cohorts.length) console.table(result.cohorts);
   } else if (command === 'enable') {
-    console.table([{ ...result, grantedAt: new Date(result.grantedAt).toISOString() }]);
+    console.table([
+      {
+        ...result,
+        ...(result.grantedAt
+          ? { grantedAt: new Date(result.grantedAt).toISOString() }
+          : {}),
+        ...(result.updatedAt
+          ? { updatedAt: new Date(result.updatedAt).toISOString() }
+          : {}),
+      },
+    ]);
   } else {
     console.table([result]);
   }
@@ -256,10 +339,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       local,
       json,
       operator,
+      percentage,
+      cohort,
     } = parseFeatureArgs(process.argv.slice(2));
     if (command === 'list') {
       printResult(command, await withDb(local, (db) => listFeatureFlags(db)), json);
     } else {
+      if (cohort) {
+        const action = command === 'enable' ? setFeatureCohort : disableFeatureCohort;
+        const outcome = await withDb(local, (db) =>
+          command === 'enable'
+            ? action(db, { flag, percentage, updatedBy: operator })
+            : action(db, { flag }),
+        );
+        printResult(command, outcome, json);
+        process.exit(0);
+      }
       const subject = await resolveSubject(subjectArg, {
         clerkSecretKey: process.env.CLERK_SECRET_KEY,
       });

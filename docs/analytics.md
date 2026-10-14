@@ -12,7 +12,8 @@ No third-party scripts, no location data, no account identifiers.
   `workers/api/src/diagnostics/analytics.ts`) writes one Analytics Engine data
   point. The server accepts only an exact allowlist of action names:
   `located`, `tracked-streetcar`, `played-snake`, `saved-stop`,
-  `removed-stop`, `exported-map`.
+  `removed-stop`, `exported-map`, `legend-highlight`, `legend-row-select`,
+  and `colour-mode-change`.
 - The first request sets a `ttc_aid` cookie: a random UUID that is **HttpOnly,
   SameSite=Lax, Secure**, carries no account or profile link, and exists only
   so "distinct users" can be counted per action. It never leaves Cloudflare and

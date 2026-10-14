@@ -6,7 +6,7 @@ mode; chevrons are the direction system (and the only motion channel); small
 no-data stretches are smoothed over **invisibly and silently** — no inferred-value
 showcase, no soft styling, no caveats, no mention of inference on any user-facing
 surface (the inferences are minor; the map just reads as one continuous field);
-and the map never *computes advice* (no walk-hints,
+and the map never _computes advice_ (no walk-hints,
 no "take the other route" verdicts) — the map's own paint must let riders infer
 relief and compare corridors themselves. Source of the review: three 8:53–8:54
 screenshots of the Roncesvalles–Queen–King, College–Dufferin and Dundas–Gladstone
@@ -24,7 +24,7 @@ in `wave-field.ts`) — while painting a continuous sRGB gradient whose midpoint
 
 ## 1. Design principles
 
-1. **One owner of hue per mode.** Colour confusion is resolved by *mode*, not by
+1. **One owner of hue per mode.** Colour confusion is resolved by _mode_, not by
    repainting one system to dodge the other.
 2. **The map informs; it never advises.** No computed walk-hints, no alternate-
    route verdicts, no card lectures. The paint itself must make "the green
@@ -32,7 +32,7 @@ in `wave-field.ts`) — while painting a continuous sRGB gradient whose midpoint
    enough to infer at a glance.
 3. **Colour is never the only channel** — direction gets chevrons, severity gets
    a position on a labelled scale, lightness ranks even in greyscale.
-4. **The rider's question is the metric** — the legend speaks minutes for *their*
+4. **The rider's question is the metric** — the legend speaks minutes for _their_
    route's rhythm; the paint stays self-relative so frequent and infrequent
    corridors stay comparable and honest.
 5. **Smoothing is a rendering act, not a data claim.** Paint may interpolate
@@ -46,11 +46,11 @@ in `wave-field.ts`) — while painting a continuous sRGB gradient whose midpoint
 The three-way control already exists (`ExplorePanel.tsx`: `off / vehicles /
 service`; persisted in `default-view.ts`). Colour ownership becomes mode-dependent:
 
-| Mode (`live` + `serviceOverlay`) | Track base | Streams/pills | Legend |
-| --- | --- | --- | --- |
-| **Service** (`live ✓, overlay ✓`) | Neutral hairline casing (grey) — route colours step back | Service ramp owns hue; route identity = **numbered pills along the corridor** (like street-name labels) | Gradient bar + minute rows (§3) |
-| **Vehicles only** (`live ✓, overlay ✗`) | Route colours own the tracks — the classic transit-map look | Vehicle markers in route colour; **chevrons in route colour** show travel direction (§4); route pills optional (redundant) | Route colour key (§2.1) |
-| **Map only** (`live ✗`) | Route colours own the tracks | Nothing live | Route colour key |
+| Mode (`live` + `serviceOverlay`)        | Track base                                                  | Streams/pills                                                                                                              | Legend                          |
+| --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **Service** (`live ✓, overlay ✓`)       | Neutral hairline casing (grey) — route colours step back    | Service ramp owns hue; route identity = **numbered pills along the corridor** (like street-name labels)                    | Gradient bar + minute rows (§3) |
+| **Vehicles only** (`live ✓, overlay ✗`) | Route colours own the tracks — the classic transit-map look | Vehicle markers in route colour; **chevrons in route colour** show travel direction (§4); route pills optional (redundant) | Route colour key (§2.1)         |
+| **Map only** (`live ✗`)                 | Route colours own the tracks                                | Nothing live                                                                                                               | Route colour key                |
 
 - In Service mode the pills carry the route number + a small route-colour chip,
   so identity survives without flooding the canvas with red/green/orange lines.
@@ -61,7 +61,7 @@ service`; persisted in `default-view.ts`). Colour ownership becomes mode-depende
   a **dotted-neutral casing** — visible, obviously-not-data, and never
   re-importing route colour (which would undo Service mode's hue monopoly).
 - Subway handling is unchanged (`E7S7`): subway tracks never join the service
-  field; in Service mode they keep route colours with pills, which now *reads*
+  field; in Service mode they keep route colours with pills, which now _reads_
   as "no service verdict here."
 
 **Pills:** drawn like street-name labels — rounded chip, halo, route number in
@@ -90,21 +90,21 @@ gradient bar that literally shows the paint**:
   into OKLCH, with **monotone lightness** across the ramp (light green → amber →
   red → deep crimson) so severity ranks correctly even in greyscale — which is
   also the colourblind fallback. Precomputed perceptual anchors are acceptable if
-  runtime OKLCH mixing is too costly; the *look* is the contract.
+  runtime OKLCH mixing is too costly; the _look_ is the contract.
 - **Far-end compression fixed:** the bar samples dryness 0 → 2.5 and ends in a
   **"≥ 2× the usual" break notation**, so the most severe state gets real legend
   space instead of the current 2→3.5 sliver. The maroon deepening clamp in
   `drynessColor` stays (severity keeps deepening on the map); the bar simply
   labels everything past 2× as "beyond."
 - **Rider minutes without lying (the v2 contradiction resolved):** the axis is
-  self-relative dryness, so *one* minute tick would be wrong for most routes.
+  self-relative dryness, so _one_ minute tick would be wrong for most routes.
   Instead the bar carries a small **two-row calibration ruler** beneath it:
   - `frequent route (3-min cars): just went · ~2 min · ~6 min · 12+ min`
   - `local route (12-min cars): just went · ~3 min · ~15 min · 24+ min`
-  The rider finds their row and reads real minutes. **When a route is selected**
-  (the filter already exists), the legend renders **only that route's row** —
-  personalized and unambiguous. The rows derive from the same boundary math the
-  paint uses, so they are always consistent with it.
+    The rider finds their row and reads real minutes. **When a route is selected**
+    (the filter already exists), the legend renders **only that route's row** —
+    personalized and unambiguous. The rows derive from the same boundary math the
+    paint uses, so they are always consistent with it.
 - **Anchors render from `serviceConfig()`** — never hardcoded copy. If ops tunes
   `SERVICE_FRESH_DRYNESS_RATIO` / `SERVICE_VOID_*`, the legend words move with
   the thresholds.
@@ -123,7 +123,7 @@ gradient bar that literally shows the paint**:
 ## 4. Direction — the chevron system (the flagship; only motion channel)
 
 Never collapse twin streams. Direction gets a first-class channel, and **the
-flow-dash animation dies**: chevrons *are* the motion channel (one animated
+flow-dash animation dies**: chevrons _are_ the motion channel (one animated
 system per stream, not two competing ones).
 
 - **Glyphs:** small chevrons (▸) riding each stream, pointing in the stream's
@@ -169,7 +169,7 @@ reads as one continuous field.
 **Algorithm (paint-time only, inside `edgeServiceSegments`):**
 
 1. **Classify** each blind stretch while painting an edge: measure its span
-   between bounding *visible* anchors (or edge end).
+   between bounding _visible_ anchors (or edge end).
 2. **Count-based bridging (self-normalising):** bridge **exactly one blind
    anchor** between two visible neighbours — the rational assumption is "one
    hidden stop behaves like its two visible neighbours," and a count rule
@@ -184,8 +184,8 @@ reads as one continuous field.
 5. **Void restraint:** if either bounding anchor is `void`, the cap shrinks to
    `SERVICE_VOID_BRIDGE_MAX_METRES` (**150 m** — under one stop spacing); beyond
    it the stretch paints grey. Interpolation is monotone between anchors, so
-   bridging can never *create* a void between healthy stops — and we never
-   *accuse* a long blind stretch of a gap either.
+   bridging can never _create_ a void between healthy stops — and we never
+   _accuse_ a long blind stretch of a gap either.
 6. **Cross-edge bridging ships in Phase 5, not phase 2:** the grey seams in the
    screenshots sit at edge junctions (Roncesvalles/Queen, College/Dufferin) —
    deferring seams defers the very failure we started from. Bridge across
@@ -193,8 +193,8 @@ reads as one continuous field.
    one-anchor rule.
 7. **Grey survives only where bridging is refused** (long gaps, void-restraint,
    > 1 blind anchor) — genuine blindness, covered by the plain "No data" legend
-   entry (§3). A bridged stretch is never labelled, dimmed, dashed or worded as
-   inferred.
+   > entry (§3). A bridged stretch is never labelled, dimmed, dashed or worded as
+   > inferred.
 
 **Why this stays honest (internal invariants, not user-facing features):**
 
@@ -224,13 +224,13 @@ add one-anchor bridge (single hidden stop → smooth fill), two-anchor refusal
 
 ## 6. Cross-corridor comparison — the map carries it, no advice
 
-**Bug-level find:** `TrackService` paints *only* the selected route's edges when
+**Bug-level find:** `TrackService` paints _only_ the selected route's edges when
 a route is selected — destroying the corner comparison (Queen vs King at their
 crossing), which is exactly the decision riders make.
 
 **Fix:** in Service mode with a route selected, **non-selected corridors paint
 at low emphasis (greyscale) instead of disappearing**. The rider sees their
-route's vivid field *and* the muted context — "the crossing street is flowing
+route's vivid field _and_ the muted context — "the crossing street is flowing
 green while mine crawls red" is inferable at a glance, with zero computed
 verdicts. Deliberately **no** card text like "King St: cars every 3 min — better
 right now": the map's paint is the argument.
@@ -246,7 +246,7 @@ right now": the map's paint is the argument.
 
 ## 8. Contrast — by construction, then audited
 
-Contrast is *designed in* during the ramp/chevron phases and *verified* in a
+Contrast is _designed in_ during the ramp/chevron phases and _verified_ in a
 final pass (after theming lands, since those change what is measured against):
 
 - **Zoom-adaptive stream width:** state streams render ≥ 3 px at corridor zoom
@@ -311,17 +311,17 @@ final pass (after theming lands, since those change what is measured against):
 
 ## 11. Implementation plan
 
-| Phase | Work | Files |
-| --- | --- | --- |
-| 1 | Palette module: OKLCH ramp, theme + colourMode aware; stale-paint signature fix; `?? 0` coercion removed | `wave-field.ts`, `tokens.css`, new `shared/map/field-palette.ts` |
-| 2 | Gradient-bar legend: generated gradient, break notation, route-calibrated minute rows, config-driven anchors, quantised tap-to-highlight | `HomeWorkspace.tsx`, `workspace-polish.css`, new `LegendBar.tsx` |
-| 3 | Chevron system: sole motion channel (dash-flow removed), screen-space sizing, density strategy, fronts, termini, trails, caps | `TrackService.tsx`, `service.css`, `wave-field.ts` |
-| 4 | Mode-owned colour: neutral casing in Service mode, dotted-neutral for unmonitored corridors, route pills, route colour key, greyscale non-selected corridors | `TrackLayer.tsx`, `TransitMap.tsx`, `ExplorePanel.tsx`, new `RoutePills.tsx`, new route-key legend |
-| 5 | Invisible bridging: one-anchor count rule + 600 m backstop, 150 m void-adjacent cap, cross-edge seam bridging, config knobs | `wave-field.ts`, `shared/service/config.ts`, `TrackService.tsx` |
-| 6 | Label offsets/scrim + pill collision pass | `TransitMap.tsx`, label styles |
-| 7 | Contrast audit (both themes, all modes) + palette tweaks; zoom-adaptive widths finalized | palette module, tokens |
-| 8 | Colourblind setting UI + local pref + DB migration + API + first-sync rule | `SettingsPage.tsx`, new `ColourVisionSettings.tsx`, `usePreferences`, `migrations/0010_user_colour_mode.sql`, `workers/api/src/accounts/profiles.ts`, accounts routes |
-| 9 | Fixture scenes, i18n sweep, analytics, hallway test, docs | `tests/service/wave-field.test.mjs`, new fixture stories, `shared/i18n/locales/en-CA/messages.json`, README/CODEMAP |
+| Phase | Work                                                                                                                                                         | Files                                                                                                                                                                 |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Palette module: OKLCH ramp, theme + colourMode aware; stale-paint signature fix; `?? 0` coercion removed                                                     | `wave-field.ts`, `tokens.css`, new `shared/map/field-palette.ts`                                                                                                      |
+| 2     | Gradient-bar legend: generated gradient, break notation, route-calibrated minute rows, config-driven anchors, quantised tap-to-highlight                     | `HomeWorkspace.tsx`, `workspace-polish.css`, new `LegendBar.tsx`                                                                                                      |
+| 3     | Chevron system: sole motion channel (dash-flow removed), screen-space sizing, density strategy, fronts, termini, trails, caps                                | `TrackService.tsx`, `service.css`, `wave-field.ts`                                                                                                                    |
+| 4     | Mode-owned colour: neutral casing in Service mode, dotted-neutral for unmonitored corridors, route pills, route colour key, greyscale non-selected corridors | `TrackLayer.tsx`, `TransitMap.tsx`, `ExplorePanel.tsx`, new `RoutePills.tsx`, new route-key legend                                                                    |
+| 5     | Invisible bridging: one-anchor count rule + 600 m backstop, 150 m void-adjacent cap, cross-edge seam bridging, config knobs                                  | `wave-field.ts`, `shared/service/config.ts`, `TrackService.tsx`                                                                                                       |
+| 6     | Label offsets/scrim + pill collision pass                                                                                                                    | `TransitMap.tsx`, label styles                                                                                                                                        |
+| 7     | Contrast audit (both themes, all modes) + palette tweaks; zoom-adaptive widths finalized                                                                     | palette module, tokens                                                                                                                                                |
+| 8     | Colourblind setting UI + local pref + DB migration + API + first-sync rule                                                                                   | `SettingsPage.tsx`, new `ColourVisionSettings.tsx`, `usePreferences`, `migrations/0010_user_colour_mode.sql`, `workers/api/src/accounts/profiles.ts`, accounts routes |
+| 9     | Fixture scenes, i18n sweep, analytics, hallway test, docs                                                                                                    | `tests/service/wave-field.test.mjs`, new fixture stories, `shared/i18n/locales/en-CA/messages.json`, README/CODEMAP                                                   |
 
 Rollout: phases 1–3 ship behind the existing overlay config switch; the colour
 setting is inert (default `standard`) until phase 8. Each phase is independently
@@ -403,20 +403,22 @@ One module owns every service colour; the ramp mixes perceptually; the field
 repaints when theme or colour mode changes.
 
 Acceptance criteria:
-- [ ] All service-state colours resolve through `fieldPalette(theme, colourMode)`; hardcoded `STATE_COLORS` hexes are gone from components.
-- [ ] `drynessColor` mixes in OKLCH with monotone lightness (greyscale still ranks severity; no muddy olive midpoints).
-- [ ] Flipping theme or colour mode repaints the field — no stale gradients.
-- [ ] A null-dryness anchor no longer silently paints as "fresh".
-- [ ] `tests/service/wave-field.test.mjs` updated and green.
+
+- [x] All service-state colours resolve through `fieldPalette(theme, colourMode)`; hardcoded `STATE_COLORS` hexes are gone from components.
+- [x] `drynessColor` mixes in OKLCH with monotone lightness (greyscale still ranks severity; no muddy olive midpoints).
+- [x] Flipping theme or colour mode repaints the field — no stale gradients.
+- [x] A null-dryness anchor no longer silently paints as "fresh".
+- [x] `tests/service/wave-field.test.mjs` updated and green.
 
 Stories:
-- [ ] **1.1 Create `shared/map/field-palette.ts` (S)** — pure module mapping `FieldState` → hex for light/dark themes; return today's values unchanged; unit tests for all five states × two themes.
-- [ ] **1.2 Wire `wave-field.ts` + `TrackService.tsx` to the palette (S)** — replace `STATE_COLORS` and inline hexes; expect zero visual change (screenshot check against a fixture).
-- [ ] **1.3 Wire cards, marker and legend dots to the palette (S)** — `StopCard.tsx`, `SelectedStopCard.tsx`, `SelectedStopMarker.tsx`, and the legend dots in `HomeWorkspace.tsx`.
-- [ ] **1.4 OKLCH mix helper (M)** — implement OKLCH mixing (or a precomputed perceptual anchor table) in the palette module; tests assert lightness is monotone along the ramp and midpoints stay vivid.
-- [ ] **1.5 Point `drynessColor` at the OKLCH helper (S)** — replace the sRGB `mix`; keep `drynessColor(0|1|2|null)` anchor mappings pinned by tests.
-- [ ] **1.6 Theme + colourMode into the repaint gate (S)** — add both to the `painted` memo inputs in `TrackService.tsx` (or the signature); test: switching theme changes painted output.
-- [ ] **1.7 Kill the `?? 0` coercion (S)** — in `sampleAt`, a null-dryness non-blind anchor paints blind (grey) for now; Epic 5.7 upgrades it to a bridge participant; pin with a test.
+
+- [x] **1.1 Create `shared/map/field-palette.ts` (S)** — completed with light/dark and all three colour modes plus palette tests.
+- [x] **1.2 Wire `wave-field.ts` + `TrackService.tsx` to the palette (S)** — completed; field rendering uses the shared palette.
+- [x] **1.3 Wire cards, marker and legend dots to the palette (S)** — completed; cards, marker and gradient legend use the palette.
+- [x] **1.4 OKLCH mix helper (M)** — completed with monotone-lightness tests for all modes.
+- [x] **1.5 Point `drynessColor` at the OKLCH helper (S)** — completed and anchor behaviour remains tested.
+- [x] **1.6 Theme + colourMode into the repaint gate (S)** — completed; theme and colour mode are memo inputs and renderer inputs.
+- [x] **1.7 Kill the `?? 0` coercion (S)** — completed; null anchors remain blind until smoothing explicitly admits them.
 
 ### Epic 2 — Gradient-bar legend (Phase 2)
 
@@ -424,152 +426,168 @@ The legend is a bar generated from the paint itself, speaking rider minutes
 honestly, with quantised tap-to-highlight.
 
 Acceptance criteria:
-- [ ] The bar's gradient is generated from `drynessColor` (0 → 2.5 + "≥ 2×" break notation).
-- [ ] Word anchors and minute rows derive from `serviceConfig()` / boundary math — zero hardcoded copy.
-- [ ] When a route is selected, the legend renders only that route's minute row.
-- [ ] Tap-to-highlight dims via a CSS `data-state` switch (never per-node opacity); events fire.
-- [ ] All legend copy is i18n keys.
+
+- [x] The bar's gradient is generated from `drynessColor` (0 → 2.5 + "≥ 2×" break notation).
+- [x] Word anchors and minute rows derive from `serviceConfig()` / boundary math — zero hardcoded copy.
+- [x] When a route is selected, the legend renders only that route's minute row.
+- [x] Tap-to-highlight dims via a CSS `data-state` switch (never per-node opacity); events fire.
+- [x] All legend copy is i18n keys.
 
 Stories:
-- [ ] **2.1 `LegendBar` gradient + break (S)** — new `LegendBar.tsx`: sample `drynessColor` into a CSS linear-gradient ending in the "≥ 2× the usual" break label; Storybook story.
-- [ ] **2.2 Config-driven word anchors (S)** — render "just went / longer than usual / a real gap" from `serviceConfig()` thresholds; test that tuning an env var moves the words.
-- [ ] **2.3 Two-row minute ruler (M)** — helper converts the ramp boundaries to minutes for exemplar headways (3-min and 12-min routes); tests, then render beneath the bar.
-- [ ] **2.4 Route-selected single row (S)** — use the selected route's median headway for one personalized row; fall back to two rows with no selection.
-- [ ] **2.5 Tap-to-highlight (M)** — press position → nearest bucket; dim non-matching segments via `data-state` CSS switch; release/second tap clears; fire `legend-highlight` / `legend-row-select`.
-- [ ] **2.6 Swap the legend in `HomeWorkspace.tsx` (S)** — replace the 4-dot legend with `LegendBar` including the plain "No data" grey entry; delete the old markup; i18n keys for all new copy.
+
+- [x] **2.1 `LegendBar` gradient + break (S)** — completed with a generated gradient bar and Storybook stories.
+- [x] **2.2 Config-driven word anchors (S)** — completed from validated service configuration and localized labels.
+- [x] **2.3 Two-row minute ruler (M)** — completed with the exported `minuteRuler` boundary helper.
+- [x] **2.4 Route-selected single row (S)** — completed using the selected route's median headway.
+- [x] **2.5 Tap-to-highlight (M)** — completed with quantised buckets, CSS `data-state` dimming and analytics.
+- [x] **2.6 Swap the legend in `HomeWorkspace.tsx` (S)** — completed with the plain localized No data entry.
 
 ### Epic 3 — Chevron direction system (Phase 3)
 
 Direction becomes a first-class channel, and chevrons are the only motion.
 
 Acceptance criteria:
-- [ ] Chevrons ride every painted stream pointing in its travel direction, phase-synced per corridor.
-- [ ] Dash-flow animation is removed; chevrons are the only motion channel; reduced-motion and city zoom render static-but-directional chevrons.
-- [ ] Chevrons size in screen pixels; density is bounded (per-screen-unit spacing, camera-settle gate, per-edge cap).
-- [ ] Severity fronts render at fresh/due and due/void boundary crossings; termini get arrowheads; trails carry chevrons.
-- [ ] DOM count stays bounded by the gates; no new heartbeat wake sources.
+
+- [x] Chevrons ride every painted stream pointing in its travel direction, phase-synced per corridor.
+- [x] Dash-flow animation is removed; chevrons are the only motion channel; reduced-motion and city zoom render static-but-directional chevrons.
+- [x] Chevrons size in screen pixels; density is bounded (per-screen-unit spacing, camera-settle gate, per-edge cap).
+- [x] Severity fronts render at fresh/due and due/void boundary crossings; termini get arrowheads; trails carry chevrons.
+- [x] DOM count stays bounded by the gates; no new heartbeat wake sources.
 
 Stories:
-- [ ] **3.1 Geometry helper (S)** — point + angle at a display distance along a segment (reuse the cumulative-distance cache); tests.
-- [ ] **3.2 Static chevron glyphs (M)** — render glyphs at `DASH_CYCLE` spacing, phase-synced, `aria-hidden`; Storybook story.
-- [ ] **3.3 Screen-space sizing + length gate (S)** — px sizing independent of zoom; render only where the segment carries one spacing cycle on screen (reuse the E5S2 gate).
-- [ ] **3.4 Remove dash-flow (S)** — delete the flow lines and keyframes from `TrackService.tsx` / `service.css`; keep `FLOW_SECONDS` as chevron-speed data.
-- [ ] **3.5 Chevron drift (S)** — fwd/rev drift at the state's speed at street zoom; static under `prefers-reduced-motion` (extend the existing CSS gate).
-- [ ] **3.6 City-zoom static + density cap (M)** — chevron per N screen units at low zoom, gated on camera settle; per-edge cap mirroring `MAX_SUBPIECES`; perf test asserts the DOM bound.
-- [ ] **3.7 Boundary-crossing helper (S)** — find fresh/due and due/void crossings along a segment; tests.
-- [ ] **3.8 Severity fronts (S)** — darker edge tick at each crossing; story.
-- [ ] **3.9 Termini arrowheads + trail chevrons (S)** — arrowheads at terminals/loops; the clearing-trail carries chevrons.
+
+- [x] **3.1 Geometry helper (S)** — completed with `pointAtDisplayDistance` and geometry tests.
+- [x] **3.2 Static chevron glyphs (M)** — completed with bounded SVG glyphs and route/service rendering.
+- [x] **3.3 Screen-space sizing + length gate (S)** — completed with screen-scale sizing and `DASH_CYCLE` gating.
+- [x] **3.4 Remove dash-flow (S)** — completed; flow lines and keyframes are gone and `FLOW_SECONDS` remains the chevron timing source.
+- [x] **3.5 Chevron drift (S)** — completed with forward/reverse CSS drift, state timing, gesture pause, city-zoom static mode and reduced-motion disabling.
+- [x] **3.6 City-zoom static + density cap (M)** — completed with settled-scale gating and an eight-glyph per-segment cap.
+- [x] **3.7 Boundary-crossing helper (S)** — completed with tested fresh/due and due/void crossing geometry.
+- [x] **3.8 Severity fronts (S)** — completed with darker front ticks in the track renderer.
+- [x] **3.9 Termini arrowheads + trail chevrons (S)** — completed with terminal glyphs and trail chevrons.
 
 ### Epic 4 — Mode-owned colour (Phase 4)
 
 Hue ownership switches by map mode; the legend always swaps with it.
 
 Acceptance criteria:
-- [ ] Service mode: neutral track casing; dotted-neutral casing for unmonitored corridors; route identity only via pills.
-- [ ] Vehicles/map-only: route colours own the tracks; a route colour key legend renders from `shownRoutes`; chevrons paint in route colour.
-- [ ] The legend swaps with the mode — never a service gradient in vehicles mode.
-- [ ] With a route selected in Service mode, non-selected corridors paint greyscale at low emphasis (not hidden).
-- [ ] `serviceCarTint` applies only in Service mode; pills respect `filters.labels`.
+
+- [x] Service mode: neutral track casing; dotted-neutral casing for unmonitored corridors; route identity only via pills.
+- [x] Vehicles/map-only: route colours own the tracks; a route colour key legend renders from `shownRoutes`; chevrons paint in route colour.
+- [x] The legend swaps with the mode — never a service gradient in vehicles mode.
+- [x] With a route selected in Service mode, non-selected corridors paint greyscale at low emphasis (not hidden).
+- [x] `serviceCarTint` applies only in Service mode; pills respect `filters.labels`.
 
 Stories:
-- [ ] **4.1 Service-mode casing (S)** — `TrackLayer.tsx`: neutral grey hairline casing when the overlay is on; dotted-neutral variant for edges with no anchors; tests/story.
-- [ ] **4.2 `RoutePills` component (S)** — rounded chip (colour dot + route number) with styles and story; props: route, position.
-- [ ] **4.3 Pill placement (M)** — place pills along corridors in Service mode via the label layer with basic spacing; fine collision work is Epic 6.
-- [ ] **4.4 Route colour key legend (S)** — component listing visible routes' colour chips, driven by `shownRoutes` so filters apply.
-- [ ] **4.5 Legend mode-swap (S)** — `HomeWorkspace.tsx` renders `LegendBar` only in Service mode, the route key otherwise.
-- [ ] **4.6 Greyscale non-selected corridors (S)** — in Service mode with `selectedRoute`, non-selected edges paint low-emphasis greyscale instead of disappearing; story shows the Queen/King corner.
-- [ ] **4.7 Car tint mode-dependence (S)** — `serviceCarTint` only when the overlay is on.
-- [ ] **4.8 Pills respect `filters.labels` (S)** — hide pills when labels are off; direction stays with chevrons.
+
+- [x] **4.1 Service-mode casing (S)** — completed with neutral casing and dotted no-data rails.
+- [x] **4.2 `RoutePills` component (S)** — completed with rounded route chips and a Storybook story.
+- [x] **4.3 Pill placement (M)** — completed through the service label layer with deterministic route de-duplication.
+- [x] **4.4 Route colour key legend (S)** — completed and driven from the filtered visible route list.
+- [x] **4.5 Legend mode-swap (S)** — completed in `HomeWorkspace.tsx`.
+- [x] **4.6 Greyscale non-selected corridors (S)** — completed with a muted grayscale context group.
+- [x] **4.7 Car tint mode-dependence (S)** — completed through the empty service overlay contract.
+- [x] **4.8 Pills respect `filters.labels` (S)** — completed; pills are rendered only when labels are enabled.
 
 ### Epic 5 — Invisible smoothing (Phase 5)
 
 Small blind stretches bridge silently; the map reads as one continuous field.
 
 Acceptance criteria:
-- [ ] Exactly one blind anchor bridges between visible neighbours, capped at 600 m; void-adjacent bridges cap at 150 m; one-sided runs hold across the cap then grey; cross-edge seams bridge when edges share a route id.
-- [ ] Bridged stretches are pixel-identical to measured (full opacity, no distinguishing attributes); no user-facing surface mentions inference.
-- [ ] Grey survives only where bridging is refused; stop cards, stop states and SLA math are untouched.
-- [ ] Knobs live in `shared/service/config.ts` with validated ranges; every case is pinned by tests.
+
+- [x] Exactly one blind anchor bridges between visible neighbours, capped at 600 m; void-adjacent bridges cap at 150 m; one-sided runs hold across the cap then grey; cross-edge seams bridge when edges share a route id.
+- [x] Bridged stretches are pixel-identical to measured (full opacity, no distinguishing attributes); no user-facing surface mentions inference.
+- [x] Grey survives only where bridging is refused; stop cards, stop states and SLA math are untouched.
+- [x] Knobs live in `shared/service/config.ts` with validated ranges; every case is pinned by tests.
 
 Stories:
-- [ ] **5.1 Config knobs (S)** — `SERVICE_BRIDGE_MAX_METRES=600` (range 100–1500) and `SERVICE_VOID_BRIDGE_MAX_METRES=150` (range 50–600) following the validated env-var pattern; tests.
-- [ ] **5.2 One-anchor bridging within an edge (M)** — classify blind stretches in `edgeServiceSegments`; bridge exactly one blind anchor subject to the backstop; tests per case.
-- [ ] **5.3 One-sided edge-end bridging (S)** — hold the inner anchor's value across the cap, grey beyond; tests.
-- [ ] **5.4 Void-adjacent cap (S)** — shrink to 150 m when either bounding anchor is void; tests (never create a void, never accuse a long blind stretch).
-- [ ] **5.5 Edge adjacency lookup (S)** — map edge → neighbouring edges sharing a route id; tests.
-- [ ] **5.6 Cross-edge seam bridging (M)** — apply the one-anchor rule across seams; tests including a Roncesvalles/Queen-like junction case.
-- [ ] **5.7 Null-dryness anchors become bridge participants (S)** — upgrade Epic 1.7's interim blind painting to bridging; test pins it.
-- [ ] **5.8 Pixel-identical check (S)** — assert no styling/attribute difference between bridged and measured segments; remove any interim markers; grep-verify no "inferred" copy ships.
+
+- [x] **5.1 Config knobs (S)** — completed with validated ranges and config tests.
+- [x] **5.2 One-anchor bridging within an edge (M)** — completed for bounded single-anchor runs with paint-only interpolation.
+- [x] **5.3 One-sided edge-end bridging (S)** — completed with capped hold and grey beyond the synthetic cap.
+- [x] **5.4 Void-adjacent cap (S)** — completed with the 150 m cap and shared config tests.
+- [x] **5.5 Edge adjacency lookup (S)** — completed with route-and-endpoint adjacency indexing and tests.
+- [x] **5.6 Cross-edge seam bridging (M)** — completed with route-continuous endpoint lookup and seam tests.
+- [x] **5.7 Null-dryness anchors become bridge participants (S)** — completed through the paint-anchor bridge path; source data remains unchanged.
+- [x] **5.8 Pixel-identical check (S)** — completed by full-opacity rendering with no inference attributes or user-facing inference copy.
 
 ### Epic 6 — Labels (Phase 6)
 
 Labels stop slicing the data; pills and labels coexist.
 
 Acceptance criteria:
-- [ ] Stop-name labels no longer visually break the colour bands (scrim chips or offset + leader line).
-- [ ] Route pills and stop labels resolve collisions deterministically.
-- [ ] The selected-stop ring keeps the field readable beneath it.
+
+- [x] Stop-name labels no longer visually break the colour bands (scrim chips or offset + leader line).
+- [x] Route pills and stop labels resolve collisions deterministically.
+- [x] The selected-stop ring keeps the field readable beneath it.
 
 Stories:
-- [ ] **6.1 Label scrim chips (S)** — rounded background behind stop-label text so the band reads continuous beneath it.
-- [ ] **6.2 Offset + leader line (S)** — move labels off the streams with a leader line, staying in bounds.
-- [ ] **6.3 Collision detection helper (S)** — rectangle overlap for labels/pills; tests.
-- [ ] **6.4 Greedy collision resolution (S)** — offset or hide on overlap in a deterministic order; tests.
-- [ ] **6.5 Selected-ring casing (S)** — thin casing on the selection ring so the investigated gap stays visible.
+
+- [x] **6.1 Label scrim chips (S)** — completed with rounded SVG scrims.
+- [x] **6.2 Offset + leader line (S)** — completed with bounded offset labels and leader lines.
+- [x] **6.3 Collision detection helper (S)** — completed with rectangle tests.
+- [x] **6.4 Greedy collision resolution (S)** — completed with deterministic priority tests.
+- [x] **6.5 Selected-ring casing (S)** — completed with the existing thin marker casing.
 
 ### Epic 7 — Contrast by construction (Phase 7)
 
 Contrast is designed in during earlier phases, then verified.
 
 Acceptance criteria:
-- [ ] State streams ≥ 3:1 against canvas, water and casing in both themes and all modes; ≥ 3 px wide at corridor zoom with zoom-adaptive width.
-- [ ] A light casing separates streams from track hairlines.
-- [ ] Known offenders (amber on cream) are fixed and the audit results recorded.
+
+- [x] State streams ≥ 3:1 against canvas, water and casing in both themes and all modes; ≥ 3 px wide at corridor zoom with zoom-adaptive width.
+- [x] A light casing separates streams from track hairlines.
+- [x] Known offenders (amber on cream) are fixed and the audit results recorded.
 
 Stories:
-- [ ] **7.1 Zoom-adaptive width (S)** — stream width as a function of scale with a ≥ 3 px floor; tests.
-- [ ] **7.2 Light casing under streams (S)** — subtle casing stroke beneath each stream for separation.
-- [ ] **7.3 Audit page/story (S)** — render every state over canvas, water and casing in both themes for measurement.
-- [ ] **7.4 Run the audit + palette tweaks (S)** — darken amber (≈ `#b97a10` family) and any other failures; record results.
+
+- [x] **7.1 Zoom-adaptive width (S)** — completed with a three-pixel screen floor and tests.
+- [x] **7.2 Light casing under streams (S)** — completed with a theme-aware casing stroke.
+- [x] **7.3 Audit page/story (S)** — completed with the all-theme/all-mode contrast story and automated floor test.
+- [x] **7.4 Run the audit + palette tweaks (S)** — completed by re-anchoring amber and the dark/light palette values.
 
 ### Epic 8 — Colour vision setting (Phase 8)
 
 Opt-in CVD palettes, saved to the profile, applied everywhere.
 
 Acceptance criteria:
-- [ ] `standard / redgreen / full` palettes exist with monotone lightness; simulator-verified against the Epic 9 fixture scenes.
-- [ ] The setting lives in Settings beside Appearance (same control pattern as theme); opt-in; default `standard`.
-- [ ] Signed-out riders persist locally; signed-in riders sync to `user_profiles` via the API; first sync keeps the local choice while the DB row is at default.
-- [ ] The ramp is consistent across map, legend, cards, inks and car tint for the chosen mode.
+
+- [x] `standard / redgreen / full` palettes exist with monotone lightness; simulator-verified against the Epic 9 fixture scenes through the `AllColourModes` Storybook render and headless visual review.
+- [x] The setting lives in Settings beside Appearance (same control pattern as theme); opt-in; default `standard`.
+- [x] Signed-out riders persist locally; signed-in riders sync to `user_profiles` via the API; first sync keeps the local choice while the DB row is at default.
+- [x] The ramp is consistent across map, legend, cards, inks and car tint for the chosen mode.
 
 Stories:
-- [ ] **8.1 Redgreen ramp (S)** — implement the provided Okabe–Ito-anchored values in the palette module; lightness-monotonicity tests. (Palette values are a design input, not a junior decision.)
-- [ ] **8.2 Full CVD ramp (S)** — same for the blue–yellow/high-lightness values.
-- [ ] **8.3 Local preference (S)** — `ttc:colour:v1` via `usePreferences` with strict validation.
-- [ ] **8.4 DB migration `0010_user_colour_mode.sql` (S)** — add `color_mode TEXT NOT NULL DEFAULT 'standard'` (+ CHECK) to `user_profiles`; apply locally via the Makefile flow.
-- [ ] **8.5 API read (S)** — `workers/api/src/accounts/profiles.ts` returns `color_mode` in the profile payload; test.
-- [ ] **8.6 API update (S)** — accept and validate `color_mode` writes; test.
-- [ ] **8.7 Settings UI (S)** — new `ColourVisionSettings.tsx` beside `ThemeSettings.tsx`, `SegmentedControl`, i18n keys, story.
-- [ ] **8.8 Hydration on sign-in (S)** — client reads the profile value and applies it once hydrated.
-- [ ] **8.9 First-sync rule (S)** — local wins while the DB row is `standard`; last-write-wins after; tests.
-- [ ] **8.10 Apply-everywhere sweep (S)** — route `colourMode` through map, legend, cards, inks and car tint; checklist test per surface.
+
+- [x] **8.1 Redgreen ramp (S)** — completed with palette and lightness tests.
+- [x] **8.2 Full CVD ramp (S)** — completed with palette and lightness tests.
+- [x] **8.3 Local preference (S)** — completed via `ttc:colour:v1` and strict runtime validation.
+- [x] **8.4 DB migration (S)** — completed as `0011_user_colour_mode.sql`; `0010` is already occupied by an existing feature-cohort migration in this worktree.
+- [x] **8.5 API read (S)** — completed and covered by account integration tests.
+- [x] **8.6 API update (S)** — completed with strict colour-mode validation and backward-compatible defaulting.
+- [x] **8.7 Settings UI (S)** — completed with `ColourVisionSettings`, `SegmentedControl` and locale keys.
+- [x] **8.8 Hydration on sign-in (S)** — completed through the account/profile preference provider.
+- [x] **8.9 First-sync rule (S)** — completed in `useColourMode` with local-first default handling.
+- [x] **8.10 Apply-everywhere sweep (S)** — completed for map streams, legend, marker/cards and service car tint.
 
 ### Epic 9 — Proof (Phase 9)
 
 Fixtures, i18n, analytics and humans — the plan is judged, not asserted.
 
 Acceptance criteria:
-- [ ] The three screenshot-trio fixture scenes exist in Storybook and serve as the review standard for every phase.
-- [ ] Every new string is an i18n key in `shared/i18n/locales/en-CA/messages.json`; nothing hardcoded.
-- [ ] `legend-highlight`, `legend-row-select` and `colour-mode-change` are enumerated in `docs/analytics.md` and wired.
+
+- [x] The three screenshot-trio fixture scenes exist in Storybook and serve as the review standard for every phase.
+- [x] Every new string is an i18n key in `shared/i18n/locales/en-CA/messages.json`; nothing hardcoded.
+- [x] `legend-highlight`, `legend-row-select` and `colour-mode-change` are enumerated in `docs/analytics.md` and wired.
 - [ ] The hallway test runs with five riders; results and the acceptance-bar verdict are recorded.
 
 Stories:
-- [ ] **9.1 Fixture scene: Roncesvalles/Queen/King (M)** — realistic states: twin streams, a seam gap, a void beside 501's red route identity colour; the mode-owned-colour showcase.
-- [ ] **9.2 Fixture scene: College/Dufferin (S)** — blind-stop gaps before/after bridging comparison.
-- [ ] **9.3 Fixture scene: Dundas/Gladstone (S)** — the full ramp including the maroon deep end; salmon midpoints gone.
-- [ ] **9.4 i18n sweep (S)** — grep audit for hardcoded strings across all new components; move to `messages.json`.
-- [ ] **9.5 Analytics wiring + docs (S)** — wire the three events; document them in `docs/analytics.md`.
-- [ ] **9.6 Hallway test kit (S)** — script, the three questions ("where's the pain?", "where's relief coming from?", "would you wait here or walk?"), recording sheet.
+
+- [x] **9.1 Fixture scene: Roncesvalles/Queen/King (M)** — realistic states: twin streams, a seam gap, a void beside 501's red route identity colour; the mode-owned-colour showcase.
+- [x] **9.2 Fixture scene: College/Dufferin (S)** — blind-stop gaps before/after bridging comparison.
+- [x] **9.3 Fixture scene: Dundas/Gladstone (S)** — the full ramp including the maroon deep end; salmon midpoints gone.
+- [x] **9.4 i18n sweep (S)** — grep audit for hardcoded strings across all new components; move to `messages.json`.
+- [x] **9.5 Analytics wiring + docs (S)** — completed; the three events are allowlisted, wired and documented.
+- [x] **9.6 Hallway test kit (S)** — script, the three questions ("where's the pain?", "where's relief coming from?", "would you wait here or walk?"), recording sheet.
 - [ ] **9.7 Run the hallway test (S)** — five riders, map only, no computed advice on screen; record results against the acceptance bar.
-- [ ] **9.8 Docs update (S)** — README/CODEMAP entries for the palette module, legend, chevrons and smoothing.
+- [x] **9.8 Docs update (S)** — completed in `CODEMAP.md` and service analytics documentation.

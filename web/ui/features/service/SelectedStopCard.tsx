@@ -4,7 +4,10 @@ import type { StopServiceState } from '../../../../shared/service/contracts';
 import { useServiceHistory } from './useServiceHistory';
 import { Sparkline } from './Sparkline';
 import { StopCard } from './StopCard';
-import { STATE_COLORS, platformRoutes } from './wave-field';
+import { platformRoutes } from './wave-field';
+import { fieldColour } from '../../../../shared/map/field-palette';
+import { useColourMode } from '../../hooks/useColourMode';
+import { useTheme } from '../../hooks/useTheme';
 import type { RouteBadge } from './wave-field';
 
 /** Compact stop status on selection; the day view and track legend expand
@@ -25,6 +28,8 @@ export function SelectedStopCard({
   /** Day routes for this platform — the card's details line. */
   routes?: RouteBadge[];
 }) {
+  const { colourMode } = useColourMode();
+  const { dark } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const { history } = useServiceHistory(expanded, stop.stopId);
   return (
@@ -54,7 +59,9 @@ export function SelectedStopCard({
             <span key={state}>
               <span
                 className="void-swatch void-swatch--x"
-                style={{ background: STATE_COLORS[state] }}
+                style={{
+                  background: fieldColour(state, dark ? 'dark' : 'light', colourMode),
+                }}
               />
               {text}
             </span>

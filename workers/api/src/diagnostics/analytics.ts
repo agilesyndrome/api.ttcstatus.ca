@@ -16,6 +16,9 @@ const ACTIONS = new Set([
   'exported-map',
   'saved-default-view',
   'reset-default-view',
+  'legend-highlight',
+  'legend-row-select',
+  'colour-mode-change',
 ]);
 
 /** The accepted action names, exported for the client parity contract test. */
