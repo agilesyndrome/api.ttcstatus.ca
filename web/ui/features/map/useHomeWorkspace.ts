@@ -64,9 +64,13 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   const [journalTarget, setJournalTarget] = useState<string>();
   const [journalDraftNumber, setJournalDraftNumber] = useState<string>();
   const [snakeOpen, setSnakeOpen] = useState(Boolean(initialSnakeVersion));
-  const feed = useVehicleFeed(filters.live && Boolean(data), {
-    polling: !snakeOpen,
-  });
+  // The game is isolated from the explorer's live-map filter: opening Snake
+  // always entitles the feed, so a run departs on a fresh snapshot. Polling
+  // keeps its normal cadence behind the dialog — the game freezes its own
+  // world at departure (see SnakeGame), so a refresh can never reach a run,
+  // while the next departure always starts from live data rather than a
+  // snapshot that aged stale mid-session.
+  const feed = useVehicleFeed((filters.live || snakeOpen) && Boolean(data));
   const previous = useRef<PlottedVehicle[]>([]);
   const cars = useMemo(
     () =>

@@ -259,6 +259,13 @@ const SnakeCockpit = memo(function SnakeCockpit({
   const [, redraw] = useReducer((value) => value + 1, 0);
   const traffic = useRef(cars);
   traffic.current = cars;
+  // Deep isolation from the app: a run plays on the world captured at
+  // departure. The explorer keeps polling behind the dialog, re-projecting
+  // and re-aging its own fleet, but none of that may reach a live run —
+  // a snapshot refresh must never teleport a car onto the player, and the
+  // app's staleness decay must never erase the traffic mid-run.
+  const sessionTraffic = useRef<PlottedVehicle[] | undefined>(undefined);
+  const [sessionCars, setSessionCars] = useState<PlottedVehicle[]>();
   const keys = useRef(new Set<string>());
   const pedals = useRef(new Map<number, number>());
   const audio = useRef<AudioContext | undefined>(undefined);
@@ -389,7 +396,10 @@ const SnakeCockpit = memo(function SnakeCockpit({
         /* Silent play remains available. */
       }
     }
-    engine.start(mode, traffic.current);
+    const world = traffic.current;
+    sessionTraffic.current = world;
+    setSessionCars(world);
+    engine.start(mode, world);
     setFollow(true);
     grown.current = 1;
     keys.current.clear();
@@ -479,7 +489,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
         // follow and overlay in lockstep at display refresh rate.
         engine.tick(
           previous ? Math.min(0.1, (now - previous) / 1000) : 0,
-          traffic.current,
+          sessionTraffic.current ?? traffic.current,
           heldPedals(),
         );
         // Each collected car widens the camera one step — but never past the
@@ -613,10 +623,10 @@ const SnakeCockpit = memo(function SnakeCockpit({
   // the classic red-and-halo treatment in the game overlay instead.
   const visibleCars = useMemo(() => {
     const collected = engine.collected;
-    return cars.filter(
+    return (sessionCars ?? cars).filter(
       (car) => !car.stale && car.match && !collected.has(car.vehicle.id),
     );
-  }, [cars, engine, engine.collected.size, redraw]);
+  }, [cars, sessionCars, engine, engine.collected.size, redraw]);
   const foodCars = useMemo(
     () => engine.gameCars.filter((car) => !engine.collected.has(car.vehicle.id)),
     [engine, engine.gameCars, engine.collected.size, redraw],

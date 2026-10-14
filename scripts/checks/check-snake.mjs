@@ -107,9 +107,15 @@ try {
   let feedCalls = 0,
     mapCalls = 0,
     snakeBoardCalls = 0;
-  context.on('page', (page) =>
-    page.on('pageerror', (error) => errors.push(error.message)),
-  );
+  // The fixture's fake publishable key cannot resolve a Clerk FJS domain, so
+  // the provider always reports one failed script load per page that mounts
+  // it. Tolerate that known noise; any other page error still fails the run.
+  const collectErrors = (page) =>
+    page.on('pageerror', (error) => {
+      if (error.message.includes('failed_to_load_clerk_js')) return;
+      errors.push(error.message);
+    });
+  context.on('page', collectErrors);
   await context.route('**/api/v1/map/ttcstatus*', (route) => {
     mapCalls++;
     return route.fulfill({ json: map });
@@ -160,14 +166,23 @@ try {
   if (await notice.count()) await notice.click();
   const launch = page.getByRole('button', { name: 'Play Streetcar Snake', exact: true });
   await launch.waitFor();
+  // The map tools collapsed into a disclosure (1fd0194): open it to reach the
+  // live map mode control, then drive with the live layer off — the game must
+  // still depart into a fresh snapshot of its own.
+  await page.locator('.explore-settings > summary').click();
   await page
     .getByRole('group', { name: 'Live map mode' })
     .getByRole('button', { name: 'Off', exact: true })
     .click();
+  // Opening the game must not touch the map network again: the board arrives
+  // with one request and the explorer's already-loaded map is reused. (The
+  // workspace's own map load may retry once when the config endpoint is
+  // absent, so the game-time assertion pins the count at launch.)
+  const mapCallsAtLaunch = mapCalls;
   await launch.click();
   const game = page.getByRole('dialog', { name: 'Streetcar Snake' });
   await game.waitFor();
-  assert.equal(mapCalls, 1, 'game reuses the already-loaded map');
+  assert.equal(mapCalls, mapCallsAtLaunch, 'game reuses the already-loaded map');
   assert.equal(
     snakeBoardCalls,
     1,
@@ -270,6 +285,70 @@ try {
     'closing restores launcher focus',
   );
 
+  // Deep isolation: a run plays on the world it departed into. This fixture's
+  // observations are fixed 100 s in the past — fresh on entry, permanently
+  // stale ~20 s later. An app-side staleness leak would erase every real
+  // streetcar from a live run within half a minute; the game freezes its own
+  // world at departure, so the frozen world must keep the fleet visible and
+  // couplable through the whole run.
+  const agedTimestamp = new Date(Date.now() - 100_000).toISOString();
+  await context.route('**/live/t/*/vehicles.json', (route) =>
+    route.fulfill({
+      headers: { etag: '"aged-fixture"' },
+      json: {
+        schemaVersion: 1,
+        source: 'aged-fixture',
+        attribution: 'Fixture',
+        fetchedAt: agedTimestamp,
+        feedTimestamp: agedTimestamp,
+        invalidPositions: 0,
+        vehicles: map.graph.edges
+          .filter((edge) => edge.routeIds.length)
+          .slice(0, 40)
+          .map((edge, index) => {
+            const gps = mapToGps(
+              pointAlongEdge(edge, edge.lengthMetres / 2).point,
+              map.display.geographicTransform,
+            );
+            return {
+              id: String(4600 + index),
+              label: String(4600 + index),
+              ...gps,
+              routeId: edge.routeIds[0],
+              observedAt: agedTimestamp,
+              bearing: 90,
+            };
+          }),
+      },
+    }),
+  );
+  await page.goto(origin + '/xplore');
+  const agedNotice = page.getByRole('button', { name: 'Got it', exact: true });
+  if (await agedNotice.count()) await agedNotice.click();
+  await launch.click();
+  await game.waitFor();
+  await game.getByLabel('Driving mode', { exact: true }).selectOption('arcade');
+  await game.getByRole('button', { name: 'Depart', exact: true }).click();
+  const liveCarsInGame = () =>
+    page.evaluate(() => document.querySelectorAll('dialog.snake-game .live-car').length);
+  await page.waitForTimeout(1500);
+  const frozenBaseline = await liveCarsInGame();
+  assert.ok(frozenBaseline > 0, 'the run departs into fresh live traffic');
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(20_000);
+  for (let sample = 0; sample < 8; sample++) {
+    await page.waitForTimeout(5_000);
+    const remaining = await liveCarsInGame();
+    assert.ok(
+      remaining > 0,
+      `the frozen world keeps streetcars on the map past the staleness horizon (sample ${sample})`,
+    );
+  }
+  const frozenCount = Number(await game.locator('[data-snake-count]').innerText());
+  assert.ok(frozenCount > 1, 'pickups still couple after the app-side staleness horizon');
+  await page.keyboard.up('ArrowUp');
+  await game.getByRole('button', { name: 'Close Streetcar Snake' }).click();
+
   const mobileContext = await browser.newContext({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -301,7 +380,7 @@ try {
     }),
   );
   const mobile = await mobileContext.newPage();
-  mobile.on('pageerror', (error) => errors.push(error.message));
+  collectErrors(mobile);
   await mobile.goto(origin + '/xplore');
   const mobileNotice = mobile.getByRole('button', { name: 'Got it', exact: true });
   if (await mobileNotice.count()) await mobileNotice.tap();
@@ -507,7 +586,7 @@ try {
   assert.deepEqual(requests, []);
   assert.deepEqual(errors, []);
   console.log(
-    'Snake browser checks passed: shared map/feed, selected track previews and arrow keys, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, playable legacy archive.',
+    'Snake browser checks passed: shared map/feed, selected track previews and arrow keys, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, frozen-world isolation from feed staleness, playable legacy archive.',
   );
   await context.close();
   await mobileContext.close();

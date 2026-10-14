@@ -157,6 +157,14 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
   );
 });
 
+test('purist never spawns generated traffic, so no pace car materializes ahead to collide with', () => {
+  const engine = started(demoData, 'purist', { gameTraffic: true });
+  assert.equal(engine.gameCars.length, 0);
+  drive(engine, 30, []);
+  assert.equal(engine.status, 'running');
+  assert.equal(engine.gameCars.length, 0);
+});
+
 test('game traffic grows at most one car after the opening fleet', () => {
   const engine = new SnakeEngine(demoData, { gameTraffic: true });
   engine.start('arcade', [], () => 0.4);

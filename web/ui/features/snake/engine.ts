@@ -616,7 +616,12 @@ export class SnakeEngine {
   }
 
   private maintainGameTraffic(cars: PlottedVehicle[] = [], seed = false) {
-    if (!this.options.gameTraffic || this.status !== 'running') return;
+    // Generated traffic is arcade food: the guaranteed catchable car ahead and
+    // the ambient fleet exist to be coupled. Purist drives a single streetcar
+    // with the live feed as its only traffic, so spawning new trains would
+    // just place guaranteed collisions in the player's path.
+    if (this.mode !== 'arcade' || !this.options.gameTraffic || this.status !== 'running')
+      return;
     const target = this.guaranteedGameCarId
       ? this.gameCars.find((car) => car.vehicle.id === this.guaranteedGameCarId)
       : undefined;
