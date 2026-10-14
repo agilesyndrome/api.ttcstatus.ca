@@ -9,16 +9,15 @@ const { authConfig, overlayConfig, parseOverlayTransportConfig } = await compile
 
 // ---- The overlay block (docs/optimize-overlay.md E1S4) ----
 
-test('auth/config returns the overlay block additively, disabled by default', () => {
+test('auth/config returns the overlay block on for everyone by default', () => {
   const config = authConfig({ DB: null });
-  // The rollout switch ships off: the overlay is not public until the
-  // OVERLAY_ENABLED var flips in the dashboard (E6S4).
-  assert.equal(config.overlay.enabled, false);
+  // The overlay is public by default; only an explicit false disables it.
+  assert.equal(config.overlay.enabled, true);
   assert.equal(config.overlay.pathTemplate, '/live/t/{tick}/service-stops.json');
   assert.equal(config.overlay.pollSeconds, 30);
   // The recorder consumes the same defaults for its unconditional publish.
   assert.deepEqual(overlayConfig({}), {
-    enabled: false,
+    enabled: true,
     pathTemplate: '/live/t/{tick}/service-stops.json',
     pollSeconds: 30,
   });
@@ -36,6 +35,7 @@ test('overlay block honors env overrides and clamps the poll cadence', () => {
   // A slower poll cadence is allowed (tick derivation stays on the grid);
   // nonsense falls back to the default, never divides by zero.
   assert.equal(config.overlay.pollSeconds, 60);
+  assert.equal(authConfig({ DB: null, OVERLAY_ENABLED: 'false' }).overlay.enabled, false);
   assert.equal(overlayConfig({ OVERLAY_POLL_SECONDS: 'not-a-number' }).pollSeconds, 30);
 });
 

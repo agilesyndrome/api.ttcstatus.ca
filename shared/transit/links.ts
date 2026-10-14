@@ -63,7 +63,7 @@ export function mapLinkHash(
     'streetcar',
     'subway',
   ] as const)
-    if ((filters[key] ?? false) !== DEFAULT_FILTERS[key])
+    if ((filters[key] ?? DEFAULT_FILTERS[key]) !== DEFAULT_FILTERS[key])
       params.set(key, filters[key] ? '1' : '0');
   return params.size ? `#${params}` : '';
 }

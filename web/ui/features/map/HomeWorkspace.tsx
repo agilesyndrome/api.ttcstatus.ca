@@ -118,10 +118,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
   const focusedRoute = focusedRouteId
     ? data?.routes.find((route) => route.id === focusedRouteId)
     : undefined;
-  // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
-  // flag off or signed out → nothing renders and no /service/* requests are
-  // made. Hard-suspended while the snake game is open (E7S7) — the game
-  // renders its own map with no service props, and the base layer sleeps.
+  // The service layer is public and on by default for every visitor. The
+  // explicit map mode can still turn it off or show vehicles only.
+  // Hard-suspended while the snake game is open (E7S7) — the game renders its
+  // own map with no service props, and the base layer sleeps.
   // Replay also sleeps it: the screen shows the historical fleet.
   const service = useServiceOverlay(
     data,

@@ -68,8 +68,8 @@ export const LIVE_DEFAULT_SERVICE_PATH_TEMPLATE = '/live/t/{tick}/service-stops.
 /** The `overlay` block of `/api/v1/auth/config` — the overlay's transport
  * discovery AND its rollout switch (docs/optimize-overlay.md E1S4):
  *  - `enabled` gates the *client* rollout only. The recorder publishes
- *    stops tick documents unconditionally, so flipping this var to true
- *    needs no warmup and no client release. Shipped default: false.
+ *    stops tick documents unconditionally. The overlay is on by default for
+ *    every visitor; setting this var to `false` is the explicit off switch.
  *  - `pollSeconds` is the client's poll cadence. It may exceed the 30 s
  *    publish grid (clients then poll less often than ticks exist); tick
  *    *derivation* always stays on the grid, so a cadence change can never
@@ -88,7 +88,7 @@ export function overlayTransportConfig(
   } = {},
 ): OverlayTransportConfig {
   return {
-    enabled: source.OVERLAY_ENABLED === 'true',
+    enabled: source.OVERLAY_ENABLED !== 'false',
     pathTemplate: source.LIVE_SERVICE_PATH_TEMPLATE ?? LIVE_DEFAULT_SERVICE_PATH_TEMPLATE,
     pollSeconds: liveUpdateSeconds(source.OVERLAY_POLL_SECONDS),
   };
