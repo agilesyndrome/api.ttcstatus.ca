@@ -27,6 +27,7 @@ export function useMapCamera({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
+  onSelectRoute,
   followPoint,
 }: Pick<
   TransitMapProps,
@@ -45,6 +46,7 @@ export function useMapCamera({
   | 'controlsRef'
   | 'onSelectFeature'
   | 'onSelectVehicle'
+  | 'onSelectRoute'
   | 'followPoint'
 >) {
   const svg = useRef<SVGSVGElement>(null);
@@ -451,8 +453,14 @@ export function useMapCamera({
         };
         const featureElement = hit('[data-feature]');
         const vehicleElement = featureElement ? null : hit('[data-vehicle]');
+        // Route hit targets (the replay screen's track click) sit under the
+        // cars: a tap on a car solos the car, a tap on bare track focuses
+        // its route.
+        const routeElement =
+          featureElement || vehicleElement ? null : hit('[data-route-hit]');
         const featureId = featureElement?.getAttribute('data-feature') ?? null;
         const vehicleId = vehicleElement?.getAttribute('data-vehicle') ?? null;
+        const routeId = routeElement?.getAttribute('data-route-hit') ?? null;
         const feature =
           featureId !== null
             ? data.features.find((candidate) => candidate.id === featureId)
@@ -463,6 +471,7 @@ export function useMapCamera({
             : undefined;
         if (car) onSelectVehicle(car);
         else if (feature) onSelectFeature(feature);
+        else if (routeId !== null) onSelectRoute?.(routeId);
         // Clicking empty map space pauses following — except while driving,
         // where a stray tap or a released pedal touch must never strand the
         // camera while the train keeps moving.

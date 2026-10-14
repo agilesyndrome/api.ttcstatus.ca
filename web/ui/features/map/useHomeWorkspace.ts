@@ -22,6 +22,8 @@ import {
 } from './default-view';
 import { useVehicleFeed } from './useVehicleFeed';
 import { useStaticMap } from './useStaticMap';
+import { useReplay } from '../replay/useReplay';
+import type { ReplayFocus } from '../replay/replay';
 import { useSavedStops } from './workspace/useSavedStops';
 import { useSelection } from './workspace/useSelection';
 import { useLocation } from './workspace/useLocation';
@@ -83,6 +85,23 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     previous.current = cars;
   }, [cars]);
   const selection = useSelection(data, cars, filters, setFilters);
+  // Replay (docs/replay.md): the historical-tick playback engine, mounted
+  // only while the Replay destination is open — and only for signed-in
+  // members. The tick documents on the public CDN stay world-readable by
+  // design (broadcast data), but the replay feature itself is gated like
+  // the rest of the site's personal surfaces. It owns its own fetches and
+  // never touches the live feed above.
+  const replay = useReplay(
+    data,
+    selection.panel === 'replay' && Boolean(accountJournal.userId),
+  );
+  // The replay screen's tap focus — a soloed, followed car or a focused
+  // route. It belongs to the TV: leaving the destination (or resetting)
+  // hands the whole network back.
+  const [replayFocus, setReplayFocus] = useState<ReplayFocus>();
+  useEffect(() => {
+    if (selection.panel !== 'replay') setReplayFocus(undefined);
+  }, [selection.panel]);
   useEffect(() => {
     if (selection.panel !== 'journal') {
       setJournalTarget(undefined);
@@ -160,6 +179,7 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   function reset() {
     selection.reset();
     location.clearLocateError();
+    setReplayFocus(undefined);
   }
   function toggleSave() {
     const feature = selection.feature;
@@ -220,6 +240,9 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
     theme,
     feed,
     cars,
+    replay,
+    replayFocus,
+    setReplayFocus,
     shownRoutes,
     toggleSave,
     reset,

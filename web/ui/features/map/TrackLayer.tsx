@@ -14,7 +14,12 @@ type TrackProps = Pick<
   | 'includeOvernight'
   | 'showStreetcar'
   | 'showSubway'
-> & { scale?: number };
+> & {
+  scale?: number;
+  /** Clickable per-edge route targets (the replay screen's route focus).
+   * Pointer-only — the layer stays aria-hidden like the tracks themselves. */
+  onSelectRoute?: (routeId: string) => void;
+};
 
 export const Tracks = memo(function Tracks({
   data,
@@ -24,6 +29,7 @@ export const Tracks = memo(function Tracks({
   showStreetcar = true,
   showSubway = true,
   scale = 0,
+  onSelectRoute,
 }: TrackProps) {
   return (
     <g aria-hidden="true">
@@ -100,6 +106,37 @@ export const Tracks = memo(function Tracks({
           </g>
         );
       })}
+      {onSelectRoute &&
+        data.edges.map((edge) => {
+          const activeRoutes = data.routes
+            .filter(
+              (route) =>
+                (includeOvernight || !route.overnight) &&
+                edge.routeIds.includes(route.id),
+            )
+            .filter((route) =>
+              /^(1|2|4|5|6)$/.test(route.number) ? showSubway : showStreetcar,
+            );
+          const route =
+            activeRoutes.find((candidate) => candidate.id === selectedRoute) ??
+            activeRoutes[0];
+          if (!route) return null;
+          return (
+            // The camera's tap hit-testing owns this target (the same path
+            // as stops and cars): a real click must not also fire here, or
+            // one tap would toggle the route focus twice.
+            <polyline
+              key={`hit-${edge.id}`}
+              className="track-hit"
+              data-route-hit={route.id}
+              points={points(edge.points)}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={16 / Math.max(scale, 0.25)}
+              style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+            />
+          );
+        })}
     </g>
   );
 });

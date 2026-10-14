@@ -1,7 +1,10 @@
-import type { FieldState } from '../../web/ui/features/service/wave-field';
-
 export type FieldTheme = 'light' | 'dark';
 export type ColourMode = 'standard' | 'redgreen' | 'full';
+
+/** The delivered-service state names the palette colours. Defined here —
+ * beside the colours themselves — so shared code never reaches into a
+ * browser feature for a type. */
+export type FieldState = 'fresh' | 'due' | 'void' | 'unmonitored' | 'collecting';
 
 export interface FieldPalette {
   fresh: string;

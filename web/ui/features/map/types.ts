@@ -73,4 +73,8 @@ export interface TransitMapProps {
   serviceCarTint?(car: PlottedVehicle): string | null;
   onSelectFeature(feature: Feature): void;
   onSelectVehicle(car: PlottedVehicle): void;
+  /** Clicking a track selects its route — the replay screen's route focus
+   * (docs/replay.md). Absent on the live explorer, where routes are
+   * selected from the pulse and search surfaces. */
+  onSelectRoute?(routeId: string): void;
 }

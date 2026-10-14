@@ -72,6 +72,12 @@ export const navLogos: Record<Destination['key'], ReactNode> = {
       <path d="M2.2 8.6h2.7l1.7-4.3 3 8.6 1.7-4.3h2.5" strokeLinejoin="round" />
     </svg>
   ),
+  replay: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="6.2" />
+      <path d="M6.6 5.4 10.8 8 6.6 10.6z" fill="currentColor" stroke="none" />
+    </svg>
+  ),
   settings: (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M3 4.75h10M3 11.25h10" strokeLinecap="round" />
@@ -115,6 +121,13 @@ const panelItems: readonly Destination[] = [
     label: () => t('navigation.status'),
     href: '/#view=sla',
     logo: navLogos.sla,
+  },
+  {
+    key: 'replay',
+    signedInOnly: true,
+    label: () => t('navigation.replay'),
+    href: '/#view=replay',
+    logo: navLogos.replay,
   },
   {
     key: 'journal',

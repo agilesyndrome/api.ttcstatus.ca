@@ -29,7 +29,38 @@ const feed = {
   now: Date.parse(demoSnapshot.fetchedAt),
 };
 
-function makeWorkspace(panel: 'explore' | 'journal' | 'badges' | 'sla') {
+/** A settled replay fixture: a resolved 30-minute window holding a frame
+ * from mid-window (docs/replay.md). Deterministic — Storybook renders
+ * clocks, so the epoch is pinned. */
+const replayWindowStart = Date.parse('2026-10-13T18:00:00.000Z');
+const replayFixture = {
+  range: { kind: 'relative', durationMs: 1_800_000 },
+  playing: false,
+  speed: 10,
+  window: {
+    startMs: replayWindowStart,
+    endMs: replayWindowStart + 1_800_000,
+    windowTicks: 60,
+    tickMs: 30_000,
+  },
+  playheadMs: replayWindowStart + 10 * 30_000,
+  frameMs: replayWindowStart + 10 * 30_000,
+  buffering: false,
+  ended: false,
+  noData: false,
+  failed: false,
+  loadedTicks: 12,
+  missingTicks: 0,
+  cars: [],
+  setRange() {},
+  setSpeed() {},
+  play() {},
+  pause() {},
+  toggle() {},
+  seek() {},
+};
+
+function makeWorkspace(panel: 'explore' | 'journal' | 'badges' | 'sla' | 'replay') {
   const journal = panel === 'badges' ? expandedEntries : entries;
   return {
     data: demoData,
@@ -51,8 +82,10 @@ function makeWorkspace(panel: 'explore' | 'journal' | 'badges' | 'sla') {
     pendingCar: { current: undefined },
     feed,
     cars,
+    replay: replayFixture,
     feature: undefined,
     car: undefined,
+    recentStopIds: [],
     selectFeature() {},
     selectVehicle() {},
     selectRoute() {},
@@ -78,6 +111,7 @@ export const exploreWorkspace = makeWorkspace('explore');
 export const journalWorkspace = makeWorkspace('journal');
 export const badgesWorkspace = makeWorkspace('badges');
 export const slaWorkspace = makeWorkspace('sla');
+export const replayWorkspace = makeWorkspace('replay');
 
 export const storyAccount: Account = {
   enabled: true,

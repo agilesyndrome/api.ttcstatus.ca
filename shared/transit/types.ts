@@ -12,7 +12,8 @@ export interface Location {
   accuracy?: number;
 }
 export type Selection = { kind: 'stop' | 'route' | 'car'; id: string };
-export type SidebarPanel = 'explore' | 'route-pulse' | 'journal' | 'badges' | 'sla';
+export type SidebarPanel =
+  'explore' | 'route-pulse' | 'journal' | 'badges' | 'sla' | 'replay';
 export interface MapTools {
   panel?: SidebarPanel;
 }

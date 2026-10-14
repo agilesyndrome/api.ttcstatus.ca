@@ -900,3 +900,327 @@
     margin-top: 22px;
   }
 }
+
+/* ————— Replay (docs/replay.md): the map is the screen, the rail is the
+ * remote. While a replay runs, map taps stay inert, the snake/locate tools
+ * step aside, and the TV furniture (frame clock + transport bar) floats
+ * over the historical fleet. ————— */
+.replay-panel {
+  font-size: 13px;
+}
+.replay-panel h2 {
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin: 4px 0 6px;
+}
+.replay-panel h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+.replay-panel p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.replay-intro {
+  margin-bottom: 12px;
+}
+.replay-transport {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 10px;
+}
+.replay-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.replay-play[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--accent);
+}
+.replay-frame {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.replay-frame-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.replay-frame-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.replay-note {
+  font-size: 11px;
+}
+.replay-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.replay-day input[type='date'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.replay-panel .segmented-control {
+  flex-wrap: wrap;
+}
+.replay-panel .segmented-control button {
+  padding: 7px 11px;
+  font-size: 12px;
+}
+
+/* The screen furniture. Pointer events pass through the root so the map
+ * stays draggable around it. */
+.replay-tv {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.replay-clock {
+  position: absolute;
+  top: 15px;
+  right: 70px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 3px 16px #25343c10;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+/* The red REC-style corner while the picture is moving. */
+.replay-clock[data-replaying]::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #b4393f;
+  vertical-align: 1px;
+}
+.replay-bar {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 84px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 30px #1d313526;
+  pointer-events: auto;
+}
+.replay-toggle {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.replay-scrub {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.replay-speed-chip {
+  flex: none;
+  min-width: 52px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.replay-scale {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 64px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.replay-scale span {
+  font-variant-numeric: tabular-nums;
+}
+/* During a replay the map tools that belong to the explorer step aside. */
+.workspace-map.replaying .locate-launch,
+.workspace-map.replaying .snake-launch {
+  display: none;
+}
+@media (max-width: 640px) {
+  .replay-clock {
+    top: 12px;
+    right: 60px;
+    font-size: 11px;
+  }
+  .replay-bar {
+    left: 10px;
+    right: 10px;
+    bottom: 74px;
+  }
+  .replay-scale {
+    left: 14px;
+    right: 14px;
+    bottom: 56px;
+  }
+}
+
+/* Replay focus: a tapped route owns the screen (the hint is noise then),
+ * and a tapped car gets its card in the details pane. */
+.workspace-map.replaying .map-hint {
+  display: none;
+}
+.replay-focus {
+  position: absolute;
+  top: 15px;
+  left: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: 0 3px 16px #25343c10;
+  pointer-events: auto;
+}
+.replay-car-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: 0 10px 30px #1d313526;
+  font-size: 13px;
+}
+.replay-car-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.replay-car-card__head h3 {
+  font-size: 16px;
+  font-weight: 750;
+  margin: 0;
+}
+.replay-car-card__head small {
+  color: var(--muted);
+}
+.replay-car-card__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  align-self: center;
+  flex: none;
+}
+.replay-car-card__close {
+  margin-left: auto;
+  align-self: flex-start;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--soft);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.replay-car-card__following {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 8px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.replay-car-card h4 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 12px 0 6px;
+}
+.replay-car-card__stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.replay-car-card__stops li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 12px;
+}
+.replay-stop-window {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.replay-stop-name {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

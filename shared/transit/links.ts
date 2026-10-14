@@ -15,7 +15,8 @@ export function readMapLink(hash: string): MapLink {
     panel === 'route-pulse' ||
     panel === 'journal' ||
     panel === 'badges' ||
-    panel === 'sla'
+    panel === 'sla' ||
+    panel === 'replay'
   )
     tools.panel = panel;
   for (const key of [

@@ -16,6 +16,40 @@ export interface PlottedVehicle {
   stale: boolean;
 }
 
+/** Candidate track edges per rail class, memoized per map. The filter runs
+ * once per class instead of once per vehicle per snapshot: projecting one
+ * snapshot filters twice, and replay (docs/replay.md) projects hundreds of
+ * historical snapshots per session against the same map. Keyed on the edges
+ * array with the routes array re-checked, so a rebuilt map rebuilds its
+ * cache. */
+const candidateCache = new WeakMap<
+  Edge[],
+  { routes: ViewerData['routes']; byKey: Map<string, Edge[]> }
+>();
+function candidateEdges(
+  data: ViewerData,
+  rapidIds: Set<string>,
+  rapid: boolean,
+  routeId: string,
+): Edge[] {
+  let entry = candidateCache.get(data.edges);
+  if (!entry || entry.routes !== data.routes) {
+    entry = { routes: data.routes, byKey: new Map() };
+    candidateCache.set(data.edges, entry);
+  }
+  const key = rapid ? `rapid:${routeId}` : 'surface';
+  let candidates = entry.byKey.get(key);
+  if (!candidates) {
+    candidates = data.edges.filter((edge) =>
+      rapid
+        ? edge.routeIds.includes(routeId)
+        : !edge.routeIds.some((id) => rapidIds.has(id)),
+    );
+    entry.byKey.set(key, candidates);
+  }
+  return candidates;
+}
+
 /** Snapshot ingestion is pure and transport-independent. A future stream only
  * needs to replace the snapshot and provide previous matches for continuity. */
 export function projectSnapshot(
@@ -92,11 +126,7 @@ export function projectSnapshot(
   });
   return [...snapshot.vehicles, ...predicted].map((vehicle) => {
     const rapid = vehicle.mode === 'subway' || rapidIds.has(vehicle.routeId ?? '');
-    const candidates = data.edges.filter((edge) =>
-      rapid
-        ? edge.routeIds.includes(vehicle.routeId ?? '')
-        : !edge.routeIds.some((id) => rapidIds.has(id)),
-    );
+    const candidates = candidateEdges(data, rapidIds, rapid, vehicle.routeId ?? '');
     const match = matchGpsToTrack(candidates, vehicle.latitude, vehicle.longitude, {
       routeId: vehicle.routeId,
       bearing: vehicle.bearing,
