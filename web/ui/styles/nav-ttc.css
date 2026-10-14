@@ -216,6 +216,11 @@
 .app-nav .explore-tools > .action-button:hover {
   border-color: var(--text);
 }
+.app-nav .explore-tools__surprise,
+.app-nav .explore-tools__surprise:hover {
+  background: transparent;
+  color: var(--text);
+}
 
 /* Quick controls at the foot: Settings is drawn as one more full-width
  * row (neutral bullet, TTC-red plate when it is the current page), and the

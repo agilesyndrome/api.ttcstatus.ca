@@ -816,6 +816,8 @@
   "header.streetcar": "Streetcar",
   "header.tagline": "A city on rails",
   "header.title": "Unofficial TTCStatus Map",
+  "header.titleLead": "Unofficial",
+  "header.titleName": "TTCStatus Map",
   "header.titleShort": "TTCStatus",
   "header.ttcStatusMap": "TTC status map",
   "journal.addCarToJournal": "Add car to journal",
