@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { serviceConfig } from '../../../../shared/service/config';
 import { drynessColor } from './wave-field';
 import type { ColourMode, FieldTheme } from '../../../../shared/map/field-palette';
 import { trackEvent } from '../../analytics';
@@ -10,26 +9,11 @@ export type LegendBucket = 'fresh' | 'due' | 'void' | 'beyond';
 export interface LegendBarProps {
   theme?: FieldTheme;
   colourMode?: ColourMode;
-  selectedHeadwayMinutes?: number;
 }
 
 const BUCKETS: readonly LegendBucket[] = ['fresh', 'due', 'void', 'beyond'];
 
-export function minuteRuler(headwayMinutes: number, config = serviceConfig()) {
-  return [
-    0,
-    headwayMinutes * config.freshDrynessRatio,
-    headwayMinutes,
-    headwayMinutes * config.voidDrynessRatio,
-  ];
-}
-
-export function LegendBar({
-  theme = 'light',
-  colourMode = 'standard',
-  selectedHeadwayMinutes,
-}: LegendBarProps) {
-  const config = serviceConfig();
+export function LegendBar({ theme = 'light', colourMode = 'standard' }: LegendBarProps) {
   const [highlight, setHighlight] = useState<LegendBucket | null>(null);
   const samples = useMemo(
     () =>
@@ -38,18 +22,6 @@ export function LegendBar({
       ),
     [theme, colourMode],
   );
-  const ruler = minuteRuler(selectedHeadwayMinutes ?? 3, config);
-  const rows = selectedHeadwayMinutes
-    ? [
-        {
-          label: t('serviceLegend.selectedRoute'),
-          values: ruler,
-        },
-      ]
-    : [
-        { label: t('serviceLegend.frequentRoute'), values: minuteRuler(3, config) },
-        { label: t('serviceLegend.localRoute'), values: minuteRuler(12, config) },
-      ];
   const selectBucket = (bucket: LegendBucket) => {
     const next = highlight === bucket ? null : bucket;
     setHighlight(next);
@@ -103,28 +75,6 @@ export function LegendBar({
             {t('serviceLegend.beyondTwoTimes')}
           </button>
         </div>
-      </div>
-      <div className="service-legend-bar__rows">
-        {rows.map((row) => (
-          <button
-            type="button"
-            className="service-legend-bar__row"
-            key={row.label}
-            onClick={() => {
-              trackEvent('legend-row-select');
-              selectBucket('due');
-            }}
-          >
-            <span>{row.label}</span>
-            <span>
-              {row.values.map((value, index) =>
-                index
-                  ? ` · ${Math.round(value)} ${t('serviceLegend.minutes')}`
-                  : t('serviceLegend.justWent'),
-              )}
-            </span>
-          </button>
-        ))}
       </div>
       <span className="service-legend-bar__nodata">
         <i aria-hidden="true" /> {t('serviceLegend.noData')}

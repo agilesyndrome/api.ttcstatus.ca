@@ -39,7 +39,7 @@ function chevronPositions(segment: TrackSegment, scale: number) {
   const count = Math.min(8, Math.max(1, Math.floor(totalPixels / DASH_CYCLE)));
   const angle =
     (Math.atan2(segment.y2 - segment.y1, segment.x2 - segment.x1) * 180) / Math.PI;
-  const phasePixels = ((segment.phase * scale) % DASH_CYCLE + DASH_CYCLE) % DASH_CYCLE;
+  const phasePixels = (((segment.phase * scale) % DASH_CYCLE) + DASH_CYCLE) % DASH_CYCLE;
   const positions = [];
   for (let index = -1; index <= count; index += 1) {
     const pixel = DASH_CYCLE / 2 - phasePixels + index * DASH_CYCLE;
@@ -180,93 +180,135 @@ export const TrackService = memo(function TrackService({
   if (painted.length === 0 && trails.length === 0) return null;
   return (
     <g className="service-track" aria-hidden="true">
-      {painted.map(({ edgeId, context, segments }) => (
-        <g key={edgeId} data-context={context ? 'muted' : undefined}>
-          {segments.map((segment, index) => {
-            const { dx, dy } = streamOffset(segment);
-            const colour = drynessColor(
-              segment.dryness,
-              segment.state,
-              theme,
-              colourMode,
-            );
-            const width = streamWidth(scale);
-            return (
-              <g key={index}>
-                <line
-                  className="service-track-casing"
-                  x1={segment.x1 + dx}
-                  y1={segment.y1 + dy}
-                  x2={segment.x2 + dx}
-                  y2={segment.y2 + dy}
-                  stroke="var(--surface)"
-                  strokeWidth={width + 2 / Math.max(scale, 0.25)}
-                  strokeLinecap="round"
-                />
-                <line
-                  className="service-track-seg"
-                  data-state={segment.state}
-                  data-direction={segment.directionId}
-                  x1={segment.x1 + dx}
-                  y1={segment.y1 + dy}
-                  x2={segment.x2 + dx}
-                  y2={segment.y2 + dy}
-                  stroke={colour}
-                  strokeWidth={width}
-                  strokeLinecap="round"
-                  strokeDasharray={segment.state === 'unmonitored' ? '3 3' : undefined}
-                />
-                {segment.state !== 'unmonitored' && (
-                  <g transform={`translate(${dx} ${dy})`}>
-                    <Chevrons segment={segment} scale={scale} colour={colour} />
-                  </g>
-                )}
-              </g>
-            );
-          })}
-          {severityCrossings(segments).map((front, index) => (
-            <line
-              key={`front-${index}`}
-              className="service-severity-front"
-              data-front={front.kind}
-              x1={front.x - Math.sin((front.angle * Math.PI) / 180) * 2}
-              y1={front.y + Math.cos((front.angle * Math.PI) / 180) * 2}
-              x2={front.x + Math.sin((front.angle * Math.PI) / 180) * 2}
-              y2={front.y - Math.cos((front.angle * Math.PI) / 180) * 2}
-              stroke="currentColor"
-              strokeWidth={1 / Math.max(scale, 0.25)}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          {[0, 1].map((directionId) => {
-            const directed = segments.filter(
-              (segment) => segment.directionId === directionId,
-            );
-            if (!directed.length) return null;
-            const first = directed[0]!;
-            const last = directed.at(-1)!;
-            return [first, last].map((segment, index) => {
-              const length = Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1);
-              const point = pointAtDisplayDistance(segment, index === 0 ? 0 : length);
-              const offset = streamOffset(segment);
-              return (
-                <text
-                  key={`terminus-${directionId}-${index}`}
-                  className="service-terminus-chevron"
-                  x={point.x + offset.dx}
-                  y={point.y + offset.dy}
-                  fill={drynessColor(segment.dryness, segment.state, theme, colourMode)}
-                  fontSize={8 / Math.max(scale, 0.25)}
-                  transform={`rotate(${point.angle} ${point.x + offset.dx} ${point.y + offset.dy})`}
-                  aria-hidden="true"
-                >
-                  ›
-                </text>
+      {painted.map(({ edgeId, context, segments }, edgeIndex) => {
+        const byDirection = new Map<0 | 1, TrackSegment[]>();
+        for (const segment of segments) {
+          const directed = byDirection.get(segment.directionId) ?? [];
+          directed.push(segment);
+          byDirection.set(segment.directionId, directed);
+        }
+        const gradients = segments.map((segment, segmentIndex) => {
+          if (segment.state === 'unmonitored') return null;
+          const directed = byDirection.get(segment.directionId)!;
+          const next = directed[directed.indexOf(segment) + 1];
+          const start = drynessColor(segment.dryness, segment.state, theme, colourMode);
+          const end =
+            next && next.state !== 'unmonitored'
+              ? drynessColor(next.dryness, next.state, theme, colourMode)
+              : start;
+          const { dx, dy } = streamOffset(segment);
+          return (
+            <linearGradient
+              key={segmentIndex}
+              id={`service-gradient-${edgeIndex}-${segmentIndex}`}
+              gradientUnits="userSpaceOnUse"
+              x1={segment.x1 + dx}
+              y1={segment.y1 + dy}
+              x2={segment.x2 + dx}
+              y2={segment.y2 + dy}
+            >
+              <stop offset="0%" stopColor={start} />
+              <stop offset="72%" stopColor={start} />
+              <stop offset="100%" stopColor={end} />
+            </linearGradient>
+          );
+        });
+        return (
+          <g key={edgeId} data-context={context ? 'muted' : undefined}>
+            <defs>{gradients}</defs>
+            {segments.map((segment, index) => {
+              const { dx, dy } = streamOffset(segment);
+              const colour = drynessColor(
+                segment.dryness,
+                segment.state,
+                theme,
+                colourMode,
               );
-            });
-          })}
-        </g>
-      ))}
+              const width = streamWidth(scale);
+              return (
+                <g key={index}>
+                  <line
+                    className="service-track-casing"
+                    x1={segment.x1 + dx}
+                    y1={segment.y1 + dy}
+                    x2={segment.x2 + dx}
+                    y2={segment.y2 + dy}
+                    stroke="var(--surface)"
+                    strokeWidth={width + 2 / Math.max(scale, 0.25)}
+                    strokeLinecap="round"
+                  />
+                  <line
+                    className="service-track-seg"
+                    data-state={segment.state}
+                    data-direction={segment.directionId}
+                    x1={segment.x1 + dx}
+                    y1={segment.y1 + dy}
+                    x2={segment.x2 + dx}
+                    y2={segment.y2 + dy}
+                    stroke={
+                      segment.state === 'unmonitored'
+                        ? colour
+                        : `url(#service-gradient-${edgeIndex}-${index})`
+                    }
+                    strokeWidth={width}
+                    strokeLinecap="round"
+                    strokeDasharray={segment.state === 'unmonitored' ? '3 3' : undefined}
+                  />
+                  {segment.state !== 'unmonitored' && (
+                    <g transform={`translate(${dx} ${dy})`}>
+                      <Chevrons segment={segment} scale={scale} colour={colour} />
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+            {severityCrossings(segments).map((front, index) => (
+              <line
+                key={`front-${index}`}
+                className="service-severity-front"
+                data-front={front.kind}
+                x1={front.x - Math.sin((front.angle * Math.PI) / 180) * 2}
+                y1={front.y + Math.cos((front.angle * Math.PI) / 180) * 2}
+                x2={front.x + Math.sin((front.angle * Math.PI) / 180) * 2}
+                y2={front.y - Math.cos((front.angle * Math.PI) / 180) * 2}
+                stroke="currentColor"
+                strokeWidth={1 / Math.max(scale, 0.25)}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {[0, 1].map((directionId) => {
+              const directed = segments.filter(
+                (segment) => segment.directionId === directionId,
+              );
+              if (!directed.length) return null;
+              const first = directed[0]!;
+              const last = directed.at(-1)!;
+              return [first, last].map((segment, index) => {
+                const length = Math.hypot(
+                  segment.x2 - segment.x1,
+                  segment.y2 - segment.y1,
+                );
+                const point = pointAtDisplayDistance(segment, index === 0 ? 0 : length);
+                const offset = streamOffset(segment);
+                return (
+                  <text
+                    key={`terminus-${directionId}-${index}`}
+                    className="service-terminus-chevron"
+                    x={point.x + offset.dx}
+                    y={point.y + offset.dy}
+                    fill={drynessColor(segment.dryness, segment.state, theme, colourMode)}
+                    fontSize={8 / Math.max(scale, 0.25)}
+                    transform={`rotate(${point.angle} ${point.x + offset.dx} ${point.y + offset.dy})`}
+                    aria-hidden="true"
+                  >
+                    ›
+                  </text>
+                );
+              });
+            })}
+          </g>
+        );
+      })}
       {trails.map((segment, index) => {
         const { dx, dy } = streamOffset(segment);
         const colour = drynessColor(0, 'fresh', theme, colourMode);

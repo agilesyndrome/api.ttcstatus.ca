@@ -661,8 +661,7 @@
   .service-legend-bar__segment[data-state='beyond'] {
   opacity: 1;
 }
-.service-legend-bar__labels,
-.service-legend-bar__rows {
+.service-legend-bar__labels {
   display: flex;
   justify-content: space-between;
   gap: 6px;
@@ -677,15 +676,6 @@
 }
 .service-legend-bar__labels button {
   font-size: 10px;
-}
-.service-legend-bar__rows {
-  flex-direction: column;
-  margin-top: 5px;
-}
-.service-legend-bar__row {
-  display: flex;
-  justify-content: space-between;
-  text-align: left;
 }
 .service-legend-bar__nodata {
   display: inline-flex;

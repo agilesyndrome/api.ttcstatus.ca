@@ -8,6 +8,5 @@ const meta = {
 } satisfies Meta<typeof LegendBar>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const TwoRows: Story = {};
-export const SelectedRoute: Story = { args: { selectedHeadwayMinutes: 8 } };
+export const Default: Story = {};
 export const DarkRedGreen: Story = { args: { theme: 'dark', colourMode: 'redgreen' } };

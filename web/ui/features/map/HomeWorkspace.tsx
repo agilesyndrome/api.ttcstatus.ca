@@ -282,11 +282,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
               />
               <CachedMapNotice workspace={workspace} />
               {service.underlay ? (
-                <LegendBar
-                  theme={dark ? 'dark' : 'light'}
-                  colourMode={colourMode}
-                  selectedHeadwayMinutes={service.selectedHeadwayMinutes}
-                />
+                <LegendBar theme={dark ? 'dark' : 'light'} colourMode={colourMode} />
               ) : (
                 <RouteColourKey
                   routes={data.routes.filter(

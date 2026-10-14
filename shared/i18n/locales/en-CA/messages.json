@@ -1526,13 +1526,9 @@
   "colourVision.redgreen": "Red–green safe",
   "colourVision.full": "Blue–yellow",
   "serviceLegend.title": "Service on tracks",
-  "serviceLegend.selectedRoute": "Selected route",
-  "serviceLegend.frequentRoute": "Frequent route (3-min cars)",
-  "serviceLegend.localRoute": "Local route (12-min cars)",
   "serviceLegend.justWent": "Just went",
   "serviceLegend.longerThanUsual": "Longer than usual",
   "serviceLegend.realGap": "A real gap",
   "serviceLegend.beyondTwoTimes": "≥ 2× the usual",
-  "serviceLegend.noData": "No data",
-  "serviceLegend.minutes": "min"
+  "serviceLegend.noData": "No data"
 }

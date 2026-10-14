@@ -46,11 +46,11 @@ in `wave-field.ts`) — while painting a continuous sRGB gradient whose midpoint
 The three-way control already exists (`ExplorePanel.tsx`: `off / vehicles /
 service`; persisted in `default-view.ts`). Colour ownership becomes mode-dependent:
 
-| Mode (`live` + `serviceOverlay`)        | Track base                                                  | Streams/pills                                                                                                              | Legend                          |
-| --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| **Service** (`live ✓, overlay ✓`)       | Neutral hairline casing (grey) — route colours step back    | Service ramp owns hue; route identity = **numbered pills along the corridor** (like street-name labels)                    | Gradient bar + minute rows (§3) |
-| **Vehicles only** (`live ✓, overlay ✗`) | Route colours own the tracks — the classic transit-map look | Vehicle markers in route colour; **chevrons in route colour** show travel direction (§4); route pills optional (redundant) | Route colour key (§2.1)         |
-| **Map only** (`live ✗`)                 | Route colours own the tracks                                | Nothing live                                                                                                               | Route colour key                |
+| Mode (`live` + `serviceOverlay`)        | Track base                                                  | Streams/pills                                                                                                              | Legend                   |
+| --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **Service** (`live ✓, overlay ✓`)       | Neutral hairline casing (grey) — route colours step back    | Service ramp owns hue; route identity = **numbered pills along the corridor** (like street-name labels)                    | Single gradient bar (§3) |
+| **Vehicles only** (`live ✓, overlay ✗`) | Route colours own the tracks — the classic transit-map look | Vehicle markers in route colour; **chevrons in route colour** show travel direction (§4); route pills optional (redundant) | Route colour key (§2.1)  |
+| **Map only** (`live ✗`)                 | Route colours own the tracks                                | Nothing live                                                                                                               | Route colour key         |
 
 - In Service mode the pills carry the route number + a small route-colour chip,
   so identity survives without flooding the canvas with red/green/orange lines.
@@ -314,7 +314,7 @@ final pass (after theming lands, since those change what is measured against):
 | Phase | Work                                                                                                                                                         | Files                                                                                                                                                                 |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | Palette module: OKLCH ramp, theme + colourMode aware; stale-paint signature fix; `?? 0` coercion removed                                                     | `wave-field.ts`, `tokens.css`, new `shared/map/field-palette.ts`                                                                                                      |
-| 2     | Gradient-bar legend: generated gradient, break notation, route-calibrated minute rows, config-driven anchors, quantised tap-to-highlight                     | `HomeWorkspace.tsx`, `workspace-polish.css`, new `LegendBar.tsx`                                                                                                      |
+| 2     | Gradient-bar legend: generated gradient, break notation, config-driven anchors, quantised tap-to-highlight                                                   | `HomeWorkspace.tsx`, `workspace-polish.css`, new `LegendBar.tsx`                                                                                                      |
 | 3     | Chevron system: sole motion channel (dash-flow removed), screen-space sizing, density strategy, fronts, termini, trails, caps                                | `TrackService.tsx`, `service.css`, `wave-field.ts`                                                                                                                    |
 | 4     | Mode-owned colour: neutral casing in Service mode, dotted-neutral for unmonitored corridors, route pills, route colour key, greyscale non-selected corridors | `TrackLayer.tsx`, `TransitMap.tsx`, `ExplorePanel.tsx`, new `RoutePills.tsx`, new route-key legend                                                                    |
 | 5     | Invisible bridging: one-anchor count rule + 600 m backstop, 150 m void-adjacent cap, cross-edge seam bridging, config knobs                                  | `wave-field.ts`, `shared/service/config.ts`, `TrackService.tsx`                                                                                                       |
@@ -428,8 +428,8 @@ honestly, with quantised tap-to-highlight.
 Acceptance criteria:
 
 - [x] The bar's gradient is generated from `drynessColor` (0 → 2.5 + "≥ 2×" break notation).
-- [x] Word anchors and minute rows derive from `serviceConfig()` / boundary math — zero hardcoded copy.
-- [x] When a route is selected, the legend renders only that route's minute row.
+- [x] Word anchors derive from the shared ramp and localized labels — zero hardcoded copy.
+- [x] The legend remains a single uncluttered ramp; route-specific minute rows were removed after review.
 - [x] Tap-to-highlight dims via a CSS `data-state` switch (never per-node opacity); events fire.
 - [x] All legend copy is i18n keys.
 
@@ -437,8 +437,8 @@ Stories:
 
 - [x] **2.1 `LegendBar` gradient + break (S)** — completed with a generated gradient bar and Storybook stories.
 - [x] **2.2 Config-driven word anchors (S)** — completed from validated service configuration and localized labels.
-- [x] **2.3 Two-row minute ruler (M)** — completed with the exported `minuteRuler` boundary helper.
-- [x] **2.4 Route-selected single row (S)** — completed using the selected route's median headway.
+- [x] **2.3 Single-ramp legend (M)** — completed; the distracting minute rows were removed after review.
+- [x] **2.4 Route-selected row review (S)** — completed by removing the confusing route rows from the legend.
 - [x] **2.5 Tap-to-highlight (M)** — completed with quantised buckets, CSS `data-state` dimming and analytics.
 - [x] **2.6 Swap the legend in `HomeWorkspace.tsx` (S)** — completed with the plain localized No data entry.
 
