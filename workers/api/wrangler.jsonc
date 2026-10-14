@@ -11,7 +11,7 @@
     // `/__scheduled` serves wrangler dev's --test-scheduled cron trigger; the
     // worker owns it so the SPA fallback cannot swallow it (in production the
     // router simply 404s the path — no page lives there).
-    "run_worker_first": ["/api/*", "/__scheduled"],
+    "run_worker_first": ["/api/*", "/lite*", "/__scheduled"],
     "not_found_handling": "single-page-application",
   },
   "limits": {
