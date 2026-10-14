@@ -168,12 +168,14 @@ export const TrackService = memo(function TrackService({
   const trails = useMemo(() => {
     if (!cars?.length) return [];
     const edgesById = new Map(edges.map((edge) => [edge.id, edge]));
-    const collected: TrackSegment[] = [];
+    const collected: Array<{ segment: TrackSegment; context: boolean }> = [];
     for (const car of cars) {
       const edge = car.match ? edgesById.get(car.match.edgeId) : undefined;
       if (!edge) continue;
       if (visibleEdges && !visibleEdges.has(edge.id)) continue;
-      collected.push(...carTrailSegments(edge, car, features, statesRef.current));
+      const context = Boolean(selectedRoute && !edge.routeIds.includes(selectedRoute));
+      for (const segment of carTrailSegments(edge, car, features, statesRef.current))
+        collected.push({ segment, context });
     }
     return collected;
   }, [cars, edges, features, signature, visibleEdges, selectedRoute]);
@@ -309,11 +311,15 @@ export const TrackService = memo(function TrackService({
           </g>
         );
       })}
-      {trails.map((segment, index) => {
+      {trails.map(({ segment, context }, index) => {
         const { dx, dy } = streamOffset(segment);
         const colour = drynessColor(0, 'fresh', theme, colourMode);
         return (
-          <g key={`trail-${index}`} transform={`translate(${dx} ${dy})`}>
+          <g
+            key={`trail-${index}`}
+            data-context={context ? 'muted' : undefined}
+            transform={`translate(${dx} ${dy})`}
+          >
             <line
               className="service-trail-seg"
               x1={segment.x1}
