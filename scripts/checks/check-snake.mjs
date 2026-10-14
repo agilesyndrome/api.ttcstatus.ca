@@ -5,6 +5,9 @@ import { chromium } from 'playwright';
 import { installAccountFixture } from '../preview/auth-fixture.mjs';
 
 const origin = process.env.UI_URL ?? 'http://127.0.0.1:4173';
+const frameBudgetMs = 50;
+const stallBudgetMs = 500;
+const frameSampleMs = 4000;
 const map = JSON.parse(await readFile('data/fixtures/streetcar-schematic.json', 'utf8'));
 const compiled = await build({
   stdin: {
@@ -208,6 +211,33 @@ try {
   );
   const before = feedCalls;
   await game.getByRole('button', { name: 'Depart', exact: true }).click();
+  const headBody = game.locator('[data-snake-head] .streetcar-body');
+  await headBody.waitFor();
+  assert.equal(await headBody.getAttribute('fill'), '#d71920');
+  assert.ok(
+    (await game.locator('[data-snake-food]').count()) > 0,
+    'generated cars appear on the board before they can be collected',
+  );
+  const lineTracks = await page.locator('.snake-play-tracks').evaluate((layer) => {
+    const line = layer.getAttribute('data-current-line');
+    return [...layer.querySelectorAll('[data-line]')]
+      .filter((track) => track.getAttribute('data-line') === line)
+      .map((track) => track.getAttribute('stroke'));
+  });
+  assert.ok(lineTracks.length > 0 && new Set(lineTracks).size === 1);
+  const trackColors = await page
+    .locator('.snake-play-tracks [data-snake-track]')
+    .evaluateAll((tracks) => tracks.map((track) => track.getAttribute('stroke')));
+  assert.ok(new Set(trackColors).size > 1, 'different lines keep distinct rail colours');
+  assert.ok(
+    trackColors.every((color) => color !== '#d71920' && color !== '#ed1c24'),
+    'no track uses the red reserved for streetcars',
+  );
+  assert.equal(
+    await game.locator('.snake-train > polyline').count(),
+    0,
+    'the train has no continuous trail extending beyond its individual cars',
+  );
   await page.waitForTimeout(250);
   const cameraBefore = await page.locator('#snake-map').getAttribute('viewBox');
   const initial = await game.locator('[data-snake-head]').getAttribute('transform');
@@ -221,6 +251,55 @@ try {
     await page.locator('#snake-map').getAttribute('viewBox'),
     cameraBefore,
     'the camera follows the moving streetcar',
+  );
+  // Count browser frames while the full board, train, traffic, HUD, and
+  // following camera are all active. Elapsed time includes any long stall,
+  // even if requestAnimationFrame does not run again before the sample ends.
+  const perfStart = await game.locator('[data-snake-head]').getAttribute('transform');
+  const frameSample = await page.evaluate(
+    (durationMs) =>
+      new Promise((resolve) => {
+        const started = performance.now();
+        let frames = 0;
+        let lastFrame = started;
+        let longestFrameMs = 0;
+        let animationFrame;
+        const sample = (now) => {
+          frames++;
+          longestFrameMs = Math.max(longestFrameMs, now - lastFrame);
+          lastFrame = now;
+          animationFrame = requestAnimationFrame(sample);
+        };
+        animationFrame = requestAnimationFrame(sample);
+        setTimeout(() => {
+          cancelAnimationFrame(animationFrame);
+          const elapsedMs = performance.now() - started;
+          resolve({
+            frames,
+            elapsedMs,
+            averageMs: elapsedMs / frames,
+            longestFrameMs: Math.max(longestFrameMs, elapsedMs - lastFrame),
+          });
+        }, durationMs);
+      }),
+    frameSampleMs,
+  );
+  assert.notEqual(
+    await game.locator('[data-snake-head]').getAttribute('transform'),
+    perfStart,
+    'the train moves throughout the frame sample',
+  );
+  assert.ok(
+    await game.getByRole('button', { name: 'Pause', exact: true }).isVisible(),
+    'the game remains running throughout the frame sample',
+  );
+  assert.ok(
+    frameSample.averageMs <= frameBudgetMs,
+    `snake rendering averaged ${frameSample.averageMs.toFixed(1)} ms/frame over ${frameSample.frames} frames (${frameSample.elapsedMs.toFixed(0)} ms sampled, longest frame ${frameSample.longestFrameMs.toFixed(1)} ms); budget is ${frameBudgetMs} ms/frame`,
+  );
+  assert.ok(
+    frameSample.longestFrameMs <= stallBudgetMs,
+    `snake rendering stalled for ${frameSample.longestFrameMs.toFixed(1)} ms; limit is ${stallBudgetMs} ms`,
   );
   // Zooming never hands the camera over; only manual panning does.
   const following = () =>
@@ -248,6 +327,34 @@ try {
     (await viewWidth()) > startWidth * 1.1,
     'collecting cars zooms out as the train grows',
   );
+  assert.equal(await headBody.getAttribute('fill'), '#d71920');
+  assert.ok(
+    (await game.locator('[data-snake-food]').count()) > 0,
+    'collectible cars stay drawn as the train grows',
+  );
+  await page.waitForFunction(
+    () => {
+      const viewport = document.querySelector('#snake-map')?.getBoundingClientRect();
+      if (!viewport) return false;
+      return [
+        ...document.querySelectorAll(
+          'dialog.snake-game [data-snake-food], dialog.snake-game .live-car',
+        ),
+      ].some((car) => {
+        const box = car.getBoundingClientRect();
+        return (
+          box.width > 0 &&
+          box.height > 0 &&
+          box.right > viewport.left &&
+          box.left < viewport.right &&
+          box.bottom > viewport.top &&
+          box.top < viewport.bottom
+        );
+      });
+    },
+    undefined,
+    { timeout: 5000 },
+  );
   await page.keyboard.press('ArrowLeft');
   await game.getByRole('button', { name: 'Pause', exact: true }).click();
   await game.getByText('Paused', { exact: true }).waitFor();
@@ -265,6 +372,36 @@ try {
   await game.getByText('Paused', { exact: true }).waitFor();
   await game.getByRole('button', { name: 'Resume driving', exact: true }).click();
   await page.keyboard.press('ArrowUp');
+  const trainCarBounds = await game.locator('[data-snake-car]').evaluateAll((cars) =>
+    cars.map((car) => {
+      const body = car.querySelector('.streetcar-body');
+      const box = body.getBoundingClientRect();
+      return {
+        index: car.getAttribute('data-snake-car'),
+        lengthPx: Math.hypot(box.width, box.height),
+        transform: car.getAttribute('transform'),
+        shape: body.getAttribute('d'),
+      };
+    }),
+  );
+  assert.ok(
+    trainCarBounds.every((car) => car.lengthPx <= 160),
+    `a train car stretches across the map: ${JSON.stringify(trainCarBounds)}`,
+  );
+  const foodCarBounds = await game.locator('[data-snake-food]').evaluateAll((cars) =>
+    cars.map((car) => {
+      const box = car.querySelector('.streetcar-body').getBoundingClientRect();
+      return {
+        id: car.getAttribute('data-snake-food'),
+        lengthPx: Math.hypot(box.width, box.height),
+      };
+    }),
+  );
+  assert.ok(foodCarBounds.length > 0, 'collectible cars remain on the map');
+  assert.ok(
+    foodCarBounds.every((car) => car.lengthPx <= 160),
+    `a collectible car stretches across the map: ${JSON.stringify(foodCarBounds.filter((car) => car.lengthPx > 160))}`,
+  );
   await page.screenshot({ path: '/tmp/ttc-snake-desktop.png' });
   assert.equal(feedCalls, before, 'game does not create a second poller');
   await page.keyboard.press('Escape');
@@ -586,7 +723,7 @@ try {
   assert.deepEqual(requests, []);
   assert.deepEqual(errors, []);
   console.log(
-    'Snake browser checks passed: shared map/feed, selected track previews and arrow keys, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, frozen-world isolation from feed staleness, playable legacy archive.',
+    `Snake browser checks passed: ${frameSample.averageMs.toFixed(1)} ms/frame over ${frameSample.frames} active frames (budget ${frameBudgetMs} ms, longest ${frameSample.longestFrameMs.toFixed(1)} ms), shared map/feed, selected track previews and arrow keys, pedal feedback/release, pinch over controls, arcade motion, purist governor, focus restoration, frozen-world isolation from feed staleness, playable legacy archive.`,
   );
   await context.close();
   await mobileContext.close();

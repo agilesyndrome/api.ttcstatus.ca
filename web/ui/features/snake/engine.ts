@@ -82,13 +82,12 @@ const SPACING = CAR_LENGTH + 1.5,
   UTURN_ANGLE = 168,
   // A busier, faster-paced network: the guaranteed catchable car is placed
   // a few dozen metres to a couple hundred metres ahead (time-based, so it
-  // never spawns on top of the player), ambient traffic is denser, and the
-  // respawn cadence keeps a target in front of the player within ~6 s.
+  // never spawns on top of the player). A target stays within a visible
+  // stretch ahead; the ambient fleet alone uses the slower respawn cadence.
   GAME_TRAFFIC_COUNT = 26,
   GAME_TARGET_SECONDS = 4,
   GAME_TARGET_MIN_DISTANCE = 60,
   GAME_TARGET_MAX_DISTANCE = 240,
-  GAME_TRAFFIC_COVERAGE_SECONDS = 7,
   GAME_TRAFFIC_RESPAWN_DELAY = 2.5,
   // Traffic maintenance scans the reachable graph once per candidate car, so
   // its cost scales with tick count, not distance travelled. Cadence it to a
@@ -170,6 +169,9 @@ export class SnakeEngine {
   readonly infrastructureNames: Map<string, string>;
   status: 'ready' | 'running' | 'paused' | 'over' = 'ready';
   position: Position;
+  /** Keep the displayed line through shared corridors until the train
+   * actually takes a track that no longer serves it. */
+  lineId?: string;
   mode: Mode = 'arcade';
   speed = 180;
   count = 1;
@@ -249,7 +251,10 @@ export class SnakeEngine {
             edge.points.length > 1 &&
             edge.sourcePoints.length > 1,
         )
-        .map((edge) => [edge.id, edge]),
+        // Switch choice merging may enrich route IDs for game logic. Give the
+        // engine its own edge records so the board used for drawing never
+        // changes colour as those choices are discovered.
+        .map((edge) => [edge.id, { ...edge, routeIds: [...edge.routeIds] }]),
     );
     if (!this.edges.size) throw new Error(english('snake.noPlayableTracksInThisMap'));
     for (const edge of this.edges.values()) {
@@ -303,6 +308,16 @@ export class SnakeEngine {
     }
     const edge = [...this.edges.values()][0];
     this.position = { edgeId: edge.id, direction: 1, distance: edge.lengthMetres / 2 };
+    this.lineId = this.lineOn(edge);
+  }
+
+  private lineOn(edge: Edge): string | undefined {
+    if (this.lineId && edge.routeIds.includes(this.lineId)) return this.lineId;
+    return (
+      edge.routeIds.find((id) => !this.overnightRoutes.has(id)) ??
+      edge.routeIds[0] ??
+      this.lineId
+    );
   }
 
   pose(position = this.position): Pose {
@@ -424,10 +439,7 @@ export class SnakeEngine {
   }
 
   private coverageDistance() {
-    return Math.max(
-      GAME_TARGET_MAX_DISTANCE,
-      (this.speed / 3.6) * GAME_TRAFFIC_COVERAGE_SECONDS,
-    );
+    return GAME_TARGET_MAX_DISTANCE;
   }
 
   private trafficAhead(car: PlottedVehicle, maxDistance = Infinity): number | undefined {
@@ -662,14 +674,22 @@ export class SnakeEngine {
     if (!this.guaranteedGameCarId) {
       const existing = this.gameCarAhead(this.coverageDistance());
       if (existing) this.guaranteedGameCarId = existing.vehicle.id;
-      else if (
-        !this.hasTrafficAhead(cars, this.coverageDistance()) &&
-        (seed || this.gameTrafficCooldown <= 0)
-      ) {
-        const position = this.positionAhead(this.targetDistance(), true);
+      else if (!this.hasTrafficAhead(cars, this.coverageDistance())) {
+        // A long lookahead can run off a terminal before the driver reaches
+        // its turnback. Use the remaining straight rail for a visible target
+        // instead of leaving the approach empty.
+        const position =
+          this.positionAhead(this.targetDistance(), true) ??
+          (this.remaining >= GAME_TARGET_MIN_DISTANCE
+            ? this.positionAhead(GAME_TARGET_MIN_DISTANCE, true)
+            : undefined);
         if (position) {
+          // An offscreen ambient car must not consume the slot for the visible
+          // pace car. Keep the total population bounded while prioritizing it.
+          if (this.gameCars.length >= GAME_TRAFFIC_COUNT)
+            this.removeGameCar(this.gameCars.at(-1)!.vehicle.id);
           this.addGameCar(position, true);
-          if (!seed) this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
+          if (!seed) return;
         }
       }
     }
@@ -787,6 +807,7 @@ export class SnakeEngine {
 
   start(mode: Mode, cars: PlottedVehicle[], random = Math.random) {
     this.mode = mode;
+    this.lineId = undefined;
     this.speed = mode === 'purist' ? 50 : 180;
     this.count = 1;
     this.travelled = 0;
@@ -846,6 +867,7 @@ export class SnakeEngine {
         break;
     }
     this.status = 'running';
+    this.lineId = this.lineOn(this.edges.get(this.position.edgeId)!);
     this.message = t('snake.followTheRailsThrowSwitchesToExplore');
     this.maintainGameTraffic(cars, true);
     this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
@@ -1412,6 +1434,7 @@ export class SnakeEngine {
       this.turnGraceUntil = this.travelled + this.turnback.length + CAR_LENGTH * 3.5;
     }
     this.position = outgoing;
+    this.lineId = this.lineOn(edge);
     this.record(true);
     // Hold a command through ordinary geometry nodes until an actual switch.
     if (choices.length > 1) this.queued = undefined;
@@ -1492,22 +1515,6 @@ export class SnakeEngine {
       }
     }
     return false;
-  }
-
-  body(): TrailSample[] {
-    // Trail samples are ordered by travelled distance, so a binary search for
-    // the window's lower bound replaces filtering the whole trail on every
-    // rendered frame. The cutoff can move backwards (a car was collected) as
-    // well as forwards, so no monotone index is kept.
-    const cutoff = this.travelled - (this.count - 1) * SPACING - CAR_LENGTH / 2;
-    let low = 0,
-      high = this.trail.length;
-    while (low < high) {
-      const middle = (low + high) >> 1;
-      if (this.trail[middle].travelled < cutoff) low = middle + 1;
-      else high = middle;
-    }
-    return this.trail.slice(low);
   }
 
   carCentres(): Pose[] {

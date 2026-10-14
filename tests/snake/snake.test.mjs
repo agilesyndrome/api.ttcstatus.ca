@@ -163,11 +163,10 @@ test('game traffic seeds random streetcars and keeps a catchable target ahead', 
     engine.gameCars.length > 0 && engine.gameCars.length <= 26,
     'the game keeps a bounded streetcar population',
   );
-  const idsAtCatch = new Set(engine.gameCars.map((car) => car.vehicle.id));
   for (let i = 0; i < 5; i++) engine.tick(0.1, []);
   assert.ok(
-    engine.gameCars.every((car) => idsAtCatch.has(car.vehicle.id)),
-    'the respawn cooldown prevents an immediate new streetcar',
+    engine.gameCars.some((car) => engine.trafficAhead(car, 240) !== undefined),
+    'the next collectible stays within the near track ahead',
   );
   assert.ok(
     engine.gameCars.some((car) => !initialTargetIds.has(car.vehicle.id)),
@@ -183,21 +182,18 @@ test('purist never spawns generated traffic, so no pace car materializes ahead t
   assert.equal(engine.gameCars.length, 0);
 });
 
-test('game traffic grows at most one car after the opening fleet', () => {
+test('game traffic adds at most one car per scan after the opening fleet', () => {
   const engine = new SnakeEngine(demoData, { gameTraffic: true });
   engine.start('arcade', [], () => 0.4);
-  const initialIds = new Set(engine.gameCars.map((car) => car.vehicle.id));
-  for (let i = 0; i < 10; i++) engine.tick(0.1, []);
-  assert.deepEqual(
-    engine.gameCars.map((car) => car.vehicle.id).filter((id) => !initialIds.has(id)),
-    [],
-    'no automatic growth occurs during the first second',
-  );
-  for (let i = 0; i < 30; i++) engine.tick(0.1, []);
-  assert.ok(
-    engine.gameCars.filter((car) => !initialIds.has(car.vehicle.id)).length <= 1,
-    'traffic grows one car at a time after the cooldown',
-  );
+  for (let i = 0; i < 40; i++) {
+    const before = new Set(engine.gameCars.map((car) => car.vehicle.id));
+    engine.tick(0.1, []);
+    assert.ok(engine.gameCars.length <= 26, 'the fleet stays bounded');
+    assert.ok(
+      engine.gameCars.filter((car) => !before.has(car.vehicle.id)).length <= 1,
+      'one scan never materializes multiple cars',
+    );
+  }
 });
 
 test('arcade cruise floor ramps up with the consist but never fights the brake', () => {
@@ -273,6 +269,58 @@ test('manual turnout choices and keyboard turn intents override automatic corrid
   automatic.position.distance = 80;
   drive(automatic, 0.6);
   assert.equal(automatic.position.edgeId, 'straight');
+});
+
+test('line colour follows route continuity and engine choices cannot mutate the drawn board', () => {
+  const data = {
+    ...demoData,
+    edges: [
+      edge(
+        'start',
+        'a',
+        'b',
+        [
+          [0, 0],
+          [100, 0],
+        ],
+        ['501'],
+      ),
+      edge(
+        'shared',
+        'b',
+        'c',
+        [
+          [100, 0],
+          [200, 0],
+        ],
+        ['501', '504'],
+      ),
+      edge(
+        'other',
+        'c',
+        'd',
+        [
+          [200, 0],
+          [300, 0],
+        ],
+        ['504'],
+      ),
+    ],
+  };
+  const routesBefore = JSON.stringify(data.edges.map((item) => item.routeIds));
+  const engine = new SnakeEngine(data);
+  engine.start('arcade', [], () => 0);
+  engine.position = { edgeId: 'start', direction: 1, distance: 99 };
+  engine.lineId = '501';
+  engine.tick(0.1, []);
+  assert.equal(engine.position.edgeId, 'shared');
+  assert.equal(engine.lineId, '501', 'a shared corridor keeps the current line');
+  engine.position = { edgeId: 'shared', direction: 1, distance: 99 };
+  engine.tick(0.1, []);
+  assert.equal(engine.position.edgeId, 'other');
+  assert.equal(engine.lineId, '504', 'a different line changes only at its turnout');
+  assert.equal(JSON.stringify(data.edges.map((item) => item.routeIds)), routesBefore);
+  assert.notEqual(engine.edges.get('shared'), data.edges[1]);
 });
 
 test('switch warning looks past degree-two geometry nodes and queued steering survives them', () => {

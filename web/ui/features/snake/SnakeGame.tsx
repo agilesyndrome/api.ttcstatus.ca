@@ -26,6 +26,37 @@ interface Props {
   onClose(): void;
 }
 const noSelection = () => {};
+const TTC_RED = '#d71920';
+// GTFS paints nearly every daytime streetcar route red. Give the game rails
+// stable line colours so red belongs only to the train and waiting cars.
+const TRACK_PALETTE = [
+  '#5489d0',
+  '#279e91',
+  '#c1963c',
+  '#956fc4',
+  '#6d9e4a',
+  '#3b9abb',
+  '#aa78b9',
+  '#8e9c43',
+  '#6e88bc',
+  '#429e79',
+  '#b0844d',
+  '#719fc9',
+  '#859448',
+];
+const trackColor = (lineId?: string) => {
+  if (!lineId) return '#7b8794';
+  // Night service retains the corresponding daytime corridor colour.
+  const route = Number(lineId);
+  const number =
+    Number.isInteger(route) && route >= 300 && route < 400 ? route + 200 : route;
+  const key = Number.isInteger(number)
+    ? number
+    : [...lineId].reduce((hash, character) => hash * 31 + character.charCodeAt(0), 0);
+  return TRACK_PALETTE[
+    (((key - 501) % TRACK_PALETTE.length) + TRACK_PALETTE.length) % TRACK_PALETTE.length
+  ];
+};
 // The board is derived synchronously from the already-loaded schematic (no
 // second network request). Memoize it per schematic so reopening the game is
 // instant instead of rebuilding the collapsed board every time.
@@ -137,6 +168,52 @@ const MiniTracks = memo(function MiniTracks({ data }: { data: ViewerData }) {
           vectorEffect="non-scaling-stroke"
         />
       ))}
+    </g>
+  );
+});
+
+/** Game-only rails: shared corridors keep the colour of the line being
+ * driven, while other tracks retain their own fixed line colours. */
+const SnakeTracks = memo(function SnakeTracks({
+  data,
+  lineId,
+}: {
+  data: ViewerData;
+  lineId?: string;
+}) {
+  const routes = new Map(data.routes.map((route) => [route.id, route]));
+  return (
+    <g
+      className="snake-play-tracks"
+      data-current-line={lineId}
+      fill="none"
+      pointerEvents="none"
+      aria-hidden="true"
+    >
+      {data.edges.map((edge) => {
+        const route =
+          (lineId && (edge.routeIds.includes(lineId) || !edge.routeIds.length)
+            ? routes.get(lineId)
+            : undefined) ??
+          edge.routeIds
+            .map((id) => routes.get(id))
+            .find((candidate) => candidate && !candidate.overnight) ??
+          routes.get(edge.routeIds[0]);
+        return (
+          <polyline
+            key={edge.id}
+            data-snake-track={edge.id}
+            data-line={route?.id}
+            points={edge.points.map((point) => point.join(',')).join(' ')}
+            stroke={trackColor(route?.id)}
+            strokeWidth={route ? 4.5 : 3}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={route ? undefined : '6 5'}
+          />
+        );
+      })}
     </g>
   );
 });
@@ -351,11 +428,10 @@ const SnakeCockpit = memo(function SnakeCockpit({
    * writing attributes directly, never by reconciling the tree per frame. */
   const trainRefs = useRef<{
     scale: number;
-    body: (SVGPolylineElement | null)[];
     arrow: (SVGPathElement | null)[];
     circle: SVGCircleElement | null;
     cars: (SVGGElement | null)[];
-  }>({ scale: 1, body: [], arrow: [], circle: null, cars: [] });
+  }>({ scale: 1, arrow: [], circle: null, cars: [] });
   const minimapDot = useRef<SVGCircleElement>(null);
   const touches = useRef(new Map<number, Point>());
   const pinching = useRef(false);
@@ -548,6 +624,8 @@ const SnakeCockpit = memo(function SnakeCockpit({
     let frame: number,
       previous = 0,
       lastCount = engine.count,
+      lastGameCars = engine.gameCars,
+      lastLineId = engine.lineId,
       lastHazard: Hazard | undefined = engine.hazard;
     const animate = (now: number) => {
       const wasRunning = engine.status === 'running';
@@ -587,8 +665,15 @@ const SnakeCockpit = memo(function SnakeCockpit({
       // Discrete gameplay changes need a real render: new cars join the
       // consist, disruptions change the banner and track overlay, and a run
       // ending mid-tick shows its verdict immediately.
-      if (engine.count !== lastCount || engine.hazard !== lastHazard) {
+      if (
+        engine.count !== lastCount ||
+        engine.gameCars !== lastGameCars ||
+        engine.lineId !== lastLineId ||
+        engine.hazard !== lastHazard
+      ) {
         lastCount = engine.count;
+        lastGameCars = engine.gameCars;
+        lastLineId = engine.lineId;
         lastHazard = engine.hazard;
         redraw();
       } else if (!wasOver && engine.status === 'over') redraw();
@@ -615,21 +700,13 @@ const SnakeCockpit = memo(function SnakeCockpit({
     }
   }, [engine.count, best, engine]);
 
-  /** Per-frame world update, written straight to the SVG: the train polyline,
-   * car transforms, switch arrow and switch highlight move without a single
+  /** Per-frame world update, written straight to the SVG: car transforms,
+   * switch arrow and switch highlight move without a single
    * React re-render. Car rect lengths depend only on the zoom scale, so those
    * stay render-driven; only transforms change every frame. */
   function drawOverlay() {
     const refs = trainRefs.current,
       scale = refs.scale;
-    if (refs.body[0] || refs.body[1]) {
-      const points = engine
-        .body()
-        .map((sample) => sample.point.join(','))
-        .join(' ');
-      refs.body[0]?.setAttribute('points', points);
-      refs.body[1]?.setAttribute('points', points);
-    }
     const upcoming = engine.upcoming(),
       edge = upcoming ? engine.edges.get(upcoming.selected.edgeId) : undefined;
     if (upcoming && edge) {
@@ -679,7 +756,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
     };
   }
   const pose = engine.pose(),
-    body = engine.body(),
     upcoming = engine.upcoming();
   const held = heldPedals();
   // Memoized per inputs: the visible fleet changes when the live feed, the
@@ -819,6 +895,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
           // remain available to the explorer but would add needless SVG nodes
           // and collision work here.
           cars={visibleCars}
+          underlay={<SnakeTracks data={data} lineId={engine.lineId} />}
           includeOvernight
           showLabels={false}
           showStops={false}
@@ -836,13 +913,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
             // updates: car rect lengths and arrow thickness are zoom-driven,
             // so they only change when this overlay re-renders.
             trainRefs.current.scale = scale;
-            // The head wears the colour of the line it is driving — the same
-            // route-coloured livery as streetcars on the ttcstatus.ca map.
-            const headEdge = engine.edges.get(engine.position.edgeId);
-            const headColor =
-              (headEdge &&
-                data.routes.find((route) => route.id === headEdge.routeIds[0])?.color) ||
-              '#b4393f';
             return (
               <g className="snake-train" pointerEvents="none">
                 {engine.hazard?.edgeId && engine.hazard.kind !== 'slow' && (
@@ -899,11 +969,24 @@ const SnakeCockpit = memo(function SnakeCockpit({
                  * pulsing halo so a waiting car reads at any zoom. They never
                  * move, so transforms are render-driven. */}
                 {foodCars.map((car) => {
-                  const length = Math.max(10, CAR_LENGTH * scale);
+                  const match = car.match;
+                  const length = Math.max(
+                    10,
+                    (match && engine.edges.has(match.edgeId)
+                      ? carMapAt(
+                          engine.pose({
+                            edgeId: match.edgeId,
+                            direction: match.direction,
+                            distance: match.distanceAlongMetres,
+                          }),
+                        )
+                      : carMapLength) * scale,
+                  );
                   return (
                     <g
                       key={car.vehicle.id}
                       className="snake-food"
+                      data-snake-food={car.vehicle.id}
                       transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
                     >
                       <circle className="snake-food-halo" r={13} />
@@ -918,7 +1001,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                       <path
                         className="streetcar-body"
                         d={`M${-length / 2} -3H${length / 2 - 5}L${length / 2 + 1} 0L${length / 2 - 5} 3H${-length / 2}Z`}
-                        fill="#b4393f"
+                        fill={TTC_RED}
                         stroke="#25343c"
                         strokeWidth={1}
                         strokeLinejoin="round"
@@ -934,28 +1017,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
                     </g>
                   );
                 })}
-                <polyline
-                  ref={(element) => {
-                    trainRefs.current.body[0] = element;
-                  }}
-                  points={body.map((sample) => sample.point.join(',')).join(' ')}
-                  fill="none"
-                  stroke="#fffdf7"
-                  strokeWidth={9}
-                  vectorEffect="non-scaling-stroke"
-                  strokeLinecap="round"
-                />
-                <polyline
-                  ref={(element) => {
-                    trainRefs.current.body[1] = element;
-                  }}
-                  points={body.map((sample) => sample.point.join(',')).join(' ')}
-                  fill="none"
-                  stroke={headColor}
-                  strokeWidth={5}
-                  vectorEffect="non-scaling-stroke"
-                  strokeLinecap="round"
-                />
                 <circle
                   ref={(element) => {
                     trainRefs.current.circle = element;
@@ -987,7 +1048,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                   // True-to-scale car length in screen pixels. Cars sit SPACING
                   // metres apart, so the true length always fits without
                   // bunching; zoomed out they shrink instead of overlapping
-                  // (the constant-width body polyline keeps the train legible).
+                  // so separate cars stay legible at each zoom level.
                   const length = Math.max(
                     8,
                     Math.hypot(front[0] - back[0], front[1] - back[1]) * scale,
@@ -998,6 +1059,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                   return (
                     <g
                       key={index}
+                      data-snake-car={index}
                       data-snake-head={index === 0 ? '' : undefined}
                       ref={(element: SVGGElement | null) => {
                         trainRefs.current.cars[index] = element;
@@ -1007,7 +1069,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                       {index === 0 ? (
                         <>
                           {/* The map's pointed cab, scaled to a lead car: cream
-                           * halo, route-coloured body, white chevron — and a
+                           * halo, TTC red body, white chevron — and a
                            * pair of eyes, because this one is alive. */}
                           <path
                             className="streetcar-halo"
@@ -1020,7 +1082,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                           <path
                             className="streetcar-body"
                             d={nose}
-                            fill={headColor}
+                            fill={TTC_RED}
                             stroke="#25343c"
                             strokeWidth={1.2}
                             strokeLinejoin="round"
@@ -1060,7 +1122,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                       ) : (
                         <>
                           {/* Trailing sections: the map's cream streetcar body
-                           * with a route-coloured centre stripe. */}
+                           * with a TTC red centre stripe. */}
                           <rect
                             className="streetcar-halo"
                             x={-length / 2}
@@ -1086,7 +1148,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                           <path
                             d={`M${-length / 2 + 3} 0H${length / 2 - 3}`}
                             fill="none"
-                            stroke={headColor}
+                            stroke={TTC_RED}
                             strokeWidth={2}
                             strokeLinecap="round"
                           />

@@ -35,6 +35,13 @@
   touch-action: none;
   cursor: grab;
 }
+/* The snake owns its line-aware rail colours inside this dialog. */
+.snake-game #snake-map .track {
+  visibility: hidden;
+}
+.snake-game #snake-map .track-closures [data-closure='closed'] {
+  stroke: #bc82e8;
+}
 .snake-world .map-hint,
 .snake-world .north {
   display: none;
