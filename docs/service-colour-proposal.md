@@ -3,8 +3,10 @@
 Status: **proposal — no code written yet.** Supersedes v2. Decisions locked by the
 owner since v2: the legend is a gradient bar; colour ownership switches by map
 mode; chevrons are the direction system (and the only motion channel); small
-no-data stretches are smoothed over **invisibly** — no inferred-value showcase,
-no soft styling, no caveats; and the map never *computes advice* (no walk-hints,
+no-data stretches are smoothed over **invisibly and silently** — no inferred-value
+showcase, no soft styling, no caveats, no mention of inference on any user-facing
+surface (the inferences are minor; the map just reads as one continuous field);
+and the map never *computes advice* (no walk-hints,
 no "take the other route" verdicts) — the map's own paint must let riders infer
 relief and compare corridors themselves. Source of the review: three 8:53–8:54
 screenshots of the Roncesvalles–Queen–King, College–Dufferin and Dundas–Gladstone
@@ -113,10 +115,10 @@ gradient bar that literally shows the paint**:
   nearest bucket — and the dimming is a CSS `data-state` switch over segments,
   never per-node opacity (thousands of nodes). Release/second tap clears.
   Analytics: `legend-highlight`, `legend-row-select`.
-- **Grey entry rewritten:** the grey notch at the bar's end reads **"not visible
-  right now"** — honest about blindness without over-promising "no data
-  recorded," and consistent with §5's smoothing (grey survives only where we
-  refuse to bridge).
+- **Grey entry:** the grey notch at the bar's end keeps a plain **"No data"**
+  label. The only grey on the map is genuine blindness — a bridged stretch is
+  never grey and never styled differently — and no UI surface (legend, card,
+  tooltip, aria text) mentions inferred values. The smoothing is silent (§5).
 
 ## 4. Direction — the chevron system (the flagship; only motion channel)
 
@@ -159,7 +161,10 @@ Per the owner's decision, **all showcase-of-inference machinery is deleted**: no
 Bridged stretches paint at full opacity, identical to measured — visually
 indistinguishable, which is the point. The smoothing interpolates between real
 measurements over bounded spans; like anti-aliasing, it is a rendering act, not a
-data claim.
+data claim. **The inferences are minor by construction** (one hidden stop between
+two measured neighbours), so **nothing user-facing ever references them** — no
+styling difference, no legend, card, tooltip or aria mention. The map simply
+reads as one continuous field.
 
 **Algorithm (paint-time only, inside `edgeServiceSegments`):**
 
@@ -187,8 +192,9 @@ data claim.
    chained edges sharing a route id when the seam gap satisfies the same
    one-anchor rule.
 7. **Grey survives only where bridging is refused** (long gaps, void-restraint,
-   > 1 blind anchor). The legend's grey wording (§3) matches: "not visible right
-   now."
+   > 1 blind anchor) — genuine blindness, covered by the plain "No data" legend
+   entry (§3). A bridged stretch is never labelled, dimmed, dashed or worded as
+   inferred.
 
 **Why this stays honest (internal invariants, not user-facing features):**
 
@@ -251,8 +257,8 @@ final pass (after theming lands, since those change what is measured against):
   expect to darken it (≈ `#b97a10` family) once the OKLCH ramp re-anchors.
 - Chevrons, fronts and the gradient bar inherit the final palette; audit them too.
 - Full-opacity state lines (the 0.95/0.6 opacity tricks go); grey-dashed
-  unmonitored stretches keep their dotted treatment as *state styling*, not
-  inference styling.
+  unmonitored stretches keep their dotted treatment as plain "No data" styling —
+  no segment is ever styled as "inferred."
 
 ## 9. Colourblind modes — opt-in, saved to the profile
 
