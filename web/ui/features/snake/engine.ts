@@ -434,8 +434,7 @@ export class SnakeEngine {
   private nextGameTrafficDelay() {
     return (
       GAME_TRAFFIC_RESPAWN_MIN_DELAY +
-      this.random() *
-        (GAME_TRAFFIC_RESPAWN_MAX_DELAY - GAME_TRAFFIC_RESPAWN_MIN_DELAY)
+      this.random() * (GAME_TRAFFIC_RESPAWN_MAX_DELAY - GAME_TRAFFIC_RESPAWN_MIN_DELAY)
     );
   }
 
