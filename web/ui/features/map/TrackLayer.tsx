@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import type { CSSProperties } from 'react';
 import type { Point } from '../../../../shared/map/model';
 import type { TransitMapProps } from './types';
 
@@ -44,12 +45,11 @@ export const Tracks = memo(function Tracks({
             className="track"
             points={points(edge.points)}
             fill="none"
-            stroke={
-              serviceMode
-                ? 'var(--muted)'
-                : dimmed
-                  ? 'var(--muted)'
-                  : (route?.color ?? '#7b8794')
+            stroke={serviceMode || dimmed ? 'var(--muted)' : 'var(--route-stroke)'}
+            style={
+              serviceMode || dimmed
+                ? undefined
+                : ({ '--route-color': route?.color ?? '#7b8794' } as CSSProperties)
             }
             strokeWidth={activeRoutes.length ? 4.5 : 3}
             strokeLinecap="round"

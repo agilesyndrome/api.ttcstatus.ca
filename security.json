@@ -97,11 +97,11 @@
       "skipNext": false,
       "tools": []
     },
-    "build-viewer": {
-      "label": "Build standalone viewer",
+    "build-ui": {
+      "label": "Build React UI",
       "group": "build",
-      "command": "node scripts/build/build-viewer.mjs",
-      "aliases": ["build:viewer"],
+      "command": "{bin:vite} build",
+      "aliases": ["build:ui"],
       "enabled": true,
       "skipNext": false,
       "tools": []
@@ -116,7 +116,6 @@
       "typecheck": 9.6,
       "test": 18.4,
       "build-ui": 2,
-      "build-viewer": 0.3,
       "lint": 6.8,
       "format": 8.4
     }

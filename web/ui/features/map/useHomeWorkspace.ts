@@ -13,7 +13,13 @@ import { useAccountJournal } from '../journal/useAccountJournal';
 import { clearPendingJournal, readPendingJournal } from '../journal/pendingJournal';
 import { useMapExport } from '../export/useMapExport';
 import { trackEvent } from '../../analytics';
-import { hasDefaultView, readDefaultView, writeDefaultViewTools } from './default-view';
+import {
+  hasDefaultView,
+  hydrateDefaultView,
+  readDefaultView,
+  writeDefaultViewTools,
+  type DefaultMapView,
+} from './default-view';
 import { useVehicleFeed } from './useVehicleFeed';
 import { useStaticMap } from './useStaticMap';
 import { useSavedStops } from './workspace/useSavedStops';
@@ -30,10 +36,24 @@ export function useHomeWorkspace(initialSnakeVersion?: SnakeVersion) {
   // The imperative camera seam: the Save/Reset Default Map View tools read
   // the current view and command the landing view through it.
   const mapControls = useRef<TransitMapControls | null>(null);
-  // The device's saved default (a cookie, read synchronously). Its tools
-  // apply at mount unless the URL carries a share link — links win over
-  // every local choice.
-  const savedDefault = useMemo(() => readDefaultView(), []);
+  // The device's saved default (the preference store, read synchronously).
+  // Its tools apply at mount unless the URL carries a share link — links win
+  // over every local choice. Native stores hydrate asynchronously, so the
+  // hydration answer re-applies the tools once it lands.
+  const [hydratedDefault, setHydratedDefault] = useState<DefaultMapView | undefined>();
+  const savedDefault = useMemo(
+    () => readDefaultView() ?? hydratedDefault,
+    [hydratedDefault],
+  );
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateDefaultView().then((next) => {
+      if (!cancelled) setHydratedDefault(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [filters, setFilters] = usePreference(
     'ttc:filters:v1',
     DEFAULT_FILTERS,

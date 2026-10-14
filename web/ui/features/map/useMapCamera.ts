@@ -6,7 +6,7 @@ import {
   moveCamera,
   zoomCamera,
 } from '../../../../shared/map/camera';
-import { readDefaultView } from './default-view';
+import { hydrateDefaultView, readDefaultView, type DefaultMapView } from './default-view';
 import { boundsOf, type Bounds, type Point } from '../../../../shared/map/model';
 import type { TransitMapProps } from './types';
 
@@ -53,9 +53,15 @@ export function useMapCamera({
   const [size, setSize] = useState({ width: 1000, height: 700 });
   // `initial` is the full-network fit: the reset target and the zoom-out cap.
   const initial = fitCamera(data.bounds, size.width / size.height);
-  // The device's saved default view rides a cookie (read synchronously — map
-  // init never waits); it wins over the computed landing view.
-  const savedDefault = useMemo(() => readDefaultView(), [data]);
+  // The device's saved default view rides the preference store, read
+  // synchronously at init — map init never waits. Native stores hydrate
+  // asynchronously, so the hydration answer below re-applies the view once
+  // it lands; browser peeks already held it.
+  const [hydratedDefault, setHydratedDefault] = useState<DefaultMapView | undefined>();
+  const savedDefault = useMemo(
+    () => readDefaultView() ?? hydratedDefault,
+    [data, hydratedDefault],
+  );
   const landFor = useCallback(
     (aspect: number) => {
       const standard = landingCamera(
@@ -140,6 +146,32 @@ export function useMapCamera({
     pristine.current = false;
     apply(next);
   }
+  // Native preference stores hydrate asynchronously: once the saved view
+  // arrives, an untouched camera re-lands on it. Browsers answered the
+  // synchronous peek with the same view, so the landing matches and nothing
+  // moves there.
+  useEffect(() => {
+    let cancelled = false;
+    void hydrateDefaultView().then((next) => {
+      if (!cancelled) setHydratedDefault(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (!hydratedDefault || !pristine.current) return;
+    const target = landFor(sizeRef.current.width / sizeRef.current.height);
+    const current = cameraRef.current;
+    if (
+      target.x !== current.x ||
+      target.y !== current.y ||
+      target.width !== current.width
+    )
+      move(target);
+    // landFor is deliberately excluded: a map-data swap re-lands through the
+    // resize observer, and this effect must not move (or un-pristine) for it.
+  }, [hydratedDefault]);
   // Focus and following glide to their target instead of snapping.
   function animate(next: Bounds, duration = 400) {
     stopTween();

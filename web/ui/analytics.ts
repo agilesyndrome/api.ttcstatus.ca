@@ -5,15 +5,23 @@ import { apiRequest } from './services/http/client';
  * never who or where. */
 const reported = new Set<string>();
 
-export type TrackedAction =
-  | 'located'
-  | 'tracked-streetcar'
-  | 'played-snake'
-  | 'saved-stop'
-  | 'removed-stop'
-  | 'exported-map'
-  | 'saved-default-view'
-  | 'reset-default-view';
+const TRACKED_ACTIONS = [
+  'located',
+  'tracked-streetcar',
+  'played-snake',
+  'saved-stop',
+  'removed-stop',
+  'exported-map',
+  'saved-default-view',
+  'reset-default-view',
+] as const;
+
+export type TrackedAction = (typeof TRACKED_ACTIONS)[number];
+
+/** Runtime mirror of TrackedAction. tests/api/analytics.test.mjs pins this
+ * list to the server's accepted action set so the two allowlists cannot
+ * drift apart (a client action the server rejects is a silently lost event). */
+export const trackedActions: readonly TrackedAction[] = TRACKED_ACTIONS;
 
 export function trackEvent(action: TrackedAction) {
   // One report per action per page load is enough for daily distinct counts.

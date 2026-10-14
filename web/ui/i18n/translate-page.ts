@@ -1,6 +1,6 @@
-import { t } from '../../ui/i18n';
+import { t } from './index';
 
-/** Static viewer copy is explicitly marked so TTC place names remain untouched. */
+/** Static page copy is explicitly marked so TTC place names remain untouched. */
 export function translateViewerPage() {
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((element) => {
     element.textContent = t(element.dataset.i18n!);

@@ -295,7 +295,6 @@ const start = async () => {
 
   // ——— Build and migrate before spawning anything. ———
   run('npm', ['run', '--silent', 'build:ui']);
-  run('npm', ['run', '--silent', 'build:viewer']);
   run('npm', ['run', '--silent', 'dev:headers']);
   run('npm', ['run', '--silent', 'db:migrate:local']);
 

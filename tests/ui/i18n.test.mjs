@@ -100,7 +100,6 @@ test('French catalogue covers English keys and preserves all placeholders', asyn
 test('language catalogues are the single source for user-facing HTML copy', async () => {
   const files = [
     'web/ui/index.html',
-    'web/map/index.html',
     'public/snake/v1/index.html',
     'public/snake/v1/site.webmanifest',
   ];

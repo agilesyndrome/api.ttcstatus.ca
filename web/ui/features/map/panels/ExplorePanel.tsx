@@ -9,8 +9,8 @@ import type { HomeWorkspaceState } from '../useHomeWorkspace';
 /** Explore contains actions that change the map; selected data stays in the main pane. */
 export function ExplorePanel({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
-  // The device's default view lives in a cookie, read synchronously; the
-  // local mirror keeps the three-state tool honest between renders.
+  // The device's default view lives in device storage, read synchronously;
+  // the local mirror keeps the three-state tool honest between renders.
   const [hasDefault, setHasDefault] = useState(hasDefaultView);
   const {
     data,

@@ -124,12 +124,6 @@ export function defaultConfig() {
         command: '{bin:vite} build',
         aliases: ['build:ui'],
       },
-      'build-viewer': {
-        label: 'Build standalone viewer',
-        group: 'build',
-        command: 'node scripts/build/build-viewer.mjs',
-        aliases: ['build:viewer'],
-      },
     },
     baselines: { recordedAt: null, seconds: {} },
   };

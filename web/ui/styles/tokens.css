@@ -1,0 +1,82 @@
+/* Design tokens: the one place that knows both palettes. Dark mode is the
+ * same stylesheet with different values here — never component patches. The
+ * two blocks must keep identical property lists; add a token to both or
+ * neither. Component CSS may only ever reference var(--…), so a theme swap
+ * restyles every surface the same way light mode is laid out. */
+:root {
+  color-scheme: light;
+  color: #25343c;
+  background: #f7f5ed;
+  /* surfaces */
+  --surface: #fffdf7;
+  --canvas: #f7f5ed;
+  --soft: #eff3ec;
+  /* ink */
+  --text: #25343c;
+  --muted: #697980;
+  --border: #e0e2db;
+  /* accent + things tinted by it */
+  --accent: #278f91;
+  --on-accent: #fff;
+  --accent-chip-ink: #176f71;
+  --accent-chip-bg: #e7f5f3;
+  --footer-link: #497c80;
+  /* map geography */
+  --water: #d8e8e9;
+  --coast: #bdd7da;
+  --marker-stroke: #43535e;
+  /* route identity resolves against the element's own --route-color
+   * (set inline by the components that render routes). */
+  --route-stroke: var(--route-color, #7b8794);
+  --route-chip-fg: var(--route-color, #7b8794);
+  --route-chip-bg: var(--surface);
+  --route-row-bg: #f5f6ef;
+  /* overlays */
+  --tooltip-bg: #25343c;
+  --tooltip-fg: #fffdf7;
+  --tooltip-muted: #d3e1df;
+  --backdrop: #07172299;
+  /* service bands (match the map ramp: wave-field.ts STATE_COLORS) and
+   * the ink used to read band words on the panel surface */
+  --ok: #2f9e6e;
+  --warn: #e0a63c;
+  --err: #d64550;
+  --ok-ink: #256f4f;
+  --warn-ink: #8a6516;
+  --err-ink: #a3363f;
+  --band-neutral: #b9bec7;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  color: #e5edf0;
+  background: #111f29;
+  --surface: #192b36;
+  --canvas: #111f29;
+  --soft: #203742;
+  --text: #e5edf0;
+  --muted: #a7bcc6;
+  --border: #314852;
+  --accent: #6ccac2;
+  --on-accent: #0d1b22;
+  --accent-chip-ink: var(--accent);
+  --accent-chip-bg: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --footer-link: var(--accent);
+  --water: #142f40;
+  --coast: #2b5367;
+  --marker-stroke: #a7bcc6;
+  --route-stroke: color-mix(in srgb, var(--route-color, #7b8794) 72%, var(--text));
+  --route-chip-fg: color-mix(in srgb, var(--route-color, #7b8794) 60%, var(--text));
+  --route-chip-bg: color-mix(in srgb, var(--route-color, #7b8794) 16%, var(--surface));
+  --route-row-bg: var(--soft);
+  --tooltip-bg: #35505e;
+  --tooltip-fg: #f2f8f9;
+  --tooltip-muted: #c3d5dc;
+  --backdrop: #04101acc;
+  --ok: #2f9e6e;
+  --warn: #e0a63c;
+  --err: #d64550;
+  --ok-ink: #7ed6a8;
+  --warn-ink: #ecc877;
+  --err-ink: #f19aa2;
+  --band-neutral: #5f7280;
+}

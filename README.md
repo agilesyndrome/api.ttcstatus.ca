@@ -496,13 +496,13 @@ header, footer, SVG map, layer filters, route legend, feed status and stop/vehic
 details. Search accepts stops, routes and reported streetcar numbers (for example,
 `4400`, `#4400` or `car 440`). Selecting a streetcar opens its details and centers
 the map on its latest position, enabling its layer when needed. Typing a search uses the
-shared loaded fleet without additional vehicle requests. The map reuses `web/map/` camera, model and GPS projection helpers.
+shared loaded fleet without additional vehicle requests. The map reuses `shared/map/` camera, model and GPS projection helpers.
 
 ```bash
 npm run dev:viewer       # React homepage + local API, port 4173 (accounts load
                          # when 1Password resolves .env.local; otherwise disabled)
 npm run storybook        # Components and interaction examples, port 6006
-npm run build:api        # Typecheck + React assets + standalone HTML viewer
+npm run build:api        # Typecheck + React assets
 npm run build:storybook  # Standalone component catalogue in storybook-static/
 ```
 
@@ -517,7 +517,7 @@ and unavailable states. The setup follows the official
 [Storybook React/Vite framework](https://storybook.js.org/docs/get-started/frameworks/react-vite/).
 
 Vite writes the homepage and hashed JS/CSS into `dist/` for Worker
-asset deployment. Static assets are copied from `public/`. The standalone HTML preview remains at `/map/`. All API Worker
+asset deployment. Static assets are copied from `public/`. All API Worker
 routes now start with `/api/`, including `/api/healthz`; the previous `/v1/*` and
 `/healthz` paths are retired. Unknown `/api/*` requests return JSON errors.
 

@@ -67,7 +67,7 @@ export interface SavedView {
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
 
-/** Validate a camera for persistence. Saved views ride a browser cookie, so
+/** Validate a camera for persistence. Saved views ride device storage, so
  * anything can arrive in one — a stale or hand-edited value must never strand
  * the camera. A view that does not overlap the network at all is not a view
  * of this map. */

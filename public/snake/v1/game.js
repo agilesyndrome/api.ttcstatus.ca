@@ -1,5 +1,5 @@
 import { t as tr, subscribeLanguage } from '../../../web/ui/i18n';
-import { translateViewerPage } from '../../../web/map/rendering/translations';
+import { translateViewerPage } from '../../../web/ui/i18n/translate-page';
 const escapeHtml = (text) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 translateViewerPage();
 subscribeLanguage(translateViewerPage);

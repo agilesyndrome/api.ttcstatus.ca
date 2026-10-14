@@ -91,23 +91,7 @@ try {
     'French map fits mobile',
   );
   await mapPage.screenshot({ path: '/tmp/ttc-french-mobile.png' });
-  const staticPage = await context.newPage();
-  await staticPage.route('**/standalone-map-test', async (route) =>
-    route.fulfill({
-      contentType: 'text/html',
-      body: await readFile('dist/map/index.html', 'utf8'),
-    }),
-  );
-  await staticPage.goto(`${origin}/standalone-map-test`);
-  await staticPage
-    .getByRole('button', { name: 'Ajuster la carte', exact: true })
-    .waitFor();
-  await staticPage
-    .getByRole('heading', { name: 'Suivez les rails de la ville.' })
-    .waitFor();
   await page.getByLabel('Langue', { exact: true }).selectOption('en-CA');
-  await staticPage.getByRole('button', { name: 'Fit map', exact: true }).waitFor();
-  await staticPage.getByRole('heading', { name: 'Follow the city’s tracks.' }).waitFor();
   await context.close();
 
   const unsupported = await browser.newContext({ locale: 'ja-JP' });

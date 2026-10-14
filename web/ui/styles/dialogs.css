@@ -8,7 +8,7 @@
   padding: 24px;
 }
 .keyboard-help::backdrop {
-  background: #07172299;
+  background: var(--backdrop);
 }
 .keyboard-help .details-heading h2 {
   font-size: 20px;

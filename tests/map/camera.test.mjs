@@ -13,6 +13,7 @@ const {
   writeDefaultView,
   writeDefaultViewTools,
   clearDefaultView,
+  hydrateDefaultView,
 } = await compileModules(`
   export * from './shared/map/camera';
   export * from './shared/map/model';
@@ -100,7 +101,7 @@ test('overview names drop directional platform qualifiers only', () => {
   assert.equal(baseStopName('Queen St West at John St'), 'Queen St West at John St');
 });
 
-// --- The device's saved default view (browser cookie, never the profile) ---
+// --- The device's saved default view (device storage, never the profile) ---
 
 const network = { x: 0, y: 0, width: 1510, height: 870 };
 const phoneAspect = 390 / 844;
@@ -158,91 +159,62 @@ test('a saved view reconstitutes at the current aspect, keeping centre and zoom'
   );
 });
 
-test('the default view rides a browser cookie and survives round trips', () => {
-  // A browser-shaped cookie jar: the getter returns name=value pairs only,
-  // and setting the same name again replaces the pair (attributes dropped).
-  const sets = [];
-  const jar = [];
-  globalThis.document = {
-    get cookie() {
-      return jar.join('; ');
+// A localStorage stub shaped like the real store: getItem returns null for
+// missing keys, setItem stores strings, removeItem deletes. The previous
+// property descriptor is restored afterwards so sibling tests are untouched.
+function installStorage(store) {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: {
+      getItem: (key) => (store.has(key) ? store.get(key) : null),
+      setItem: (key, value) => store.set(key, String(value)),
+      removeItem: (key) => store.delete(key),
     },
-    set cookie(value) {
-      sets.push(value);
-      const pair = value.split(';')[0];
-      if (pair.endsWith('=')) {
-        // An expired empty pair deletes the cookie.
-        const index = jar.indexOf(pair);
-        if (index >= 0) jar.splice(index, 1);
-        return;
-      }
-      const name = pair.slice(0, pair.indexOf('='));
-      const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
-      if (index >= 0) jar[index] = pair;
-      else jar.push(pair);
-    },
+  });
+  return () => {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original);
+    else delete globalThis.localStorage;
   };
+}
+
+test('the default view rides device storage and survives round trips', () => {
+  const store = new Map();
+  const restore = installStorage(store);
   try {
-    // No cookie yet.
+    // Nothing saved yet.
     assert.equal(readDefaultView(), undefined);
     assert.equal(hasDefaultView(), false);
 
     writeDefaultView(view(700, 500, 600), undefined, network);
-    const stored = decodeURIComponent(
-      sets[0].match(/ttc:default-view:v1=([^;]*)/)?.[1] ?? '',
-    );
-    assert.deepEqual(JSON.parse(stored), { cx: 700, cy: 500, width: 600 });
-    assert.match(sets[0], /max-age=31536000/);
-    assert.match(sets[0], /SameSite=Lax/);
+    assert.deepEqual(JSON.parse(store.get('ttc:default-view:v1')), {
+      cx: 700,
+      cy: 500,
+      width: 600,
+    });
     const read = readDefaultView();
     assert.deepEqual(read?.view, { cx: 700, cy: 500, width: 600 });
     assert.equal(read?.tools, undefined);
     assert.equal(hasDefaultView(), true);
 
-    // A corrupt cookie degrades to "no default", never a broken camera.
-    globalThis.document = {
-      get cookie() {
-        return 'ttc:default-view:v1=%7B%22cx%22%3A%22junk%22%7D';
-      },
-      set cookie(value) {
-        sets.push(value);
-      },
-    };
+    // A corrupt stored value degrades to "no default", never a broken camera.
+    store.set('ttc:default-view:v1', JSON.stringify({ cx: 'junk' }));
     assert.equal(readDefaultView(), undefined);
     assert.equal(hasDefaultView(), false);
 
-    // Clearing expires the cookie.
-    globalThis.document = {
-      get cookie() {
-        return jar.join('; ');
-      },
-      set cookie(value) {
-        sets.push(value);
-      },
-    };
+    // Clearing removes the stored view.
     clearDefaultView();
-    assert.match(sets.at(-1), /max-age=0/);
+    assert.equal(store.has('ttc:default-view:v1'), false);
+    assert.equal(hasDefaultView(), false);
   } finally {
-    delete globalThis.document;
+    restore();
   }
 });
 
 test('a saved default carries the map tools, and tools update in place', () => {
-  const sets = [];
-  const jar = [];
-  globalThis.document = {
-    get cookie() {
-      return jar.join('; ');
-    },
-    set cookie(value) {
-      sets.push(value);
-      const pair = value.split(';')[0];
-      const name = pair.slice(0, pair.indexOf('='));
-      const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
-      if (index >= 0) jar[index] = pair;
-      else jar.push(pair);
-    },
-  };
+  const store = new Map();
+  const restore = installStorage(store);
   try {
     // Tools without a saved view cannot exist: nothing to attach them to.
     writeDefaultViewTools({
@@ -251,7 +223,7 @@ test('a saved default carries the map tools, and tools update in place', () => {
       live: true,
       serviceOverlay: false,
     });
-    assert.equal(jar.length, 0);
+    assert.equal(store.size, 0);
 
     writeDefaultView(
       view(700, 500, 600),
@@ -283,33 +255,118 @@ test('a saved default carries the map tools, and tools update in place', () => {
       serviceOverlay: false,
     });
 
-    // An older view-only cookie reads as no tools.
-    jar.length = 0;
-    globalThis.document = {
-      get cookie() {
-        return `ttc:default-view:v1=${encodeURIComponent(JSON.stringify({ cx: 1, cy: 2, width: 3 }))}`;
-      },
-      set cookie(value) {
-        jar.push(value);
-      },
-    };
+    // Malformed tools are dropped whole, never half-applied.
+    store.set(
+      'ttc:default-view:v1',
+      JSON.stringify({ cx: 1, cy: 2, width: 3, tools: { streetcar: 'yes' } }),
+    );
     read = readDefaultView();
     assert.deepEqual(read?.view, { cx: 1, cy: 2, width: 3 });
     assert.equal(read?.tools, undefined);
+  } finally {
+    restore();
+  }
+});
 
-    // Malformed tools are dropped whole, never half-applied.
-    globalThis.document = {
-      get cookie() {
-        return `ttc:default-view:v1=${encodeURIComponent(
-          JSON.stringify({ cx: 1, cy: 2, width: 3, tools: { streetcar: 'yes' } }),
-        )}`;
-      },
-      set cookie(value) {
-        jar.push(value);
-      },
-    };
-    assert.equal(readDefaultView()?.tools, undefined);
+test('blocked storage degrades to a session without a saved view', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    get() {
+      throw new DOMException('Blocked', 'SecurityError');
+    },
+  });
+  try {
+    writeDefaultView(view(700, 500, 600), undefined, network);
+    assert.equal(readDefaultView(), undefined);
+    assert.equal(hasDefaultView(), false);
+    // Every write path tolerates the blocked store without throwing.
+    writeDefaultViewTools({
+      streetcar: true,
+      subway: true,
+      live: true,
+      serviceOverlay: false,
+    });
+    clearDefaultView();
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'localStorage', original);
+    else delete globalThis.localStorage;
+  }
+});
+
+test('hydration returns the stored view, and nothing when the store is empty', async () => {
+  const store = new Map();
+  const restore = installStorage(store);
+  try {
+    // No stored view: hydration answers "none" instead of throwing.
+    assert.equal(await hydrateDefaultView(), undefined);
+
+    store.set('ttc:default-view:v1', JSON.stringify({ cx: 7, cy: 5, width: 60 }));
+    const view = await hydrateDefaultView();
+    assert.deepEqual(view?.view, { cx: 7, cy: 5, width: 60 });
+    assert.equal(view?.tools, undefined);
+  } finally {
+    restore();
+  }
+});
+
+test('the legacy cookie migrates into device storage and the cookie is deleted', () => {
+  const store = new Map();
+  const restore = installStorage(store);
+  const jar = [];
+  const deletions = [];
+  // A browser-shaped cookie jar: the getter returns name=value pairs only,
+  // and an expired empty pair deletes the cookie.
+  globalThis.document = {
+    get cookie() {
+      return jar.join('; ');
+    },
+    set cookie(value) {
+      const pair = value.split(';')[0];
+      if (pair.endsWith('=')) {
+        // An expired empty pair deletes the named cookie.
+        deletions.push(pair);
+        const name = pair.slice(0, -1);
+        const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
+        if (index >= 0) jar.splice(index, 1);
+        return;
+      }
+      const name = pair.slice(0, pair.indexOf('='));
+      const index = jar.findIndex((entry) => entry.startsWith(`${name}=`));
+      if (index >= 0) jar[index] = pair;
+      else jar.push(pair);
+    },
+  };
+  try {
+    jar.push(
+      `ttc:default-view:v1=${encodeURIComponent(
+        JSON.stringify({ cx: 700, cy: 500, width: 600 }),
+      )}`,
+    );
+
+    // The first read migrates: the same payload lands in device storage and
+    // the cookie is expired, so the camera can never ride a request again.
+    const read = readDefaultView();
+    assert.deepEqual(read?.view, { cx: 700, cy: 500, width: 600 });
+    assert.deepEqual(JSON.parse(store.get('ttc:default-view:v1')), {
+      cx: 700,
+      cy: 500,
+      width: 600,
+    });
+    assert.equal(jar.length, 0, 'the legacy cookie is deleted after migration');
+    assert.equal(deletions.length, 1);
+
+    // Later reads come from storage alone: removing the jar changes nothing.
+    const again = readDefaultView();
+    assert.deepEqual(again?.view, { cx: 700, cy: 500, width: 600 });
+
+    // A corrupt legacy cookie is still cleaned up, reading as no default.
+    store.clear();
+    jar.push('ttc:default-view:v1=%7B%22cx%22%3A%22junk%22%7D');
+    assert.equal(readDefaultView(), undefined);
+    assert.equal(jar.length, 0, 'even a junk cookie is deleted after migration');
   } finally {
     delete globalThis.document;
+    restore();
   }
 });

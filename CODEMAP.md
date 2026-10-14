@@ -88,13 +88,11 @@ redirects into the workspace panel.
 `TransitMap.tsx` renders the interactive map. `useMapCamera.ts` owns resize,
 selection focus, gestures and camera controls; `default-view.ts` persists the
 device's default map opening — the camera plus the Explore map tools (rail
-layers, live map mode) — in a cookie (read synchronously at init, never the
-user profile) and the Explore panel's Save/Update/Reset tool drives it through
+layers, live map mode) — in device-only storage (read synchronously at init,
+never the user profile, never a cookie that rides a request) and the Explore
+panel's Save/Update/Reset tool drives it through
 the camera controls. `TrackLayer.tsx` renders fixed
 tracks. Frozen export state belongs to `features/export/useMapExport.ts`.
-
-`web/map/` remains the standalone viewer. Its `rendering/` directory contains DOM
-helpers and label placement. Both viewers use shared map calculations.
 
 `public/snake/v1/` is the archived game. Its game code and artwork stay intact.
 
@@ -102,14 +100,14 @@ helpers and label placement. Both viewers use shared map calculations.
 
 | Directory             | Responsibility                                                          |
 | --------------------- | ----------------------------------------------------------------------- |
-| `scripts/build/`      | Standalone viewer build                                                 |
+| `scripts/build/`      | Snake archive and OpenAPI contract builds                               |
 | `scripts/preview/`    | Local API/viewer adapters and browser authentication fixture            |
 | `scripts/checks/`     | Browser checks and the import-boundary check                            |
 | `scripts/preflight/`  | `./pre-flight` board: config, renderer, runner and gitleaks integration |
 | `scripts/operations/` | Explicit production map regeneration and named-map tag publishing       |
 | `tests/`              | Tests grouped by operation, with shared compilation and SQLite helpers  |
 | `data/fixtures/`      | Unchanged reference map bundles                                         |
-| `dist/`               | Generated homepage, viewer and deployment assets; ignored by Git        |
+| `dist/`               | Generated homepage and deployment assets; ignored by Git                |
 
 The browser authentication fixture replaces only the SDK/session interface;
 separate server tests verify real signed tokens and reject tampering. SQLite-backed
@@ -117,8 +115,8 @@ integration tests exercise ownership, revisions, locks, publication and retentio
 Test compilation uses disposable temporary directories outside the checkout.
 
 Preview commands write new artifacts to `dist/`, preserving source fixtures.
-Vite copies static assets from `public/` into `dist/`; the viewer build adds
-`dist/map/index.html`. The API Wrangler configuration serves that output directory.
+Vite copies static assets from `public/` into `dist/`. The API Wrangler
+configuration serves that output directory.
 Run `npm run build:api` before deployment.
 
 The historical design and topology roadmap remain in [ARCHITECTURE.md](ARCHITECTURE.md).

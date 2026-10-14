@@ -620,9 +620,6 @@
   fill: var(--text);
   font-weight: 750;
 }
-:root[data-theme='dark'] .map-label .map-label__selected {
-  fill: var(--text);
-}
 @media (min-width: 901px) {
   .app--map .topbar {
     height: 76px;

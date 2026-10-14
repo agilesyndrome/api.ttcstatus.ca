@@ -1,15 +1,11 @@
+/* Palette lives in tokens.css; this root carries typography only. */
 :root {
-  color-scheme: light;
   font-family:
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #25343c;
-  background: #f7f5ed;
-  --muted: #697980;
-  --border: #e0e2db;
 }
 * {
   box-sizing: border-box;
@@ -29,20 +25,20 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid #278f91;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 button {
   border: 1px solid var(--border);
-  background: #fffdf7;
+  background: var(--surface);
   border-radius: 7px;
 }
 button:hover {
-  background: #f0f2eb;
+  background: var(--soft);
 }
 button[aria-pressed='true'] {
-  background: #e2edeb;
-  border-color: #278f91;
+  background: var(--soft);
+  border-color: var(--accent);
 }
 .topbar {
   height: 88px;
@@ -51,7 +47,7 @@ button[aria-pressed='true'] {
   gap: 35px;
   padding: 0 28px;
   border-bottom: 1px solid var(--border);
-  background: #fffdf7;
+  background: var(--surface);
   position: relative;
   z-index: 5;
 }
@@ -104,7 +100,7 @@ button[aria-pressed='true'] {
   border-radius: 9px;
   border: 1px solid var(--border);
   padding: 12px 14px 12px 42px;
-  background: #f7f8f2;
+  background: var(--canvas);
   color: inherit;
   font-size: 14px;
 }
@@ -113,7 +109,7 @@ button[aria-pressed='true'] {
   top: 51px;
   left: 0;
   right: 0;
-  background: #fffdf7;
+  background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 8px 30px #25343c20;
   border-radius: 9px;
@@ -169,7 +165,7 @@ button[aria-pressed='true'] {
   outline: none;
 }
 #map [data-feature]:focus-visible .marker {
-  stroke: #278f91;
+  stroke: var(--accent);
   stroke-width: 3;
 }
 .track,
@@ -193,14 +189,14 @@ button[aria-pressed='true'] {
   cursor: pointer;
 }
 .live-status input {
-  accent-color: #278f91;
+  accent-color: var(--accent);
   width: 16px;
   height: 16px;
 }
 .live-dot {
   width: 6px;
   height: 6px;
-  background: #278f91;
+  background: var(--accent);
   border-radius: 50%;
 }
 .live-status p {
@@ -235,7 +231,7 @@ button[aria-pressed='true'] {
 }
 .map-label text {
   paint-order: stroke;
-  stroke: #f7f5ed;
+  stroke: var(--canvas);
   stroke-width: 4;
   stroke-linejoin: round;
 }
@@ -265,7 +261,7 @@ button[aria-pressed='true'] {
 }
 .north path {
   fill: none;
-  stroke: #43535e;
+  stroke: var(--muted);
   stroke-width: 1.6;
 }
 .map-controls {
@@ -276,7 +272,7 @@ button[aria-pressed='true'] {
   bottom: 24px;
   left: 24px;
   padding: 5px;
-  background: #fffdf7;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 3px 16px #25343c10;
@@ -311,8 +307,8 @@ button[aria-pressed='true'] {
   max-width: 280px;
   border-radius: 8px;
   padding: 10px 12px;
-  background: #25343c;
-  color: #fffdf7;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
   box-shadow: 0 3px 14px #25343c25;
   font-size: 12px;
 }
@@ -322,14 +318,14 @@ button[aria-pressed='true'] {
   margin-bottom: 4px;
 }
 .tooltip small {
-  color: #d3e1df;
+  color: var(--tooltip-muted);
   line-height: 1.5;
   display: block;
 }
 .sidebar {
   overflow-y: auto;
   border-left: 1px solid var(--border);
-  background: #fffdf7;
+  background: var(--surface);
   padding: 26px 22px 20px;
 }
 .eyebrow {
@@ -387,8 +383,8 @@ p {
 }
 .tip {
   padding: 13px;
-  background: #eff3ec;
-  border: 1px solid #e4e9df;
+  background: var(--soft);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 .route-section {
@@ -408,7 +404,7 @@ p {
 }
 .text-button {
   border: 0;
-  color: #278f91;
+  color: var(--accent);
   font-size: 11px;
   padding: 4px 0;
 }
@@ -434,8 +430,8 @@ p {
   height: 24px;
   border-radius: 5px;
   border: 1px solid var(--route-color);
-  color: var(--route-color);
-  background: #fffdf7;
+  color: var(--route-chip-fg);
+  background: var(--route-chip-bg);
   font-weight: 700;
   font-size: 11px;
 }
@@ -453,7 +449,7 @@ p {
   margin: 14px 0 18px;
 }
 .served-routes .route-button {
-  background: #f5f6ef;
+  background: var(--route-row-bg);
   border-color: var(--border);
 }
 .legend-note {
@@ -516,7 +512,7 @@ p {
   cursor: pointer;
 }
 .sidebar footer a {
-  color: #497c80;
+  color: var(--footer-link);
 }
 .sr-only {
   position: absolute;
@@ -530,7 +526,7 @@ p {
   position: fixed;
   top: 95px;
   left: 20px;
-  background: white;
+  background: var(--surface);
   padding: 20px;
 }
 [hidden] {

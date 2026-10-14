@@ -4,7 +4,9 @@ import { BodyTooLargeError, readLimitedBytes } from '../../../shared/http/stream
 
 /** Broad, product-level actions the app reports. The allowlist keeps the
  * endpoint from becoming a free-form log: only these exact strings are
- * recorded, and no request payload (never a location) is ever stored. */
+ * recorded, and no request payload (never a location) is ever stored.
+ * tests/api/analytics.test.mjs pins this set to the client's trackedActions
+ * union so the two allowlists cannot drift apart. */
 const ACTIONS = new Set([
   'located',
   'tracked-streetcar',
@@ -12,7 +14,12 @@ const ACTIONS = new Set([
   'saved-stop',
   'removed-stop',
   'exported-map',
+  'saved-default-view',
+  'reset-default-view',
 ]);
+
+/** The accepted action names, exported for the client parity contract test. */
+export const analyticsActions: readonly string[] = [...ACTIONS];
 
 /** Anonymous visitor id cookie: a random id with no account, location or
  * profile attached, letting queries count distinct users per action. */

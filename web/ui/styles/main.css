@@ -1,5 +1,7 @@
-/* Shared viewer primitives first; feature files retain their original cascade order. */
-@import '../../map/viewer.css';
+/* Shared tokens first: the only place that knows both palettes. Feature
+ * files retain their original cascade order and reference tokens only. */
+@import './tokens.css';
+@import './viewer.css';
 @import './base.css';
 @import './tools.css';
 @import './dialogs.css';
