@@ -275,10 +275,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 resetKey={resetKey}
                 onSelectFeature={selectFeatureWithService}
                 onSelectVehicle={(car) => selectVehicle(car)}
-                onSelectServiceStop={service.onSelectServiceStop}
                 serviceCarTint={service.carTint}
                 underlay={service.underlay ?? undefined}
-                overlay={service.overlay ?? undefined}
               />
               <CachedMapNotice workspace={workspace} />
               {service.underlay ? (

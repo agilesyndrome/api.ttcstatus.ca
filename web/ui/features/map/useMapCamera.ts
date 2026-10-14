@@ -27,7 +27,6 @@ export function useMapCamera({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
-  onSelectServiceStop,
   followPoint,
 }: Pick<
   TransitMapProps,
@@ -46,7 +45,6 @@ export function useMapCamera({
   | 'controlsRef'
   | 'onSelectFeature'
   | 'onSelectVehicle'
-  | 'onSelectServiceStop'
   | 'followPoint'
 >) {
   const svg = useRef<SVGSVGElement>(null);
@@ -440,9 +438,9 @@ export function useMapCamera({
         // Pointer capture retargets clicks: hit-test the original release
         // position. elementsFromPoint — not elementFromPoint — because a car
         // dwelling on a stop dot paints above it, and the tap aimed at the
-        // stop must open the stop's service story. Priority: the service
-        // ring first, then stop dots, then cars (a car is still reachable
-        // along the rest of its body); nothing matched = empty map space.
+        // stop must open the stop's service story. Priority: stop dots, then
+        // cars (a car is still reachable along the rest of its body);
+        // nothing matched = empty map space.
         const stack = document.elementsFromPoint(event.clientX, event.clientY);
         const hit = (selector: string): Element | null => {
           for (const element of stack) {
@@ -451,21 +449,8 @@ export function useMapCamera({
           }
           return null;
         };
-        const serviceElement = hit('[data-service-stop]');
-        const featureElement = serviceElement ? null : hit('[data-feature]');
-        const vehicleElement =
-          serviceElement || featureElement ? null : hit('[data-vehicle]');
-        // Delivered-service overlay markers sit above the scene and claim
-        // their taps first: selecting a stop opens its story (the camera
-        // stays following — a deliberate tap is not a stray one).
-        const serviceStopId = serviceElement?.getAttribute('data-service-stop');
-        if (serviceStopId && onSelectServiceStop) {
-          onSelectServiceStop(serviceStopId);
-          pointers.current.delete(event.pointerId);
-          if (event.currentTarget.hasPointerCapture(event.pointerId))
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          return;
-        }
+        const featureElement = hit('[data-feature]');
+        const vehicleElement = featureElement ? null : hit('[data-vehicle]');
         const featureId = featureElement?.getAttribute('data-feature') ?? null;
         const vehicleId = vehicleElement?.getAttribute('data-vehicle') ?? null;
         const feature =

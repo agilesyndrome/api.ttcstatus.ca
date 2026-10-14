@@ -461,12 +461,6 @@ export function useServiceOverlay(
         />
       );
     },
-    onSelectServiceStop: (stopId: string | null) => {
-      // A tap on the selected platform's ring toggles it off; other rings
-      // switch platforms. Both clear the directionless offer.
-      if (stopId && selectedStopId !== stopId) pickPlatform(stopId);
-      else clearSelection();
-    },
     onFeatureSelectForService: selectFromFeature,
     carTint,
     card: focus ? (

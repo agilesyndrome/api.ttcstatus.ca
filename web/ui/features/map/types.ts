@@ -72,10 +72,5 @@ export interface TransitMapProps {
    * snap onto their direction's stream and take the tint. */
   serviceCarTint?(car: PlottedVehicle): string | null;
   onSelectFeature(feature: Feature): void;
-  /** Tapping a delivered-service overlay marker selects its stop — the
-   * camera's pointer-up hit-test is the single click path for the map scene
-   * (pointer capture retargets clicks), so overlay markers declare themselves
-   * with `data-service-stop` and resolve here. */
-  onSelectServiceStop?(stopId: string | null): void;
   onSelectVehicle(car: PlottedVehicle): void;
 }

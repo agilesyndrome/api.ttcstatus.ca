@@ -50,7 +50,6 @@ export const TransitMap = memo(function TransitMap({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
-  onSelectServiceStop,
   /** The delivered-service car tint: each car's direction field colour where
    * it rides, or null when that direction has no data. When provided, cars
    * snap onto their direction's stream (offset to its side of the rail) and
@@ -110,7 +109,6 @@ export const TransitMap = memo(function TransitMap({
     cars,
     selectedRoute,
     selectedFeature,
-    onSelectServiceStop,
     focusPoint,
     focusPointLevel,
     focusBounds,

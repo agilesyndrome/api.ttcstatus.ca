@@ -62,24 +62,6 @@ svg[data-gesturing='true'] .service-chevron {
   .service-trail-seg {
     transition: none;
   }
-  .void-marker--pulse {
-    animation: none;
-  }
-}
-.void-marker {
-  cursor: pointer;
-}
-@keyframes void-marker-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-.void-marker--pulse {
-  animation: void-marker-pulse 2.4s ease-in-out infinite;
 }
 /* The selected stop's story card — the only chrome, only when asked. */
 .service-popover {
