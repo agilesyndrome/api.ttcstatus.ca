@@ -305,9 +305,7 @@ export function useServiceOverlay(
   }, [enabled, selectedFeature?.id, feed.states.length]);
   const empty = {
     underlay: null,
-    overlay: null,
     card: null,
-    onSelectServiceStop: () => {},
     onFeatureSelectForService: () => {},
     carTint: () => null,
   };
@@ -471,22 +469,6 @@ export function useServiceOverlay(
     },
     onFeatureSelectForService: selectFromFeature,
     carTint,
-    // No ring in directionless mode: nothing is selected until the rider
-    // picks a direction — the dot they tapped was one stop, not two.
-    overlay: selectedStop
-      ? (scale: number, camera: Bounds) => {
-          scaleRef.current = scale;
-          settleCamera(camera, scale);
-          return (
-            <SelectedStopMarker
-              stop={selectedStop}
-              features={data.features}
-              selectedStopId={selectedStopId}
-              reducedMotion={reducedMotion}
-            />
-          );
-        }
-      : null,
     card: focus ? (
       <SelectedStopCard
         key={focus.stopId}

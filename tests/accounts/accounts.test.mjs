@@ -183,7 +183,8 @@ test('profile defaults are private, usernames are unique, and public profiles ex
   );
   assert.equal((await profile('collector', false, 'redgreen')).status, 200);
   assert.equal(
-    (await (await ownedAccountResponse(request('profile'), env, 'user_a')).json()).colorMode,
+    (await (await ownedAccountResponse(request('profile'), env, 'user_a')).json())
+      .colorMode,
     'redgreen',
   );
   assert.equal((await profile('collector', true, 'standard', 'user_b')).status, 409);
