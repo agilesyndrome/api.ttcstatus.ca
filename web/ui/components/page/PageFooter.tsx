@@ -14,7 +14,11 @@ export function PageFooter() {
     <footer className="site-footer">
       <p className="site-credit">
         {t('footer.anOpenSourceProjectByDrewEasley')} ·{' '}
-        <a href="https://www.cloudflare.com/" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://www.cloudflare.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Hosted by Cloudflare
         </a>
       </p>
