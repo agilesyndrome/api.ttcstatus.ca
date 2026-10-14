@@ -2,6 +2,7 @@
   "name": "api.ttcstatus.ca",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/agilesyndrome/api.ttcstatus.ca.git"
@@ -50,7 +51,7 @@
     "feature:disable": "node scripts/operations/feature-flags.mjs disable",
     "feature:disable:local": "node scripts/dev/with-secrets.mjs node scripts/operations/feature-flags.mjs disable --local",
     "feature:list": "node scripts/operations/feature-flags.mjs list",
-    "feature:list:local": "node scripts/operations/feature-flags.mjs list --local",
+    "feature:list:local": "node scripts/dev/with-secrets.mjs node scripts/operations/feature-flags.mjs list --local",
     "test:snake": "node scripts/checks/check-snake.mjs",
     "test:snake:intersections": "node scripts/checks/check-snake-intersections.mjs",
     "format": "prettier --write .",
