@@ -576,6 +576,53 @@ try {
   await mobile.waitForTimeout(350); // Let Chromium finish the preceding CDP swipe's touch gesture.
   await cockpit.getByRole('button', { name: 'Pause', exact: true }).tap();
   await cockpit.getByText('Paused', { exact: true }).waitFor({ timeout: 2000 });
+  const switchLayout = await cockpit.locator('.snake-switches').evaluate((panel) => {
+    const buttons = [...panel.querySelectorAll('button')];
+    const originalLabels = buttons.map((button) => button.textContent);
+    // Exercise the longer subway labels from the reported screenshot at a
+    // narrow viewport, while preserving the real switch choices and clicks.
+    const longLabels = [
+      '[Space] Eglinton Line 5',
+      '[Right] Yonge-University Line 1',
+      '[Left] Sheppard Line 4',
+    ];
+    try {
+      buttons.forEach((button, index) => {
+        button.textContent = longLabels[index] ?? longLabels[1];
+      });
+      const panelBox = panel.getBoundingClientRect();
+      const boxes = buttons.map((button) => button.getBoundingClientRect());
+      return {
+        hasChoices: buttons.length >= 2,
+        inViewport: panelBox.left >= 0 && panelBox.right <= innerWidth,
+        textFits: buttons.every(
+          (button) =>
+            button.scrollWidth <= button.clientWidth + 1 &&
+            button.scrollHeight <= button.clientHeight + 1,
+        ),
+        buttonsDoNotOverlap: boxes.every((box, index) =>
+          boxes
+            .slice(index + 1)
+            .every(
+              (other) =>
+                box.right <= other.left ||
+                other.right <= box.left ||
+                box.bottom <= other.top ||
+                other.bottom <= box.top,
+            ),
+        ),
+      };
+    } finally {
+      buttons.forEach((button, index) => {
+        button.textContent = originalLabels[index];
+      });
+    }
+  });
+  assert.deepEqual(
+    switchLayout,
+    { hasChoices: true, inViewport: true, textFits: true, buttonsDoNotOverlap: true },
+    'long switch labels stay readable without overlapping on a narrow screen',
+  );
   assert.equal(
     await cockpit.locator('[data-snake-route-preview]').count(),
     0,
