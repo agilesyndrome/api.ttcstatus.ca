@@ -24,7 +24,7 @@ export interface MapLink extends MapTools {
 }
 export const DEFAULT_FILTERS: MapFilterValues = {
   live: true,
-  serviceOverlay: false,
+  serviceOverlay: true,
   labels: false,
   overnight: false,
   streetcar: true,
