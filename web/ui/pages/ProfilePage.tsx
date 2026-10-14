@@ -3,6 +3,8 @@ import { apiRequest } from '../services/http/client';
 import { english } from '../../../shared/i18n/messages';
 import { LanguageSettings } from '../components/settings/LanguageSettings';
 import { ThemeSettings } from '../components/settings/ThemeSettings';
+import { ColourVisionSettings } from '../components/settings/ColourVisionSettings';
+import { useColourMode } from '../hooks/useColourMode';
 import { t } from '../i18n';
 import { useLanguage } from '../i18n/react';
 import { useEffect, useRef, useState } from 'react';
@@ -30,6 +32,7 @@ export function ProfilePage() {
          * they sit above the sign-in gate. */}
         <LanguageSettings />
         <ThemeSettings />
+        <ColourVisionSettings />
         <AccountRequired>
           <ProfileSettings key={account.userId} />
           {!showClerkSettings && (
@@ -59,6 +62,7 @@ export function ProfilePage() {
 function ProfileSettings() {
   useLanguage();
   const account = useAccount();
+  const { colourMode } = useColourMode();
   const request = useRef(account.request);
   request.current = account.request;
   const [username, setUsername] = useState('');
@@ -101,7 +105,11 @@ function ProfileSettings() {
       const response = await account.request('/api/v1/me/profile', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ username: username.trim().toLowerCase(), publicBadges }),
+        body: JSON.stringify({
+          username: username.trim().toLowerCase(),
+          publicBadges,
+          colorMode: colourMode,
+        }),
       });
       if (!response.ok)
         throw new Error(
@@ -112,6 +120,7 @@ function ProfileSettings() {
       const profile = (await response.json()) as {
         username: string;
         publicBadges: boolean;
+        colorMode: typeof colourMode;
       };
       setUsername(profile.username);
       setSaved(profile);

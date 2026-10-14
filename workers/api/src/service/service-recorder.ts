@@ -77,6 +77,14 @@ export interface RecorderTelemetry {
   lastPrunedRows: number | null;
   /** Stops in void state at the last tick (E6S1's void evidence). */
   voidStops: number | null;
+  /** Baseline-cache observability (the rescue path must never be silent):
+   * entries available when the last tick scored its stops, how many thin
+   * windows a stabilized baseline actually rescued that tick, and whether
+   * the refresh itself is failing (previously console-only). */
+  baselineCacheEntries: number | null;
+  stabilizedRescues: number | null;
+  baselineRefreshFailures: number;
+  lastBaselineError: string | null;
   /** Fold telemetry (stories 4.1/4.5): loud when failing, silent never. */
   bucketsFolded: number;
   rowsFolded: number;
@@ -114,6 +122,10 @@ const initialTelemetry: RecorderTelemetry = {
   networkStatus: 'pending',
   lastPrunedRows: null,
   voidStops: null,
+  baselineCacheEntries: null,
+  stabilizedRescues: null,
+  baselineRefreshFailures: 0,
+  lastBaselineError: null,
   bucketsFolded: 0,
   rowsFolded: 0,
   rowsPrunedByRetention: null,
@@ -138,6 +150,10 @@ export class ServiceRecorder {
     { medianSeconds: number; moments: Moments } | null
   >();
   private baselineCacheReady = false;
+  /** Refresh-health evidence (surfaced through telemetry): a refresh that
+   * fails is counted and remembered, never just whispered to the console. */
+  private baselineRefreshFailures = 0;
+  private lastBaselineError: string | null = null;
 
   constructor(
     private readonly state: DurableObjectStateLike,
@@ -308,45 +324,12 @@ export class ServiceRecorder {
     // survives at 30 s resolution, by design.
     const pruned = this.store.prune(now - SERVICE_WINDOW_SECONDS * 1000);
 
-    // Live states from the shared math (the seam Epic 3 serves), and the
-    // void-evidence counter for analytics (story 6.1). Thin-window stops get
-    // rollup-stabilized baselines (story 2.6's Stage-3 upgrade, E2S9).
-    // One compute per tick serves two consumers (optimize-overlay.md E1S2):
-    // the void counter and the published stops tick document.
-    const { states, touches } = await this.currentStates(now);
-    let voidStops = 0;
-    for (const stopState of states.values()) {
-      if (stopState.state === 'void') voidStops += 1;
-    }
-    const windowTouchCount = this.store.touchCount();
-    const tickMs = this.config.sampleSeconds * 1000;
-    const tickId = Math.floor(now / tickMs);
-    // The per-tick stops document (E1S2/E1S3): wire-ready payload, assembled
-    // once, serialized once, published once. An assembly failure still
-    // publishes — the honest outage doc.
-    let stopsBody: string;
-    try {
-      const stopsDoc = buildStopsTickDocument(
-        assembleStopsPayload(
-          states,
-          touches,
-          (stopId) => this.network?.stops.get(stopId)?.routes ?? [],
-        ),
-        tickId,
-        { tickMs },
-      );
-      stopsBody = JSON.stringify(stopsDoc);
-    } catch (error) {
-      stopsBody = JSON.stringify(buildStopsTickDocument(null, tickId, { tickMs }));
-      console.error('recorder stops assembly failed — publishing outage doc', {
-        error: error instanceof Error ? error.message : String(error),
-        at: now,
-      });
-    }
-
-    // Fold + retention (stories 4.1/4.2/4.5): fold every completed bucket
-    // while its raw rows survive, then the hourly 36-hour prune. A fold
-    // failure is loud — telemetry + console — and retried next tick.
+    // Fold + retention (stories 4.1/4.2/4.5) FIRST, then the baseline cache,
+    // then the live states: the published field must be scored against the
+    // freshest stabilized baselines — including the bucket this very tick
+    // folded — never one tick behind them (a stop whose first usable
+    // baseline arrives with its fold must not spend a tick as "collecting").
+    // A fold failure is loud — telemetry + console — and retried next tick.
     let bucketsFolded = 0;
     let rowsFolded = 0;
     let rowsPrunedByRetention: number | null = null;
@@ -379,6 +362,55 @@ export class ServiceRecorder {
     }
     if (!this.baselineCacheReady) {
       await this.refreshBaselineCache(now);
+      if (bucketsFolded > 0) {
+        // One line per fold: the rescue path's size, in the open (E2S9
+        // observability — a silently-empty cache reads on the map as
+        // corridors of "No data" wherever data exists).
+        console.log('recorder baseline cache refreshed', {
+          at: now,
+          entries: this.baselineCache.size,
+        });
+      }
+    }
+
+    // Live states from the shared math (the seam Epic 3 serves), and the
+    // void-evidence counter for analytics (story 6.1). Thin-window stops get
+    // rollup-stabilized baselines (story 2.6's Stage-3 upgrade, E2S9).
+    // One compute per tick serves two consumers (optimize-overlay.md E1S2):
+    // the void counter and the published stops tick document. The rescue
+    // count rides along — the path proves itself in telemetry every tick.
+    let stabilizedRescues = 0;
+    const { states, touches } = await this.currentStates(now, () => {
+      stabilizedRescues += 1;
+    });
+    let voidStops = 0;
+    for (const stopState of states.values()) {
+      if (stopState.state === 'void') voidStops += 1;
+    }
+    const windowTouchCount = this.store.touchCount();
+    const tickMs = this.config.sampleSeconds * 1000;
+    const tickId = Math.floor(now / tickMs);
+    // The per-tick stops document (E1S2/E1S3): wire-ready payload, assembled
+    // once, serialized once, published once. An assembly failure still
+    // publishes — the honest outage doc.
+    let stopsBody: string;
+    try {
+      const stopsDoc = buildStopsTickDocument(
+        assembleStopsPayload(
+          states,
+          touches,
+          (stopId) => this.network?.stops.get(stopId)?.routes ?? [],
+        ),
+        tickId,
+        { tickMs },
+      );
+      stopsBody = JSON.stringify(stopsDoc);
+    } catch (error) {
+      stopsBody = JSON.stringify(buildStopsTickDocument(null, tickId, { tickMs }));
+      console.error('recorder stops assembly failed — publishing outage doc', {
+        error: error instanceof Error ? error.message : String(error),
+        at: now,
+      });
     }
 
     // Post-acquisition publish (optimize-transport.md change 1, story E1S3):
@@ -440,6 +472,10 @@ export class ServiceRecorder {
         networkStatus,
         lastPrunedRows: pruned,
         voidStops,
+        baselineCacheEntries: this.baselineCacheReady ? this.baselineCache.size : null,
+        stabilizedRescues,
+        baselineRefreshFailures: this.baselineRefreshFailures,
+        lastBaselineError: this.lastBaselineError,
         bucketsFolded,
         rowsFolded,
         rowsPrunedByRetention,
@@ -537,7 +573,10 @@ export class ServiceRecorder {
     return { touches, coverage: [...closed, ...open] };
   }
 
-  private async currentStates(now = Date.now()) {
+  private async currentStates(
+    now = Date.now(),
+    onStabilized?: (stopId: string, medianSeconds: number) => void,
+  ) {
     const { touches, coverage } = await this.currentWindow(now);
     const states = serviceStatesAt(touches, coverage, {
       windowStart: now - SERVICE_WINDOW_SECONDS * 1000,
@@ -548,6 +587,7 @@ export class ServiceRecorder {
       // hours — its delivered baseline stops forgetting itself every 30
       // minutes. Median is the gamma approximation there, labelled as such.
       stabilized: (stopId) => this.baselineCache.get(stopId) ?? null,
+      onStabilized,
     });
     return { states, touches, coverage };
   }
@@ -593,9 +633,15 @@ export class ServiceRecorder {
         }
       }
       this.baselineCache = cache;
+      this.baselineRefreshFailures = 0;
+      this.lastBaselineError = null;
     } catch (error) {
       // Keep the previous cache; stabilization is an upgrade, never a
-      // dependency — thin stops simply stay collecting.
+      // dependency — thin stops simply stay collecting. But a failing
+      // refresh is now LOUD in telemetry too: a silently-empty cache reads
+      // on the map as corridors of "No data" wherever data exists.
+      this.baselineRefreshFailures += 1;
+      this.lastBaselineError = error instanceof Error ? error.message : String(error);
       console.error('recorder baseline refresh failed', error);
     }
     this.baselineCacheReady = true;

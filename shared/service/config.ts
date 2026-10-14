@@ -16,6 +16,8 @@ export const SERVICE_WINDOW_SECONDS = 1800;
 
 /** The 5-minute rollup grain. Also a design invariant (see above). */
 export const SERVICE_BUCKET_SECONDS = 300;
+export const DEFAULT_SERVICE_BRIDGE_MAX_METRES = 600;
+export const DEFAULT_SERVICE_VOID_BRIDGE_MAX_METRES = 150;
 
 function validatedInt(
   value: number | string | null | undefined,
@@ -107,6 +109,16 @@ export function serviceResidualMinSamples(value?: string | number | null): numbe
   return validatedInt(value, 3, 2, 10);
 }
 
+/** Maximum distance for silently bridging one blind anchor while painting. */
+export function serviceBridgeMaxMetres(value?: string | number | null): number {
+  return validatedInt(value, DEFAULT_SERVICE_BRIDGE_MAX_METRES, 100, 1500);
+}
+
+/** Tighter bridge cap when either visible boundary is a known service void. */
+export function serviceVoidBridgeMaxMetres(value?: string | number | null): number {
+  return validatedInt(value, DEFAULT_SERVICE_VOID_BRIDGE_MAX_METRES, 50, 600);
+}
+
 /** Small-sample shrinkage prior for E[W]: the window estimate blends toward the
  * delivered baseline with weight n / (n + prior) (sla.md story 2.2). */
 export function serviceWaitShrinkPrior(value?: string | number | null): number {
@@ -151,6 +163,8 @@ export interface ServiceConfig {
   baselineMinTouches: number;
   residualMinSamples: number;
   waitShrinkPrior: number;
+  bridgeMaxMetres: number;
+  voidBridgeMaxMetres: number;
   recorderMode: ServiceRecorderMode;
   slaToleranceRatio: number;
   slaMetRatio: number;
@@ -177,6 +191,10 @@ export function serviceConfig(env?: object | null): ServiceConfig {
     baselineMinTouches: serviceBaselineMinTouches(source.SERVICE_BASELINE_MIN_TOUCHES),
     residualMinSamples: serviceResidualMinSamples(source.SERVICE_RESIDUAL_MIN_SAMPLES),
     waitShrinkPrior: serviceWaitShrinkPrior(source.SERVICE_WAIT_SHRINK_PRIOR),
+    bridgeMaxMetres: serviceBridgeMaxMetres(source.SERVICE_BRIDGE_MAX_METRES),
+    voidBridgeMaxMetres: serviceVoidBridgeMaxMetres(
+      source.SERVICE_VOID_BRIDGE_MAX_METRES,
+    ),
     recorderMode: serviceRecorderMode(source.SERVICE_RECORDER_MODE),
     slaToleranceRatio: slaToleranceRatio(source.SLA_TOLERANCE_RATIO),
     slaMetRatio: slaMetRatio(source.SLA_MET_RATIO),

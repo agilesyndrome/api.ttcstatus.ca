@@ -27,7 +27,6 @@ export function useMapCamera({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
-  onSelectServiceStop,
   followPoint,
 }: Pick<
   TransitMapProps,
@@ -46,7 +45,6 @@ export function useMapCamera({
   | 'controlsRef'
   | 'onSelectFeature'
   | 'onSelectVehicle'
-  | 'onSelectServiceStop'
   | 'followPoint'
 >) {
   const svg = useRef<SVGSVGElement>(null);
@@ -98,7 +96,11 @@ export function useMapCamera({
   const pointers = useRef(new Map<number, Point>());
   const moved = useRef(false);
   const start = useRef<Point | undefined>(undefined);
-  const frame = useRef<number | undefined>(undefined);
+  // Camera movement is applied directly to the SVG during interaction. React
+  // only receives the settled camera, which keeps the static map scene out of
+  // the pointer-move render loop and lets camera-dependent labels update once
+  // after the gesture has gone quiet.
+  const commitTimer = useRef<number | undefined>(undefined);
   const pending = useRef<Bounds>(camera);
   const interact = useRef(onInteract);
   interact.current = onInteract;
@@ -124,7 +126,9 @@ export function useMapCamera({
   // Reveal the full outlined, articulated body once there is room for it.
   const detailedCars = level >= 2.5;
 
-  // Camera updates during a gesture are limited to one render per animation frame.
+  // Camera updates during a gesture stay in the DOM; React commits after the
+  // camera has been quiet long enough for labels and other camera-dependent
+  // scene details to be recomputed once.
   const tween = useRef<number | undefined>(undefined);
   function stopTween() {
     if (tween.current !== undefined) {
@@ -135,11 +139,15 @@ export function useMapCamera({
   function apply(next: Bounds) {
     pending.current = next;
     cameraRef.current = next;
-    if (frame.current === undefined)
-      frame.current = requestAnimationFrame(() => {
-        frame.current = undefined;
-        setCamera(pending.current);
-      });
+    svg.current?.setAttribute(
+      'viewBox',
+      `${next.x} ${next.y} ${next.width} ${next.height}`,
+    );
+    window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(() => {
+      commitTimer.current = undefined;
+      setCamera(pending.current);
+    }, 120);
   }
   function move(next: Bounds) {
     stopTween();
@@ -293,6 +301,9 @@ export function useMapCamera({
                 height: next.height / zoomLevel,
               };
         setSize({ width, height });
+        window.clearTimeout(commitTimer.current);
+        commitTimer.current = undefined;
+        pending.current = fitted;
         cameraRef.current = fitted;
         setCamera(fitted);
       }
@@ -310,7 +321,7 @@ export function useMapCamera({
     return () => {
       observer.disconnect();
       node.removeEventListener('wheel', wheel);
-      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+      window.clearTimeout(commitTimer.current);
       stopTween();
     };
   }, [data]);
@@ -424,27 +435,32 @@ export function useMapCamera({
     },
     onPointerUp: (event) => {
       if (!moved.current) {
-        // Pointer capture retargets clicks: hit-test the original release position.
-        const target = document
-          .elementFromPoint(event.clientX, event.clientY)
-          ?.closest('[data-feature], [data-vehicle], [data-service-stop]');
-        // Delivered-service overlay markers sit above the scene and claim
-        // their taps first: selecting a stop opens its story (the camera
-        // stays following — a deliberate tap is not a stray one).
-        const serviceStopId = target?.getAttribute('data-service-stop');
-        if (serviceStopId && onSelectServiceStop) {
-          onSelectServiceStop(serviceStopId);
-          pointers.current.delete(event.pointerId);
-          if (event.currentTarget.hasPointerCapture(event.pointerId))
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          return;
-        }
-        const feature = data.features.find(
-          (feature) => feature.id === target?.getAttribute('data-feature'),
-        );
-        const car = cars.find(
-          (car) => car.vehicle.id === target?.getAttribute('data-vehicle'),
-        );
+        // Pointer capture retargets clicks: hit-test the original release
+        // position. elementsFromPoint — not elementFromPoint — because a car
+        // dwelling on a stop dot paints above it, and the tap aimed at the
+        // stop must open the stop's service story. Priority: stop dots, then
+        // cars (a car is still reachable along the rest of its body);
+        // nothing matched = empty map space.
+        const stack = document.elementsFromPoint(event.clientX, event.clientY);
+        const hit = (selector: string): Element | null => {
+          for (const element of stack) {
+            const match = element.closest(selector);
+            if (match) return match;
+          }
+          return null;
+        };
+        const featureElement = hit('[data-feature]');
+        const vehicleElement = featureElement ? null : hit('[data-vehicle]');
+        const featureId = featureElement?.getAttribute('data-feature') ?? null;
+        const vehicleId = vehicleElement?.getAttribute('data-vehicle') ?? null;
+        const feature =
+          featureId !== null
+            ? data.features.find((candidate) => candidate.id === featureId)
+            : undefined;
+        const car =
+          vehicleId !== null
+            ? cars.find((candidate) => candidate.vehicle.id === vehicleId)
+            : undefined;
         if (car) onSelectVehicle(car);
         else if (feature) onSelectFeature(feature);
         // Clicking empty map space pauses following — except while driving,
@@ -476,7 +492,8 @@ export function useMapCamera({
         event.preventDefault();
         interact.current?.();
         const [x, y] = directions[event.key];
-        move(moveCamera(camera, x * camera.width * 0.08, y * camera.height * 0.08));
+        const current = cameraRef.current;
+        move(moveCamera(current, x * current.width * 0.08, y * current.height * 0.08));
       } else if (['+', '=', '-'].includes(event.key)) {
         event.preventDefault();
         interact.current?.();
@@ -493,6 +510,7 @@ export function useMapCamera({
   return {
     svg,
     camera: viewCamera,
+    viewBox: `${cameraRef.current.x} ${cameraRef.current.y} ${cameraRef.current.width} ${cameraRef.current.height}`,
     size,
     scale,
     level,

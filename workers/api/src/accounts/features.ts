@@ -1,6 +1,7 @@
 import type { FeatureFlagsResponse } from '../../../../shared/service/contracts';
 import { json } from '../http/responses';
 import type { AccountEnv } from './env';
+import { featureCohortIncludes } from '../../../../shared/accounts/feature-flags';
 
 /** Does this verified caller hold a per-user feature flag? — RETIRED with
  * the overlay grant (docs/optimize-overlay.md E6S1): the service endpoints
@@ -22,14 +23,28 @@ export async function ownedFeaturesResponse(
 ): Promise<Response> {
   if (request.method !== 'GET')
     return json({ error: 'method-not-allowed' }, 405, { 'cache-control': 'no-store' });
-  const rows = await env.DB.prepare(
-    'SELECT flag FROM feature_flags WHERE subject = ? ORDER BY flag',
-  )
-    .bind(userId)
-    .all();
-  const flags = (rows.results ?? [])
-    .map((row) => String(row.flag))
-    .filter((flag) => /^[\w][\w.-]{0,63}$/.test(flag));
-  const body: FeatureFlagsResponse = { schemaVersion: 1, flags };
+  const [grantRows, cohortRows] = await Promise.all([
+    env.DB.prepare('SELECT flag FROM feature_flags WHERE subject = ? ORDER BY flag')
+      .bind(userId)
+      .all(),
+    env.DB.prepare(
+      'SELECT flag, percentage FROM feature_flag_cohorts ORDER BY flag',
+    ).all(),
+  ]);
+  const flags = new Set(
+    (grantRows.results ?? [])
+      .map((row) => String(row.flag))
+      .filter((flag) => /^[\w][\w.-]{0,63}$/.test(flag)),
+  );
+  for (const row of cohortRows.results ?? []) {
+    const flag = String(row.flag);
+    const percentage = Number(row.percentage);
+    if (
+      /^[\w][\w.-]{0,63}$/.test(flag) &&
+      featureCohortIncludes(flag, userId, percentage)
+    )
+      flags.add(flag);
+  }
+  const body: FeatureFlagsResponse = { schemaVersion: 1, flags: [...flags].sort() };
   return json(body, 200, { 'cache-control': 'no-store' });
 }

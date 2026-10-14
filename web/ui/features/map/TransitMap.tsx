@@ -10,6 +10,8 @@ import { useMapCamera } from './useMapCamera';
 import { stopDots } from './platform-pairs';
 import { Tracks, points } from './TrackLayer';
 import { TrackClosures } from './TrackClosures';
+import { RoutePills } from './RoutePills';
+import { rectanglesOverlap } from './label-layout';
 export type { TrackClosure } from './TrackClosures';
 
 export const TransitMap = memo(function TransitMap({
@@ -48,7 +50,6 @@ export const TransitMap = memo(function TransitMap({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
-  onSelectServiceStop,
   /** The delivered-service car tint: each car's direction field colour where
    * it rides, or null when that direction has no data. When provided, cars
    * snap onto their direction's stream (offset to its side of the rail) and
@@ -93,6 +94,7 @@ export const TransitMap = memo(function TransitMap({
   const {
     svg,
     camera,
+    viewBox,
     size,
     scale,
     level,
@@ -107,7 +109,6 @@ export const TransitMap = memo(function TransitMap({
     cars,
     selectedRoute,
     selectedFeature,
-    onSelectServiceStop,
     focusPoint,
     focusPointLevel,
     focusBounds,
@@ -250,16 +251,7 @@ export const TransitMap = memo(function TransitMap({
         y + box.height > size.height - bottomReserve
       )
         return false;
-      if (
-        occupied.some(
-          (other) =>
-            box.x < other.x + other.width &&
-            box.x + box.width > other.x &&
-            box.y < other.y + other.height &&
-            box.y + box.height > other.y,
-        )
-      )
-        return false;
+      if (occupied.some((other) => rectanglesOverlap(box, other))) return false;
       occupied.push(box);
       placedLabels += 1;
       return true;
@@ -297,16 +289,7 @@ export const TransitMap = memo(function TransitMap({
         box.y + box.height > size.height - 65
       )
         return false;
-      if (
-        occupied.some(
-          (other) =>
-            box.x < other.x + other.width &&
-            box.x + box.width > other.x &&
-            box.y < other.y + other.height &&
-            box.y + box.height > other.y,
-        )
-      )
-        return false;
+      if (occupied.some((other) => rectanglesOverlap(box, other))) return false;
       occupied.push(box);
       placedContext += 1;
       return true;
@@ -373,7 +356,7 @@ export const TransitMap = memo(function TransitMap({
             ? t('transitMap.torontoStreetcarGameMapDragOrPinchToExplore')
             : t('transitMap.torontoSubwayAndStreetcarNetworkArrowKeysPanPlusAnd')
         }
-        viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
+        viewBox={viewBox}
         data-gesturing={gesturing ? 'true' : undefined}
         {...handlers}
       >
@@ -393,6 +376,7 @@ export const TransitMap = memo(function TransitMap({
           includeOvernight={includeOvernight}
           showStreetcar={showStreetcar}
           showSubway={showSubway}
+          scale={scale}
         />
         <TrackClosures data={data} closures={closures} />
         {typeof underlay === 'function' ? underlay(scale, camera) : underlay}
@@ -449,6 +433,9 @@ export const TransitMap = memo(function TransitMap({
             </g>
           );
         })}
+        {serviceMode && showLabels && (
+          <RoutePills features={visibleFeatures} routes={data.routes} scale={scale} />
+        )}
         <g className="map-label" aria-hidden="true">
           {readableContextLabels.map((label, index) => (
             <g
@@ -465,6 +452,17 @@ export const TransitMap = memo(function TransitMap({
               key={feature.id}
               transform={`translate(${feature.point.join(' ')}) scale(${1 / scale})`}
             >
+              <line className="map-label__leader" x1={0} y1={0} x2={7} y2={-12} />
+              <rect
+                className="map-label__scrim"
+                x={4}
+                y={-18}
+                width={
+                  (level < 3 ? baseStopName(feature.name) : feature.name).length * 6 + 8
+                }
+                height={16}
+                rx={5}
+              />
               <text
                 className={
                   selectedFeature?.id === feature.id ? 'map-label__selected' : undefined

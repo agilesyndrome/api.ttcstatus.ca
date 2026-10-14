@@ -326,3 +326,30 @@ test('E2S9: rollup-stabilized baselines rescue thin windows; rich windows are un
   });
   assert.deepEqual(withUpgrade.get('st_rich'), without.get('st_rich'));
 });
+
+test('E2S9: the onStabilized observer reports exactly the rescued stops', () => {
+  const cover = coverage();
+  const touches = [
+    touch('st_thin', T0 - 1_770_000),
+    touch('st_thin', T0 - 870_000),
+    // A window-rich sibling: its own baseline speaks, no rescue needed.
+    touch('st_rich', T0 - 1_800_000),
+    touch('st_rich', T0 - 1_200_000),
+    touch('st_rich', T0 - 600_000),
+    touch('st_rich', T0),
+  ];
+  const rescued = [];
+  serviceStatesAt(touches, cover, {
+    windowStart: T0 - 1_800_000,
+    at: T0,
+    config,
+    stabilized: (stopId) =>
+      stopId === 'st_thin'
+        ? { medianSeconds: 900, moments: { n: 96, sum: 86_400, sumSq: 77_760_000 } }
+        : null,
+    onStabilized: (stopId, medianSeconds) => rescued.push([stopId, medianSeconds]),
+  });
+  // Exactly the thin-window stop, with the stabilized median — the rich
+  // stop's own baseline never reports as a rescue.
+  assert.deepEqual(rescued, [['st_thin', 900]]);
+});

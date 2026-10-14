@@ -39,12 +39,12 @@
   /* service bands (match the map ramp: wave-field.ts STATE_COLORS) and
    * the ink used to read band words on the panel surface */
   --ok: #2f9e6e;
-  --warn: #e0a63c;
-  --err: #d64550;
+  --warn: #9c6508;
+  --err: #b32f3f;
   --ok-ink: #256f4f;
-  --warn-ink: #8a6516;
-  --err-ink: #a3363f;
-  --band-neutral: #b9bec7;
+  --warn-ink: #704900;
+  --err-ink: #842532;
+  --band-neutral: #707982;
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -72,11 +72,11 @@
   --tooltip-fg: #f2f8f9;
   --tooltip-muted: #c3d5dc;
   --backdrop: #04101acc;
-  --ok: #2f9e6e;
-  --warn: #e0a63c;
-  --err: #d64550;
+  --ok: #71d39f;
+  --warn: #e8bd62;
+  --err: #f07b86;
   --ok-ink: #7ed6a8;
   --warn-ink: #ecc877;
   --err-ink: #f19aa2;
-  --band-neutral: #5f7280;
+  --band-neutral: #9eabb5;
 }

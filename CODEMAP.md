@@ -13,7 +13,7 @@ source file locations.
 | Directory      | Responsibility                                                                            |
 | -------------- | ----------------------------------------------------------------------------------------- |
 | `http/`        | Routing, input privacy boundary and consistent CORS response helpers                      |
-| `accounts/`    | Clerk authentication, bounded JSON input, owned journal and profile operations            |
+| `accounts/`    | Clerk authentication, bounded JSON input, owned data and feature-flag operations          |
 | `maps/`        | Artifact selection, map/directory reads, release manifests and protected debug forwarding |
 | `realtime/`    | Bounded upstream decoding and vehicle HTTP distribution; acquisition owned by recorder    |
 | `service/`     | Delivered-service recorder: pure core, DO shell, window store, folds, endpoints           |
@@ -44,18 +44,18 @@ map schema are unchanged by source reorganization.
 
 ## Shared modules
 
-| Directory                    | Responsibility                                                                    |
-| ---------------------------- | --------------------------------------------------------------------------------- |
-| `shared/accounts/`           | Journal validation, backup/merge rules, badges and username validation            |
-| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and palette |
-| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                        |
-| `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus   |
-| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers       |
-| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                 |
-| `shared/http/`               | HTTP validators and the location-free query contract                              |
-| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                              |
-| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets        |
-| `workers/shared/http/`       | Bounded byte streams and admin authorization                                      |
+| Directory                    | Responsibility                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `shared/accounts/`           | Journal validation, backup/merge rules, badges, username validation and cohort hashing  |
+| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and field palette |
+| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                              |
+| `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus         |
+| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers             |
+| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                       |
+| `shared/http/`               | HTTP validators and the location-free query contract                                    |
+| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                                    |
+| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets              |
+| `workers/shared/http/`       | Bounded byte streams and admin authorization                                            |
 
 `shared/` imports neither application. Workers never import browser implementation
 files, and browser modules never import Worker implementation files. Run
@@ -94,20 +94,28 @@ panel's Save/Update/Reset tool drives it through
 the camera controls. `TrackLayer.tsx` renders fixed
 tracks. Frozen export state belongs to `features/export/useMapExport.ts`.
 
+The service field is split by responsibility: `shared/map/field-palette.ts`
+owns theme- and colour-vision-aware OKLCH ramp colours; `features/service/
+wave-field.ts` owns pure anchor sampling, bounded paint-only smoothing and
+direction geometry; `TrackService.tsx` renders full-opacity streams and
+directional chevrons. `LegendBar.tsx`, `RouteColourKey.tsx` and `RoutePills.tsx`
+are the mode-owned colour surfaces. `useColourMode.tsx` keeps the local
+`ttc:colour:v1` preference and synchronizes the profile after sign-in.
+
 `public/snake/v1/` is the archived game. Its game code and artwork stay intact.
 
 ## Scripts, tests and artifacts
 
-| Directory             | Responsibility                                                          |
-| --------------------- | ----------------------------------------------------------------------- |
-| `scripts/build/`      | Snake archive and OpenAPI contract builds                               |
-| `scripts/preview/`    | Local API/viewer adapters and browser authentication fixture            |
-| `scripts/checks/`     | Browser checks and the import-boundary check                            |
-| `scripts/preflight/`  | `./pre-flight` board: config, renderer, runner and gitleaks integration |
-| `scripts/operations/` | Explicit production map regeneration and named-map tag publishing       |
-| `tests/`              | Tests grouped by operation, with shared compilation and SQLite helpers  |
-| `data/fixtures/`      | Unchanged reference map bundles                                         |
-| `dist/`               | Generated homepage and deployment assets; ignored by Git                |
+| Directory             | Responsibility                                                              |
+| --------------------- | --------------------------------------------------------------------------- |
+| `scripts/build/`      | Snake archive and OpenAPI contract builds                                   |
+| `scripts/preview/`    | Local API/viewer adapters and browser authentication fixture                |
+| `scripts/checks/`     | Browser checks and the import-boundary check                                |
+| `scripts/preflight/`  | `./pre-flight` board: config, renderer, runner and gitleaks integration     |
+| `scripts/operations/` | Explicit production operations, map regeneration, tags and feature rollouts |
+| `tests/`              | Tests grouped by operation, with shared compilation and SQLite helpers      |
+| `data/fixtures/`      | Unchanged reference map bundles                                             |
+| `dist/`               | Generated homepage and deployment assets; ignored by Git                    |
 
 The browser authentication fixture replaces only the SDK/session interface;
 separate server tests verify real signed tokens and reject tampering. SQLite-backed

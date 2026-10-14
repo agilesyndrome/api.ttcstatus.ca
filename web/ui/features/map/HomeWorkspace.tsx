@@ -25,7 +25,10 @@ import { MapExport } from '../export/MapExport';
 import { AuthControls } from '../accounts/auth';
 
 import { useServiceOverlay } from '../service/ServiceLayer';
-import { STATE_COLORS } from '../service/wave-field';
+import { useTheme } from '../../hooks/useTheme';
+import { useColourMode } from '../../hooks/useColourMode';
+import { LegendBar } from '../service/LegendBar';
+import { RouteColourKey } from './RouteColourKey';
 
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
@@ -35,6 +38,8 @@ const SnakeGame = lazy(() =>
 
 export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) {
   useLanguage();
+  const { dark } = useTheme();
+  const { colourMode } = useColourMode();
   const {
     data,
     error,
@@ -99,6 +104,8 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     },
     visualRoute,
     feature,
+    dark ? 'dark' : 'light',
+    colourMode,
   );
   const compact = useCompactNav();
   const phone = usePhoneLayout();
@@ -268,29 +275,20 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 resetKey={resetKey}
                 onSelectFeature={selectFeatureWithService}
                 onSelectVehicle={(car) => selectVehicle(car)}
-                onSelectServiceStop={service.onSelectServiceStop}
                 serviceCarTint={service.carTint}
                 underlay={service.underlay ?? undefined}
-                overlay={service.overlay ?? undefined}
               />
               <CachedMapNotice workspace={workspace} />
-              {service.underlay && (
-                <div className="map-service-legend" aria-label="Service colours">
-                  <strong>Service on tracks</strong>
-                  {(
-                    [
-                      ['fresh', 'Recently served'],
-                      ['due', 'Getting due'],
-                      ['void', 'Service gap'],
-                      ['unmonitored', 'No data'],
-                    ] as const
-                  ).map(([state, label]) => (
-                    <span key={state}>
-                      <i style={{ background: STATE_COLORS[state] }} />
-                      {label}
-                    </span>
-                  ))}
-                </div>
+              {service.underlay ? (
+                <LegendBar theme={dark ? 'dark' : 'light'} colourMode={colourMode} />
+              ) : (
+                <RouteColourKey
+                  routes={data.routes.filter(
+                    (route) =>
+                      (filters.overnight || !route.overnight) &&
+                      (filters.streetcar || /^(1|2|4|5|6)$/.test(route.number)),
+                  )}
+                />
               )}
               {!compact && (workspace.selection || workspace.notice) && (
                 <aside

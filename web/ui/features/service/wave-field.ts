@@ -21,6 +21,12 @@ import type { Edge, Feature } from '../../../../shared/map/model';
 import { drynessAndState } from '../../../../shared/service/wait-metrics';
 import { serviceConfig } from '../../../../shared/service/config';
 import type { ServiceConfig } from '../../../../shared/service/config';
+import {
+  drynessColour,
+  fieldPalette,
+  type ColourMode,
+  type FieldTheme,
+} from '../../../../shared/map/field-palette';
 
 export type FieldState = 'fresh' | 'due' | 'void' | 'unmonitored' | 'collecting';
 
@@ -28,13 +34,8 @@ export type FieldState = 'fresh' | 'due' | 'void' | 'unmonitored' | 'collecting'
  * spots. Colour is never the only channel, but the ramp is tuned to read at
  * a glance and survive colour weakness: fresh/void differ in lightness as
  * well as hue. */
-export const STATE_COLORS: Record<FieldState, string> = {
-  fresh: '#2f9e6e',
-  due: '#e0a63c',
-  void: '#d64550',
-  unmonitored: '#8a8f98',
-  collecting: '#b9bec7',
-};
+/** Backwards-compatible light standard swatches for non-reactive consumers. */
+export const STATE_COLORS: Record<FieldState, string> = fieldPalette('light', 'standard');
 
 const fmt = (value: number, decimals = 1) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -461,6 +462,79 @@ export interface TrackSegment {
 export const STREAM_OFFSET = 1.15;
 /** Stream stroke width (the base track is 4.5). */
 export const STREAM_WIDTH = 1.25;
+/** Keeps service streams at least three CSS pixels at corridor zoom. */
+export function streamWidth(scale: number): number {
+  return Math.max(STREAM_WIDTH, scale > 0 ? 3 / scale : STREAM_WIDTH);
+}
+
+export interface DisplayPoint {
+  x: number;
+  y: number;
+  angle: number;
+}
+
+/** Returns screen-independent geometry at a display-space distance. */
+export function pointAtDisplayDistance(
+  segment: Pick<TrackSegment, 'x1' | 'y1' | 'x2' | 'y2' | 'flowsForward'>,
+  distance: number,
+): DisplayPoint {
+  const dx = segment.x2 - segment.x1;
+  const dy = segment.y2 - segment.y1;
+  const length = Math.hypot(dx, dy) || 1;
+  const ratio = Math.max(0, Math.min(1, distance / length));
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  return {
+    x: segment.x1 + dx * ratio,
+    y: segment.y1 + dy * ratio,
+    angle: segment.flowsForward ? angle : angle + 180,
+  };
+}
+
+export interface SeverityCrossing extends DisplayPoint {
+  kind: 'fresh-due' | 'due-void';
+}
+
+/** Finds severity-front positions between adjacent painted pieces. */
+export function severityCrossings(
+  segments: readonly TrackSegment[],
+  config: ServiceConfig = serviceConfig(),
+): SeverityCrossing[] {
+  const crossings: SeverityCrossing[] = [];
+  for (let index = 1; index < segments.length; index += 1) {
+    const before = segments[index - 1]!;
+    const after = segments[index]!;
+    if (before.directionId !== after.directionId) continue;
+    if (before.dryness === null || after.dryness === null) continue;
+    for (const [threshold, kind] of [
+      [config.freshDrynessRatio, 'fresh-due'],
+      [config.voidDrynessRatio, 'due-void'],
+    ] as const) {
+      if (before.dryness < threshold === after.dryness < threshold) continue;
+      const span = after.dryness - before.dryness || 1;
+      const amount = (threshold - before.dryness) / span;
+      const beforeMid = pointAtDisplayDistance(
+        before,
+        Math.hypot(before.x2 - before.x1, before.y2 - before.y1) / 2,
+      );
+      const afterMid = pointAtDisplayDistance(
+        after,
+        Math.hypot(after.x2 - after.x1, after.y2 - after.y1) / 2,
+      );
+      const x = beforeMid.x + (afterMid.x - beforeMid.x) * amount;
+      const y = beforeMid.y + (afterMid.y - beforeMid.y) * amount;
+      crossings.push({
+        ...pointAtDisplayDistance(
+          { ...before, x1: beforeMid.x, y1: beforeMid.y, x2: afterMid.x, y2: afterMid.y },
+          0,
+        ),
+        x,
+        y,
+        kind,
+      });
+    }
+  }
+  return crossings;
+}
 /** Long pieces subdivide at this many display units so the colour gradient
  * bends along the stretch instead of one flat colour vertex-to-vertex. */
 export const SUBDIVIDE_UNITS = 24;
@@ -494,6 +568,14 @@ interface Anchor {
   distance: number;
   dryness: number | null;
   blind: boolean;
+  /** Synthetic edge anchor that holds the inner value only up to the cap. */
+  hold?: boolean;
+}
+
+export interface EdgeSeamValue {
+  directionId: 0 | 1;
+  at: 'start' | 'end';
+  dryness: number;
 }
 
 function anchorsOfEdge(
@@ -533,16 +615,36 @@ function anchorsOfEdge(
       anchors.push({
         distance: feature.distanceAlongMetres,
         dryness: null,
-        // Blind only when every one of this direction's stops is: one
-        // visible stop is still the truth at that position.
-        blind: states.every(
-          (state) => state.state === 'unmonitored' || state.state === 'collecting',
-        ),
+        // A null value is blind even if the state payload is inconsistent.
+        // It must never become a fresh value through numeric coercion.
+        blind: true,
       });
     }
   }
   anchors.sort((a, b) => a.distance - b.distance);
   return anchors;
+}
+
+/** The nearest measured boundary value, used only to continue a paint field
+ * across a route-continuous edge seam. Blind boundaries are intentionally not
+ * returned: a seam may borrow a real value, never another blind value. */
+export function edgeBoundaryAnchors(
+  edge: Edge,
+  features: Feature[],
+  statesByStop: ReadonlyMap<string, StopServiceState>,
+): EdgeSeamValue[] {
+  const values: EdgeSeamValue[] = [];
+  for (const directionId of [0, 1] as const) {
+    const anchors = anchorsOfEdge(edge, features, statesByStop, directionId).filter(
+      (anchor) => !anchor.blind && anchor.dryness !== null,
+    );
+    if (anchors.length === 0) continue;
+    values.push(
+      { directionId, at: 'start', dryness: anchors[0]!.dryness! },
+      { directionId, at: 'end', dryness: anchors.at(-1)!.dryness! },
+    );
+  }
+  return values;
 }
 
 /** The field at metre `t` along the edge: clamped at the ends, interpolated
@@ -566,15 +668,83 @@ function sampleAt(
   const span = high.distance - lower.distance || 1;
   const u = (t - lower.distance) / span;
   if (lower.blind && high.blind) return { dryness: null, blind: true };
-  if (lower.blind) return { dryness: high.dryness, blind: false };
-  if (high.blind) return { dryness: lower.dryness, blind: false };
+  if (lower.blind)
+    return lower.hold && high.dryness !== null
+      ? { dryness: high.dryness, blind: false }
+      : { dryness: null, blind: true };
+  if (high.blind)
+    return high.hold && lower.dryness !== null
+      ? { dryness: lower.dryness, blind: false }
+      : { dryness: null, blind: true };
   // Smoothstep: the transition spends its change slowly near each stop, so
   // neighbouring colours blend instead of stepping (the softer gradient).
   const eased = u * u * (3 - 2 * u);
-  return {
-    dryness: (lower.dryness ?? 0) * (1 - eased) + (high.dryness ?? 0) * eased,
-    blind: false,
-  };
+  if (lower.dryness === null || high.dryness === null)
+    return { dryness: null, blind: true };
+  return { dryness: lower.dryness * (1 - eased) + high.dryness * eased, blind: false };
+}
+
+/**
+ * Applies the paint-only smoothing contract. A single blind anchor may be
+ * treated as a local interpolation point; refused runs remain genuinely grey.
+ * Synthetic edge anchors implement the one-sided cap without changing source
+ * data or the stop state machine.
+ */
+function paintAnchors(anchors: Anchor[], config: ServiceConfig): Anchor[] {
+  const visible = anchors.filter((anchor) => !anchor.blind && anchor.dryness !== null);
+  if (visible.length === 0) return anchors;
+  const result = anchors.map((anchor) => ({ ...anchor }));
+  for (let index = 0; index < result.length; index += 1) {
+    if (!result[index]!.blind) continue;
+    let end = index;
+    while (end + 1 < result.length && result[end + 1]!.blind) end += 1;
+    const before = result[index - 1];
+    const after = result[end + 1];
+    if (before && after && !before.blind && !after.blind) {
+      const blindCount = end - index + 1;
+      const span = after.distance - before.distance;
+      const voidAdjacent =
+        (before.dryness ?? 0) >= config.voidDrynessRatio ||
+        (after.dryness ?? 0) >= config.voidDrynessRatio;
+      const cap = voidAdjacent ? config.voidBridgeMaxMetres : config.bridgeMaxMetres;
+      if (blindCount === 1 && span <= cap) {
+        const ratio = (result[index]!.distance - before.distance) / (span || 1);
+        result[index] = {
+          ...result[index]!,
+          dryness: before.dryness! + (after.dryness! - before.dryness!) * ratio,
+          blind: false,
+        };
+      }
+    } else if (index === 0 && after && !after.blind) {
+      const voidAdjacent = (after.dryness ?? 0) >= config.voidDrynessRatio;
+      result.unshift({
+        distance:
+          after.distance -
+          (voidAdjacent ? config.voidBridgeMaxMetres : config.bridgeMaxMetres),
+        dryness: null,
+        blind: true,
+        hold: true,
+      });
+      for (let blindIndex = 1; blindIndex <= end + 1; blindIndex += 1)
+        result[blindIndex] = { ...result[blindIndex]!, hold: true };
+      index += 1;
+      end += 1;
+    } else if (end === result.length - 1 && before && !before.blind) {
+      const voidAdjacent = (before.dryness ?? 0) >= config.voidDrynessRatio;
+      for (let blindIndex = index; blindIndex <= end; blindIndex += 1)
+        result[blindIndex] = { ...result[blindIndex]!, hold: true };
+      result.push({
+        distance:
+          before.distance +
+          (voidAdjacent ? config.voidBridgeMaxMetres : config.bridgeMaxMetres),
+        dryness: null,
+        blind: true,
+        hold: true,
+      });
+    }
+    index = end;
+  }
+  return result.sort((a, b) => a.distance - b.distance);
 }
 
 function stateOf(
@@ -588,30 +758,16 @@ function stateOf(
   return 'due';
 }
 
-const hexToRgb = (hex: string): [number, number, number] => [
-  parseInt(hex.slice(1, 3), 16),
-  parseInt(hex.slice(3, 5), 16),
-  parseInt(hex.slice(5, 7), 16),
-];
-
-const mix = (a: string, b: string, t: number): string => {
-  if (t <= 0) return a;
-  if (t >= 1) return b;
-  const [r1, g1, b1] = hexToRgb(a);
-  const [r2, g2, b2] = hexToRgb(b);
-  return `rgb(${Math.round(r1 + (r2 - r1) * t)},${Math.round(g1 + (g2 - g1) * t)},${Math.round(b1 + (b2 - b1) * t)})`;
-};
-
 /** The continuous ramp the track paints with: fresh at r=0, amber at the
  * fresh/due boundary feel (r=1), full void red at the void horizon (r=2),
  * deepening slightly beyond. Null (blind/collecting) greys the stretch. */
-export function drynessColor(dryness: number | null, state?: FieldState): string {
-  if (state === 'collecting') return STATE_COLORS.collecting;
-  if (dryness === null || state === 'unmonitored') return STATE_COLORS.unmonitored;
-  if (dryness <= 0) return STATE_COLORS.fresh;
-  if (dryness <= 1) return mix(STATE_COLORS.fresh, STATE_COLORS.due, dryness);
-  if (dryness <= 2) return mix(STATE_COLORS.due, STATE_COLORS.void, dryness - 1);
-  return mix(STATE_COLORS.void, '#8e2430', Math.min(1, (dryness - 2) / 1.5));
+export function drynessColor(
+  dryness: number | null,
+  state?: FieldState,
+  theme: FieldTheme = 'light',
+  colourMode: ColourMode = 'standard',
+): string {
+  return drynessColour(dryness, state, theme, colourMode);
 }
 
 /** Paint the field along one edge, one stream per direction: split the
@@ -625,6 +781,7 @@ export function edgeServiceSegments(
   statesByStop: ReadonlyMap<string, StopServiceState>,
   config: ServiceConfig = serviceConfig(),
   maxPieceUnits: number = SUBDIVIDE_UNITS,
+  seamValues: readonly EdgeSeamValue[] = [],
 ): TrackSegment[] {
   const points = edge.points;
   if (points.length < 2) return [];
@@ -637,7 +794,21 @@ export function edgeServiceSegments(
   const display = cumulative(points);
   const segments: TrackSegment[] = [];
   for (const directionId of [0, 1] as const) {
-    const anchors = anchorsOfEdge(edge, features, statesByStop, directionId);
+    const rawAnchors = anchorsOfEdge(edge, features, statesByStop, directionId);
+    const distancesAtEnds = [distances[0]!, distances.at(-1)!];
+    const seams = seamValues.filter((seam) => seam.directionId === directionId);
+    for (const seam of seams) {
+      const atStart = seam.at === 'start';
+      const boundary = atStart ? rawAnchors[0] : rawAnchors.at(-1);
+      if (!boundary?.blind) continue;
+      rawAnchors.push({
+        distance: atStart ? distancesAtEnds[0] : distancesAtEnds[1],
+        dryness: seam.dryness,
+        blind: false,
+      });
+    }
+    rawAnchors.sort((a, b) => a.distance - b.distance);
+    const anchors = paintAnchors(rawAnchors, config);
     if (anchors.length === 0) continue;
     for (let index = 1; index < points.length; index += 1) {
       const pieceDisplay = display[index] - display[index - 1];
@@ -673,6 +844,27 @@ export function edgeServiceSegments(
     }
   }
   return segments;
+}
+
+/** Indexes physical edge neighbours that can form a route-continuous seam. */
+export function edgeNeighboursByRoute(
+  edges: ReadonlyArray<Pick<Edge, 'id' | 'a' | 'b' | 'routeIds'>>,
+): Map<string, string[]> {
+  const neighbours = new Map<string, string[]>();
+  for (const edge of edges) neighbours.set(edge.id, []);
+  for (let left = 0; left < edges.length; left += 1) {
+    for (let right = left + 1; right < edges.length; right += 1) {
+      const a = edges[left]!;
+      const b = edges[right]!;
+      const sharedRoute = a.routeIds.some((route) => b.routeIds.includes(route));
+      const sharedEndpoint = a.a === b.a || a.a === b.b || a.b === b.a || a.b === b.b;
+      if (!sharedRoute || !sharedEndpoint) continue;
+      neighbours.get(a.id)!.push(b.id);
+      neighbours.get(b.id)!.push(a.id);
+    }
+  }
+  for (const ids of neighbours.values()) ids.sort();
+  return neighbours;
 }
 
 /** Route numbers of the subway lines (the live-status idiom). */
@@ -790,12 +982,14 @@ export function directionColorAlong(
   features: Feature[],
   statesByStop: ReadonlyMap<string, StopServiceState>,
   config: ServiceConfig = serviceConfig(),
+  theme: FieldTheme = 'light',
+  colourMode: ColourMode = 'standard',
 ): string | null {
   const anchors = anchorsOfEdge(edge, features, statesByStop, directionId);
   if (anchors.length === 0) return null;
   const sample = sampleAt(anchors, distanceAlongMetres);
   const state = stateOf(sample.dryness, sample.blind, config);
-  return drynessColor(sample.blind ? null : sample.dryness, state);
+  return drynessColor(sample.blind ? null : sample.dryness, state, theme, colourMode);
 }
 
 /** Cumulative display distances along a polyline. Geometry is static per

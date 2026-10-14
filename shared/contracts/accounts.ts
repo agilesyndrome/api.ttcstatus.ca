@@ -56,11 +56,16 @@ export const accountSchemas = {
     revision,
     current: ref('SavedStopsDocument'),
   }),
-  Profile: object({ username: string, publicBadges: boolean }),
+  Profile: object({
+    username: string,
+    publicBadges: boolean,
+    colorMode: { enum: ['standard', 'redgreen', 'full'] },
+  }),
   ProfileWrite: object(
     {
       username: { ...string, pattern: '^[a-z0-9][a-z0-9_-]{2,29}$' },
       publicBadges: boolean,
+      colorMode: { enum: ['standard', 'redgreen', 'full'] },
     },
     undefined,
     false,
@@ -104,6 +109,9 @@ export const accountSchemas = {
           'saved-stop',
           'removed-stop',
           'exported-map',
+          'legend-highlight',
+          'legend-row-select',
+          'colour-mode-change',
         ],
       },
     },

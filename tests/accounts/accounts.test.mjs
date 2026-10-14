@@ -17,6 +17,8 @@ const {
 const schema =
   (await readFile('migrations/0002_accounts.sql', 'utf8')) +
   '\n' +
+  (await readFile('migrations/0011_user_colour_mode.sql', 'utf8')) +
+  '\n' +
   (await readFile('migrations/0004_saved_stops.sql', 'utf8'));
 const database = () => createDatabase(schema);
 
@@ -166,12 +168,26 @@ test('profile defaults are private, usernames are unique, and public profiles ex
   const env = { DB: database() };
   assert.deepEqual(
     await (await ownedAccountResponse(request('profile'), env, 'user_a')).json(),
-    { username: '', publicBadges: false },
+    { username: '', publicBadges: false, colorMode: 'standard' },
   );
-  const profile = (username, publicBadges, user = 'user_a') =>
-    ownedAccountResponse(request('profile', { username, publicBadges }), env, user);
+  const profile = (username, publicBadges, colorMode = 'standard', user = 'user_a') =>
+    ownedAccountResponse(
+      request('profile', { username, publicBadges, colorMode }),
+      env,
+      user,
+    );
   assert.equal((await profile('collector', false)).status, 200);
-  assert.equal((await profile('collector', true, 'user_b')).status, 409);
+  assert.deepEqual(
+    await (await ownedAccountResponse(request('profile'), env, 'user_a')).json(),
+    { username: 'collector', publicBadges: false, colorMode: 'standard' },
+  );
+  assert.equal((await profile('collector', false, 'redgreen')).status, 200);
+  assert.equal(
+    (await (await ownedAccountResponse(request('profile'), env, 'user_a')).json())
+      .colorMode,
+    'redgreen',
+  );
+  assert.equal((await profile('collector', true, 'standard', 'user_b')).status, 409);
   for (const username of ['../bad', 'Bad', 'x', '<script>', '-invalid', 'a'.repeat(31)])
     assert.equal((await profile(username, true)).status, 400);
   assert.equal((await profile('collector', 'yes')).status, 400);
