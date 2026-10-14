@@ -125,6 +125,24 @@ test('arcade swept movement cannot tunnel through food at 2000 km/h, and motion 
   assert.ok(Math.abs(engine.position.distance - (100 + (2000 / 3.6) * 0.1)) < 0.001);
 });
 
+test('high speed arcade skips graph searches for traffic outside the head rail', () => {
+  const engine = started(network);
+  engine.position = { edgeId: 'in', direction: 1, distance: 0 };
+  engine.speed = 3000;
+  const distantCars = Array.from({ length: 30 }, (_, index) =>
+    car(`distant-${index}`, 'left', 160),
+  );
+  const distanceAhead = engine.distanceAhead.bind(engine);
+  let searches = 0;
+  engine.distanceAhead = (...args) => {
+    searches++;
+    return distanceAhead(...args);
+  };
+  engine.tick(0.016, distantCars);
+  assert.equal(searches, 0, 'unreachable food never triggers a graph walk per substep');
+  assert.equal(engine.status, 'running');
+});
+
 test('game traffic seeds random streetcars and keeps a catchable target ahead', () => {
   const engine = started(demoData, 'arcade', { gameTraffic: true });
   assert.ok(engine.gameCars.length > 0 && engine.gameCars.length <= 26);

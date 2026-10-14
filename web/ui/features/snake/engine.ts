@@ -1,6 +1,6 @@
 import { english } from '../../../../shared/i18n/messages';
 import { t, getLanguageRevision } from '../../i18n';
-import { localToMap, mapToGps, pointAlongEdge } from '../../../../shared/map/projection';
+import { localToMap, mapToGps } from '../../../../shared/map/projection';
 import type { PlottedVehicle } from '../../../../shared/map/live-status';
 import type {
   Edge,
@@ -218,8 +218,10 @@ export class SnakeEngine {
   };
   private trafficCache?: {
     cars: PlottedVehicle[];
-    poses: { car: PlottedVehicle; pose: Pose; spans: RailSpan[] }[];
+    poses: { car: PlottedVehicle; pose: Pose; spans: RailSpan[]; rear?: Position }[];
   };
+  private indexedTrail: TrailSample[] = this.trail;
+  private trailByRail = new Map<string, { samples: TrailSample[]; first: number }>();
 
   constructor(
     readonly data: ViewerData,
@@ -311,8 +313,14 @@ export class SnakeEngine {
     const d =
       (Math.max(0, Math.min(edge.lengthMetres, position.distance)) * lengths.at(-1)!) /
       edge.lengthMetres;
-    let i = 1;
-    while (i < lengths.length - 1 && lengths[i] < d) i++;
+    let low = 1,
+      high = lengths.length - 1;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (lengths[middle] < d) low = middle + 1;
+      else high = middle;
+    }
+    const i = low;
     const a = edge.sourcePoints[i - 1],
       b = edge.sourcePoints[i];
     const length = lengths[i] - lengths[i - 1],
@@ -322,13 +330,25 @@ export class SnakeEngine {
       ((b[1] - a[1]) / (length || 1)) * position.direction,
     ];
     const source: Point = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-    const plotted = pointAlongEdge(edge, position.distance);
+    const displayDistances = edge.sourceDistances;
+    low = 1;
+    high = displayDistances.length - 1;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (displayDistances[middle] < position.distance) low = middle + 1;
+      else high = middle;
+    }
+    const displayA = edge.points[low - 1],
+      displayB = edge.points[low];
     return {
       position: { ...position },
       point: localToMap(source, this.data.geographicTransform),
       source,
       tangent,
-      angle: plotted.angle + (position.direction === -1 ? 180 : 0),
+      angle:
+        (Math.atan2(displayB[1] - displayA[1], displayB[0] - displayA[0]) * 180) /
+          Math.PI +
+        (position.direction === -1 ? 180 : 0),
     };
   }
 
@@ -375,6 +395,7 @@ export class SnakeEngine {
                     },
                     car.vehicle.routeId,
                   ),
+                  rear: this.rearPosition(car),
                 },
               ]
             : [],
@@ -409,25 +430,28 @@ export class SnakeEngine {
     );
   }
 
-  private trafficAhead(car: PlottedVehicle): number | undefined {
+  private trafficAhead(car: PlottedVehicle, maxDistance = Infinity): number | undefined {
     if (car.stale || !car.match || !this.edges.has(car.match.edgeId)) return;
-    return this.distanceAhead({
-      edgeId: car.match.edgeId,
-      direction: car.match.direction,
-      distance: car.match.distanceAlongMetres,
-    });
+    return this.distanceAhead(
+      {
+        edgeId: car.match.edgeId,
+        direction: car.match.direction,
+        distance: car.match.distanceAlongMetres,
+      },
+      maxDistance,
+    );
   }
 
   private gameCarAhead(maxDistance: number) {
     return this.gameCars.find((car) => {
-      const ahead = this.trafficAhead(car);
+      const ahead = this.trafficAhead(car, maxDistance);
       return ahead !== undefined && ahead >= -0.00001 && ahead <= maxDistance;
     });
   }
 
   private hasTrafficAhead(cars: PlottedVehicle[], maxDistance: number) {
     return [...cars, ...this.gameCars].some((car) => {
-      const ahead = this.trafficAhead(car);
+      const ahead = this.trafficAhead(car, maxDistance);
       return ahead !== undefined && ahead >= -0.00001 && ahead <= maxDistance;
     });
   }
@@ -471,7 +495,7 @@ export class SnakeEngine {
     }
   }
 
-  private distanceAhead(target: Position): number | undefined {
+  private distanceAhead(target: Position, maxDistance = Infinity): number | undefined {
     let position = { ...this.position },
       metres = this.turnbackRemaining;
     let queued: string | null | undefined = this.queued;
@@ -480,13 +504,14 @@ export class SnakeEngine {
       const edge = this.edges.get(position.edgeId)!;
       if (sameRail(position, target)) {
         const ahead = (target.distance - position.distance) * position.direction;
-        if (ahead >= -0.00001) return metres + ahead;
+        if (ahead >= -0.00001 && metres + ahead <= maxDistance) return metres + ahead;
         return;
       }
       metres +=
         position.direction === 1
           ? edge.lengthMetres - position.distance
           : position.distance;
+      if (metres > maxDistance) return;
       const choices = this.choices(position),
         next = this.nextRef(choices, position, queued);
       if (!next || visited.has(`${next.edgeId}:${next.direction}`)) return;
@@ -551,8 +576,13 @@ export class SnakeEngine {
   }
 
   private gamePositionSafe(position: Position): boolean {
-    const samePlayerRail = sameRail(position, this.position),
-      ahead = this.distanceAhead(position);
+    const samePlayerRail = sameRail(position, this.position);
+    const railDistance =
+      (position.distance - this.position.distance) * position.direction;
+    const ahead =
+      samePlayerRail && railDistance >= -0.00001
+        ? this.turnbackRemaining + railDistance
+        : undefined;
     // Keep the near-term route clear.  The pace car is the one deliberate
     // exception: it is placed by positionAhead() and is meant to be caught.
     if (samePlayerRail && (ahead === undefined || ahead < GAME_RANDOM_MIN_AHEAD))
@@ -762,6 +792,8 @@ export class SnakeEngine {
     this.travelled = 0;
     this.trips = 0;
     this.trail = [];
+    this.indexedTrail = this.trail;
+    this.trailByRail.clear();
     this.collected.clear();
     this.queued = undefined;
     this.turnGraceUntil = 0;
@@ -1387,7 +1419,10 @@ export class SnakeEngine {
 
   private record(force = false) {
     if (!force && this.travelled - this.lastRecorded < 1.5) return;
-    this.trail.push({ ...this.pose(), travelled: this.travelled });
+    this.syncTrailIndex();
+    const sample = { ...this.pose(), travelled: this.travelled };
+    this.trail.push(sample);
+    this.indexSample(sample);
     this.lastRecorded = this.travelled;
     const oldest = this.travelled - this.count * SPACING - CAR_LENGTH;
     // Do not create phantom tail cars before the head has travelled far enough.
@@ -1395,8 +1430,68 @@ export class SnakeEngine {
     while (remove < this.trail.length - 1 && this.trail[remove].travelled < oldest)
       remove++;
     if (remove) {
+      for (let i = 0; i < remove; i++) {
+        const sample = this.trail[i];
+        const key = `${sample.position.edgeId}:${sample.position.direction}`;
+        const entry = this.trailByRail.get(key)!;
+        entry.first++;
+        if (entry.first === entry.samples.length) {
+          this.trailByRail.delete(key);
+        } else if (entry.first > 256 && entry.first * 2 > entry.samples.length) {
+          entry.samples.splice(0, entry.first);
+          entry.first = 0;
+        }
+      }
       this.trail.splice(0, remove);
     }
+  }
+
+  private indexSample(sample: TrailSample) {
+    const key = `${sample.position.edgeId}:${sample.position.direction}`;
+    let entry = this.trailByRail.get(key);
+    if (!entry) {
+      entry = { samples: [], first: 0 };
+      this.trailByRail.set(key, entry);
+    }
+    entry.samples.push(sample);
+  }
+
+  private syncTrailIndex() {
+    // Tests and replay tools may replace the public trail. Normal gameplay
+    // keeps one array and updates this per-rail index as samples arrive.
+    if (this.indexedTrail === this.trail) return;
+    this.indexedTrail = this.trail;
+    this.trailByRail.clear();
+    for (const sample of this.trail) this.indexSample(sample);
+  }
+
+  private hitsOwnTrain(player: RailSpan[]): boolean {
+    this.syncTrailIndex();
+    const oldest = this.travelled - ((this.count - 1) * SPACING + CAR_LENGTH / 2);
+    const newest = this.travelled - CAR_LENGTH * 1.7;
+    for (const span of player) {
+      const entry = this.trailByRail.get(`${span.edgeId}:${span.direction}`);
+      if (!entry) continue;
+      const samples = entry.samples;
+      let low = entry.first,
+        high = samples.length;
+      while (low < high) {
+        const middle = (low + high) >> 1;
+        if (samples[middle].travelled < oldest) low = middle + 1;
+        else high = middle;
+      }
+      for (let i = low; i < samples.length; i++) {
+        const sample = samples[i];
+        if (sample.travelled > newest) break;
+        if (
+          !sample.turnbackId &&
+          sample.position.distance >= span.from &&
+          sample.position.distance <= span.to
+        )
+          return true;
+      }
+    }
+    return false;
   }
 
   body(): TrailSample[] {
@@ -1593,9 +1688,22 @@ export class SnakeEngine {
           return;
         }
         // Arcade couples when the snake's front touches the streetcar's back.
-        const rear = this.rearPosition(other.car),
-          ahead = rear && this.distanceAhead(rear);
-        if (!rear || ahead === undefined || ahead > CAR_LENGTH / 2) continue;
+        // The front spans at most half a car length. Most of the fleet is on
+        // unrelated rails, so only search the graph for a rear face actually
+        // inside that short swept range.
+        const rear = other.rear;
+        if (
+          !rear ||
+          !player.some(
+            (span) =>
+              sameRail(span, rear) &&
+              rear.distance >= span.from &&
+              rear.distance <= span.to,
+          )
+        )
+          continue;
+        const ahead = this.distanceAhead(rear, CAR_LENGTH / 2);
+        if (ahead === undefined || ahead > CAR_LENGTH / 2) continue;
         this.collected.add(other.car.vehicle.id);
         if (other.car.vehicle.id.startsWith(GAME_CAR_PREFIX)) {
           this.removeGameCar(other.car.vehicle.id);
@@ -1626,30 +1734,14 @@ export class SnakeEngine {
         this.travelled > this.turnGraceUntil &&
         this.count > 1
       ) {
-        for (const sample of this.trail) {
-          const behind = this.travelled - sample.travelled;
-          if (sample.turnbackId) continue;
-          if (
-            behind < CAR_LENGTH * 1.7 ||
-            behind > (this.count - 1) * SPACING + CAR_LENGTH / 2
-          )
-            continue;
-          if (
-            player.some(
-              (span) =>
-                sameRail(span, sample.position) &&
-                sample.position.distance >= span.from &&
-                sample.position.distance <= span.to,
-            )
-          ) {
-            this.status = 'over';
-            this.gameOverKind = 'selfCollision';
-            this.banner = '';
-            this.message = t('snake.youHitYourOwnTrainValueCarsGameOver', {
-              value1: this.count,
-            });
-            return;
-          }
+        if (this.hitsOwnTrain(player)) {
+          this.status = 'over';
+          this.gameOverKind = 'selfCollision';
+          this.banner = '';
+          this.message = t('snake.youHitYourOwnTrainValueCarsGameOver', {
+            value1: this.count,
+          });
+          return;
         }
       }
     }

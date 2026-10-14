@@ -179,6 +179,11 @@ export const SnakeGame = memo(function SnakeGame({
   onClose,
 }: Props) {
   useLanguage();
+  const latestCars = useRef(sourceCars);
+  latestCars.current = sourceCars;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const closeGame = useCallback(() => closeRef.current(), []);
   // Prefer the published prebuilt board; fall back to deriving locally.
   const board = useSnakeBoard(sourceData);
   if (!board)
@@ -187,16 +192,81 @@ export const SnakeGame = memo(function SnakeGame({
         {t('workspace.loadingStreetcarSnake')}
       </div>
     );
-  return <SnakeCockpit data={board} sourceCars={sourceCars} onClose={onClose} />;
+  return <SnakeCockpit data={board} latestCars={latestCars} onClose={closeGame} />;
 });
+
+/** The speed, stop and countdown change during a run. Keep their timer in a
+ * small subtree so a text refresh cannot reconcile the whole SVG board. */
+function SnakeReadout({
+  engine,
+  best,
+  playing,
+}: {
+  engine: SnakeEngine;
+  best: number;
+  playing: boolean;
+}) {
+  useLanguage();
+  const [, refresh] = useReducer((value) => value + 1, 0);
+  useEffect(() => {
+    if (!playing || engine.status !== 'running') return;
+    const timer = window.setInterval(refresh, 250);
+    return () => window.clearInterval(timer);
+  }, [engine, playing, engine.status]);
+  const nextStop = playing ? engine.nextStop() : undefined;
+  return (
+    <>
+      <div className="snake-hud">
+        <span>
+          <b data-snake-count>{engine.count}</b>{' '}
+          {engine.count === 1 ? t('commute.car') : t('useMapCamera.cars')}
+        </span>
+        <span>
+          <b data-snake-speed>{Math.round(engine.speed)}</b> {t('snake.kmH')}
+        </span>
+        {engine.multiplier > 1 && (
+          <span className="snake-multiplier" data-multiplier={engine.multiplier}>
+            {t('snake.multiplierValueValueSeconds', {
+              value1: engine.multiplier,
+              value2: engine.multiplierRemaining,
+            })}
+          </span>
+        )}
+        <span>
+          {engine.trips ? t('snake.valueTrips', { value1: engine.trips }) : ''}
+          {t('snake.best')} {best}
+        </span>
+      </div>
+      {playing && engine.banner && (
+        <div className="snake-event" data-hazard={engine.hazard?.kind} role="status">
+          {engine.banner}
+        </div>
+      )}
+      {playing && (
+        <div className="snake-status">
+          <p className="snake-sr" role="status">
+            {t(engine.message)}
+          </p>
+          {nextStop && (
+            <p className="snake-next-stop">
+              {t('snake.nextStop')}{' '}
+              <b>{nextStop.name.split(/\s+[-–—]\s*/)[0]?.trim() || nextStop.name}</b> ·{' '}
+              {Math.round(nextStop.metres)} {t('snake.m')}
+            </p>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
 const SnakeCockpit = memo(function SnakeCockpit({
   data,
-  sourceCars,
+  latestCars,
   onClose,
 }: {
   data: ViewerData;
-  sourceCars: PlottedVehicle[];
+  latestCars: RefObject<PlottedVehicle[]>;
   onClose(): void;
 }) {
   useLanguage();
@@ -209,7 +279,10 @@ const SnakeCockpit = memo(function SnakeCockpit({
       /* Optional achievement storage. */
     }
   }, []);
-  const cars = useMemo(() => snakeCars(data, sourceCars), [data, sourceCars]);
+  // The explorer's feed can refresh while this modal is open. Keep its newest
+  // array in the ref for departure, but never reproject it or rerender the
+  // cockpit during an active run.
+  const [cars] = useState(() => snakeCars(data, latestCars.current));
   const dialog = useRef<HTMLDialogElement>(null);
   const [touch] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia
@@ -258,7 +331,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
   }, []);
   const [, redraw] = useReducer((value) => value + 1, 0);
   const traffic = useRef(cars);
-  traffic.current = cars;
   // Deep isolation from the app: a run plays on the world captured at
   // departure. The explorer keeps polling behind the dialog, re-projecting
   // and re-aging its own fleet, but none of that may reach a live run —
@@ -396,7 +468,8 @@ const SnakeCockpit = memo(function SnakeCockpit({
         /* Silent play remains available. */
       }
     }
-    const world = traffic.current;
+    const world = snakeCars(data, latestCars.current);
+    traffic.current = world;
     sessionTraffic.current = world;
     setSessionCars(world);
     engine.start(mode, world);
@@ -474,7 +547,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
     window.addEventListener('blur', away);
     let frame: number,
       previous = 0,
-      lastHud = 0,
       lastCount = engine.count,
       lastHazard: Hazard | undefined = engine.hazard;
     const animate = (now: number) => {
@@ -520,12 +592,6 @@ const SnakeCockpit = memo(function SnakeCockpit({
         lastHazard = engine.hazard;
         redraw();
       } else if (!wasOver && engine.status === 'over') redraw();
-      // The textual HUD (speed, next stop, pedal lights) re-renders at a calm
-      // cadence instead of every animation frame.
-      else if (wasRunning && now - lastHud >= 250) {
-        redraw();
-        lastHud = now;
-      }
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
@@ -614,8 +680,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
   }
   const pose = engine.pose(),
     body = engine.body(),
-    upcoming = engine.upcoming(),
-    nextStop = engine.nextStop();
+    upcoming = engine.upcoming();
   const held = heldPedals();
   // Memoized per inputs: the visible fleet changes when the live feed, the
   // ambient traffic or the collected set changes — not on every frame. Game
@@ -1049,46 +1114,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
         </button>
       </header>
       {playing && <Minimap data={data} point={pose.point} dotRef={minimapDot} />}
-      <div className="snake-hud">
-        <span>
-          <b data-snake-count>{engine.count}</b>{' '}
-          {engine.count === 1 ? t('commute.car') : t('useMapCamera.cars')}
-        </span>
-        <span>
-          <b data-snake-speed>{Math.round(engine.speed)}</b> {t('snake.kmH')}
-        </span>
-        {engine.multiplier > 1 && (
-          <span className="snake-multiplier" data-multiplier={engine.multiplier}>
-            {t('snake.multiplierValueValueSeconds', {
-              value1: engine.multiplier,
-              value2: engine.multiplierRemaining,
-            })}
-          </span>
-        )}
-        <span>
-          {engine.trips ? t('snake.valueTrips', { value1: engine.trips }) : ''}
-          {t('snake.best')} {best}
-        </span>
-      </div>
-      {playing && engine.banner && (
-        <div className="snake-event" data-hazard={engine.hazard?.kind} role="status">
-          {engine.banner}
-        </div>
-      )}
-      {playing && (
-        <div className="snake-status">
-          <p className="snake-sr" role="status">
-            {t(engine.message)}
-          </p>
-          {nextStop && (
-            <p className="snake-next-stop">
-              {t('snake.nextStop')}{' '}
-              <b>{nextStop.name.split(/\s+[-–—]\s*/)[0]?.trim() || nextStop.name}</b> ·{' '}
-              {Math.round(nextStop.metres)} {t('snake.m')}
-            </p>
-          )}
-        </div>
-      )}
+      <SnakeReadout engine={engine} best={best} playing={playing} />
       {!playing ? (
         <section className="snake-menu" aria-label={t('snake.gameSetup')}>
           <p className="eyebrow">
