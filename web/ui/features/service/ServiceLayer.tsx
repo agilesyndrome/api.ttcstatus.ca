@@ -17,7 +17,6 @@ import { DirectionRose } from './DirectionRose';
 import { overlayLaunch } from '../../services/http/live-transport';
 import { useServiceFeed } from './useServiceFeed';
 import { TrackService } from './TrackService';
-import { SelectedStopMarker } from './SelectedStopMarker';
 import { SelectedStopCard } from './SelectedStopCard';
 import {
   advanceStopState,
@@ -43,13 +42,8 @@ export interface ServiceOverlay {
    * docs/optimize-overlay.md E4S1: the engine advances and schedules only
    * what is on screen. */
   underlay: ((scale: number, camera: Bounds) => ReactNode) | null;
-  /** The selected stop's marker — renders above the scene. */
-  overlay: ((scale: number, camera: Bounds) => ReactNode) | null;
   /** The selected stop's story card — render anywhere in the workspace. */
   card: ReactNode | null;
-  /** Map-tap selection for the selected marker (the camera's pointer-up
-   * hit-test resolves `data-service-stop`; tapping it again clears). */
-  onSelectServiceStop: (stopId: string | null) => void;
   /** Follow map feature selection: tapping a stop on the base map selects
    * its delivered-service story. Undefined/featureless clears. */
   onFeatureSelectForService: (feature: Feature | undefined | null) => void;
@@ -101,7 +95,7 @@ function useOverlayEnabled(): boolean | null {
 /** The whole service layer (docs/optimize-overlay.md Epic 2): with the
  * rollout switch on, the dryness field paints the tracks (under
  * cars/labels), the map's own stops become the tap targets, and a selected
- * stop gets one marker plus a story card. For every visitor — signed-out
+ * stop gets its story card. For every visitor — signed-out
  * included (the data is public broadcast bytes from the CDN). Without the
  * switch — or while it loads — nothing renders and no requests are made
  * at all. */
@@ -162,7 +156,6 @@ export function useServiceOverlay(
     () => (data && settled ? visibleEdgesOf(data.edges, settled.camera) : null),
     [data, settled],
   );
-  const [reducedMotion, setReducedMotion] = useState(false);
   // E4S4: the engine runs only while the tab is foreground — a hidden tab
   // performs zero timer work (the feed already pauses there; returning to
   // an overdue view refreshes immediately through its own seam).
@@ -172,13 +165,7 @@ export function useServiceOverlay(
   useEffect(() => {
     if (!enabled) {
       setSelectedStopId(null);
-      return;
     }
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReducedMotion(query.matches);
-    update();
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
   }, [enabled]);
   // The heartbeat: advance stops between ticks (elapsed since their last
   // touch grows in real time), scored with the same shared machine the API

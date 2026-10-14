@@ -388,6 +388,10 @@ export interface StateAssemblyOptions {
   config: ServiceConfig;
   /** Stage 3 (E2S9): a stabilized baseline for stops whose window is thin. */
   stabilized?: (stopId: string) => { medianSeconds: number; moments: Moments } | null;
+  /** Diagnostics observer (pure — never I/O): invoked once per stop whose
+   * thin window was rescued by a stabilized baseline. The recorder counts
+   * these into its telemetry so the rescue path stays observable. */
+  onStabilized?: (stopId: string, medianSeconds: number) => void;
 }
 
 export function stopServiceState(
@@ -401,6 +405,7 @@ export function stopServiceState(
   const directionId = touches[0]?.directionId ?? 0;
   const baseline = windowBaseline(sample, config.baselineMinTouches);
   const stabilized = baseline ? null : (options.stabilized?.(stopId) ?? null);
+  if (stabilized) options.onStabilized?.(stopId, stabilized.medianSeconds);
   const medianSeconds = baseline?.medianSeconds ?? stabilized?.medianSeconds ?? null;
   const minutesSince =
     sample.lastTouchAt !== null ? (options.at - sample.lastTouchAt) / 60000 : null;
