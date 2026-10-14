@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import { PageFooter } from '../../components/page/PageFooter';
 import { NavPanel } from '../../components/nav/NavPanel';
 import { ExplorePanel } from './panels/ExplorePanel';
+import { ReplayPanel } from '../replay/ReplayPanel';
 import type { HomeWorkspaceState } from './useHomeWorkspace';
 
 /** The compact map drawer keeps navigation and map controls together. Data
@@ -36,6 +37,7 @@ export function HomeSidebar({
           }}
           panels={{
             explore: <ExplorePanel workspace={workspace} />,
+            replay: <ReplayPanel workspace={workspace} />,
           }}
         />
         <PageFooter />

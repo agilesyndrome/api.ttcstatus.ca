@@ -19,6 +19,7 @@ const ACTIONS = new Set([
   'legend-highlight',
   'legend-row-select',
   'colour-mode-change',
+  'replayed',
 ]);
 
 /** The accepted action names, exported for the client parity contract test. */

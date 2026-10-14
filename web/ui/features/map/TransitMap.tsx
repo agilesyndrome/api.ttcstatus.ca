@@ -50,6 +50,7 @@ export const TransitMap = memo(function TransitMap({
   controlsRef,
   onSelectFeature,
   onSelectVehicle,
+  onSelectRoute,
   /** The delivered-service car tint: each car's direction field colour where
    * it rides, or null when that direction has no data. When provided, cars
    * snap onto their direction's stream (offset to its side of the rail) and
@@ -121,6 +122,7 @@ export const TransitMap = memo(function TransitMap({
     controlsRef,
     onSelectFeature,
     onSelectVehicle,
+    onSelectRoute,
   });
   const selectKey = (event: React.KeyboardEvent, action: () => void) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -377,6 +379,7 @@ export const TransitMap = memo(function TransitMap({
           showStreetcar={showStreetcar}
           showSubway={showSubway}
           scale={scale}
+          onSelectRoute={onSelectRoute}
         />
         <TrackClosures data={data} closures={closures} />
         {typeof underlay === 'function' ? underlay(scale, camera) : underlay}

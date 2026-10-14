@@ -251,7 +251,7 @@ test('real map viewer preserves grouped boarding IDs and canonical stop order fo
 });
 
 test('share links restore tool tabs, ignoring malformed extra values', () => {
-  for (const panel of ['journal', 'badges', 'sla']) {
+  for (const panel of ['journal', 'badges', 'sla', 'replay']) {
     const hash = mapLinkHash(undefined, DEFAULT_FILTERS, undefined, { panel });
     assert.equal(hash, '#view=' + panel);
     assert.deepEqual(readMapLink(hash), { panel, filters: {} });

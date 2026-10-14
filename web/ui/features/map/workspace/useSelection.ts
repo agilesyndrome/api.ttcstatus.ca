@@ -88,6 +88,8 @@ export function useSelection(
       panel !== 'route-pulse' &&
       // Status gates itself with its sign-in card; the personal panels
       // cannot show anything without an account, so they bounce home.
+      // Replay is members-only too (docs/replay.md): deep links bounce,
+      // and the engine never fetches for a signed-out visitor.
       panel !== 'sla'
     )
       setPanel('explore');

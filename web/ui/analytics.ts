@@ -17,6 +17,7 @@ const TRACKED_ACTIONS = [
   'legend-highlight',
   'legend-row-select',
   'colour-mode-change',
+  'replayed',
 ] as const;
 
 export type TrackedAction = (typeof TRACKED_ACTIONS)[number];

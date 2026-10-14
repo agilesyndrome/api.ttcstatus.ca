@@ -44,18 +44,18 @@ map schema are unchanged by source reorganization.
 
 ## Shared modules
 
-| Directory                    | Responsibility                                                                          |
-| ---------------------------- | --------------------------------------------------------------------------------------- |
-| `shared/accounts/`           | Journal validation, backup/merge rules, badges, username validation and cohort hashing  |
-| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and field palette |
-| `shared/live/`               | Snapshot contracts, freshness, cadence and browser polling                              |
-| `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus         |
-| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers             |
-| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                       |
-| `shared/http/`               | HTTP validators and the location-free query contract                                    |
-| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                                    |
-| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets              |
-| `workers/shared/http/`       | Bounded byte streams and admin authorization                                            |
+| Directory                    | Responsibility                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `shared/accounts/`           | Journal validation, backup/merge rules, badges, username validation and cohort hashing                 |
+| `shared/map/`                | Coordinates, projection, camera math, viewer model, vehicle placement and field palette                |
+| `shared/live/`               | Snapshot contracts, freshness, cadence, browser polling and the replay tick primitive (docs/replay.md) |
+| `shared/service/`            | Delivered-service contracts, config, pure wait metrics, SLA math and the corpus                        |
+| `shared/transit/`            | Device-only proximity grid, original boarding geography and transit helpers                            |
+| `shared/contracts/`          | Versioned JSON response/input schemas for OpenAPI                                                      |
+| `shared/http/`               | HTTP validators and the location-free query contract                                                   |
+| `workers/shared/cloudflare/` | Narrow Cloudflare binding interfaces                                                                   |
+| `workers/shared/gtfs/`       | ZIP, CSV, feed parsing, schedule materials, SLA target derivation, budgets                             |
+| `workers/shared/http/`       | Bounded byte streams and admin authorization                                                           |
 
 `shared/` imports neither application. Workers never import browser implementation
 files, and browser modules never import Worker implementation files. Run
@@ -68,7 +68,8 @@ selection, location, saved-stop and link owners in `workspace/`; `HomeWorkspace.
 and `HomeSidebar.tsx` composes tool panels. `useStaticMap.ts` owns public map loading.
 
 `web/ui/features/` groups map, accounts, stops, fleet, comparison, journal, export,
-service (delivered-service overlay) and sla (the workspace Status panel), and Snake
+service (delivered-service overlay), sla (the workspace Status panel), replay
+(the members-only recorded-ticks TV, docs/replay.md) and Snake
 code with its component stories. `components/` contains shared page chrome; `hooks/`
 contains preferences, viewport, theme and shortcuts. `styles/` contains shell,
 mobile, game, and feature styles imported in cascade order.

@@ -103,6 +103,32 @@ function parseTickDocument(
 }
 
 // ---------------------------------------------------------------------------
+// Historical ticks (docs/replay.md) — the replay primitive. The recorder's
+// tick documents are immutable and world-readable for the 7-day retention
+// window, so a past tick is fetched exactly like a live one: the tick id is
+// supplied by the caller instead of derived from the clock. Same three-case
+// contract as requestTickUpdate: 200 → parse; 404 → null (retention
+// expired, an outage hole, or the not-yet-published tail); anything else →
+// throw for the caller's backoff. Unlike the live poll, browser HTTP
+// caching stays enabled (`cache: 'default'`): the documents are immutable
+// and CDN-cached, so scrubbing back and forth replays from cache without
+// refetching. Broadcast only: no identity, no query parameters.
+// ---------------------------------------------------------------------------
+export async function fetchHistoricalTick(
+  transport: LiveTransportConfig,
+  tickId: number,
+  request: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+  signal?: AbortSignal,
+): Promise<VehicleSnapshot | null> {
+  const response = await request(liveTickUrl(transport, tickId), { signal });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Live status returned HTTP ${response.status}`);
+  const update = await parseTickDocument(response, transport);
+  if (!update.snapshot) throw new Error('Invalid live snapshot');
+  return update.snapshot;
+}
+
+// ---------------------------------------------------------------------------
 // The service-stops tick document (docs/optimize-overlay.md E2S1) — the
 // stops twin of the fleet contract above: same tick grid, same three cases,
 // same no-fallback doctrine, its own path. The document shape is parsed

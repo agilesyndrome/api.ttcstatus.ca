@@ -25,10 +25,13 @@ import {
   drynessColour,
   fieldPalette,
   type ColourMode,
+  type FieldState,
   type FieldTheme,
 } from '../../../../shared/map/field-palette';
 
-export type FieldState = 'fresh' | 'due' | 'void' | 'unmonitored' | 'collecting';
+// The state names live in the shared palette beside the colours that paint
+// them; re-exported for every existing browser consumer.
+export type { FieldState };
 
 /** The state ramp — calm green through amber to red, grey for the blind
  * spots. Colour is never the only channel, but the ramp is tuned to read at

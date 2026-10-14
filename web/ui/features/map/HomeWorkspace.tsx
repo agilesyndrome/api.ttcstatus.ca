@@ -17,6 +17,9 @@ import { PageHeader } from '../../components/page/PageHeader';
 import { PageFooter } from '../../components/page/PageFooter';
 
 import { SlaPanel } from './panels/SlaPanel';
+import { ReplayPanel } from '../replay/ReplayPanel';
+import { ReplayOverlay } from '../replay/ReplayOverlay';
+import { ReplayCarCard } from '../replay/ReplayCarCard';
 import { TransitMap } from '../map/TransitMap';
 
 import { KeyboardHelp } from '../../components/KeyboardHelp';
@@ -78,6 +81,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     closeExport,
     reset,
     mapControls,
+    replay,
+    replayFocus,
+    setReplayFocus,
+    accountJournal,
   } = workspace;
   const selectedDayRoutes = feature?.routeIds.filter(
     (id) => !data?.routes.find((route) => route.id === id)?.overnight,
@@ -88,15 +95,39 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     (filters.serviceOverlay && selectedDayRoutes?.length === 1
       ? selectedDayRoutes[0]
       : undefined);
+  const compact = useCompactNav();
+  const phone = usePhoneLayout();
+  // Replay (docs/replay.md): the map itself is the screen. While the
+  // Replay destination is open the workspace swaps the live feed's cars
+  // for the engine's interpolated historical ones, sleeps the service
+  // overlay, and floats the frame clock + scrubber over the map; the rail
+  // panel beside it is the remote. A tap focuses — a car solos and the
+  // camera follows it through time, a track focuses its route and dims
+  // the rest. Members-only: a signed-out deep link renders the sign-in
+  // gate and never touches the screen.
+  const signedIn = Boolean(accountJournal.userId);
+  const replayActive = panel === 'replay' && signedIn;
+  const focusedCar =
+    replayFocus?.kind === 'car'
+      ? replay.cars.find((car) => car.vehicle.id === replayFocus.id)
+      : undefined;
+  const focusedRouteId = replayFocus?.kind === 'route' ? replayFocus.id : undefined;
+  const replayCars = replay.cars.filter((car) =>
+    car.vehicle.mode === 'subway' ? filters.subway : filters.streetcar,
+  );
+  const focusedRoute = focusedRouteId
+    ? data?.routes.find((route) => route.id === focusedRouteId)
+    : undefined;
   // The per-user-gated service layer (docs/sla.md §5.2 + the polish epic):
   // flag off or signed out → nothing renders and no /service/* requests are
   // made. Hard-suspended while the snake game is open (E7S7) — the game
   // renders its own map with no service props, and the base layer sleeps.
+  // Replay also sleeps it: the screen shows the historical fleet.
   const service = useServiceOverlay(
     data,
     cars,
     snakeOpen,
-    filters.live && !!filters.serviceOverlay,
+    filters.live && !!filters.serviceOverlay && !replayActive,
     () => {
       workspace.setSelection(undefined);
       workspace.setFocusPoint(undefined);
@@ -107,8 +138,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
     dark ? 'dark' : 'light',
     colourMode,
   );
-  const compact = useCompactNav();
-  const phone = usePhoneLayout();
   const selectFeatureWithService = (feature: Parameters<typeof selectFeature>[0]) => {
     selectFeature(feature);
     service.onFeatureSelectForService(feature);
@@ -181,6 +210,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         onPanel={setPanel}
         panels={{
           explore: <ExplorePanel workspace={workspace} />,
+          replay: <ReplayPanel workspace={workspace} />,
         }}
       >
         <PageHeader
@@ -201,7 +231,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
         />
         {data ? (
           <main className={`workspace${mobilePanelOpen ? ' mobile-panel-open' : ''}`}>
-            <div className="workspace-map" hidden={panel !== 'explore'}>
+            <div
+              className={`workspace-map${replayActive ? ' replaying' : ''}`}
+              hidden={panel !== 'explore' && !replayActive}
+            >
               <TransitMap
                 controlsRef={mapControls}
                 mapTools={
@@ -237,31 +270,57 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                   </>
                 }
                 data={data}
-                followPoint={car && following ? car.point : undefined}
-                cars={
-                  // A followed car gets the map to itself; anything else unfollows.
-                  car && following
-                    ? [car]
-                    : filters.live
-                      ? cars.filter((car) =>
-                          car.vehicle.mode === 'subway'
-                            ? filters.subway
-                            : filters.streetcar,
-                        )
-                      : []
+                followPoint={
+                  replayActive && focusedCar
+                    ? focusedCar.point
+                    : car && following
+                      ? car.point
+                      : undefined
                 }
-                selectedRoute={selectedRoute}
-                highlightRoute={visualRoute}
+                cars={
+                  // Replaying: the engine's interpolated historical fleet,
+                  // filtered by the same mode toggles (the live layer's
+                  // on/off switch does not gate the replay screen). A
+                  // focused car solos; a focused route hides the other
+                  // routes' cars. Live: a followed car gets the map to
+                  // itself; anything else unfollows.
+                  replayActive
+                    ? focusedCar
+                      ? [focusedCar]
+                      : focusedRouteId
+                        ? replayCars.filter(
+                            (car) => car.vehicle.routeId === focusedRouteId,
+                          )
+                        : replayCars
+                    : car && following
+                      ? [car]
+                      : filters.live
+                        ? cars.filter((car) =>
+                            car.vehicle.mode === 'subway'
+                              ? filters.subway
+                              : filters.streetcar,
+                          )
+                        : []
+                }
+                selectedRoute={replayActive ? focusedRouteId : selectedRoute}
+                highlightRoute={replayActive ? focusedRouteId : visualRoute}
                 serviceMode={Boolean(service.underlay)}
                 selectedFeature={feature}
-                selectedVehicleId={car?.vehicle.id}
+                selectedVehicleId={
+                  replayActive ? focusedCar?.vehicle.id : car?.vehicle.id
+                }
                 focusPoint={focusPoint}
                 focusPointLevel={focusPointLevel}
                 focusBounds={focusBounds}
                 locationPoint={locationPoint}
                 comparisonStops={undefined}
                 pickingLabel={undefined}
-                onInteract={() => setFollowing(false)}
+                onInteract={() => {
+                  // Panning hands control back: unfollow the live car, and
+                  // on the replay screen return the whole network.
+                  if (replayActive) setReplayFocus(undefined);
+                  else setFollowing(false);
+                }}
                 onZoomInteract={() => {
                   /* Zooming keeps camera following; only panning takes over. */
                 }}
@@ -273,8 +332,35 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 showStreetcar={filters.streetcar}
                 showSubway={filters.subway}
                 resetKey={resetKey}
-                onSelectFeature={selectFeatureWithService}
-                onSelectVehicle={(car) => selectVehicle(car)}
+                onSelectFeature={(feature) => {
+                  // Map taps stay inert while watching a replay — selecting
+                  // a stop would leave the TV for the explorer.
+                  if (!replayActive) selectFeatureWithService(feature);
+                }}
+                onSelectVehicle={(selected) => {
+                  if (!replayActive) {
+                    selectVehicle(selected);
+                    return;
+                  }
+                  // Replay taps: a car solos and the camera follows it
+                  // through time; tapping the soloed car again hands the
+                  // focus back to its whole route.
+                  setReplayFocus((current) =>
+                    current?.kind === 'car' && current.id === selected.vehicle.id
+                      ? { kind: 'route', id: selected.vehicle.routeId ?? '' }
+                      : { kind: 'car', id: selected.vehicle.id },
+                  );
+                }}
+                onSelectRoute={
+                  replayActive
+                    ? (routeId) =>
+                        setReplayFocus((current) =>
+                          current?.kind === 'route' && current.id === routeId
+                            ? undefined
+                            : { kind: 'route', id: routeId },
+                        )
+                    : undefined
+                }
                 serviceCarTint={service.carTint}
                 underlay={service.underlay ?? undefined}
               />
@@ -290,26 +376,52 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                   )}
                 />
               )}
-              {!compact && (workspace.selection || workspace.notice) && (
-                <aside
-                  className="workspace-details"
-                  aria-label={t('workspace.stopAndRouteDetails')}
-                >
-                  {feature && !car && service.card}
-                  <SelectionDetails
-                    workspace={workspace}
-                    serviceMode={Boolean(feature && !car && service.card)}
-                  />
-                </aside>
-              )}
+              {!compact &&
+                (workspace.selection ||
+                  workspace.notice ||
+                  (replayActive && focusedCar)) && (
+                  <aside
+                    className="workspace-details"
+                    aria-label={t('workspace.stopAndRouteDetails')}
+                  >
+                    {replayActive && focusedCar ? (
+                      // The followed replay car's card: its recorded stops
+                      // and the times the recorder wrote down.
+                      <ReplayCarCard
+                        replay={replay}
+                        car={focusedCar}
+                        routes={data.routes}
+                        onClose={() => setReplayFocus(undefined)}
+                      />
+                    ) : (
+                      <>
+                        {feature && !car && service.card}
+                        <SelectionDetails
+                          workspace={workspace}
+                          serviceMode={Boolean(feature && !car && service.card)}
+                        />
+                      </>
+                    )}
+                  </aside>
+                )}
               {compact && (
                 <MobileDetails
                   workspace={workspace}
                   serviceCard={feature && !car ? service.card : null}
                 />
               )}
+              {/* The replay screen furniture: frame clock, transport and
+               * scrubber, floating over the historical map — plus the
+               * focused route's chip while a route owns the screen. */}
+              {replayActive && (
+                <ReplayOverlay
+                  replay={replay}
+                  routeNumber={focusedRoute?.number}
+                  onClearFocus={() => setReplayFocus(undefined)}
+                />
+              )}
             </div>
-            {panel !== 'explore' && (
+            {panel !== 'explore' && !replayActive && (
               <section
                 className="workspace-view"
                 aria-label={
