@@ -95,6 +95,7 @@ export const TransitMap = memo(function TransitMap({
   const {
     svg,
     camera,
+    viewBox,
     size,
     scale,
     level,
@@ -357,7 +358,7 @@ export const TransitMap = memo(function TransitMap({
             ? t('transitMap.torontoStreetcarGameMapDragOrPinchToExplore')
             : t('transitMap.torontoSubwayAndStreetcarNetworkArrowKeysPanPlusAnd')
         }
-        viewBox={`${camera.x} ${camera.y} ${camera.width} ${camera.height}`}
+        viewBox={viewBox}
         data-gesturing={gesturing ? 'true' : undefined}
         {...handlers}
       >

@@ -98,7 +98,11 @@ export function useMapCamera({
   const pointers = useRef(new Map<number, Point>());
   const moved = useRef(false);
   const start = useRef<Point | undefined>(undefined);
-  const frame = useRef<number | undefined>(undefined);
+  // Camera movement is applied directly to the SVG during interaction. React
+  // only receives the settled camera, which keeps the static map scene out of
+  // the pointer-move render loop and lets camera-dependent labels update once
+  // after the gesture has gone quiet.
+  const commitTimer = useRef<number | undefined>(undefined);
   const pending = useRef<Bounds>(camera);
   const interact = useRef(onInteract);
   interact.current = onInteract;
@@ -124,7 +128,9 @@ export function useMapCamera({
   // Reveal the full outlined, articulated body once there is room for it.
   const detailedCars = level >= 2.5;
 
-  // Camera updates during a gesture are limited to one render per animation frame.
+  // Camera updates during a gesture stay in the DOM; React commits after the
+  // camera has been quiet long enough for labels and other camera-dependent
+  // scene details to be recomputed once.
   const tween = useRef<number | undefined>(undefined);
   function stopTween() {
     if (tween.current !== undefined) {
@@ -135,11 +141,15 @@ export function useMapCamera({
   function apply(next: Bounds) {
     pending.current = next;
     cameraRef.current = next;
-    if (frame.current === undefined)
-      frame.current = requestAnimationFrame(() => {
-        frame.current = undefined;
-        setCamera(pending.current);
-      });
+    svg.current?.setAttribute(
+      'viewBox',
+      `${next.x} ${next.y} ${next.width} ${next.height}`,
+    );
+    window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(() => {
+      commitTimer.current = undefined;
+      setCamera(pending.current);
+    }, 120);
   }
   function move(next: Bounds) {
     stopTween();
@@ -293,6 +303,9 @@ export function useMapCamera({
                 height: next.height / zoomLevel,
               };
         setSize({ width, height });
+        window.clearTimeout(commitTimer.current);
+        commitTimer.current = undefined;
+        pending.current = fitted;
         cameraRef.current = fitted;
         setCamera(fitted);
       }
@@ -310,7 +323,7 @@ export function useMapCamera({
     return () => {
       observer.disconnect();
       node.removeEventListener('wheel', wheel);
-      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+      window.clearTimeout(commitTimer.current);
       stopTween();
     };
   }, [data]);
@@ -476,7 +489,8 @@ export function useMapCamera({
         event.preventDefault();
         interact.current?.();
         const [x, y] = directions[event.key];
-        move(moveCamera(camera, x * camera.width * 0.08, y * camera.height * 0.08));
+        const current = cameraRef.current;
+        move(moveCamera(current, x * current.width * 0.08, y * current.height * 0.08));
       } else if (['+', '=', '-'].includes(event.key)) {
         event.preventDefault();
         interact.current?.();
@@ -493,6 +507,7 @@ export function useMapCamera({
   return {
     svg,
     camera: viewCamera,
+    viewBox: `${cameraRef.current.x} ${cameraRef.current.y} ${cameraRef.current.width} ${cameraRef.current.height}`,
     size,
     scale,
     level,
