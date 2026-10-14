@@ -18,7 +18,14 @@ import { TransitMap, type TransitMapControls } from '../map/TransitMap';
 import { TrackClosures } from '../map/TrackClosures';
 import { localToMap } from '../../../../shared/map/projection';
 import { buildSnakeMap, snakeCars } from './game-map';
-import { CAR_LENGTH, SnakeEngine, type Hazard, type Mode, type Turn } from './engine';
+import {
+  CAR_LENGTH,
+  SnakeEngine,
+  type Hazard,
+  type Mode,
+  type Pose,
+  type Turn,
+} from './engine';
 
 interface Props {
   data: ViewerData;
@@ -56,6 +63,22 @@ const trackColor = (lineId?: string) => {
   return TRACK_PALETTE[
     (((key - 501) % TRACK_PALETTE.length) + TRACK_PALETTE.length) % TRACK_PALETTE.length
   ];
+};
+const angleDifference = (from: number, to: number) => ((to - from + 540) % 360) - 180;
+/** Neighbouring cars soften small rail-vertex turns without changing where
+ * any car drives. A 20% blend on each side cuts alternating sway by 40%. */
+const carDisplayAngle = (cars: readonly Pose[], index: number) => {
+  const angle = cars[index].angle;
+  if (index === 0 || cars.length === 1) return angle;
+  const ahead = angleDifference(angle, cars[index - 1].angle);
+  const behind = angleDifference(angle, cars[index + 1]?.angle ?? cars[index - 1].angle);
+  // Keep real switch and turnback headings crisp rather than averaging
+  // across a sharp bend or onto a different rail.
+  return (
+    angle +
+    (Math.abs(ahead) <= 45 ? ahead * 0.1 : 0) +
+    (Math.abs(behind) <= 45 ? behind * 0.1 : 0)
+  );
 };
 // The board is derived synchronously from the already-loaded schematic (no
 // second network request). Memoize it per schematic so reopening the game is
@@ -736,7 +759,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
       if (!car || !node) continue;
       node.setAttribute(
         'transform',
-        `translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`,
+        `translate(${car.point.join(' ')}) rotate(${carDisplayAngle(centres, index)}) scale(${1 / scale})`,
       );
     }
     const pose = engine.pose(),
@@ -756,7 +779,8 @@ const SnakeCockpit = memo(function SnakeCockpit({
     };
   }
   const pose = engine.pose(),
-    upcoming = engine.upcoming();
+    upcoming = engine.upcoming(),
+    trainCars = engine.carCentres();
   const held = heldPedals();
   // Memoized per inputs: the visible fleet changes when the live feed, the
   // ambient traffic or the collected set changes — not on every frame. Game
@@ -1030,7 +1054,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                   strokeWidth={3}
                   vectorEffect="non-scaling-stroke"
                 />
-                {engine.carCentres().map((car, index) => {
+                {trainCars.map((car, index) => {
                   const front = localToMap(
                     [
                       car.source[0] + car.tangent[0] * 15.1,
@@ -1064,7 +1088,7 @@ const SnakeCockpit = memo(function SnakeCockpit({
                       ref={(element: SVGGElement | null) => {
                         trainRefs.current.cars[index] = element;
                       }}
-                      transform={`translate(${car.point.join(' ')}) rotate(${car.angle}) scale(${1 / scale})`}
+                      transform={`translate(${car.point.join(' ')}) rotate(${carDisplayAngle(trainCars, index)}) scale(${1 / scale})`}
                     >
                       {index === 0 ? (
                         <>
