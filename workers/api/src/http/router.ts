@@ -20,6 +20,7 @@ import { privacyQueryResponse } from './privacy';
 import { stopDirectoryResponse } from '../maps/stop-directory';
 import { manifestResponse } from '../maps/manifest';
 import { openApiDocument } from '../contracts/openapi';
+import { liteResponse } from '../lite/response';
 
 export async function routeRequest(
   request: Request,
@@ -27,6 +28,16 @@ export async function routeRequest(
   ctx: ExecutionContextLike,
 ): Promise<Response> {
   const url = new URL(request.url);
+
+  if (request.headers.get('host') === 'lite.ttcstatus.ca') {
+    return Response.redirect('https://ttcstatus.ca/lite', 301);
+  }
+  if (
+    request.method === 'GET' &&
+    (url.pathname === '/lite' || url.pathname.startsWith('/lite/'))
+  ) {
+    return liteResponse(request, env, ctx);
+  }
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: cors() });

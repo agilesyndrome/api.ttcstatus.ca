@@ -1,0 +1,271 @@
+/* ————— The left rail in TTC wayfinding dress (nav-v3 + rail-ttc) —————
+ * Everything here is scoped to `.app-nav` — the rail and its elements
+ * (brand plate, destination list, the hanging tool panel, quick controls,
+ * footer). The compact strip, the mobile drawer and standalone panels keep
+ * their own looks.
+ *
+ * The idea: the rail reads like station wayfinding. The destinations are
+ * stations on a line — a track spine runs behind the icon column and every
+ * destination wears the system's red (the colour of TTC fleet, signs and
+ * station furniture). The active stop is drawn as a station sign: a white
+ * pill with an ink border on a hard offset red plate. Rows are full-width
+ * and left-aligned (the old strip styles centered them), and the rail
+ * slims down to fit the map.
+ *
+ * The red resolves from tokens.css (--ttc-red); the ink that reads on top
+ * of it lives here — the rail is the only place that needs it. ————— */
+.app-nav {
+  --nav-line: var(--ttc-red);
+  --nav-on-line: #fffdf7;
+  width: 216px;
+  padding: 20px 14px 14px;
+}
+.app--map .app-nav {
+  width: 256px;
+}
+
+/* The head: the brand symbol becomes the TTC's red plate and a red rule
+ * seals the header, the way colour bands close a station's title wall.
+ * The plate slims down (34px) so the two-line lockup — "Unofficial" over
+ * "TTCStatus Map" — fits the narrower rail without ellipsizing the name. */
+.app-nav .brand-symbol {
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+  background: var(--ttc-red);
+  border-radius: 8px;
+}
+.app-nav .app-nav__head {
+  gap: 9px;
+  border-bottom: 2px solid var(--ttc-red);
+}
+/* The compact header strip carries the same two-line lockup; its brand
+ * comes from the shared .brand styles, so the caption needs its own look
+ * here (the rail's copy is styled by shell.css). */
+.site-header .brand-lead {
+  display: block;
+  margin-bottom: 1px;
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Destinations: full-width, left-aligned station rows. This stretch also
+ * undoes the old strip's `align-items: center` — the one rule that shrank
+ * and centered the rail's whole column. */
+.app-nav .main-nav {
+  align-items: stretch;
+}
+/* TTC signage caption over the destination list. The strip and the drawer
+ * render the same nav without the rail's dress, so their captions hide. */
+.app-nav .main-nav__eyebrow,
+.site-header .main-nav__eyebrow,
+.sidebar .main-nav__eyebrow {
+  margin: 0 0 9px;
+  padding-left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.site-header .main-nav__eyebrow,
+.sidebar .main-nav__eyebrow {
+  display: none;
+}
+.app-nav .main-nav__eyebrow::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ttc-red);
+}
+
+/* The destinations run down a line: the tablist draws the track spine and
+ * each row's icon chip sits on it as a station. */
+.app-nav .main-nav [role='tablist'] {
+  position: relative;
+  gap: 6px;
+}
+.app-nav .main-nav [role='tablist']::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  bottom: 22px;
+  width: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+/* Rows: left-aligned icon + label, the full row clickable. */
+.app-nav .main-nav [data-nav-item],
+.app-nav .main-nav__link {
+  position: relative;
+  gap: 10px;
+  min-height: 43px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.15px;
+  text-align: left;
+  text-decoration: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.app-nav .main-nav [data-nav-item]:hover,
+.app-nav .main-nav__link:hover {
+  background: var(--soft);
+  border-color: color-mix(in srgb, var(--nav-line) 40%, var(--border));
+}
+/* Route bullet: every icon rides in a rounded-square red-ringed bullet;
+ * the chip overlaps the spine so the stations sit ON the line. */
+.app-nav .main-nav__icon {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid color-mix(in srgb, var(--nav-line) 55%, var(--border));
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.app-nav .main-nav__icon svg {
+  width: 15px;
+  height: 15px;
+}
+/* The active stop is the station sign: ink-boxed pill on a hard red
+ * backing plate, black-weight text — how TTC signs announce where you
+ * are. */
+.app-nav .main-nav [data-nav-item][aria-selected='true'],
+.app-nav .main-nav__link[aria-current='page'] {
+  background: var(--surface);
+  border: 1.5px solid var(--text);
+  box-shadow: 3px 3px 0 var(--nav-line);
+  color: var(--text);
+  font-weight: 750;
+}
+.app-nav .main-nav [data-nav-item][aria-selected='true'] .main-nav__icon,
+.app-nav .main-nav__link[aria-current='page'] .main-nav__icon {
+  border-color: var(--text);
+  background: var(--nav-line);
+  color: var(--nav-on-line);
+}
+
+/* The hanging panel (map tools + friends) takes the full row and hangs
+ * under the active stop like the section it belongs to. The guide line
+ * runs in TTC red instead of the old accent. */
+.app-nav .main-nav [role='tabpanel'] {
+  width: 100%;
+  border-left-color: var(--ttc-red);
+}
+
+/* The map tools card is a station sign box: ink border, no shadow — the
+ * active row above it owns the colour. */
+.app-nav .explore-settings {
+  border: 1.5px solid var(--text);
+  border-radius: 10px;
+}
+.app-nav .explore-settings summary {
+  padding: 11px 32px 11px 13px;
+  font-size: 13px;
+}
+.app-nav .explore-settings summary::after {
+  right: 13px;
+  top: 17px;
+}
+/* The layer choices pick like route bullets: the pressed one gets the ink
+ * ring instead of the accent wash. */
+.app-nav .explore-layers .segmented-control {
+  border-radius: 10px;
+}
+.app-nav .explore-layers .segmented-control button[aria-pressed='true'] {
+  color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--text);
+}
+/* Saved/recent stop rows keep their shape; the selection gets the ink box. */
+.app-nav .explore-shortcuts__stop {
+  border-radius: 9px;
+}
+.app-nav .explore-shortcuts__stop[aria-current='true'] {
+  border-color: var(--text);
+}
+
+/* The tools are full-width, unfilled sign buttons — outline only, no
+ * colour blocks; the rail's red is reserved for the wayfinding. */
+.app-nav .explore-tools {
+  margin-top: 14px;
+}
+.app-nav .explore-tools > .action-button {
+  min-height: 42px;
+  border-radius: 9px;
+  border-color: color-mix(in srgb, var(--text) 25%, var(--border));
+  font-size: 13px;
+  font-weight: 650;
+}
+.app-nav .explore-tools > .action-button:hover {
+  border-color: var(--text);
+}
+.app-nav .explore-tools__surprise,
+.app-nav .explore-tools__surprise:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+/* Quick controls at the foot: Settings is drawn as one more full-width
+ * row (neutral bullet, TTC-red plate when it is the current page), and the
+ * account buttons stretch with it. */
+.app-nav__quick {
+  gap: 8px;
+}
+.app-nav__quick .action-button {
+  min-height: 40px;
+  flex: 1 1 auto;
+}
+.app-nav__settings {
+  gap: 10px;
+  min-height: 43px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.15px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.app-nav__settings:hover {
+  background: var(--soft);
+  border-color: var(--border);
+}
+.app-nav__settings[aria-current='page'] {
+  background: var(--surface);
+  border: 1.5px solid var(--text);
+  box-shadow: 3px 3px 0 var(--ttc-red);
+  color: var(--text);
+  font-weight: 750;
+}
+
+/* Collapsed rail: stations without the dress — no spine, no plates, no
+ * captions; the bullets carry the red rings alone. */
+.app[data-collapsed] .app-nav .main-nav__eyebrow {
+  display: none;
+}
+.app[data-collapsed] .app-nav .main-nav [role='tablist']::before {
+  display: none;
+}
+.app[data-collapsed] .app-nav .main-nav [data-nav-item][aria-selected='true'] {
+  box-shadow: none;
+}

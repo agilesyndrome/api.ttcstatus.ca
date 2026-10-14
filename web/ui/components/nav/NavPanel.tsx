@@ -276,6 +276,7 @@ export function NavPanel(props: NavPanelProps) {
   if (panel === undefined || onPanel === undefined) {
     return (
       <nav className="main-nav" aria-label={t('navigation.mainMenu')}>
+        <p className="main-nav__eyebrow">{t('navigation.mainMenu')}</p>
         {visiblePanels.map((item) =>
           renderItem(
             item,
@@ -289,6 +290,7 @@ export function NavPanel(props: NavPanelProps) {
 
   return (
     <nav className="main-nav" aria-label={t('navigation.mainMenu')}>
+      <p className="main-nav__eyebrow">{t('navigation.mainMenu')}</p>
       <div
         role="tablist"
         aria-label={t('navigation.mapTools')}

@@ -49,8 +49,10 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
                 ↔
               </span>
               <span className="app-nav__lockup">
-                <strong>{t('header.title')}</strong>
-                <small>{t('header.tagline')}</small>
+                <strong>
+                  <small className="brand-lead">{t('header.titleLead')}</small>
+                  {t('header.titleName')}
+                </strong>
               </span>
             </a>
             <button
@@ -107,8 +109,10 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
                 ↔
               </span>
               <span>
-                <strong>{t('header.title')}</strong>
-                <small>{t('header.tagline')}</small>
+                <strong>
+                  <small className="brand-lead">{t('header.titleLead')}</small>
+                  {t('header.titleName')}
+                </strong>
               </span>
             </a>
             <div className="site-header__nav">

@@ -14,9 +14,6 @@
 .app-nav__brand strong {
   font-size: 15px;
 }
-.app-nav__brand small {
-  font-size: 12px;
-}
 .app-nav .main-nav {
   display: flex;
   flex: 1 0 auto;

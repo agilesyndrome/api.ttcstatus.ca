@@ -45,6 +45,9 @@
   --warn-ink: #704900;
   --err-ink: #842532;
   --band-neutral: #707982;
+  /* TTC wayfinding (left rail): the corporate red the system's signs,
+   * fleet and station furniture wear. */
+  --ttc-red: #da291c;
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -79,4 +82,7 @@
   --warn-ink: #ecc877;
   --err-ink: #f19aa2;
   --band-neutral: #9eabb5;
+  /* Same red, lifted a step so the rail keeps its pop on the darker
+   * surfaces. */
+  --ttc-red: #e05143;
 }

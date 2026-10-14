@@ -88,7 +88,9 @@ const SPACING = CAR_LENGTH + 1.5,
   GAME_TARGET_SECONDS = 4,
   GAME_TARGET_MIN_DISTANCE = 60,
   GAME_TARGET_MAX_DISTANCE = 240,
-  GAME_TRAFFIC_RESPAWN_DELAY = 2.5,
+  // Keep background traffic lively without making it arrive on a metronome.
+  GAME_TRAFFIC_RESPAWN_MIN_DELAY = 1.4,
+  GAME_TRAFFIC_RESPAWN_MAX_DELAY = 4.8,
   // Traffic maintenance scans the reachable graph once per candidate car, so
   // its cost scales with tick count, not distance travelled. Cadence it to a
   // fixed simulation interval — matched to the 0.1 s tick the simulation
@@ -429,6 +431,13 @@ export class SnakeEngine {
     );
   }
 
+  private nextGameTrafficDelay() {
+    return (
+      GAME_TRAFFIC_RESPAWN_MIN_DELAY +
+      this.random() * (GAME_TRAFFIC_RESPAWN_MAX_DELAY - GAME_TRAFFIC_RESPAWN_MIN_DELAY)
+    );
+  }
+
   /** The arcade cruise floor for the current consist (0 when not applicable). */
   private cruiseFloor() {
     if (this.mode !== 'arcade' || this.count <= ARCADE_RAMP_START_CARS) return 0;
@@ -709,7 +718,7 @@ export class SnakeEngine {
     const position = this.randomGamePosition();
     if (position) {
       this.addGameCar(position);
-      this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
+      this.gameTrafficCooldown = this.nextGameTrafficDelay();
     }
   }
 
@@ -870,7 +879,7 @@ export class SnakeEngine {
     this.lineId = this.lineOn(this.edges.get(this.position.edgeId)!);
     this.message = t('snake.followTheRailsThrowSwitchesToExplore');
     this.maintainGameTraffic(cars, true);
-    this.gameTrafficCooldown = GAME_TRAFFIC_RESPAWN_DELAY;
+    this.gameTrafficCooldown = this.nextGameTrafficDelay();
     this.record();
   }
 
@@ -1716,7 +1725,7 @@ export class SnakeEngine {
           this.removeGameCar(other.car.vehicle.id);
           this.gameTrafficCooldown = Math.max(
             this.gameTrafficCooldown,
-            GAME_TRAFFIC_RESPAWN_DELAY,
+            this.nextGameTrafficDelay(),
           );
         }
         // An armed bonus-section multiplier pays out several cars per pickup.
