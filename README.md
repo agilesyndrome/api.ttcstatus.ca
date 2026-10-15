@@ -33,26 +33,27 @@ npm run deploy:api  # applies D1 migrations, then deploys (Workers Builds: npm r
 
 ## Docs
 
-| Doc                                                            | What it tells you                                           |
-| -------------------------------------------------------------- | ----------------------------------------------------------- |
-| [docs/architecture.md](docs/architecture.md)                   | How it's built: high level → medium level → file layout.    |
-| [docs/Data.md](docs/Data.md)                                   | Data model (D1/R2/DO), the GTFS load path, per-app schemas. |
-| [docs/privacy.md](docs/privacy.md)                             | Privacy rules and the controls that enforce them.           |
-| [docs/map-admin.md](docs/map-admin.md)                         | Map error paths, operator messages, recovery steps.         |
-| [docs/security.md](docs/security.md)                           | Credentials, input bounds, headers, secrets sync.           |
-| [docs/clerk-setup.md](docs/clerk-setup.md)                     | Clerk bindings, migrations, activation.                     |
-| [docs/analytics.md](docs/analytics.md)                         | First-party analytics events and the `ttc_aid` cookie.      |
-| [docs/subway-map.md](docs/subway-map.md)                       | Subway/LRT feed semantics, local preview.                   |
-| [docs/replay.md](docs/replay.md)                               | The recorded-ticks TV.                                      |
-| [docs/ui-platform.md](docs/ui-platform.md)                     | UI platform boundaries (web/native).                        |
-| [docs/ios-build.md](docs/ios-build.md)                         | Capacitor iPhone build steps (not yet built).               |
-| [docs/snakettc-map-contract.md](docs/snakettc-map-contract.md) | Map bundle schema, field by field.                          |
-| [docs/physical-loop-audit.md](docs/physical-loop-audit.md)     | Audited turnback loops behind the map overlays.             |
-| [docs/snake-*.md](docs/snake-driving-review.md)                | Snake driving/intersection/playability contracts.           |
-| [docs/api/mobile-privacy.md](docs/api/mobile-privacy.md)       | Privacy-focused API client contract.                        |
-| [docs/bugs/](docs/bugs/)                                       | Known bug investigations.                                   |
-| [CODEMAP.md](CODEMAP.md)                                       | File-by-file code walkthrough.                              |
-| [docs/lite-bbs-proposal.md](docs/lite-bbs-proposal.md)         | lite BBS design (work in flight).                           |
+| Doc                                                            | What it tells you                                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [docs/architecture.md](docs/architecture.md)                   | How it's built: high level → medium level → file layout.                 |
+| [docs/Data.md](docs/Data.md)                                   | Data model (D1/R2/DO), the GTFS load path, per-app schemas.              |
+| [docs/gtfs_load.md](docs/gtfs_load.md)                         | Static GTFS load pipeline: probe → import → generate → activate → prune. |
+| [docs/privacy.md](docs/privacy.md)                             | Privacy rules and the controls that enforce them.                        |
+| [docs/map-admin.md](docs/map-admin.md)                         | Map error paths, operator messages, recovery steps.                      |
+| [docs/security.md](docs/security.md)                           | Credentials, input bounds, headers, secrets sync.                        |
+| [docs/clerk-setup.md](docs/clerk-setup.md)                     | Clerk bindings, migrations, activation.                                  |
+| [docs/analytics.md](docs/analytics.md)                         | First-party analytics events and the `ttc_aid` cookie.                   |
+| [docs/subway-map.md](docs/subway-map.md)                       | Subway/LRT feed semantics, local preview.                                |
+| [docs/replay.md](docs/replay.md)                               | The recorded-ticks TV.                                                   |
+| [docs/ui-platform.md](docs/ui-platform.md)                     | UI platform boundaries (web/native).                                     |
+| [docs/ios-build.md](docs/ios-build.md)                         | Capacitor iPhone build steps (not yet built).                            |
+| [docs/snakettc-map-contract.md](docs/snakettc-map-contract.md) | Map bundle schema, field by field.                                       |
+| [docs/physical-loop-audit.md](docs/physical-loop-audit.md)     | Audited turnback loops behind the map overlays.                          |
+| [docs/snake-*.md](docs/snake-driving-review.md)                | Snake driving/intersection/playability contracts.                        |
+| [docs/api/mobile-privacy.md](docs/api/mobile-privacy.md)       | Privacy-focused API client contract.                                     |
+| [docs/bugs/](docs/bugs/)                                       | Known bug investigations.                                                |
+| [CODEMAP.md](CODEMAP.md)                                       | File-by-file code walkthrough.                                           |
+| [docs/lite-bbs-proposal.md](docs/lite-bbs-proposal.md)         | lite BBS design (work in flight).                                        |
 
 ## Architecture in one breath
 

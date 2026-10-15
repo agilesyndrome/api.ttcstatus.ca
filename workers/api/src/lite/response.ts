@@ -165,7 +165,7 @@ function routePage(
     [
       ` ROUTE ${route}`,
       '',
-      ' Pick the FIRST LETTER of the stop name.',
+      ' Pick the FIRST LETTER of the stop or cross-street name.',
       '',
       ...[...letters.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -198,13 +198,13 @@ function letterPage(
   return page(
     `${route} ${letter}`,
     [
-      ` ${route} - stop names starting with ${letter}`,
+      ` ${route} - stop or cross-street names matching ${letter}`,
       '',
       ' Pick your stop:',
       '',
       ...rows.map(
         (state, index) =>
-          ` [${index + 1}] ${stopLabel(state.stopId, names).slice(0, 24).padEnd(24)} ${state.state.toUpperCase().padEnd(5)} ${mins(state.minutesSince).padStart(4)} /lite/stop/${encodeURIComponent(state.stopId)}`,
+          ` [${index + 1}] ${stopLabel(state.stopId, names).slice(0, 32).padEnd(32)} ${state.state.toUpperCase().padEnd(5)} ${mins(state.minutesSince).padStart(4)} /lite/stop/${encodeURIComponent(state.stopId)}`,
       ),
     ],
     tick,
@@ -346,9 +346,11 @@ async function readTick(env: Env): Promise<StopsTickDocument | null> {
 }
 
 async function readStopNames(env: Env): Promise<Map<string, string>> {
+  let versionId: number | null = null;
   try {
     const resolved = await resolveMapArtifact(env, 'streetcar');
     if (resolved && !resolved.error) {
+      versionId = resolved.artifact.version_id;
       const chunks = (
         await env.DB.prepare(
           'SELECT payload FROM map_stop_directory_chunks WHERE artifact_id = ? ORDER BY chunk_index',
@@ -366,12 +368,31 @@ async function readStopNames(env: Env): Promise<Map<string, string>> {
         if (names.size) return names;
       }
     }
+  } catch {
+    // Fall through to the versioned GTFS fallback. A missing or incomplete
+    // map artifact must not make the board query every retained version.
+  }
+
+  try {
+    if (versionId === null) {
+      const active = await env.DB.prepare(
+        `SELECT id FROM network_versions
+         WHERE source_key = 'ttc-surface-gtfs' AND active = 1
+         ORDER BY id DESC LIMIT 1`,
+      ).first<{ id: number }>();
+      versionId = active?.id ?? null;
+    }
+    if (versionId === null) return new Map();
 
     // Older active artifacts may predate the published directory. The GTFS
     // rows use the same source stop IDs as the service tick, so they are a
-    // safe read-only fallback for the text board.
+    // safe read-only fallback for the text board. Always pin this read to the
+    // same immutable network version as the selected map/current network.
     const rows = (
-      await env.DB.prepare('SELECT stop_id, name FROM gtfs_stops')
+      await env.DB.prepare(
+        'SELECT stop_id, name FROM gtfs_stops WHERE version_id = ? ORDER BY stop_id',
+      )
+        .bind(versionId)
         .all<{ stop_id: string; name: string }>()
     ).results;
     return new Map(rows.map((row) => [row.stop_id, row.name]));
