@@ -80,25 +80,11 @@ export const navLogos: Record<Destination['key'], ReactNode> = {
   ),
   settings: (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M3 4.75h10M3 11.25h10" strokeLinecap="round" />
-      <rect
-        x="4.6"
-        y="2.75"
-        width="2.8"
-        height="4"
-        rx="1.3"
-        fill="currentColor"
-        stroke="none"
+      <path
+        d="m6.4 1.8.5-.3a1.3 1.3 0 0 1 1.3 0l.5.3.2.9.9.5.9-.2a1.3 1.3 0 0 1 .7 1.2l-.1.6-.7.6v1l.7.6.1.6a1.3 1.3 0 0 1-.7 1.2l-.9-.2-.9.5-.2.9-.5.3a1.3 1.3 0 0 1-1.3 0l-.5-.3-.2-.9-.9-.5-.9.2a1.3 1.3 0 0 1-.7-1.2l.1-.6.7-.6v-1l-.7-.6-.1-.6a1.3 1.3 0 0 1 .7-1.2l.9.2.9-.5.2-.9Z"
+        strokeLinejoin="round"
       />
-      <rect
-        x="8.6"
-        y="9.25"
-        width="2.8"
-        height="4"
-        rx="1.3"
-        fill="currentColor"
-        stroke="none"
-      />
+      <circle cx="7.5" cy="7.5" r="1.8" />
     </svg>
   ),
 };

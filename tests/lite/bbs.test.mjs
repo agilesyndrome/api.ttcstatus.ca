@@ -107,7 +107,7 @@ test('closures require every watched stop on an arm to be old void', () => {
   assert.match(closed, /no car observed/);
 });
 
-test('dig pages expose route letters and at most five stop choices', () => {
+test('dig pages expose stop-name initials and all matching stop choices', () => {
   const names = new Map(
     Array.from({ length: 6 }, (_, index) => [
       String(index + 1),
@@ -115,10 +115,29 @@ test('dig pages expose route letters and at most five stop choices', () => {
     ]),
   );
   const html = renderLitePage(
-    '/lite/r/501/J',
+    '/lite/r/501/Q',
     tick([state('1'), state('2'), state('3'), state('4'), state('5'), state('6')]),
     names,
   );
-  assert.match(html, /cross streets starting with J/);
-  assert.equal((html.match(/\[(?:1|2|3|4|5)\]/g) ?? []).length, 5);
+  assert.match(html, /stop names starting with Q/);
+  assert.equal((html.match(/\[(?:1|2|3|4|5|6)\]/g) ?? []).length, 6);
+  assert.match(html, /QUEEN ST W AT J6 ST/);
+});
+
+test('dig indexes AT stops under both street initials and stop details collapse paired records', () => {
+  const names = new Map([
+    ['809', 'COLLEGE ST AT AUGUSTA AV'],
+    ['12338', 'COLLEGE ST AT AUGUSTA AV'],
+  ]);
+  const states = [
+    state('809', { routeIds: ['506'], directionId: 0 }),
+    state('12338', { routeIds: ['506'], directionId: 1, state: 'fresh' }),
+  ];
+  const route = renderLitePage('/lite/r/506', tick(states), names);
+  assert.match(route, /\[C\] 2 stops/);
+  assert.match(route, /\[A\] 2 stops/);
+
+  const detail = renderLitePage('/lite/stop/809', tick(states), names);
+  assert.match(detail, /809\s+506 dir 0/);
+  assert.match(detail, /12338\s+506 dir 1/);
 });

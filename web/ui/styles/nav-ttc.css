@@ -269,3 +269,87 @@
 .app[data-collapsed] .app-nav .main-nav [data-nav-item][aria-selected='true'] {
   box-shadow: none;
 }
+
+/* The page shell keeps the same TTC rail markup on phones. It becomes a
+ * compact, horizontally scrollable station strip instead of swapping to a
+ * second site-header/nav implementation. */
+@media (max-width: 900px) {
+  .app--page {
+    display: block;
+  }
+  .app--page .app-main {
+    display: block;
+  }
+  .app--page .app-nav {
+    position: relative;
+    top: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    min-width: 0;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      10px max(12px, env(safe-area-inset-left));
+    border-right: 0;
+    border-bottom: 2px solid var(--ttc-red);
+    overflow: visible;
+    background: var(--surface);
+  }
+  .app--page .app-nav__head {
+    align-items: center;
+    padding-bottom: 10px;
+  }
+  .app--page .app-nav__collapse {
+    display: none;
+  }
+  .app--page .app-nav__lockup,
+  .app--page[data-collapsed] .app-nav__lockup {
+    display: block;
+  }
+  .app--page .app-nav .main-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+    padding-top: 10px;
+    overflow: hidden;
+  }
+  .app--page .app-nav .main-nav__eyebrow {
+    display: none;
+  }
+  .app--page .app-nav .main-nav [role='tablist'] {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 2px 5px;
+    scrollbar-width: none;
+  }
+  .app--page .app-nav .main-nav [role='tablist']::-webkit-scrollbar {
+    display: none;
+  }
+  .app--page .app-nav .main-nav [role='tablist']::before {
+    display: none;
+  }
+  .app--page .app-nav .main-nav__section {
+    flex: 0 0 auto;
+  }
+  .app--page .app-nav .main-nav [data-nav-item],
+  .app--page .app-nav .main-nav__link {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 42px;
+    white-space: nowrap;
+  }
+  .app--page .app-nav__quick {
+    display: flex;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .app--page .app-nav__settings {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .app--page .app-nav .site-footer {
+    display: none;
+  }
+}

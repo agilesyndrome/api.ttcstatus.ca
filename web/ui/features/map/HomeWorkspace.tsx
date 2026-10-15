@@ -1,4 +1,3 @@
-import { usePhoneLayout } from '../../hooks/useMediaQuery';
 import { MobileDetails } from './MobileDetails';
 import { CachedMapNotice } from './CachedMapNotice';
 import { t } from '../../i18n';
@@ -96,7 +95,6 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
       ? selectedDayRoutes[0]
       : undefined);
   const compact = useCompactNav();
-  const phone = usePhoneLayout();
   // Replay (docs/replay.md): the map itself is the screen. While the
   // Replay destination is open the workspace swaps the live feed's cars
   // for the engine's interpolated historical ones, sleeps the service
@@ -177,7 +175,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
       >
         <span aria-hidden="true">?</span>
       </button>
-      <AuthControls />
+      <AuthControls showProfileShortcut={false} />
     </div>
   );
   return (
@@ -221,10 +219,10 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
           onReset={resetWithService}
           actions={null}
           onBrandToggle={() => {
-            // The brand symbol is the mobile menu button: it opens the nav
+            // The brand symbol is the compact-layout menu button: it opens the nav
             // panel over the map. On desktop it keeps its old meaning — a
             // reset — because the full menu stays visible beside the map.
-            if (phone) setMobilePanelOpen((open) => !open);
+            if (compact) setMobilePanelOpen((open) => !open);
             else resetWithService();
           }}
           navOpen={mobilePanelOpen}
@@ -417,6 +415,7 @@ export function HomeWorkspace({ workspace }: { workspace: HomeWorkspaceState }) 
                 <ReplayOverlay
                   replay={replay}
                   routeNumber={focusedRoute?.number}
+                  routeName={focusedRoute?.name}
                   onClearFocus={() => setReplayFocus(undefined)}
                 />
               )}

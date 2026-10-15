@@ -1078,7 +1078,7 @@
   "replay.intro": "Watch the network as it was. Ticks are recorded every 30 seconds and kept for 7 days.",
   "replay.carTitle": "Car {value1}",
   "replay.following": "Following",
-  "replay.routeLabel": "Route {value1}",
+  "replay.routeLabel": "Route {value1} {value2}",
   "replay.clearFocus": "Back to the whole network",
   "replay.last24h": "24 h",
   "replay.last2h": "2 h",

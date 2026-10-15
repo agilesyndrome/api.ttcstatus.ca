@@ -22,9 +22,8 @@ export interface NavProps {
   children: ReactNode;
 }
 
-/** The site's single shell-level navigation. It owns the wide rail and the
- * compact standalone-page header; NavPanel owns the destination list shared by
- * both presentations. */
+/** The site's single shell-level navigation. It owns the responsive page nav
+ * and the wide map rail; NavPanel owns the destination list shared by both. */
 export function Nav({ variant, current, panel, onPanel, panels, children }: NavProps) {
   useLanguage();
   useTheme();
@@ -41,7 +40,7 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
       className={`app${variant === 'map' ? ' app--map' : ' app--page'}`}
       data-collapsed={collapsed ? '' : undefined}
     >
-      {!compact && (
+      {(variant === 'page' || !compact) && (
         <aside className="app-nav" aria-label={t('navigation.mainMenu')}>
           <div className="app-nav__head">
             <a className="brand app-nav__brand" href="/">
@@ -96,52 +95,12 @@ export function Nav({ variant, current, panel, onPanel, panels, children }: NavP
                 <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
               </svg>
             </a>
-            <AuthControls />
+            <AuthControls showProfileShortcut={false} />
           </div>
           <PageFooter />
         </aside>
       )}
       <div className="app-main">
-        {compact && variant === 'page' && (
-          <header className="site-header">
-            <a className="site-header__brand brand" href="/">
-              <span className="brand-symbol" aria-hidden="true">
-                ↔
-              </span>
-              <span>
-                <strong>
-                  <small className="brand-lead">{t('header.titleLead')}</small>
-                  {t('header.titleName')}
-                </strong>
-              </span>
-            </a>
-            <div className="site-header__nav">
-              <NavPanel current={current} />
-              <a
-                className="utility-button"
-                href="/settings"
-                aria-label={t('navigation.settings')}
-                title={t('navigation.settings')}
-              >
-                {navLogos.settings}
-              </a>
-              <a
-                className="utility-button language-link"
-                href="/settings#language"
-                aria-label={t('language.settings')}
-                title={t('language.settings')}
-              >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <circle cx="10" cy="10" r="7" />
-                  <path d="M3 10h14M10 3c2 2 3 4.4 3 7s-1 5-3 7c-2-2-3-4.4-3-7s1-5 3-7Z" />
-                </svg>
-              </a>
-            </div>
-            <div className="header-actions">
-              <AuthControls />
-            </div>
-          </header>
-        )}
         {children}
         {compact && variant === 'page' && <PageFooter />}
       </div>

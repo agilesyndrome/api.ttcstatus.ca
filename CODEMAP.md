@@ -128,7 +128,8 @@ Vite copies static assets from `public/` into `dist/`. The API Wrangler
 configuration serves that output directory.
 Run `npm run build:api` before deployment.
 
-The historical design and topology roadmap remain in [ARCHITECTURE.md](ARCHITECTURE.md).
+The architecture overview and its caveats live in
+[docs/architecture.md](docs/architecture.md).
 
 ## UI platform services
 

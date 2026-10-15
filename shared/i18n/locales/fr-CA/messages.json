@@ -408,7 +408,7 @@
   "replay.intro": "Revoyez le réseau tel qu'il était. Les ticks sont enregistrés aux 30 secondes et conservés pendant 7 jours.",
   "replay.carTitle": "Voiture {value1}",
   "replay.following": "Suivi",
-  "replay.routeLabel": "Ligne {value1}",
+  "replay.routeLabel": "Ligne {value1} {value2}",
   "replay.clearFocus": "Tout le réseau",
   "replay.last24h": "24 h",
   "replay.last2h": "2 h",
