@@ -24,6 +24,14 @@ const routeOf = (state: StopServiceState) => state.routeIds[0] ?? 'unknown';
 const dryness = (state: StopServiceState) =>
   state.dryness === null ? '--' : `${state.dryness.toFixed(1)}x`;
 const stopLabel = (id: string, names: Map<string, string>) => names.get(id) ?? id;
+const stopInitial = (label: string) => label.trim().charAt(0).toUpperCase() || '?';
+function stopIndexLetters(label: string): string[] {
+  const normalized = label.trim();
+  const letters = new Set([stopInitial(normalized)]);
+  const at = normalized.match(/\bat\s+([^\s]+)/i);
+  if (at?.[1]) letters.add(stopInitial(at[1]));
+  return [...letters];
+}
 
 export function rankStops(states: readonly StopServiceState[]): StopServiceState[] {
   return states
@@ -149,16 +157,15 @@ function routePage(
   const routeStates = states.filter((state) => state.routeIds.includes(route));
   const letters = new Map<string, number>();
   for (const state of routeStates) {
-    const name = stopLabel(state.stopId, names).toUpperCase();
-    const letter = (name.match(/\bAT\s+([A-Z])/i)?.[1] ?? name[0] ?? '?').toUpperCase();
-    letters.set(letter, (letters.get(letter) ?? 0) + 1);
+    for (const letter of stopIndexLetters(stopLabel(state.stopId, names)))
+      letters.set(letter, (letters.get(letter) ?? 0) + 1);
   }
   return page(
     `ROUTE ${route}`,
     [
       ` ROUTE ${route}`,
       '',
-      ' Pick the FIRST LETTER of the nearest cross street.',
+      ' Pick the FIRST LETTER of the stop or cross-street name.',
       '',
       ...[...letters.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -181,23 +188,24 @@ function letterPage(
     .filter(
       (state) =>
         state.routeIds.includes(route) &&
-        (
-          stopLabel(state.stopId, names).match(/\bAT\s+([A-Z])/i)?.[1] ?? ''
-        ).toUpperCase() === letter,
+        stopIndexLetters(stopLabel(state.stopId, names)).includes(letter),
     )
-    .slice(0, 5);
+    .sort((a, b) =>
+      stopLabel(a.stopId, names).localeCompare(stopLabel(b.stopId, names), undefined, {
+        numeric: true,
+      }),
+    );
   return page(
     `${route} ${letter}`,
     [
-      ` ${route} - cross streets starting with ${letter}`,
+      ` ${route} - stop or cross-street names matching ${letter}`,
       '',
       ' Pick your stop:',
       '',
       ...rows.map(
         (state, index) =>
-          ` [${index + 1}] ${stopLabel(state.stopId, names).slice(0, 24).padEnd(24)} ${state.state.toUpperCase().padEnd(5)} ${mins(state.minutesSince).padStart(4)} /lite/stop/${encodeURIComponent(state.stopId)}`,
+          ` [${index + 1}] ${stopLabel(state.stopId, names).slice(0, 32).padEnd(32)} ${state.state.toUpperCase().padEnd(5)} ${mins(state.minutesSince).padStart(4)} /lite/stop/${encodeURIComponent(state.stopId)}`,
       ),
-      ...(rows.length === 5 ? [' [6] more stops'] : []),
     ],
     tick,
   );
@@ -266,15 +274,20 @@ export function renderLitePage(
   const stopMatch = pathname.match(/^\/lite\/stop\/([^/]+)$/);
   if (stopMatch) {
     const stop = decodeURIComponent(stopMatch[1]);
-    const rows = states.filter((state) => state.stopId === stop);
+    const selectedLabel = stopLabel(stop, names);
+    const rows = states.filter(
+      (state) =>
+        state.stopId === stop ||
+        (selectedLabel !== stop && stopLabel(state.stopId, names) === selectedLabel),
+    );
     return page(
-      `STOP ${stop}`,
+      `STOP ${selectedLabel}`,
       [
-        ` STOP ${stop}`,
+        ` STOP ${selectedLabel}`,
         '',
         ...rows.map(
           (state) =>
-            ` ${routeOf(state)} dir ${state.directionId}  ${state.state.toUpperCase()}  since ${mins(state.minutesSince)}  typical ${state.medianHeadwayOwnSeconds === null ? '--' : `${Math.round(state.medianHeadwayOwnSeconds / 60)}m`}  now ${dryness(state)}  residual ${state.expectedWaitSeconds === null ? '--' : `${Math.round(state.expectedWaitSeconds / 60)}m`}`,
+            ` ${state.stopId.padEnd(6)} ${routeOf(state)} dir ${state.directionId}  ${state.state.toUpperCase()}  since ${mins(state.minutesSince)}  typical ${state.medianHeadwayOwnSeconds === null ? '--' : `${Math.round(state.medianHeadwayOwnSeconds / 60)}m`}  now ${dryness(state)}  residual ${state.expectedWaitSeconds === null ? '--' : `${Math.round(state.expectedWaitSeconds / 60)}m`}`,
         ),
         '',
         ` Last 30 min: ${historyStrip}`,
@@ -333,20 +346,56 @@ async function readTick(env: Env): Promise<StopsTickDocument | null> {
 }
 
 async function readStopNames(env: Env): Promise<Map<string, string>> {
+  let versionId: number | null = null;
   try {
     const resolved = await resolveMapArtifact(env, 'streetcar');
-    if (!resolved || resolved.error) return new Map();
-    const chunks = (
+    if (resolved && !resolved.error) {
+      versionId = resolved.artifact.version_id;
+      const chunks = (
+        await env.DB.prepare(
+          'SELECT payload FROM map_stop_directory_chunks WHERE artifact_id = ? ORDER BY chunk_index',
+        )
+          .bind(resolved.artifact.id)
+          .all<{ payload: string }>()
+      ).results;
+      if (chunks.length) {
+        const directory = JSON.parse(chunks.map((chunk) => chunk.payload).join('')) as {
+          stops?: Array<{ stopId: string; name: string }>;
+        };
+        const names = new Map(
+          (directory.stops ?? []).map((stop) => [stop.stopId, stop.name]),
+        );
+        if (names.size) return names;
+      }
+    }
+  } catch {
+    // Fall through to the versioned GTFS fallback. A missing or incomplete
+    // map artifact must not make the board query every retained version.
+  }
+
+  try {
+    if (versionId === null) {
+      const active = await env.DB.prepare(
+        `SELECT id FROM network_versions
+         WHERE source_key = 'ttc-surface-gtfs' AND active = 1
+         ORDER BY id DESC LIMIT 1`,
+      ).first<{ id: number }>();
+      versionId = active?.id ?? null;
+    }
+    if (versionId === null) return new Map();
+
+    // Older active artifacts may predate the published directory. The GTFS
+    // rows use the same source stop IDs as the service tick, so they are a
+    // safe read-only fallback for the text board. Always pin this read to the
+    // same immutable network version as the selected map/current network.
+    const rows = (
       await env.DB.prepare(
-        'SELECT payload FROM map_stop_directory_chunks WHERE artifact_id = ? ORDER BY chunk_index',
+        'SELECT stop_id, name FROM gtfs_stops WHERE version_id = ? ORDER BY stop_id',
       )
-        .bind(resolved.artifact.id)
-        .all<{ payload: string }>()
+        .bind(versionId)
+        .all<{ stop_id: string; name: string }>()
     ).results;
-    const directory = JSON.parse(chunks.map((chunk) => chunk.payload).join('')) as {
-      stops?: Array<{ stopId: string; name: string }>;
-    };
-    return new Map((directory.stops ?? []).map((stop) => [stop.stopId, stop.name]));
+    return new Map(rows.map((row) => [row.stop_id, row.name]));
   } catch {
     return new Map();
   }

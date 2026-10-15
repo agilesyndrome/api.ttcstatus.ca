@@ -11,11 +11,14 @@ import { REPLAY_SPEEDS, formatFrameClock, formatScrubClock } from './replay';
 export function ReplayOverlay({
   replay,
   routeNumber,
+  routeName,
   onClearFocus,
 }: {
   replay: ReplayState;
   /** The focused route's display number, when a route owns the screen. */
   routeNumber?: string;
+  /** The focused route's public name, shown beside its number. */
+  routeName?: string;
   onClearFocus?(): void;
 }) {
   useLanguage();
@@ -35,7 +38,7 @@ export function ReplayOverlay({
           onClick={onClearFocus}
           title={t('replay.clearFocus')}
         >
-          {t('replay.routeLabel', { value1: routeNumber })}{' '}
+          {t('replay.routeLabel', { value1: routeNumber, value2: routeName ?? '' })}{' '}
           <span aria-hidden="true">×</span>
         </button>
       )}

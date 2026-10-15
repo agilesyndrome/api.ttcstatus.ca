@@ -14,7 +14,8 @@ web UI (useStaticMap.ts)
   → (artifacts are produced in-process by the map generator via the nightly sync)
 ```
 
-The map generator (in-process since docs/optimize-transport.md Epic 7: `workers/api/src/mapgen/`)
+The map generator (in-process: `workers/api/src/mapgen/`; see
+[architecture.md](architecture.md))
 exposes only `GET /api/healthz`, `POST /api/debug/render`, and
 `POST /api/internal/generate`. **It does not serve `/api/v1/map/*` at all** — any
 other path on it returns `404 {"error":"not-found"}`.

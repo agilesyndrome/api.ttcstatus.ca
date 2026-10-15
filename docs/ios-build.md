@@ -78,7 +78,7 @@ These steps create and modify project files. Make sure the Mac has the intended 
 On a real iPhone, verify all of the following before treating the shell as functional:
 
 - Cold launch loads the bundled UI and public map; live vehicles load through the launch-time transport configuration.
-- Foreground/background transitions pause and resume live work correctly; loss and restoration of connectivity show the expected saved or stale state. Validate the live-feed clock-skew and outage paths as described in [transport rollout](optimize-transport-thunks.md).
+- Foreground/background transitions pause and resume live work correctly; loss and restoration of connectivity show the expected saved or stale state. Validate the live-feed clock-skew and outage paths (tick document gaps, outage documents — see [Data.md](Data.md)).
 - Tapping **Locate** prompts for foreground location and shows nearby stops. Denying permission leaves the app usable.
 - Preferences and cached map data survive a cold restart. Sharing and exported files use the iOS share sheet.
 - Sign-up, sign-in, sign-out, session restoration, and every authenticated account write work with the production Clerk instance and API. Check the issued token's authorized party against `capacitor://localhost`; the API already permits that party, but unit tests do not prove a real iPhone sign-in flow. [Clerk says Capacitor origins must be allowed on the instance](https://clerk.com/docs/reference/backend/types/backend-instance).

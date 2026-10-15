@@ -3,7 +3,7 @@
     padding: 20px 16px;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   body:has(.route-screen:not([hidden]) .workspace),
   body:not(:has(.route-screen)):has(.workspace) {
     overflow: hidden;

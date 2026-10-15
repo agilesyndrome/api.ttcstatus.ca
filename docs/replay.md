@@ -7,8 +7,8 @@ it was, at 1–600× real time, with the frame's capture time on screen.
 ## Data source
 
 The recorder publishes one immutable fleet tick document per 30-second tick
-to the public live bucket (`live/t/{tick}/vehicles.json`, documented in
-docs/optimize-transport.md). The R2 lifecycle expires `live/t/` objects
+to the public live bucket (`live/t/{tick}/vehicles.json`; see
+[Data.md](Data.md)). The R2 lifecycle expires `live/t/` objects
 after 7 days, which is exactly replay's horizon. Replay reads the same
 broadcast path the live map polls — **no new API surface exists for
 replay**; the only shared addition is `fetchHistoricalTick`
